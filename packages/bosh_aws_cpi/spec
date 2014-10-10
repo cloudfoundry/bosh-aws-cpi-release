@@ -1,0 +1,6 @@
+---
+name: bosh_aws_cpi
+dependencies:
+- ruby_aws_cpi
+files:
+- bosh_aws_cpi/*.gem

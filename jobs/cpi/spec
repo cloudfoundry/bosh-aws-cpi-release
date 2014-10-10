@@ -1,0 +1,12 @@
+---
+name: cpi
+templates:
+  cpi.erb: bin/cpi
+  micro_discover_ip.erb: bin/micro_discover_ip
+  cpi.yml.erb: config/cpi.yml
+
+packages:
+- ruby_aws_cpi
+- bosh_aws_cpi
+
+properties: {}
