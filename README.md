@@ -25,3 +25,7 @@ Then create the BOSH release:
 ```
 
 The release is now ready for use. If everything works, commit the changes including the updated gems.
+
+### Experimental `bosh-micro` usage
+
+See [bosh-micro usage doc](docs/bosh-micro-usage.md)
