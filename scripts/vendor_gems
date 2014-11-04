@@ -8,7 +8,7 @@ cleanup() {
   rm -rf $tmp_dir
 }
 
-trap EXIT cleanup
+trap cleanup EXIT
 
 aws_cpi_dir=$(cd $(dirname $0)/../ && pwd)
 aws_cpi_gems_dir=$aws_cpi_dir/src/bosh_aws_cpi
