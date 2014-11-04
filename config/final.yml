@@ -3,4 +3,4 @@ final_name: bosh-aws-cpi
 blobstore:
   provider: s3
   options:
-    bucket_name: bosh-aws-cpi-release-blobs
+    bucket_name: bosh-aws-cpi-blobs
