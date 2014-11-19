@@ -26,6 +26,7 @@ networks:
 
 resource_pools:
 - name: default
+  network: default
   cloud_properties:
     instance_type: m1.medium
     availability_zone: us-east-1c
