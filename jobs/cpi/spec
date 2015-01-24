@@ -8,4 +8,89 @@ packages:
 - ruby_aws_cpi
 - bosh_aws_cpi
 
-properties: {}
+properties:
+  aws.access_key_id:
+    description: AWS IAM Access Key ID
+  aws.secret_access_key:
+    description: AWS IAM Secret Access Key
+  aws.region:
+    description: AWS EC2 Region
+
+
+  aws.default_key_name:
+    description: Default ssh keypair used by aws cpi when creating vms
+  aws.default_security_groups:
+    description: Default security group used by aws cpi
+
+  aws.stemcell.kernel_id:
+    description: AWS kernel id used by aws cpi
+
+  registry.username:
+    description: Username clients must use to access Registry via HTTP Basic Auth
+  registry.password:
+    description: Password clients must use to access Registry via HTTP Basic Auth
+
+  ntp:
+    description: List of ntp server IPs. pool.ntp.org attempts to return IPs closest to your location, but you can still specify if needed.
+    default:
+      - 0.pool.ntp.org
+      - 1.pool.ntp.org
+
+  blobstore.provider:
+    description: Provider of the blobstore used by director and agent (dav|simple|s3)
+    default: 'dav'
+  blobstore.bucket_name:
+    description: AWS S3 Bucket used by s3 blobstore plugin
+  blobstore.access_key_id:
+    description: AWS access_key_id used by s3 blobstore plugin
+  blobstore.secret_access_key:
+    description: AWS secret_access_key used by s3 blobstore plugin
+
+  blobstore.use_ssl:
+    description: Whether the simple blobstore plugin should use SSL to connect to the blobstore server
+    default: true
+  blobstore.host:
+    description: Host of blobstore server used by simple blobstore plugin
+
+  # AWS S3 blobstore
+  blobstore.s3_port:
+    description: Port of blobstore server used by s3 blobstore plugin
+    default: 443
+  blobstore.s3_port:
+    description: Port of blobstore server used by s3 blobstore plugin
+    default: 443
+  blobstore.s3_force_path_style:
+    description: Whether s3 blobstore plugin will always use path style for bucket access
+    default: false
+
+  # Local blobstore
+  blobstore.path:
+    description: Path for local blobstore plugin
+
+  blobstore.address:
+    description: Address of blobstore server used by simple blobstore plugin
+  blobstore.agent.user:
+    description: Username agents must use to access blobstore via HTTP Basic
+  blobstore.agent.password:
+    description: Password agents must use to access blobstore via HTTP Basic
+
+  agent.blobstore.access_key_id:
+    description: AWS access_key_id for agent used by s3 blobstore plugin
+  agent.blobstore.secret_access_key:
+    description: AWS secret_access_key for agent used by s3 blobstore plugin
+  agent.blobstore.address:
+    description: Address for agent to connect to blobstore server used by simple blobstore plugin
+  agent.mbus:
+    description: URI for NATS connection (nats://user:pass@host:port)
+  agent.nats.address:
+    description: Address for agent to connect to nats
+
+  nats.address:
+    description: Address of the NATS message bus to connect to
+  nats.port:
+    description: Port of the NATS message bus port to connect to
+    default: 4222
+  nats.user:
+    description: Username clients must use to access nats mbus
+  nats.password:
+    description: Password clients must use to access nats mbus
