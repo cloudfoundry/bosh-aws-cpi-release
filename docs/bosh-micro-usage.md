@@ -32,6 +32,7 @@ resource_pools:
     availability_zone: us-east-1c
 
 cloud_provider:
+  release: bosh-aws-cpi
   # Tells bosh-micro how to SSH into deployed VM
   ssh_tunnel:
     host: __SOME-EIP__
@@ -77,15 +78,16 @@ cloud_provider:
 
 jobs:
 - name: bosh
+  instances: 1
   templates:
-  - name: nats
-  - name: redis
-  - name: postgres
-  - name: powerdns
-  - name: blobstore
-  - name: director
-  - name: health_monitor
-  - name: registry
+  - { name: nats, release: bosh }
+  - { name: redis, release: bosh }
+  - { name: postgres, release: bosh }
+  - { name: powerdns, release: bosh }
+  - { name: blobstore, release: bosh }
+  - { name: director, release: bosh }
+  - { name: health_monitor, release: bosh }
+  - { name: registry, release: bosh }
   networks:
   - name: default
   - name: my-vip
