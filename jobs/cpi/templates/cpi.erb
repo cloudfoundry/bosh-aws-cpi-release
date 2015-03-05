@@ -8,7 +8,8 @@ BOSH_JOBS_DIR=${BOSH_JOBS_DIR:-/var/vcap/jobs}
 PATH=$BOSH_PACKAGES_DIR/ruby_aws_cpi/bin:$PATH
 export PATH
 
-export GEM_HOME=$BOSH_PACKAGES_DIR/bosh_aws_cpi/gem_home
+export BUNDLE_GEMFILE=$BOSH_PACKAGES_DIR/bosh_aws_cpi/Gemfile
+export GEM_HOME=$BOSH_PACKAGES_DIR/bosh_aws_cpi/gem_home/ruby/1.9.1
 
 echo $INPUT | $BOSH_PACKAGES_DIR/bosh_aws_cpi/bin/aws_cpi \
   $BOSH_JOBS_DIR/cpi/config/cpi.yml
