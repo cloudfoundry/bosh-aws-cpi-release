@@ -15,6 +15,8 @@ EOF
 
 bundle_cmd="$BOSH_PACKAGES_DIR/ruby_aws_cpi/bin/bundle"
 
+export HOME=`pwd`
+
 # Use system libxml2 and libxslt, rather than those from Nokogiri
 $bundle_cmd config build.nokogiri --use-system-libraries
 
