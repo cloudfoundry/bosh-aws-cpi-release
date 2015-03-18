@@ -8,6 +8,10 @@ tar xzf ruby_aws_cpi/yaml-0.1.5.tar.gz
   make -j
   make -j install
 )
+if [[ $? != 0 ]] ; then
+  echo "Cannot install yaml"
+  exit 1
+fi
 
 tar xzf ruby_aws_cpi/ruby-1.9.3-p545.tar.gz
 (
@@ -17,6 +21,10 @@ tar xzf ruby_aws_cpi/ruby-1.9.3-p545.tar.gz
   make -j
   make -j install
 )
+if [[ $? != 0 ]] ; then
+  echo "Cannot install ruby"
+  exit 1
+fi
 
 tar zxvf ruby_aws_cpi/rubygems-2.1.11.tgz
 (
@@ -24,11 +32,10 @@ tar zxvf ruby_aws_cpi/rubygems-2.1.11.tgz
   cd rubygems-2.1.11
 
   ${BOSH_INSTALL_TARGET}/bin/ruby setup.rb
-
-  if [[ $? != 0 ]] ; then
-    echo "Cannot install rubygems"
-    exit 1
-  fi
 )
+if [[ $? != 0 ]] ; then
+  echo "Cannot install rubygems"
+  exit 1
+fi
 
 ${BOSH_INSTALL_TARGET}/bin/gem install ruby_aws_cpi/bundler-1.8.2.gem --local --no-ri --no-rdoc
