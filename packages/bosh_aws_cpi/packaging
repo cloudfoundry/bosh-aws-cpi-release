@@ -1,3 +1,5 @@
+#!/usr/bin/env sh
+
 set -e -x
 
 BOSH_PACKAGES_DIR=${BOSH_PACKAGES_DIR:-/var/vcap/packages}
@@ -15,10 +17,8 @@ EOF
 
 bundle_cmd="$BOSH_PACKAGES_DIR/ruby_aws_cpi/bin/bundle"
 
-export HOME=`pwd`
-
 # Use system libxml2 and libxslt, rather than those from Nokogiri
-$bundle_cmd config build.nokogiri --use-system-libraries
+$bundle_cmd config --local build.nokogiri --use-system-libraries
 
 $bundle_cmd install \
   --local           \
