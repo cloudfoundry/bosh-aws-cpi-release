@@ -17,12 +17,12 @@ mkdir my-micro
 name: my-micro
 
 networks:
-- name: my-vip
-  type: vip
 - name: default
   type: dynamic
   dns: [8.8.8.8, 4.4.4.4]
   cloud_properties: {subnet: __SOME-SUBNET__}
+- name: my-vip
+  type: vip
 
 resource_pools:
 - name: default
@@ -32,7 +32,8 @@ resource_pools:
     availability_zone: us-east-1c
 
 cloud_provider:
-  release: bosh-aws-cpi
+  template: {name: cpi, release: bosh-aws-cpi}
+
   # Tells bosh-micro how to SSH into deployed VM
   ssh_tunnel:
     host: __SOME-EIP__
@@ -57,11 +58,9 @@ cloud_provider:
       default_key_name: bosh
       default_security_groups: ["bosh"]
       region: us-east-1
-      ec2_private_key: __SOME-PRIVATE-KEY-PATH__
 
     # Tells CPI how agent should listen for requests
-    agent:
-      mbus: https://mbus-user:mbus-password@0.0.0.0:6868
+    agent: {mbus: https://mbus-user:mbus-password@0.0.0.0:6868}
 
     # Tells CPI how to contact registry
     registry:
@@ -79,6 +78,7 @@ cloud_provider:
 jobs:
 - name: bosh
   instances: 1
+  
   templates:
   - { name: nats, release: bosh }
   - { name: redis, release: bosh }
@@ -88,10 +88,12 @@ jobs:
   - { name: director, release: bosh }
   - { name: health_monitor, release: bosh }
   - { name: registry, release: bosh }
+  
   networks:
   - name: default
   - name: my-vip
     static_ips: [__SOME-EIP__]
+
   properties:
     aws:
       access_key_id: __SOME-KEY__
@@ -116,7 +118,6 @@ jobs:
     nats:
       user: "nats"
       password: "nats"
-      auth_timeout: 3
       address: "127.0.0.1"
     redis:
       address: "127.0.0.1"
@@ -130,12 +131,8 @@ jobs:
       port: 5432
     blobstore:
       address: "127.0.0.1"
-      director:
-        user: "director"
-        password: "director"
-      agent:
-        user: "agent"
-        password: "agent"
+      director: {user: "director", password: "director"}
+      agent: {user: "agent", password: "agent"}
       provider: "dav"
     director:
       address: "127.0.0.1"
@@ -150,16 +147,8 @@ jobs:
         adapter: "postgres"
       backend_port: 25556
     hm:
-      http:
-        user: "hm"
-        password: "hm"
-      director_account:
-        user: "admin"
-        password: "admin"
-      intervals:
-        log_stats: 300
-        agent_timeout: 180
-        rogue_agent_alert: 180
+      http: {user: "hm", password: "hm"}
+      director_account: {user: "admin", password: "admin"}
     dns:
       address: __SOME-EIP__
       domain_name: "microbosh"
