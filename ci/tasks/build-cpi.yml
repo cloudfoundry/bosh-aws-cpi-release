@@ -1,0 +1,13 @@
+---
+platform: linux
+
+image: docker:///bosh/bats
+
+inputs:
+- name: bosh-cpi-release
+
+run:
+  path: bash
+  args:
+    - -l
+    - bosh-cpi-release/ci/tasks/build-cpi.sh
