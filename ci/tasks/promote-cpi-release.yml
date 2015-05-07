@@ -1,0 +1,14 @@
+---
+platform: linux
+
+image: docker:///bosh/bats
+
+inputs:
+- name: bosh-cpi-release
+- name: bosh-cpi-dev-release
+
+run:
+  path: bash
+  args:
+  - -l
+  - bosh-cpi-release/ci/tasks/promote-cpi-release.sh
