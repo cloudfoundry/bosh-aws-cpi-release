@@ -2,7 +2,7 @@
 
 set -e -x
 
-cd bosh-cpi-release
+cd bosh-cpi-repo
 
 cat > config/private.yml << EOF
 ---
@@ -12,7 +12,7 @@ blobstore:
     secret_access_key: $aws_secret_access_key
 EOF
 
-bosh finalize release bosh-cpi-dev-release/$cpi_release
+bosh finalize release ../bosh-cpi-dev-artifacts/$cpi_release
 
 # Be extra careful about not committing private.yml
 rm config/private.yml
