@@ -1,0 +1,26 @@
+---
+packages:
+- name: bosh_aws_cpi
+  version: 2bb22c5a553350eed303a5382d4d557798d48914
+  fingerprint: 2bb22c5a553350eed303a5382d4d557798d48914
+  sha1: 0910f53d9a2d39586524c62db6daaafed286b754
+  dependencies:
+  - ruby_aws_cpi
+- name: ruby_aws_cpi
+  version: 7903f3a543e8ab35fd980a0ca74f9151282d56b2
+  fingerprint: 7903f3a543e8ab35fd980a0ca74f9151282d56b2
+  sha1: 2a4f570e0f8caeac58642697e34ecf9eccf6a496
+  dependencies: []
+jobs:
+- name: cpi
+  version: ca1bbc783f6b12eb1d066ac4b54c75fb8351465e
+  fingerprint: ca1bbc783f6b12eb1d066ac4b54c75fb8351465e
+  sha1: 691b21147d13b96848f1e66a8d14260eebc12527
+license:
+  version: 5d46e28ef924d4878c8824f0932b50e1e5f03f88
+  fingerprint: 5d46e28ef924d4878c8824f0932b50e1e5f03f88
+  sha1: 6b0526296a2e3b29d3029797ff4d61c02f99829e
+commit_hash: 6f0f67fe
+uncommitted_changes: false
+name: bosh-aws-cpi
+version: '10'
