@@ -13,6 +13,3 @@ See [Initializing a BOSH environment on AWS](https://bosh.io/docs/init-aws.html)
 ## Development
 
 See [development doc](docs/development.md).
-touched
-touched
-touched
