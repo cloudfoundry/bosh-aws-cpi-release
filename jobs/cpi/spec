@@ -17,6 +17,8 @@ properties:
     description: Default ssh keypair used by aws cpi when creating vms
   aws.default_security_groups:
     description: Default security group used by aws cpi
+  aws.default_security_group_ids:
+    description: Default security group ids used by aws cpi
   aws.region:
     description: AWS Region used by aws cpi
   registry.username:

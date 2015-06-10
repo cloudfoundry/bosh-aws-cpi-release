@@ -6,6 +6,9 @@ cloud:
       secret_access_key: <%= p('aws.secret_access_key') %>
       default_key_name: <%= p('aws.default_key_name') %>
       default_security_groups: <%= p('aws.default_security_groups') %>
+      <% if_p('aws.default_security_group_ids') do |security_group_ids|%>
+      default_security_group_ids: <%= security_group_ids %>
+      <% end %>
       region: <%= p('aws.region') %>
     registry:
       endpoint: http://<%= p('registry.username') %>:<%= p('registry.password') %>@<%= p('registry.host') %>:<%= p('registry.port') %>
