@@ -1,0 +1,19 @@
+---
+platform: linux
+image: docker:///bosh/aws-cpi-release
+inputs:
+  - name: bosh-cpi-dev-artifacts # -++ used for deployment manifest referenced by manifest_path
+  - name: version-semver         # -//
+  - name: bosh-cpi-release
+  - name: terraform-state-version
+  - name: terraform-ubuntu-exports
+  - name: bosh-concourse-ci
+  - name: bosh-init              # --- bosh-init executable to do deploy
+  - name: bosh-release           # -\
+  - name: stemcell               # -/
+run:
+  path: bosh-cpi-release/ci/tasks/deploy.sh
+params:
+  base_os:               replace-me
+  aws_access_key_id:     replace-me
+  aws_secret_access_key: replace-me

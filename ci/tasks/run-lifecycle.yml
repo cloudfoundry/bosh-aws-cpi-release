@@ -1,0 +1,15 @@
+---
+platform: linux
+image: docker:///bosh/aws-cpi-release
+inputs:
+- name: bosh-src
+- name: bosh-concourse-ci
+run:
+  path: bosh-cpi-release/ci/tasks/run-lifecycle.sh
+params:
+  BOSH_AWS_ACCESS_KEY_ID:       replace-me
+  BOSH_AWS_SECRET_ACCESS_KEY:   replace-me
+  BOSH_AWS_SUBNET_ID:           replace-me
+  BOSH_AWS_SUBNET_ZONE:         replace-me
+  BOSH_AWS_LIFECYCLE_MANUAL_IP: replace-me
+  BOSH_AWS_DEFAULT_KEY_NAME:    replace-me
