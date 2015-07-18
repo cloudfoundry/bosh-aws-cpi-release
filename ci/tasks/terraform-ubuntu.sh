@@ -18,16 +18,16 @@ semver=`cat terraform-state-version/number`
   -var "concourse_ip=${concourse_ip}" \
   bosh-concourse-ci/pipelines/bosh-aws-cpi
 
-state-file=ubuntu-bats-${semver}.tfstate
-exports-file=terraform-ubuntu-exports-${semver}.sh
+state_file=ubuntu-bats-${semver}.tfstate
+export_file=terraform-ubuntu-exports-${semver}.sh
 
 # applies the plan, generates a state file
-/terraform/terraform apply -state=$state-file ubuntu-bats.tfplan
+/terraform/terraform apply -state=$state_file ubuntu-bats.tfplan
 
 # exports values into an exports file
-echo -e "#!/usr/bin/env bash" >> $exports-file
-echo -e "export UBUNTU_DIRECTOR=$(/terraform/terraform output -state=${state-file} director_vip)" >> $exports-file
-echo -e "export UBUNTU_VIP=$(/terraform/terraform output -state=${state-file} bats_vip)" >> $exports-file
-echo -e "export UBUNTU_SUBNET_ID=$(/terraform/terraform output -state=${state-file} subnet_id)" >> $exports-file
-echo -e "export UBUNTU_SECURITY_GROUP_NAME=$(/terraform/terraform output -state=${state-file} security_group_name)" >> $exports-file
-echo -e "export UBUNTU_AVAILABILITY_ZONE=$(/terraform/terraform output -state=${state-file} availability_zone)" >> $exports-file
+echo -e "#!/usr/bin/env bash" >> $export_file
+echo -e "export UBUNTU_DIRECTOR=$(/terraform/terraform output -state=${state_file} director_vip)" >> $export_file
+echo -e "export UBUNTU_VIP=$(/terraform/terraform output -state=${state_file} bats_vip)" >> $export_file
+echo -e "export UBUNTU_SUBNET_ID=$(/terraform/terraform output -state=${state_file} subnet_id)" >> $export_file
+echo -e "export UBUNTU_SECURITY_GROUP_NAME=$(/terraform/terraform output -state=${state_file} security_group_name)" >> $export_file
+echo -e "export UBUNTU_AVAILABILITY_ZONE=$(/terraform/terraform output -state=${state_file} availability_zone)" >> $export_file
