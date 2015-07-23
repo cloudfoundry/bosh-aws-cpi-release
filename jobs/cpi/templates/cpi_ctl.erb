@@ -1,0 +1,31 @@
+#!/bin/bash
+
+set -e
+
+CPI_GEM_DIR=/var/vcap/packages/bosh_aws_cpi/gem_home/
+RUN_DIR=/var/vcap/sys/run/cpi
+PID_FILE=${RUN_DIR}/cpi.pid
+SUDOERS_FILE=/etc/sudoers.d/cpi
+
+case $1 in
+
+  start)
+    mkdir -p $RUN_DIR
+
+    sc_path=$(find ${CPI_GEM_DIR} -iname stemcell-copy.sh)
+    cat > $SUDOERS_FILE << EOF
+vcap ALL= NOPASSWD: ${sc_path}
+EOF
+
+    chmod 440 $SUDOERS_FILE
+    echo 1 > $PID_FILE
+  ;;
+
+  stop)
+    rm -f $SUDOERS_FILE
+    rm -f $PID_FILE
+  ;;
+
+esac
+exit 0
+

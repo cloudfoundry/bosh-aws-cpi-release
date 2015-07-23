@@ -3,6 +3,7 @@ name: cpi
 templates:
   cpi.erb: bin/cpi
   cpi.yml.erb: config/cpi.yml
+  cpi_ctl.erb: bin/cpi_ctl
 
 packages:
 - ruby_aws_cpi
