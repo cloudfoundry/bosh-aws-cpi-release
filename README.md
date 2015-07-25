@@ -4,7 +4,7 @@
 * IRC: [`#bosh` on freenode](https://webchat.freenode.net/?channels=bosh)
 * Mailing list: [cf-bosh](https://lists.cloudfoundry.org/pipermail/cf-bosh)
 * CI: [https://main.bosh-ci.cf-app.com/pipelines/aws-cpi](https://main.bosh-ci.cf-app.com/pipelines/aws-cpi)
-* Roadmap: [Pivotal Tracker](https://www.pivotaltracker.com/n/projects/956238) (label:aws)
+* Roadmap: [Pivotal Tracker](https://www.pivotaltracker.com/n/projects/1133984) (label:aws)
 
 This is a BOSH release for the AWS CPI.
 
