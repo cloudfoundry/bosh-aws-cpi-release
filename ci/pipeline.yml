@@ -82,7 +82,7 @@ jobs:
         base_os:               ubuntu
 
   - put: terraform-ubuntu-state-version
-    params: {file: terraform-ubuntu-state-version/number}
+    params: {file: terraform-state-version/number}
   - put: terraform-state
     params: {from: terraform/ubuntu-bats-.*\.tfstate$}
   - put: terraform-ubuntu-exports
@@ -162,7 +162,7 @@ jobs:
         base_os:               centos
 
   - put: terraform-centos-state-version
-    params: {file: terraform-centos-state-version/number}
+    params: {file: terraform-state-version/number}
   - put: terraform-centos-state
     params: {from: terraform/centos-bats-.*\.tfstate$}
   - put: terraform-centos-exports
@@ -364,7 +364,7 @@ resources:
 - name: terraform-ubuntu-state-version
   type: semver
   source:
-    key: terraform-ubuntu-state-version
+    key: terraform-state-version
     bucket: {{s3_aws_cpi_pipeline_bucket}}
     access_key_id: {{s3_aws_cpi_access_key}}
     secret_access_key: {{s3_aws_cpi_secret_key}}
