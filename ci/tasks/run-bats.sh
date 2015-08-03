@@ -8,20 +8,21 @@ check_param BAT_VCAP_PASSWORD
 check_param BAT_STEMCELL
 check_param BAT_DEPLOYMENT_SPEC
 check_param BAT_VCAP_PRIVATE_KEY
+check_param base_os
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
 
 terraform_statefile_semver=`cat terraform-state-version/number`
-source terraform-ubuntu-exports/terraform-ubuntu-exports-${terraform_statefile_semver}.sh
+source terraform-${base_os}-exports/terraform-${base_os}-exports-${terraform_statefile_semver}.sh
 
-export BAT_DIRECTOR=$UBUNTU_DIRECTOR
-export BAT_DNS_HOST=$UBUNTU_DIRECTOR
+export BAT_DIRECTOR=$DIRECTOR
+export BAT_DNS_HOST=$DIRECTOR
 export BAT_INFRASTRUCTURE=aws
 export BAT_NETWORKING=manual
-export BAT_VIP=$UBUNTU_VIP
-export BAT_SUBNET_ID=$UBUNTU_SUBNET_ID
-export BAT_SECURITY_GROUP_NAME=$UBUNTU_SECURITY_GROUP_NAME
+export BAT_VIP=$VIP
+export BAT_SUBNET_ID=$SUBNET_ID
+export BAT_SECURITY_GROUP_NAME=$SECURITY_GROUP_NAME
 
 eval $(ssh-agent)
 chmod go-r $BAT_VCAP_PRIVATE_KEY

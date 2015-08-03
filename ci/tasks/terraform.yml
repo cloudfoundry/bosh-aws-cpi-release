@@ -2,12 +2,13 @@
 platform: linux
 image: docker:///bosh/aws-cpi-release
 inputs:
-- name: bosh-concourse-ci      # --- repository to get manifest and store deployment state file
+- name: bosh-concourse-ci
 - name: terraform-state-version
 - name: bosh-cpi-release
 run:
-  path: bosh-cpi-release/ci/tasks/terraform-ubuntu.sh
+  path: bosh-cpi-release/ci/tasks/terraform.sh
 params:
   aws_access_key_id:     replace-me
   aws_secret_access_key: replace-me
   concourse_ip:          replace-me
+  base_os:               replace-me
