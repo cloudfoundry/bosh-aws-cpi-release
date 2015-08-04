@@ -95,8 +95,8 @@ jobs:
     - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-dev-artifacts}
     - {trigger: false, passed: [build-candidate],  get: version-semver}
     - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
-    - {trigger: false, passed: [terraform-ubuntu], get: terraform-ubuntu-state-version}
-    - {trigger: false, passed: [terraform-ubuntu], get: terraform-ubuntu-exports}
+    - {trigger: false, passed: [terraform-ubuntu], get: terraform-state-version, resource: terraform-ubuntu-state-version}
+    - {trigger: false, passed: [terraform-ubuntu], get: terraform-exports, resource: terraform-ubuntu-exports}
     - {trigger: false,                             get: bosh-concourse-ci}
     - {trigger: false,                             get: bosh-init}
     - {trigger: false,                             get: bosh-release}
@@ -130,7 +130,7 @@ jobs:
     - {trigger: false, passed: [deploy-ubuntu],    get: stemcell, resource: aws-ubuntu-stemcell}
     - {trigger: false, passed: [deploy-ubuntu],    get: bosh-cpi-release, resource: bosh-cpi-release-in}
     - {trigger: false, passed: [terraform-ubuntu], get: terraform-state-version, resource: terraform-ubuntu-state-version}
-    - {trigger: false, passed: [terraform-ubuntu], get: terraform-ubuntu-exports}
+    - {trigger: false, passed: [terraform-ubuntu], get: terraform-exports, resource: terraform-ubuntu-exports}
     - {trigger: false,                             get: bosh-concourse-ci}
     - {trigger: false,                             get: bats}
 
@@ -175,8 +175,8 @@ jobs:
     - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-dev-artifacts}
     - {trigger: false, passed: [build-candidate],  get: version-semver}
     - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
-    - {trigger: false, passed: [terraform-centos], get: terraform-centos-state-version}
-    - {trigger: false, passed: [terraform-centos], get: terraform-centos-exports}
+    - {trigger: false, passed: [terraform-centos], get: terraform-state-version, resource: terraform-centos-state-version}
+    - {trigger: false, passed: [terraform-centos], get: terraform-exports, resource: terraform-centos-exports}
     - {trigger: false,                             get: bosh-concourse-ci }
     - {trigger: false,                             get: bosh-init}
     - {trigger: false,                             get: bosh-release}
@@ -210,7 +210,7 @@ jobs:
     - {trigger: false, passed: [deploy-centos],    get: stemcell, resource: aws-centos-stemcell}
     - {trigger: false, passed: [deploy-centos],    get: bosh-cpi-release, resource: bosh-cpi-release-in}
     - {trigger: false, passed: [terraform-centos], get: terraform-state-version, resource: terraform-centos-state-version}
-    - {trigger: false, passed: [terraform-centos], get: terraform-centos-exports}
+    - {trigger: false, passed: [terraform-centos], get: terraform-exports, resource: terraform-centos-exports}
     - {trigger: false,                             get: bosh-concourse-ci}
     - {trigger: false,                             get: bats}
 
@@ -302,13 +302,6 @@ resources:
   source:
     uri: https://github.com/cloudfoundry/bosh-acceptance-tests.git
     branch: concourse
-
-- name: deployments-bosh
-  type: git
-  source:
-    uri: git@github.com:cloudfoundry/deployments-bosh.git
-    branch: master
-    private_key: {{github_deployment_key__deployments-bosh}}
 
 - name: bosh-release
   type: bosh-io-release
