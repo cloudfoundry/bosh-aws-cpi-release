@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
 
-set -e -x
+set -e
 
 source bosh-cpi-release/ci/tasks/utils.sh
 
-check_param BAT_VCAP_PASSWORD
-check_param BAT_STEMCELL
-check_param BAT_DEPLOYMENT_SPEC
-check_param BAT_VCAP_PRIVATE_KEY
 check_param base_os
+check_param BAT_VCAP_PASSWORD
+check_param BAT_VCAP_PRIVATE_KEY
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
 
 terraform_statefile_semver=`cat terraform-state-version/number`
-source terraform-${base_os}-exports/terraform-${base_os}-exports-${terraform_statefile_semver}.sh
+source terraform-exports/terraform-${base_os}-exports-${terraform_statefile_semver}.sh
 
 export BAT_DIRECTOR=$DIRECTOR
 export BAT_DNS_HOST=$DIRECTOR
+export BAT_STEMCELL="${PWD}/stemcell/stemcell.tgz"
+export BAT_DEPLOYMENT_SPEC="${PWD}/bosh-concourse-ci/pipelines/bosh-aws-cpi/${base_os}-bats-config.yml"
 export BAT_INFRASTRUCTURE=aws
 export BAT_NETWORKING=manual
 export BAT_VIP=$VIP

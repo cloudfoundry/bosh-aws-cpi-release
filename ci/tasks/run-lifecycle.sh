@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e -x
+set -e
 
 source bosh-cpi-release/ci/tasks/utils.sh
 
@@ -14,7 +14,7 @@ check_param BOSH_AWS_DEFAULT_KEY_NAME
 export BOSH_CLI_SILENCE_SLOW_LOAD_WARNING=true
 
 source /etc/profile.d/chruby.sh
-chruby 2.1.6
+chruby 2.1.2
 
 cd bosh-src/bosh_aws_cpi
 

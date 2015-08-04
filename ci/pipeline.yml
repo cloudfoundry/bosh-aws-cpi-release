@@ -50,8 +50,8 @@ jobs:
   plan:
   - aggregate:
     - {trigger: true,  passed: [build-candidate], get: bosh-cpi-dev-artifacts}
-    - {trigger: false,                            get: bosh-src}
     - {trigger: false,                            get: bosh-cpi-release, resource: bosh-cpi-release-in}
+    - {trigger: false,                            get: bosh-src}
 
   - task: test
     file: bosh-cpi-release/ci/tasks/run-lifecycle.yml
@@ -138,11 +138,9 @@ jobs:
     file: bosh-cpi-release/ci/tasks/run-bats.yml
     config:
       params:
-        BAT_VCAP_PASSWORD:    {{BAT_VCAP_PASSWORD}}
-        BAT_STEMCELL:         {{BAT_STEMCELL}}
-        BAT_DEPLOYMENT_SPEC:  {{ubuntu_BAT_DEPLOYMENT_SPEC}}
-        BAT_VCAP_PRIVATE_KEY: {{BAT_VCAP_PRIVATE_KEY}}
         base_os:              ubuntu
+        BAT_VCAP_PASSWORD:    {{BAT_VCAP_PASSWORD}}
+        BAT_VCAP_PRIVATE_KEY: {{BAT_VCAP_PRIVATE_KEY}}
 
 - name: terraform-centos
   serial_groups: [centos]
@@ -215,14 +213,12 @@ jobs:
     - {trigger: false,                             get: bats}
 
   - task: test
-    file: bosh-cpi-release/ci/tasks/bosh-aws-cpi/run-bats.yml
+    file: bosh-cpi-release/ci/tasks/run-bats.yml
     config:
       params:
-        BAT_VCAP_PASSWORD:    {{BAT_VCAP_PASSWORD}}
-        BAT_STEMCELL:         {{BAT_STEMCELL}}
-        BAT_DEPLOYMENT_SPEC:  {{centos_BAT_DEPLOYMENT_SPEC}}
-        BAT_VCAP_PRIVATE_KEY: {{BAT_VCAP_PRIVATE_KEY}}
         base_os:              centos
+        BAT_VCAP_PASSWORD:    {{BAT_VCAP_PASSWORD}}
+        BAT_VCAP_PRIVATE_KEY: {{BAT_VCAP_PRIVATE_KEY}}
 
 - name: promote-candidate
   plan:

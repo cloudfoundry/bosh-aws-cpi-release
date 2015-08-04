@@ -2,14 +2,16 @@
 platform: linux
 image: docker:///bosh/aws-cpi-release
 inputs:
-- name: bats
+- name: bosh-cpi-dev-artifacts
 - name: stemcell
+- name: bosh-cpi-release
+- name: terraform-state-version
+- name: terraform-exports
 - name: bosh-concourse-ci
+- name: bats
 run:
   path: bosh-cpi-release/ci/tasks/run-bats.sh
 params:
-  BAT_VCAP_PASSWORD:    replace-me
-  BAT_STEMCELL:         replace-me
-  BAT_DEPLOYMENT_SPEC:  replace-me
-  BAT_VCAP_PRIVATE_KEY: replace-me
   base_os:              replace-me
+  BAT_VCAP_PASSWORD:    replace-me
+  BAT_VCAP_PRIVATE_KEY: replace-me

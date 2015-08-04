@@ -2,8 +2,9 @@
 platform: linux
 image: docker:///bosh/aws-cpi-release
 inputs:
+- name: bosh-cpi-dev-artifacts
+- name: bosh-cpi-release
 - name: bosh-src
-- name: bosh-concourse-ci
 run:
   path: bosh-cpi-release/ci/tasks/run-lifecycle.sh
 params:

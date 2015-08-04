@@ -3,8 +3,8 @@ platform: linux
 image: docker:///bosh/aws-cpi-release
 inputs:
 - name: bosh-concourse-ci
-- name: terraform-state-version
 - name: bosh-cpi-release
+- name: terraform-state-version
 run:
   path: bosh-cpi-release/ci/tasks/terraform.sh
 params:
