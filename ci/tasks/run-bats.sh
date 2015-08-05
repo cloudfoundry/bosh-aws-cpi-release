@@ -11,8 +11,7 @@ check_param BAT_VCAP_PRIVATE_KEY
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
 
-terraform_statefile_semver=`cat terraform-state-version/number`
-source terraform-exports/terraform-${base_os}-exports-${terraform_statefile_semver}.sh
+source terraform-exports/terraform-${base_os}-exports.sh
 
 export BAT_DIRECTOR=$DIRECTOR
 export BAT_DNS_HOST=$DIRECTOR
