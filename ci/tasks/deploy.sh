@@ -17,8 +17,7 @@ working_dir=$PWD
 manifest_dir=${working_dir}/bosh-concourse-ci/pipelines/$cpi_release_name
 manifest_filename=${manifest_dir}/${base_os}-director-manifest.yml
 
-terraform_statefile_semver=`cat terraform-state-version/number`
-source terraform-exports/terraform-${base_os}-exports-${terraform_statefile_semver}.sh
+source terraform-exports/terraform-${base_os}-exports.sh
 
 # leave this for now, it will be heredoc'ed in future
 ./bosh-concourse-ci/tasks/generate-manifest.rb ${manifest_filename}
