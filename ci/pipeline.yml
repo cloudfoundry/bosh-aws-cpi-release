@@ -115,11 +115,11 @@ jobs:
       config:
         params:
           base_os: ubuntu
-
-  - put: bosh-concourse-ci
-    params:
-      repository: save-deployment/deploy/bosh-concourse-ci
-      rebase: true
+      ensure:
+        put: bosh-concourse-ci
+        params:
+          repository: save-deployment/deploy/bosh-concourse-ci
+          rebase: true
 
 - name: bats-ubuntu
   serial_groups: [ubuntu]
@@ -192,11 +192,11 @@ jobs:
       config:
         params:
           base_os: centos
-
-  - put: bosh-concourse-ci
-    params:
-      repository: save-deployment/deploy/bosh-concourse-ci
-      rebase: true
+      ensure:
+        put: bosh-concourse-ci
+        params:
+          repository: save-deployment/deploy/bosh-concourse-ci
+          rebase: true
 
 - name: bats-centos
   serial_groups: [centos] # can't run while deploying
