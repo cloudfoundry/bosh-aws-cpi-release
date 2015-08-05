@@ -110,13 +110,13 @@ jobs:
         aws_access_key_id:     {{s3_aws_cpi_access_key}}
         aws_secret_access_key: {{s3_aws_cpi_secret_key}}
     ensure:
-      task: save-deployment
-      file: bosh-cpi-release/ci/tasks/save-deployment.yml
-      config:
-        params:
-          base_os: ubuntu
-      ensure:
-        put: bosh-concourse-ci
+      do:
+      - task: save-deployment
+        file: bosh-cpi-release/ci/tasks/save-deployment.yml
+        config:
+          params:
+            base_os: ubuntu
+      - put: bosh-concourse-ci
         params:
           repository: save-deployment/deploy/bosh-concourse-ci
           rebase: true
@@ -187,13 +187,13 @@ jobs:
         aws_access_key_id:     {{s3_aws_cpi_access_key}}
         aws_secret_access_key: {{s3_aws_cpi_secret_key}}
     ensure:
-      task: save-deployment
-      file: bosh-cpi-release/ci/tasks/save-deployment.yml
-      config:
-        params:
-          base_os: centos
-      ensure:
-        put: bosh-concourse-ci
+      do:
+      - task: save-deployment
+        file: bosh-cpi-release/ci/tasks/save-deployment.yml
+        config:
+          params:
+            base_os: centos
+      - put: bosh-concourse-ci
         params:
           repository: save-deployment/deploy/bosh-concourse-ci
           rebase: true
