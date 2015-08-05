@@ -8,6 +8,7 @@ check_param aws_access_key_id
 check_param aws_secret_access_key
 check_param concourse_ip
 check_param base_os
+check_param security_group_trusted_ip
 
 # generates a plan
 /terraform/terraform plan -out=${base_os}-bats.tfplan \
@@ -15,7 +16,8 @@ check_param base_os
   -var "secret_key=${aws_secret_access_key}" \
   -var "build_id=bats-${base_os}" \
   -var "concourse_ip=${concourse_ip}" \
-  bosh-concourse-ci/pipelines/bosh-aws-cpi
+  -var "security_group_trusted_ip=${security_group_trusted_ip}" \
+  bosh-cpi-release/ci
 
 state_file=${base_os}-bats.tfstate
 export_file=terraform-${base_os}-exports.sh
