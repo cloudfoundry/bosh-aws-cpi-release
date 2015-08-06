@@ -16,3 +16,4 @@ params:
   base_os:               replace-me
   aws_access_key_id:     replace-me
   aws_secret_access_key: replace-me
+  private_key_data:      replace-me

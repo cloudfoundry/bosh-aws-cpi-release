@@ -5,13 +5,19 @@ set -e
 source bosh-cpi-release/ci/tasks/utils.sh
 
 check_param base_os
+check_param private_key_data
 check_param BAT_VCAP_PASSWORD
-check_param BAT_VCAP_PRIVATE_KEY
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
 
 source terraform-exports/terraform-${base_os}-exports.sh
+
+mkdir -p $PWD/keys
+echo "$private_key_data" > $PWD/keys/bats.pem
+eval $(ssh-agent)
+chmod go-r $PWD/keys/bats.pem
+ssh-add $PWD/keys/bats.pem
 
 export BAT_DIRECTOR=$DIRECTOR
 export BAT_DNS_HOST=$DIRECTOR
@@ -22,10 +28,7 @@ export BAT_NETWORKING=manual
 export BAT_VIP=$VIP
 export BAT_SUBNET_ID=$SUBNET_ID
 export BAT_SECURITY_GROUP_NAME=$SECURITY_GROUP_NAME
-
-eval $(ssh-agent)
-chmod go-r $BAT_VCAP_PRIVATE_KEY
-ssh-add $BAT_VCAP_PRIVATE_KEY
+export BAT_VCAP_PRIVATE_KEY=$PWD/keys/bats.pem
 
 bosh -n target $BAT_DIRECTOR
 
