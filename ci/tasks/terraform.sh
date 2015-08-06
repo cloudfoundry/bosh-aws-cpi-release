@@ -12,11 +12,11 @@ check_param security_group_trusted_ip
 
 #heredoc .tf config
 cat > "temp_tf_config.tf" <<EOF
-variable "access_key" {"${aws_access_key_id}"}
-variable "secret_key" {"${aws_secret_access_key}"}
-variable "build_id" {"bats-${base_os}"}
-variable "concourse_ip" {"${concourse_ip}"}
-variable "security_group_trusted_ip" {"${security_group_trusted_ip}"}
+variable "access_key" {$aws_access_key_id}
+variable "secret_key" {$aws_secret_access_key}
+variable "build_id" {bats-$base_os}
+variable "concourse_ip" {$concourse_ip}
+variable "security_group_trusted_ip" {$security_group_trusted_ip}
 
 provider "aws" {
     access_key = "${var.access_key}"
