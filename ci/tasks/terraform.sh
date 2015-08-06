@@ -168,12 +168,7 @@ output "availability_zone" {
 EOF
 
 # generates a plan
-/terraform/terraform plan -out=${base_os}-bats.tfplan \
-  -var "access_key=${aws_access_key_id}" \
-  -var "secret_key=${aws_secret_access_key}" \
-  -var "build_id=bats-${base_os}" \
-  -var "concourse_ip=${concourse_ip}" \
-  -var "security_group_trusted_ip=${security_group_trusted_ip}"
+/terraform/terraform plan -out=${base_os}-bats.tfplan
 
 state_file=${base_os}-bats.tfstate
 export_file=terraform-${base_os}-exports.sh
