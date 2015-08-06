@@ -10,13 +10,27 @@ check_param concourse_ip
 check_param base_os
 check_param security_group_trusted_ip
 
+#heredoc variables.tf
+cat > "variables.tf" <<EOF
+variable "access_key" {
+  default = "${aws_access_key_id}"
+}
+variable "secret_key" {
+  default = "${aws_secret_access_key}"
+}
+variable "build_id" {
+  default = "bats-${base_os}"
+}
+variable "concourse_ip" {
+  default = "${concourse_ip}"
+}
+variable "security_group_trusted_ip" {
+  default = "${security_group_trusted_ip}"
+}
+EOF
+
 #heredoc .tf config
-cat > "temp_tf_config.tf" <<EOF
-variable "access_key" {"${aws_access_key_id}"}
-variable "secret_key" {"${aws_secret_access_key}"}
-variable "build_id" {"bats-${base_os}"}
-variable "concourse_ip" {"${concourse_ip}"}
-variable "security_group_trusted_ip" {"${security_group_trusted_ip}"}
+cat > "temp_tf_config.tf" <<'EOF'
 
 provider "aws" {
     access_key = "\${var.access_key}"
