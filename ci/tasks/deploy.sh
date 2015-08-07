@@ -20,7 +20,7 @@ chruby 2.1.2
 semver=`cat version-semver/number`
 cpi_release_name=bosh-aws-cpi
 working_dir=$PWD
-manifest_dir=${working_dir}/bosh-concourse-ci/pipelines/$cpi_release_name
+manifest_dir="${working_dir}/director-state-file"
 manifest_filename=${manifest_dir}/${base_os}-director-manifest.yml
 
 mkdir -p $manifest_dir/keys

@@ -4,6 +4,7 @@ image: docker:///bosh/aws-cpi-release
 inputs:
   - name: bosh-cpi-dev-artifacts # -++ used for deployment manifest referenced by manifest_path
   - name: version-semver         # -//
+  - name: director-state-file
   - name: bosh-cpi-release
   - name: terraform-exports
   - name: bosh-concourse-ci

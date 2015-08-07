@@ -93,6 +93,7 @@ jobs:
     - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-dev-artifacts}
     - {trigger: false, passed: [build-candidate],  get: version-semver}
     - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
+    - {trigger: false,                             get: director-state-file, resource: ubuntu-director-state-file}
     - {trigger: false, passed: [terraform-ubuntu], get: terraform-exports, resource: terraform-ubuntu-exports}
     - {trigger: false,                             get: bosh-concourse-ci}
     - {trigger: false,                             get: bosh-init}
@@ -118,6 +119,10 @@ jobs:
         params:
           repository: save-deployment/deploy/bosh-concourse-ci
           rebase: true
+
+   - conditions: [success, failure]
+     put: ubuntu-director-state-file
+     params: {from: deploy/director-state-file/ubuntu-director-manifest-state.json}
 
 - name: bats-ubuntu
   serial_groups: [ubuntu]
@@ -174,6 +179,7 @@ jobs:
     - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-dev-artifacts}
     - {trigger: false, passed: [build-candidate],  get: version-semver}
     - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
+    - {trigger: false,                             get: director-state-file, resource: centos-director-state-file}
     - {trigger: false, passed: [terraform-centos], get: terraform-exports, resource: terraform-centos-exports}
     - {trigger: false,                             get: bosh-concourse-ci }
     - {trigger: false,                             get: bosh-init}
@@ -199,6 +205,10 @@ jobs:
         params:
           repository: save-deployment/deploy/bosh-concourse-ci
           rebase: true
+
+   - conditions: [success, failure]
+     put: centos-director-state-file
+     params: {from: deploy/director-state-file/centos-director-manifest-state.json}
 
 - name: bats-centos
   serial_groups: [centos] # can't run while deploying
@@ -260,12 +270,30 @@ resources:
     uri: git@github.com:cloudfoundry/bosh-concourse-ci.git
     branch: master
     private_key: {{github_deployment_key__bosh-concourse-ci}}
+        
+- name: ubuntu-director-state-file
+  type: s3
+  source:
+    bucket:            {{s3_aws_cpi_ubuntu_director_state_file_bucket}}
+    versioned_file:    ubuntu-director-manifest-state.json
+    region_name:       us-east-1
+    access_key_id:     {{s3_aws_cpi_ubuntu_director_state_file_access_key}}
+    secret_access_key: {{s3_aws_cpi_ubuntu_director_state_file_secret_key}}
+
+- name: centos-director-state-file
+  type: s3
+  source:
+    bucket:            {{s3_aws_cpi_centos_director_state_file_bucket}}
+    versioned_file:    centos-director-manifest-state.json
+    region_name:       us-east-1
+    access_key_id:     {{s3_aws_cpi_centos_director_state_file_access_key}}
+    secret_access_key: {{s3_aws_cpi_centos_director_state_file_secret_key}}
 
 - name: bosh-cpi-release-in
   type: git
   source:
     uri: git@github.com:cloudfoundry-incubator/bosh-aws-cpi-release.git
-    branch: master
+    branch: wip-99271034-s3_director_state
     private_key: {{github_deployment_key__bosh-aws-cpi-release}}
     ignore_paths:
       - .final_builds/**/*.yml
