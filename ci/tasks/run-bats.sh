@@ -22,7 +22,7 @@ ssh-add $PWD/keys/bats.pem
 export BAT_DIRECTOR=$DIRECTOR
 export BAT_DNS_HOST=$DIRECTOR
 export BAT_STEMCELL="${PWD}/stemcell/stemcell.tgz"
-export BAT_DEPLOYMENT_SPEC="${PWD}/bosh-concourse-ci/pipelines/bosh-aws-cpi/${base_os}-bats-config.yml"
+export BAT_DEPLOYMENT_SPEC="${PWD}/${base_os}-bats-config.yml"
 export BAT_INFRASTRUCTURE=aws
 export BAT_NETWORKING=manual
 export BAT_VIP=$VIP
@@ -32,10 +32,30 @@ export BAT_VCAP_PRIVATE_KEY=$PWD/keys/bats.pem
 
 bosh -n target $BAT_DIRECTOR
 
-sed -i.bak s/"uuid: replace-me"/"uuid: $(bosh status --uuid)"/ $BAT_DEPLOYMENT_SPEC
-sed -i.bak s/"vip: replace-me"/"vip: $BAT_VIP"/ $BAT_DEPLOYMENT_SPEC
-sed -i.bak s/"subnet: replace-me"/"subnet: $BAT_SUBNET_ID"/ $BAT_DEPLOYMENT_SPEC
-sed -i.bak s/"security_groups: replace-me"/"security_groups: [$BAT_SECURITY_GROUP_NAME]"/ $BAT_DEPLOYMENT_SPEC
+echo > $BAT_DEPLOYMENT_SPEC <<EOF
+---
+cpi: aws
+properties:
+  vip: $BAT_VIP
+  second_static_ip: 10.0.0.30
+  uuid: $(bosh status --uuid)
+  pool_size: 1
+  stemcell:
+    name: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+    version: latest
+  instances: 1
+  key_name:  bats
+  networks:
+    - name: default
+      static_ip: 10.0.0.29
+      type: manual
+      cidr: 10.0.0.0/24
+      reserved: [10.0.0.2-10.0.0.9]
+      static: [10.0.0.10-10.0.0.30]
+      gateway: 10.0.0.1
+      subnet: $BAT_SUBNET_ID
+      security_groups: [$BAT_SECURITY_GROUP_NAME]
+EOF
 
 cd bats
 bundle install
