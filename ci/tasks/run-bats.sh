@@ -7,6 +7,13 @@ source bosh-cpi-release/ci/tasks/utils.sh
 check_param base_os
 check_param private_key_data
 check_param BAT_VCAP_PASSWORD
+check_param BAT_SECOND_STATIC_IP
+check_param BAT_NETWORK_CIDR
+check_param BAT_NETWORK_RESERVED_RANGE
+check_param BAT_NETWORK_STATIC_RANGE
+check_param BAT_NETWORK_GATEWAY
+check_param BAT_NETWORK_STATIC_IP
+check_param BAT_STEMCELL_NAME
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
@@ -32,30 +39,32 @@ export BAT_VCAP_PRIVATE_KEY=$PWD/keys/bats.pem
 
 bosh -n target $BAT_DIRECTOR
 
-echo > $BAT_DEPLOYMENT_SPEC <<EOF
+cat > "${BAT_DEPLOYMENT_SPEC}" <<EOF
 ---
 cpi: aws
 properties:
   vip: $BAT_VIP
-  second_static_ip: 10.0.0.30
+  second_static_ip: $BAT_SECOND_STATIC_IP
   uuid: $(bosh status --uuid)
   pool_size: 1
   stemcell:
-    name: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+    name: ${BAT_STEMCELL_NAME}
     version: latest
   instances: 1
   key_name:  bats
   networks:
     - name: default
-      static_ip: 10.0.0.29
+      static_ip: $BAT_NETWORK_STATIC_IP
       type: manual
-      cidr: 10.0.0.0/24
-      reserved: [10.0.0.2-10.0.0.9]
-      static: [10.0.0.10-10.0.0.30]
-      gateway: 10.0.0.1
+      cidr: $BAT_NETWORK_CIDR
+      reserved: [$BAT_NETWORK_RESERVED_RANGE]
+      static: [$BAT_NETWORK_STATIC_RANGE]
+      gateway: $BAT_NETWORK_GATEWAY
       subnet: $BAT_SUBNET_ID
       security_groups: [$BAT_SECURITY_GROUP_NAME]
 EOF
+
+cat $BAT_DEPLOYMENT_SPEC
 
 cd bats
 bundle install

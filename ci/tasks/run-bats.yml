@@ -11,6 +11,13 @@ inputs:
 run:
   path: bosh-cpi-release/ci/tasks/run-bats.sh
 params:
-  base_os:              replace-me
-  private_key_data:     replace-me
-  BAT_VCAP_PASSWORD:    replace-me
+  base_os:                      replace-me
+  private_key_data:             replace-me
+  BAT_VCAP_PASSWORD:            replace-me
+  BAT_STEMCELL_NAME:            replace-me
+  BAT_SECOND_STATIC_IP:         replace-me
+  BAT_NETWORK_STATIC_IP:        replace-me
+  BAT_NETWORK_CIDR:             replace-me
+  BAT_NETWORK_RESERVED_RANGE:   replace-me
+  BAT_NETWORK_STATIC_RANGE:     replace-me
+  BAT_NETWORK_GATEWAY:          replace-me
