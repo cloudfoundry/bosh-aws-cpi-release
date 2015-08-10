@@ -66,42 +66,42 @@ resource "aws_security_group" "bats_sg" {
       from_port = 22
       to_port = 22
       protocol = "tcp"
-      cidr_blocks = ["0.0.0.0/32"]
+      cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
       from_port = 22
       to_port = 22
       protocol = "tcp"
-      cidr_blocks = ["0.0.0.0/32"]
+      cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
       from_port = 6868
       to_port = 6868
       protocol = "tcp"
-      cidr_blocks = ["0.0.0.0/32"]
+      cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
       from_port = 6868
       to_port = 6868
       protocol = "tcp"
-      cidr_blocks = ["0.0.0.0/32"]
+      cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
       from_port = 25555
       to_port = 25555
       protocol = "tcp"
-      cidr_blocks = ["0.0.0.0/32"]
+      cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
       from_port = 25555
       to_port = 25555
       protocol = "tcp"
-      cidr_blocks = ["0.0.0.0/32"]
+      cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
