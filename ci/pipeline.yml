@@ -68,7 +68,6 @@ jobs:
   serial_groups: [ubuntu]
   plan:
   - aggregate:
-    - {trigger: false, get: bosh-concourse-ci}
     - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-in}
 
   - task: terraform
@@ -95,7 +94,6 @@ jobs:
     - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
     - {trigger: false,                             get: director-state-file, resource: ubuntu-director-state-file}
     - {trigger: false, passed: [terraform-ubuntu], get: terraform-exports, resource: terraform-ubuntu-exports}
-    - {trigger: false,                             get: bosh-concourse-ci}
     - {trigger: false,                             get: bosh-init}
     - {trigger: false,                             get: bosh-release}
     - {trigger: false,                             get: stemcell, resource: aws-ubuntu-stemcell}
@@ -121,7 +119,6 @@ jobs:
     - {trigger: false, passed: [deploy-ubuntu],    get: stemcell, resource: aws-ubuntu-stemcell}
     - {trigger: false, passed: [deploy-ubuntu],    get: bosh-cpi-release, resource: bosh-cpi-release-in}
     - {trigger: false, passed: [terraform-ubuntu], get: terraform-exports, resource: terraform-ubuntu-exports}
-    - {trigger: false,                             get: bosh-concourse-ci}
     - {trigger: false,                             get: bats}
 
   - task: test
@@ -143,7 +140,6 @@ jobs:
   serial_groups: [centos]
   plan:
   - aggregate:
-    - {trigger: false, get: bosh-concourse-ci}
     - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-in}
 
   - task: terraform
@@ -170,7 +166,6 @@ jobs:
     - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
     - {trigger: false,                             get: director-state-file, resource: centos-director-state-file}
     - {trigger: false, passed: [terraform-centos], get: terraform-exports, resource: terraform-centos-exports}
-    - {trigger: false,                             get: bosh-concourse-ci }
     - {trigger: false,                             get: bosh-init}
     - {trigger: false,                             get: bosh-release}
     - {trigger: false,                             get: stemcell, resource: aws-centos-stemcell}
@@ -196,7 +191,6 @@ jobs:
     - {trigger: false, passed: [deploy-centos],    get: stemcell, resource: aws-centos-stemcell}
     - {trigger: false, passed: [deploy-centos],    get: bosh-cpi-release, resource: bosh-cpi-release-in}
     - {trigger: false, passed: [terraform-centos], get: terraform-exports, resource: terraform-centos-exports}
-    - {trigger: false,                             get: bosh-concourse-ci}
     - {trigger: false,                             get: bats}
 
   - task: test
@@ -219,7 +213,6 @@ jobs:
   - aggregate:
     - {trigger: true,  passed: [lifecycle, bats-ubuntu, bats-centos], get: bosh-cpi-dev-artifacts}
     - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-out}
-    - {trigger: false, get: bosh-concourse-ci}
 
   - task: promote
     file: bosh-cpi-release/ci/tasks/promote-candidate.yml
@@ -242,13 +235,6 @@ resources:
     access_key_id: {{s3_aws_cpi_access_key}}
     secret_access_key: {{s3_aws_cpi_secret_key}}
 
-- name: bosh-concourse-ci
-  type: git
-  source:
-    uri: git@github.com:cloudfoundry/bosh-concourse-ci.git
-    branch: master
-    private_key: {{github_deployment_key__bosh-concourse-ci}}
-        
 - name: ubuntu-director-state-file
   type: s3
   source:
