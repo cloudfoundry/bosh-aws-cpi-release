@@ -110,19 +110,8 @@ jobs:
         private_key_data:      {{bosh_private_key}}
     ensure:
       do:
-      - task: save-deployment
-        file: bosh-cpi-release/ci/tasks/save-deployment.yml
-        config:
-          params:
-            base_os: ubuntu
-      - put: bosh-concourse-ci
-        params:
-          repository: save-deployment/deploy/bosh-concourse-ci
-          rebase: true
-
-   - conditions: [success, failure]
-     put: ubuntu-director-state-file
-     params: {from: deploy/director-state-file/ubuntu-director-manifest-state.json}
+      - put: ubuntu-director-state-file
+        params: {from: deploy/director-state-file/ubuntu-director-manifest-state.json}
 
 - name: bats-ubuntu
   serial_groups: [ubuntu]
@@ -196,19 +185,8 @@ jobs:
         private_key_data:      {{bosh_private_key}}
     ensure:
       do:
-      - task: save-deployment
-        file: bosh-cpi-release/ci/tasks/save-deployment.yml
-        config:
-          params:
-            base_os: centos
-      - put: bosh-concourse-ci
-        params:
-          repository: save-deployment/deploy/bosh-concourse-ci
-          rebase: true
-
-   - conditions: [success, failure]
-     put: centos-director-state-file
-     params: {from: deploy/director-state-file/centos-director-manifest-state.json}
+      - put: centos-director-state-file
+        params: {from: deploy/director-state-file/centos-director-manifest-state.json}
 
 - name: bats-centos
   serial_groups: [centos] # can't run while deploying
