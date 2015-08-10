@@ -8,7 +8,6 @@ check_param aws_access_key_id
 check_param aws_secret_access_key
 check_param concourse_ip
 check_param base_os
-check_param security_group_trusted_ip
 
 #heredoc variables.tf
 cat > "terraform.tfvars" <<EOF
@@ -16,7 +15,6 @@ access_key = "${aws_access_key_id}"
 secret_key = "${aws_secret_access_key}"
 build_id = "bats-${base_os}"
 concourse_ip = "${concourse_ip}"
-security_group_trusted_ip = "${security_group_trusted_ip}"
 EOF
 
 #heredoc .tf config
@@ -26,7 +24,6 @@ variable "access_key" {}
 variable "secret_key" {}
 variable "build_id" {}
 variable "concourse_ip" {}
-variable "security_group_trusted_ip" {}
 
 
 provider "aws" {
@@ -100,7 +97,7 @@ resource "aws_security_group" "bats_sg" {
       from_port = 22
       to_port = 22
       protocol = "tcp"
-      cidr_blocks = ["${var.security_group_trusted_ip}/32"]
+      cidr_blocks = ["0.0.0.0/32"]
   }
 
   ingress {
@@ -114,7 +111,7 @@ resource "aws_security_group" "bats_sg" {
       from_port = 6868
       to_port = 6868
       protocol = "tcp"
-      cidr_blocks = ["${var.security_group_trusted_ip}/32"]
+      cidr_blocks = ["0.0.0.0/32"]
   }
 
   ingress {
@@ -128,7 +125,7 @@ resource "aws_security_group" "bats_sg" {
       from_port = 25555
       to_port = 25555
       protocol = "tcp"
-      cidr_blocks = ["${var.security_group_trusted_ip}/32"]
+      cidr_blocks = ["0.0.0.0/32"]
   }
 
   ingress {

@@ -78,7 +78,6 @@ jobs:
         aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
         concourse_ip:               {{concourse_ip}}
         base_os:                    ubuntu
-        security_group_trusted_ip:  {{security_group_trusted_ip}}
 
   - put: terraform-ubuntu-state
     params: {from: terraform/ubuntu-bats.tfstate$}
@@ -150,7 +149,6 @@ jobs:
         aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
         concourse_ip:               {{concourse_ip}}
         base_os:                    centos
-        security_group_trusted_ip:  {{security_group_trusted_ip}}
 
   - put: terraform-centos-state
     params: {from: terraform/centos-bats.tfstate$}

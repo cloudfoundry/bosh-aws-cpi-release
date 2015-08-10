@@ -10,4 +10,3 @@ params:
   aws_secret_access_key:     replace-me
   concourse_ip:              replace-me
   base_os:                   replace-me
-  security_group_trusted_ip: replace-me
