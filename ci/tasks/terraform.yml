@@ -8,5 +8,4 @@ run:
 params:
   aws_access_key_id:         replace-me
   aws_secret_access_key:     replace-me
-  concourse_ip:              replace-me
   base_os:                   replace-me

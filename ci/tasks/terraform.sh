@@ -6,7 +6,6 @@ source bosh-cpi-release/ci/tasks/utils.sh
 
 check_param aws_access_key_id
 check_param aws_secret_access_key
-check_param concourse_ip
 check_param base_os
 
 #heredoc variables.tf
@@ -14,7 +13,6 @@ cat > "terraform.tfvars" <<EOF
 access_key = "${aws_access_key_id}"
 secret_key = "${aws_secret_access_key}"
 build_id = "bats-${base_os}"
-concourse_ip = "${concourse_ip}"
 EOF
 
 #heredoc .tf config
@@ -23,8 +21,6 @@ cat > "temp_tf_config.tf" <<'EOF'
 variable "access_key" {}
 variable "secret_key" {}
 variable "build_id" {}
-variable "concourse_ip" {}
-
 
 provider "aws" {
     access_key = "${var.access_key}"
@@ -90,7 +86,7 @@ resource "aws_security_group" "bats_sg" {
       from_port = 22
       to_port = 22
       protocol = "tcp"
-      cidr_blocks = ["${var.concourse_ip}/32"]
+      cidr_blocks = ["0.0.0.0/32"]
   }
 
   ingress {
@@ -104,7 +100,7 @@ resource "aws_security_group" "bats_sg" {
       from_port = 6868
       to_port = 6868
       protocol = "tcp"
-      cidr_blocks = ["${var.concourse_ip}/32"]
+      cidr_blocks = ["0.0.0.0/32"]
   }
 
   ingress {
@@ -118,7 +114,7 @@ resource "aws_security_group" "bats_sg" {
       from_port = 25555
       to_port = 25555
       protocol = "tcp"
-      cidr_blocks = ["${var.concourse_ip}/32"]
+      cidr_blocks = ["0.0.0.0/32"]
   }
 
   ingress {
