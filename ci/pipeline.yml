@@ -255,7 +255,7 @@ resources:
   type: git
   source:
     uri: git@github.com:cloudfoundry-incubator/bosh-aws-cpi-release.git
-    branch: wip-99271034-s3_director_state
+    branch: master
     private_key: {{github_deployment_key__bosh-aws-cpi-release}}
     ignore_paths:
       - .final_builds/**/*.yml
