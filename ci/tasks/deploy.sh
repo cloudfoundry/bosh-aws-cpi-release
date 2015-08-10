@@ -9,6 +9,10 @@ check_param base_os
 check_param aws_access_key_id
 check_param aws_secret_access_key
 check_param private_key_data
+check_param region_name
+check_param AWS_NETWORK_CIDR
+check_param AWS_NETWORK_GATEWAY
+check_param PRIVATE_DIRECTOR_STATIC_IP
 check_param SUBNET_ID
 check_param AVAILABILITY_ZONE
 check_param DIRECTOR
@@ -44,8 +48,8 @@ networks:
 - name: private
   type: manual
   subnets:
-  - range:    10.0.0.0/24
-    gateway:  10.0.0.1
+  - range:    ${AWS_NETWORK_CIDR}
+    gateway:  ${AWS_NETWORK_GATEWAY}
     dns:      [8.8.8.8]
     cloud_properties: {subnet: $SUBNET_ID}
 - name: public
@@ -86,7 +90,7 @@ jobs:
 
   networks:
   - name: private
-    static_ips: [10.0.0.6]
+    static_ips: [$PRIVATE_DIRECTOR_STATIC_IP]
     default: [dns, gateway]
   - name: public
     static_ips: [$DIRECTOR]
@@ -111,8 +115,8 @@ jobs:
 
     # Tells the Director/agents how to contact registry
     registry:
-      address: 10.0.0.6
-      host: 10.0.0.6
+      address: $PRIVATE_DIRECTOR_STATIC_IP
+      host: $PRIVATE_DIRECTOR_STATIC_IP
       db: *db
       http: {user: admin, password: admin, port: 25777}
       username: admin
@@ -121,7 +125,7 @@ jobs:
 
     # Tells the Director/agents how to contact blobstore
     blobstore:
-      address: 10.0.0.6
+      address: $PRIVATE_DIRECTOR_STATIC_IP
       port: 25250
       provider: dav
       director: {user: director, password: director-password}
@@ -142,10 +146,10 @@ jobs:
       secret_access_key: $aws_secret_access_key
       default_key_name: "bats"
       default_security_groups: [$SECURITY_GROUP_NAME]
-      region: "us-east-1"
+      region: "${region_name}"
 
     # Tells agents how to contact nats
-    agent: {mbus: "nats://nats:nats-password@10.0.0.6:4222"}
+    agent: {mbus: "nats://nats:nats-password@$PRIVATE_DIRECTOR_STATIC_IP:4222"}
 
     ntp: &ntp
     - 0.north-america.pool.ntp.org

@@ -101,10 +101,14 @@ jobs:
     file: bosh-cpi-release/ci/tasks/deploy.yml
     config:
       params:
-        base_os:               ubuntu
-        aws_access_key_id:     {{s3_aws_cpi_access_key}}
-        aws_secret_access_key: {{s3_aws_cpi_secret_key}}
-        private_key_data:      {{bosh_private_key}}
+        base_os:                    ubuntu
+        aws_access_key_id:          {{s3_aws_cpi_access_key}}
+        aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
+        private_key_data:           {{bosh_private_key}}
+        region_name:                {{s3_aws_cpi_region}}
+        AWS_NETWORK_CIDR:           {{AWS_NETWORK_CIDR}}
+        AWS_NETWORK_GATEWAY:        {{AWS_NETWORK_GATEWAY}}
+        PRIVATE_DIRECTOR_STATIC_IP: {{PRIVATE_DIRECTOR_STATIC_IP}}
     ensure:
       do:
       - put: ubuntu-director-state-file
@@ -130,9 +134,9 @@ jobs:
         BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_ubuntu}}
         BAT_SECOND_STATIC_IP:       {{BAT_SECOND_STATIC_IP}}
         BAT_NETWORK_STATIC_IP:      {{BAT_NETWORK_STATIC_IP}}
-        BAT_NETWORK_CIDR:           {{BAT_NETWORK_CIDR}}
+        BAT_NETWORK_CIDR:           {{AWS_NETWORK_CIDR}}
         BAT_NETWORK_RESERVED_RANGE: {{BAT_NETWORK_RESERVED_RANGE}}
-        BAT_NETWORK_GATEWAY:        {{BAT_NETWORK_GATEWAY}}
+        BAT_NETWORK_GATEWAY:        {{AWS_NETWORK_GATEWAY}}
         BAT_NETWORK_STATIC_RANGE:   {{BAT_NETWORK_STATIC_RANGE}}
 
 - name: terraform-centos
@@ -172,10 +176,14 @@ jobs:
     file: bosh-cpi-release/ci/tasks/deploy.yml
     config:
       params:
-        base_os:               centos
-        aws_access_key_id:     {{s3_aws_cpi_access_key}}
-        aws_secret_access_key: {{s3_aws_cpi_secret_key}}
-        private_key_data:      {{bosh_private_key}}
+        base_os:                    centos
+        aws_access_key_id:          {{s3_aws_cpi_access_key}}
+        aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
+        private_key_data:           {{bosh_private_key}}
+        region_name:                {{s3_aws_cpi_region}}
+        AWS_NETWORK_CIDR:           {{AWS_NETWORK_CIDR}}
+        AWS_NETWORK_GATEWAY:        {{AWS_NETWORK_GATEWAY}}
+        PRIVATE_DIRECTOR_STATIC_IP: {{PRIVATE_DIRECTOR_STATIC_IP}}
     ensure:
       do:
       - put: centos-director-state-file
