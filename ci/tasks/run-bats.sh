@@ -5,7 +5,6 @@ set -e
 source bosh-cpi-release/ci/tasks/utils.sh
 
 check_param base_os
-check_param private_key_data
 check_param BAT_VCAP_PASSWORD
 check_param BAT_SECOND_STATIC_IP
 check_param BAT_NETWORK_CIDR
@@ -21,9 +20,8 @@ chruby 2.1.2
 source terraform-exports/terraform-${base_os}-exports.sh
 
 mkdir -p $PWD/keys
-echo "$private_key_data" > $PWD/keys/bats.pem
+ssh-keygen -f ${PWD}/keys/bats.pem  -t rsa -N ''
 eval $(ssh-agent)
-chmod go-r $PWD/keys/bats.pem
 ssh-add $PWD/keys/bats.pem
 
 export BAT_DIRECTOR=$DIRECTOR
