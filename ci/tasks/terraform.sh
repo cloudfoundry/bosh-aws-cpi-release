@@ -42,7 +42,7 @@ set -e
 
 desired_status="\"terminated\""
 timeout=0
-while ( [ "$desired_status" != "$instance_status" ] || [ -v "$instance_status" ] ) && [ "$timeout" -lt 300 ]
+while [ "$desired_status" != "$instance_status" ] && [ ! -z "$instance_status" ]  &&  [ "$timeout" -lt 300 ]
 do
   instance_status=$(aws ec2 terminate-instances --instance-ids ${previous_director_instance} | jq '.TerminatingInstances[].CurrentState.Name')
   echo "pausing 20s for instance termination..."
