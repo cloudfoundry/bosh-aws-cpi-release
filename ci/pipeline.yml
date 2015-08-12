@@ -69,6 +69,8 @@ jobs:
   plan:
   - aggregate:
     - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-in}
+    - {trigger: false, get: terraform-state, resource: terraform-ubuntu-state}
+    - {trigger: false, get: director-state-file, resource: ubuntu-director-state-file}
 
   - task: terraform
     file: bosh-cpi-release/ci/tasks/terraform.yml
@@ -76,6 +78,7 @@ jobs:
       params:
         aws_access_key_id:          {{s3_aws_cpi_access_key}}
         aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
+        region_name:                {{s3_aws_cpi_region}}
         base_os:                    ubuntu
 
   - put: terraform-ubuntu-state
@@ -143,6 +146,8 @@ jobs:
   plan:
   - aggregate:
     - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-in}
+    - {trigger: false, get: terraform-state, resource: terraform-centos-state}
+    - {trigger: false, get: director-state-file, resource: centos-director-state-file}
 
   - task: terraform
     file: bosh-cpi-release/ci/tasks/terraform.yml
@@ -150,6 +155,7 @@ jobs:
       params:
         aws_access_key_id:          {{s3_aws_cpi_access_key}}
         aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
+        region_name:                {{s3_aws_cpi_region}}
         base_os:                    centos
 
   - put: terraform-centos-state
