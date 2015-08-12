@@ -59,13 +59,26 @@ secret_key = "${aws_secret_access_key}"
 build_id = "bats-${base_os}"
 EOF
 
+set +e
 /terraform/terraform destroy -force -state=${state_file}
+status=$?
+set -e
+#sometimes terraform is slow and needs to retry
+if [ "${status}" != "0" ]; then
+  /terraform/terraform destroy -force -state=${state_file}
+fi
 
 # generates a plan
 /terraform/terraform plan -out=${tf_plan_file}
 
 # applies the plan, generates a state file
+set +e
 /terraform/terraform apply -state=${state_file} ${tf_plan_file}
+status=$?
+set -e
+if [ "${status}" != "0" ]; then
+  /terraform/terraform apply -state=${state_file} ${tf_plan_file}
+fi
 
 # exports values into an exports file
 echo -e "#!/usr/bin/env bash" >> $export_file
