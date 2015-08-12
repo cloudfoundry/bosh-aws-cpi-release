@@ -21,33 +21,6 @@ apt-get -y install groff
 apt-get -y install jq
 pip install awscli
 
-#tear down previous director if it exists
-previous_director_instance=$(jq '.current_vm_cid' director-state-file/${base_os}-director-manifest-state.json)
-previous_security_group_id=$(jq '.modules[].resources["aws_security_group.bats_sg"].primary.id' ubuntu-bats.tfstate)
-set +e
-
-aws ec2 terminate-instances --instance-ids ${previous_director_instance//\"/}
-aws ec2 delete-security-group --group-id ${previous_security_group_id//\"/}
-set -e
-
-desired_status="\"terminated\""
-instance_status=$(aws ec2 describe-instance-status --instance-id i-1fc65ff6 | jq '.InstanceStatuses[].InstanceState.Name')
-if [ -v "$instance_status" ]; then
-  while [ "$desired_status" != "$instance_status" ]
-  do
-    instance_status=$(aws ec2 describe-instance-status --instance-id i-1fc65ff6 | jq '.InstanceStatuses[].InstanceState.Name')
-    echo "pausing 20s for instance termination..."
-    sleep 20s
-  done
-fi
-
-#heredoc variables.tf
-cat > "terraform.tfvars" <<EOF
-access_key = "${aws_access_key_id}"
-secret_key = "${aws_secret_access_key}"
-build_id = "bats-${base_os}"
-EOF
-
 #copy tf file from assets to working directory
 cp bosh-cpi-release/ci/assets/bosh-workspace.tf bosh-workspace.tf
 
@@ -57,6 +30,34 @@ tf_plan_file=${base_os}-bats.tfplan
 
 #copy existing state file to working directory
 cp terraform-state/${state_file} ${state_file}
+
+#tear down previous director if it exists
+previous_director_instance=$(jq '.current_vm_cid' director-state-file/${base_os}-director-manifest-state.json)
+previous_security_group_id=$(jq '.modules[].resources["aws_security_group.bats_sg"].primary.id' ${state_file})
+previous_director_instance=${previous_director_instance//\"/}
+set +e
+
+instance_status=$(aws ec2 terminate-instances --instance-ids ${previous_director_instance} | jq '.TerminatingInstances[].CurrentState.Name')
+set -e
+
+desired_status="\"terminated\""
+timeout=0
+while ( [ "$desired_status" != "$instance_status" ] || [ -v "$instance_status" ] ) && [ "$timeout" -lt 300 ]
+do
+  instance_status=$(aws ec2 terminate-instances --instance-ids ${previous_director_instance} | jq '.TerminatingInstances[].CurrentState.Name')
+  echo "pausing 20s for instance termination..."
+  sleep 20s
+  timeout=$((timeout + 20))
+done
+
+aws ec2 delete-security-group --group-id ${previous_security_group_id//\"/}
+
+#heredoc variables.tf
+cat > "terraform.tfvars" <<EOF
+access_key = "${aws_access_key_id}"
+secret_key = "${aws_secret_access_key}"
+build_id = "bats-${base_os}"
+EOF
 
 /terraform/terraform destroy -force -state=${state_file}
 
