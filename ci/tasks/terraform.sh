@@ -38,7 +38,6 @@ previous_director_instance=${previous_director_instance//\"/}
 set +e
 
 instance_status=$(aws ec2 terminate-instances --instance-ids ${previous_director_instance} | jq '.TerminatingInstances[].CurrentState.Name')
-set -e
 
 desired_status="\"terminated\""
 timeout=0
@@ -51,6 +50,7 @@ do
 done
 
 aws ec2 delete-security-group --group-id ${previous_security_group_id//\"/}
+set -e
 
 #heredoc variables.tf
 cat > "terraform.tfvars" <<EOF
