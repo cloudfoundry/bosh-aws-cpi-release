@@ -1,6 +1,6 @@
 set -e
 
-tar xzf ruby/yaml-0.1.5.tar.gz
+tar xzf ruby_aws_cpi/yaml-0.1.5.tar.gz
 (
   set -e
   cd yaml-0.1.5
@@ -9,7 +9,7 @@ tar xzf ruby/yaml-0.1.5.tar.gz
   make install
 )
 
-tar xzf ruby/ruby-2.1.4.tar.gz
+tar xzf ruby_aws_cpi/ruby-2.1.4.tar.gz
 (
   set -e
   cd ruby-2.1.4
@@ -18,7 +18,7 @@ tar xzf ruby/ruby-2.1.4.tar.gz
   make install
 )
 
-tar zxvf ruby/rubygems-2.3.0.tgz
+tar zxvf ruby_aws_cpi/rubygems-2.3.0.tgz
 
 (
   set -e
