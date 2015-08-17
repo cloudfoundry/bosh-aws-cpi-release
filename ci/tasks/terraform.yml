@@ -3,12 +3,9 @@ platform: linux
 image: docker:///bosh/aws-cpi-release
 inputs:
 - name: bosh-cpi-release
-- name: terraform-state
-- name: director-state-file
 run:
   path: bosh-cpi-release/ci/tasks/terraform.sh
 params:
   aws_access_key_id:         replace-me
   aws_secret_access_key:     replace-me
   base_os:                   replace-me
-  region_name:               replace-me

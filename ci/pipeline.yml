@@ -69,8 +69,6 @@ jobs:
   plan:
   - aggregate:
     - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-in}
-    - {trigger: false, get: terraform-state, resource: terraform-ubuntu-state}
-    - {trigger: false, get: director-state-file, resource: ubuntu-director-state-file}
 
   - task: terraform
     file: bosh-cpi-release/ci/tasks/terraform.yml
@@ -78,12 +76,9 @@ jobs:
       params:
         aws_access_key_id:          {{s3_aws_cpi_access_key}}
         aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
-        region_name:                {{s3_aws_cpi_region}}
         base_os:                    ubuntu
     ensure:
       do:
-      - put: terraform-ubuntu-state
-        params: {from: terraform/ubuntu-bats.tfstate$}
       - put: terraform-ubuntu-exports
         params: {from: terraform/terraform-ubuntu-exports.sh$}
 
@@ -147,8 +142,6 @@ jobs:
   plan:
   - aggregate:
     - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-in}
-    - {trigger: false, get: terraform-state, resource: terraform-centos-state}
-    - {trigger: false, get: director-state-file, resource: centos-director-state-file}
 
   - task: terraform
     file: bosh-cpi-release/ci/tasks/terraform.yml
@@ -156,12 +149,9 @@ jobs:
       params:
         aws_access_key_id:          {{s3_aws_cpi_access_key}}
         aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
-        region_name:                {{s3_aws_cpi_region}}
         base_os:                    centos
     ensure:
       do:
-      - put: terraform-centos-state
-        params: {from: terraform/centos-bats.tfstate$}
       - put: terraform-centos-exports
         params: {from: terraform/terraform-centos-exports.sh$}
 
@@ -323,24 +313,6 @@ resources:
   type: bosh-io-stemcell
   source:
     name: bosh-aws-xen-centos-7-go_agent
-
-- name: terraform-ubuntu-state
-  type: s3
-  source:
-    versioned_file: ubuntu-bats.tfstate
-    bucket: {{s3_bosh_aws_cpi_terraform_state_ubuntu_bucket}}
-    region_name: {{s3_aws_cpi_region}}
-    access_key_id: {{s3_bosh_aws_cpi_terraform_state_ubuntu_access_key_id}}
-    secret_access_key: {{s3_bosh_aws_cpi_terraform_state_ubuntu_secret_access_key}}
-
-- name: terraform-centos-state
-  type: s3
-  source:
-    versioned_file: centos-bats.tfstate
-    bucket: {{s3_bosh_aws_cpi_terraform_state_centos_bucket}}
-    region_name: {{s3_aws_cpi_region}}
-    access_key_id: {{s3_bosh_aws_cpi_terraform_state_centos_access_key_id}}
-    secret_access_key: {{s3_bosh_aws_cpi_terraform_state_centos_secret_access_key}}
 
 - name: terraform-ubuntu-exports
   type: s3
