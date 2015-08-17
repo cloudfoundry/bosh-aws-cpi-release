@@ -8,6 +8,15 @@ check_param aws_access_key_id
 check_param aws_secret_access_key
 check_param base_os
 
+#copy tf template file from cpi-release directory
+cp bosh-cpi-release/ci/assets/bosh-workspace.tf terraform-state
+
+export_file=terraform-${base_os}-exports.sh
+
+cd terraform-state
+
+state_file=${base_os}-bats.tfstate
+
 #heredoc variables.tf
 cat > "terraform.tfvars" <<EOF
 access_key = "${aws_access_key_id}"
@@ -15,17 +24,10 @@ secret_key = "${aws_secret_access_key}"
 build_id = "bats-${base_os}"
 EOF
 
-#copy tf file from assets to working directory
-cp bosh-cpi-release/ci/assets/bosh-workspace.tf ./bosh-workspace.tf
-
-# generates a plan
-/terraform/terraform plan -out=${base_os}-bats.tfplan
-
-state_file=${base_os}-bats.tfstate
-export_file=terraform-${base_os}-exports.sh
+/terraform/terraform destroy -force -state=$state_file
 
 # applies the plan, generates a state file
-/terraform/terraform apply -state=$state_file ${base_os}-bats.tfplan
+/terraform/terraform apply -state=$state_file
 
 # exports values into an exports file
 echo -e "#!/usr/bin/env bash" >> $export_file
