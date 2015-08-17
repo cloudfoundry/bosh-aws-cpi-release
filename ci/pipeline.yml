@@ -83,7 +83,7 @@ jobs:
       - put: terraform-ubuntu-state
         params: {from: terraform/terraform-state/ubuntu-bats.tfstate$}
       - put: terraform-ubuntu-exports
-        params: {from: terraform/terraform-ubuntu-exports.sh$}
+        params: {from: terraform/terraform-state/terraform-ubuntu-exports.sh$}
 
 - name: deploy-ubuntu
   serial_groups: [ubuntu]
@@ -159,7 +159,7 @@ jobs:
       - put: terraform-centos-state
         params: {from: terraform/terraform-state/centos-bats.tfstate$}
       - put: terraform-centos-exports
-        params: {from: terraform/terraform-centos-exports.sh$}
+        params: {from: terraform/terraform-state/terraform-centos-exports.sh$}
 
 - name: deploy-centos
   serial_groups: [centos] # shouldn't deploy while bats run
