@@ -15,6 +15,13 @@ RUN apt-get install -y mysql-client libmysqlclient-dev; apt-get clean
 
 RUN apt-get install -y postgresql-9.3 postgresql-client-9.3 libpq-dev; apt-get clean
 
+RUN apt-get install -y python; apt-get clean;
+RUN curl -O https://bootstrap.pypa.io/get-pip.py;
+RUN python get-pip.py
+
+RUN apt-get install -y groff jq
+RUN pip install awscli
+
 # chruby
 RUN mkdir /tmp/chruby && \
     cd /tmp && \

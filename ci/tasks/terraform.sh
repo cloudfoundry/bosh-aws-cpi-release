@@ -13,14 +13,6 @@ export AWS_ACCESS_KEY_ID=${aws_access_key_id}
 export AWS_SECRET_ACCESS_KEY=${aws_secret_access_key}
 export AWS_DEFAULT_REGION=${region_name}
 
-apt-get update
-apt-get -y install python
-curl -O https://bootstrap.pypa.io/get-pip.py
-python get-pip.py
-apt-get -y install groff
-apt-get -y install jq
-pip install awscli
-
 #copy tf file from assets to working directory
 cp bosh-cpi-release/ci/assets/bosh-workspace.tf bosh-workspace.tf
 
