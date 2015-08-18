@@ -36,3 +36,10 @@ echo -e "export VIP=$(/terraform/terraform output -state=${state_file} bats_vip)
 echo -e "export SUBNET_ID=$(/terraform/terraform output -state=${state_file} subnet_id)" >> $export_file
 echo -e "export SECURITY_GROUP_NAME=$(/terraform/terraform output -state=${state_file} security_group_name)" >> $export_file
 echo -e "export AVAILABILITY_ZONE=$(/terraform/terraform output -state=${state_file} availability_zone)" >> $export_file
+
+# fail the build if any expected output variables have not been set
+/terraform/terraform output -state=${state_file} director_vip | grep -v ""
+/terraform/terraform output -state=${state_file} bats_vip | grep -v ""
+/terraform/terraform output -state=${state_file} subnet_id | grep -v ""
+/terraform/terraform output -state=${state_file} security_group_name | grep -v ""
+/terraform/terraform output -state=${state_file} availability_zone | grep -v ""
