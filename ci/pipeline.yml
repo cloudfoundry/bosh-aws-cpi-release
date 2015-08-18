@@ -114,6 +114,8 @@ jobs:
       do:
       - put: ubuntu-director-state-file
         params: {from: deploy/director-state-file/ubuntu-director-manifest-state.json}
+      - put: ubuntu-director-manifest-file
+        params: {from: deploy/director-state-file/ubuntu-director-manifest.yml}
 
 - name: bats-ubuntu
   serial_groups: [ubuntu]
@@ -123,7 +125,10 @@ jobs:
     - {trigger: false, passed: [deploy-ubuntu],    get: stemcell, resource: aws-ubuntu-stemcell}
     - {trigger: false, passed: [deploy-ubuntu],    get: bosh-cpi-release, resource: bosh-cpi-release-in}
     - {trigger: false, passed: [terraform-ubuntu], get: terraform-exports, resource: terraform-ubuntu-exports}
+    - {trigger: false,                             get: director-state-file, resource: ubuntu-director-state-file}
+    - {trigger: false,                             get: director-manifest-file, resource: ubuntu-director-manifest-file}
     - {trigger: false,                             get: bats}
+    - {trigger: false,                             get: bosh-init}
 
   - task: test
     file: bosh-cpi-release/ci/tasks/run-bats.yml
@@ -190,6 +195,8 @@ jobs:
       do:
       - put: centos-director-state-file
         params: {from: deploy/director-state-file/centos-director-manifest-state.json}
+      - put: centos-director-manifest-file
+        params: {from: deploy/director-state-file/centos-director-manifest.yml}
 
 - name: bats-centos
   serial_groups: [centos] # can't run while deploying
@@ -199,7 +206,10 @@ jobs:
     - {trigger: false, passed: [deploy-centos],    get: stemcell, resource: aws-centos-stemcell}
     - {trigger: false, passed: [deploy-centos],    get: bosh-cpi-release, resource: bosh-cpi-release-in}
     - {trigger: false, passed: [terraform-centos], get: terraform-exports, resource: terraform-centos-exports}
+    - {trigger: false,                             get: director-state-file, resource: centos-director-state-file}
+    - {trigger: false,                             get: director-manifest-file, resource: centos-director-manifest-file}
     - {trigger: false,                             get: bats}
+    - {trigger: false,                             get: bosh-init}
 
   - task: test
     file: bosh-cpi-release/ci/tasks/run-bats.yml
@@ -257,6 +267,24 @@ resources:
   source:
     bucket:            {{s3_aws_cpi_centos_director_state_file_bucket}}
     versioned_file:    centos-director-manifest-state.json
+    region_name:       us-east-1
+    access_key_id:     {{s3_aws_cpi_centos_director_state_file_access_key}}
+    secret_access_key: {{s3_aws_cpi_centos_director_state_file_secret_key}}
+
+- name: ubuntu-director-manifest-file
+  type: s3
+  source:
+    bucket:            {{s3_aws_cpi_ubuntu_director_state_file_bucket}}
+    versioned_file:    ubuntu-director-manifest.yml
+    region_name:       us-east-1
+    access_key_id:     {{s3_aws_cpi_ubuntu_director_state_file_access_key}}
+    secret_access_key: {{s3_aws_cpi_ubuntu_director_state_file_secret_key}}
+
+- name: centos-director-manifest-file
+  type: s3
+  source:
+    bucket:            {{s3_aws_cpi_centos_director_state_file_bucket}}
+    versioned_file:    centos-director-manifest.yml
     region_name:       us-east-1
     access_key_id:     {{s3_aws_cpi_centos_director_state_file_access_key}}
     secret_access_key: {{s3_aws_cpi_centos_director_state_file_secret_key}}

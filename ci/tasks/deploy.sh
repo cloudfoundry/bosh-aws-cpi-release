@@ -195,8 +195,5 @@ chmod +x $initexe
 echo "using bosh-init CLI version..."
 $initexe version
 
-echo "deleting existing BOSH Director VM..."
-$initexe delete $manifest_filename
-
 echo "deploying BOSH..."
 $initexe deploy $manifest_filename

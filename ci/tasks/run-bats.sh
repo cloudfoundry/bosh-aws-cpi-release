@@ -20,6 +20,12 @@ chruby 2.1.2
 
 source terraform-exports/terraform-${base_os}-exports.sh
 
+#move director manifest to director state file directory
+manifest_dir="${PWD}/director-state-file"
+manifest_filename=${manifest_dir}/${base_os}-director-manifest.yml
+cp ${PWD}/director-manifest-file/${base_os}-director-manifest.yml  manifest_filename
+
+
 mkdir -p $PWD/keys
 echo "$private_key_data" > $PWD/keys/bats.pem
 eval $(ssh-agent)
@@ -69,3 +75,14 @@ cat $BAT_DEPLOYMENT_SPEC
 cd bats
 bundle install
 bundle exec rspec spec
+
+#on success, clean up bosh director
+initver=$(cat bosh-init/version)
+initexe="$PWD/bosh-init/bosh-init-${initver}-linux-amd64"
+chmod +x $initexe
+
+echo "using bosh-init CLI version..."
+$initexe version
+
+echo "deleting existing BOSH Director VM..."
+$initexe delete ${manifest_filename}
