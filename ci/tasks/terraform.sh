@@ -38,8 +38,8 @@ echo -e "export SECURITY_GROUP_NAME=$(/terraform/terraform output -state=${state
 echo -e "export AVAILABILITY_ZONE=$(/terraform/terraform output -state=${state_file} availability_zone)" >> $export_file
 
 # fail the build if any expected output variables have not been set
-[ -z /terraform/terraform output -state=${state_file} director_vip ]
-[ -z terraform/terraform output -state=${state_file} bats_vip ]
-[ -z /terraform/terraform output -state=${state_file} subnet_id ]
-[ -z /terraform/terraform output -state=${state_file} security_group_name ]
-[ -z /terraform/terraform output -state=${state_file} availability_zone ]
+[ ! -z /terraform/terraform output -state=${state_file} director_vip ]
+[ ! -z terraform/terraform output -state=${state_file} bats_vip ]
+[ ! -z /terraform/terraform output -state=${state_file} subnet_id ]
+[ ! -z /terraform/terraform output -state=${state_file} security_group_name ]
+[ ! -z /terraform/terraform output -state=${state_file} availability_zone ]
