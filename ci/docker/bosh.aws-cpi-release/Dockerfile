@@ -1,4 +1,4 @@
-FROM ubuntu:14.04
+FROM ubuntu:15.04
 
 RUN locale-gen en_US.UTF-8
 RUN dpkg-reconfigure locales
@@ -7,13 +7,15 @@ ENV LC_ALL en_US.UTF-8
 
 RUN apt-get update; apt-get -y upgrade; apt-get clean
 
-RUN apt-get install -y git curl wget tar make; apt-get clean
+RUN apt-get install -y git curl wget tar make unzip; apt-get clean
 
 RUN apt-get install -y sqlite3 libsqlite3-dev; apt-get clean
 
 RUN apt-get install -y mysql-client libmysqlclient-dev; apt-get clean
 
 RUN apt-get install -y postgresql-9.3 postgresql-client-9.3 libpq-dev; apt-get clean
+
+RUN apt-get install -y python python-pip groff jq; apt-get clean; pip install awscli; 
 
 # chruby
 RUN mkdir /tmp/chruby && \
@@ -40,8 +42,7 @@ RUN /bin/bash -l -c "source /etc/profile.d/chruby.sh ;  \
                      gem install bundler bosh_cli --no-ri --no-rdoc"
 
 #Terraform
-RUN mkdir /terraform && \
-    sudo apt-get install unzip && \
-    wget https://dl.bintray.com/mitchellh/terraform/terraform_0.5.1_linux_amd64.zip && \
-    unzip terraform*.zip -d /terraform && \
+RUN mkdir -p /usr/local/bin/terraform && \
+    wget https://dl.bintray.com/mitchellh/terraform/terraform_0.6.3_linux_amd64.zip && \
+    unzip terraform*.zip -d /usr/local/bin/terraform && \
     rm terraform*.zip
