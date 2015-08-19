@@ -125,10 +125,7 @@ jobs:
     - {trigger: false, passed: [deploy-ubuntu],    get: stemcell, resource: aws-ubuntu-stemcell}
     - {trigger: false, passed: [deploy-ubuntu],    get: bosh-cpi-release, resource: bosh-cpi-release-in}
     - {trigger: false, passed: [terraform-ubuntu], get: terraform-exports, resource: terraform-ubuntu-exports}
-    - {trigger: false,                             get: director-state-file, resource: ubuntu-director-state-file}
-    - {trigger: false,                             get: director-manifest-file, resource: ubuntu-director-manifest-file}
     - {trigger: false,                             get: bats}
-    - {trigger: false,                             get: bosh-init}
 
   - task: test
     file: bosh-cpi-release/ci/tasks/run-bats.yml
@@ -144,6 +141,13 @@ jobs:
         BAT_NETWORK_RESERVED_RANGE: {{BAT_NETWORK_RESERVED_RANGE}}
         BAT_NETWORK_GATEWAY:        {{AWS_NETWORK_GATEWAY}}
         BAT_NETWORK_STATIC_RANGE:   {{BAT_NETWORK_STATIC_RANGE}}
+    on_success:
+      task: teardown-director
+      file: teardown-director.yml
+      config:
+        params:
+          base_os:                  ubuntu
+
 
 - name: terraform-centos
   serial_groups: [centos]
@@ -206,10 +210,7 @@ jobs:
     - {trigger: false, passed: [deploy-centos],    get: stemcell, resource: aws-centos-stemcell}
     - {trigger: false, passed: [deploy-centos],    get: bosh-cpi-release, resource: bosh-cpi-release-in}
     - {trigger: false, passed: [terraform-centos], get: terraform-exports, resource: terraform-centos-exports}
-    - {trigger: false,                             get: director-state-file, resource: centos-director-state-file}
-    - {trigger: false,                             get: director-manifest-file, resource: centos-director-manifest-file}
     - {trigger: false,                             get: bats}
-    - {trigger: false,                             get: bosh-init}
 
   - task: test
     file: bosh-cpi-release/ci/tasks/run-bats.yml
@@ -225,6 +226,12 @@ jobs:
         BAT_NETWORK_RESERVED_RANGE: {{BAT_NETWORK_RESERVED_RANGE}}
         BAT_NETWORK_GATEWAY:        {{AWS_NETWORK_GATEWAY}}
         BAT_NETWORK_STATIC_RANGE:   {{BAT_NETWORK_STATIC_RANGE}}
+    on_success:
+      task: teardown-director
+      file: teardown-director.yml
+      config:
+        params:
+          base_os:                  centos
 
 - name: promote-candidate
   plan:

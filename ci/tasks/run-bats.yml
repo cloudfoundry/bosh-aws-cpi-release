@@ -5,11 +5,8 @@ inputs:
 - name: bosh-cpi-dev-artifacts
 - name: stemcell
 - name: bosh-cpi-release
-- name: director-state-file
-- name: director-manifest-file
 - name: terraform-exports
 - name: bats
-- name: bosh-init              # --- bosh-init executable to do deploy
 run:
   path: bosh-cpi-release/ci/tasks/run-bats.sh
 params:

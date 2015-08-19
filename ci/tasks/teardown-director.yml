@@ -1,0 +1,12 @@
+---
+platform: linux
+image: docker:///bosh/aws-cpi-release
+inputs:
+- name: director-state-file
+- name: director-manifest-file
+- name: bosh-init              # --- bosh-init executable to do deploy
+run:
+  path: bosh-cpi-release/ci/tasks/teardown-director.sh
+params:
+  base_os:                      replace-me
+
