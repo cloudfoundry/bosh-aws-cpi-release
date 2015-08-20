@@ -126,6 +126,9 @@ jobs:
     - {trigger: false, passed: [deploy-ubuntu],    get: bosh-cpi-release, resource: bosh-cpi-release-in}
     - {trigger: false, passed: [terraform-ubuntu], get: terraform-exports, resource: terraform-ubuntu-exports}
     - {trigger: false,                             get: bats}
+    - {trigger: false,                             get: bosh-init}
+    - {trigger: false,                             get: director-state-file, resource: ubuntu-director-state-file}
+    - {trigger: false,                             get: director-manifest-file, resource: ubuntu-director-manifest-file}
 
   - task: test
     file: bosh-cpi-release/ci/tasks/run-bats.yml
@@ -147,6 +150,10 @@ jobs:
       config:
         params:
           base_os:                  ubuntu
+      ensure:
+        do:
+        - put: ubuntu-director-state-file
+          params: {from: director-state-file/ubuntu-director-manifest-state.json}
 
 
 - name: terraform-centos
@@ -210,6 +217,9 @@ jobs:
     - {trigger: false, passed: [deploy-centos],    get: stemcell, resource: aws-centos-stemcell}
     - {trigger: false, passed: [deploy-centos],    get: bosh-cpi-release, resource: bosh-cpi-release-in}
     - {trigger: false, passed: [terraform-centos], get: terraform-exports, resource: terraform-centos-exports}
+    - {trigger: false,                             get: bosh-init}
+    - {trigger: false,                             get: director-state-file, resource: centos-director-state-file}
+    - {trigger: false,                             get: director-manifest-file, resource: centos-director-manifest-file}
     - {trigger: false,                             get: bats}
 
   - task: test
@@ -232,6 +242,10 @@ jobs:
       config:
         params:
           base_os:                  centos
+      ensure:
+        do:
+        - put: centos-director-state-file
+          params: {from: director-state-file/centos-director-manifest-state.json}
 
 - name: promote-candidate
   plan:
