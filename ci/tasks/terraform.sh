@@ -24,22 +24,22 @@ secret_key = "${aws_secret_access_key}"
 build_id = "bats-${base_os}"
 EOF
 
-/terraform/terraform destroy -force -state=$state_file
+terraform destroy -force -state=$state_file
 
 # applies the plan, generates a state file
-/terraform/terraform apply -state=$state_file
+terraform apply -state=$state_file
 
 # exports values into an exports file
 echo -e "#!/usr/bin/env bash" >> $export_file
-echo -e "export DIRECTOR=$(/terraform/terraform output -state=${state_file} director_vip)" >> $export_file
-echo -e "export VIP=$(/terraform/terraform output -state=${state_file} bats_vip)" >> $export_file
-echo -e "export SUBNET_ID=$(/terraform/terraform output -state=${state_file} subnet_id)" >> $export_file
-echo -e "export SECURITY_GROUP_NAME=$(/terraform/terraform output -state=${state_file} security_group_name)" >> $export_file
-echo -e "export AVAILABILITY_ZONE=$(/terraform/terraform output -state=${state_file} availability_zone)" >> $export_file
+echo -e "export DIRECTOR=$(terraform output -state=${state_file} director_vip)" >> $export_file
+echo -e "export VIP=$(terraform output -state=${state_file} bats_vip)" >> $export_file
+echo -e "export SUBNET_ID=$(terraform output -state=${state_file} subnet_id)" >> $export_file
+echo -e "export SECURITY_GROUP_NAME=$(terraform output -state=${state_file} security_group_name)" >> $export_file
+echo -e "export AVAILABILITY_ZONE=$(terraform output -state=${state_file} availability_zone)" >> $export_file
 
 # fail the build if any expected output variables have not been set
-[ ! -z $(/terraform/terraform output -state=${state_file} director_vip) ]
-[ ! -z $(/terraform/terraform output -state=${state_file} bats_vip) ]
-[ ! -z $(/terraform/terraform output -state=${state_file} subnet_id) ]
-[ ! -z $(/terraform/terraform output -state=${state_file} security_group_name) ]
-[ ! -z $(/terraform/terraform output -state=${state_file} availability_zone) ]
+[ ! -z $(terraform output -state=${state_file} director_vip) ]
+[ ! -z $(terraform output -state=${state_file} bats_vip) ]
+[ ! -z $(terraform output -state=${state_file} subnet_id) ]
+[ ! -z $(terraform output -state=${state_file} security_group_name) ]
+[ ! -z $(terraform output -state=${state_file} availability_zone) ]
