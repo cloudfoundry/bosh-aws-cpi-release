@@ -129,6 +129,7 @@ jobs:
     - {trigger: false,                             get: bosh-init}
     - {trigger: false,                             get: director-state-file, resource: ubuntu-director-state-file}
     - {trigger: false,                             get: director-manifest-file, resource: ubuntu-director-manifest-file}
+    - {trigger: false, passed: [build-candidate],  get: version-semver}
 
   - task: test
     file: bosh-cpi-release/ci/tasks/run-bats.yml
@@ -220,6 +221,7 @@ jobs:
     - {trigger: false,                             get: bosh-init}
     - {trigger: false,                             get: director-state-file, resource: centos-director-state-file}
     - {trigger: false,                             get: director-manifest-file, resource: centos-director-manifest-file}
+    - {trigger: false, passed: [build-candidate],  get: version-semver}
     - {trigger: false,                             get: bats}
 
   - task: test

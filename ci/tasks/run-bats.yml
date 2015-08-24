@@ -4,9 +4,13 @@ image: docker:///bosh/aws-cpi-release
 inputs:
 - name: bosh-cpi-dev-artifacts
 - name: stemcell
+- name: version-semver
 - name: bosh-cpi-release
 - name: terraform-exports
 - name: bats
+- name: director-state-file
+- name: director-manifest-file
+- name: bosh-init              # --- bosh-init executable to do deploy
 run:
   path: bosh-cpi-release/ci/tasks/run-bats.sh
 params:
