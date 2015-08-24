@@ -13,7 +13,7 @@ RUN apt-get install -y sqlite3 libsqlite3-dev; apt-get clean
 
 RUN apt-get install -y mysql-client libmysqlclient-dev; apt-get clean
 
-RUN apt-get install -y postgresql-9.3 postgresql-client-9.3 libpq-dev; apt-get clean
+RUN apt-get install -y libpq-dev; apt-get clean
 
 RUN apt-get install -y python python-pip groff jq; apt-get clean; pip install awscli; 
 
