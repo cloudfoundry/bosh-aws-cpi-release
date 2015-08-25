@@ -20,6 +20,15 @@ initver=$(cat bosh-init/version)
 initexe="$PWD/bosh-init/bosh-init-${initver}-linux-amd64"
 chmod +x $initexe
 
+echo "normalizing paths to match values referenced in $manifest_filename"
+# manifest paths are now relative so the tmp inputs need to be updated
+mkdir ${manifest_dir}/tmp
+semver=$(cat version-semver/number)
+cp ./bosh-cpi-dev-artifacts/bosh-aws-cpi-${semver}.tgz ${manifest_dir}/tmp/bosh-aws-cpi.tgz
+cp ./bosh-release/release.tgz ${manifest_dir}/tmp/bosh-release.tgz
+cp ./stemcell/stemcell.tgz ${manifest_dir}/tmp/stemcell.tgz
+cp ./bosh-concourse-ci/pipelines/bosh-aws-cpi/bats.pem ${manifest_dir}/tmp/bats.pem
+
 echo "using bosh-init CLI version..."
 $initexe version
 

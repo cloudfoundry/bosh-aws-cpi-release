@@ -2,6 +2,8 @@
 platform: linux
 image: docker:///bosh/aws-cpi-release
 inputs:
+- name: bosh-cpi-dev-artifacts
+- name: version-semver
 - name: bosh-cpi-release
 - name: director-state-file
 - name: director-manifest-file
