@@ -12,7 +12,7 @@ chruby 2.1.2
 #move director manifest to director state file directory
 manifest_dir="${PWD}/director-state-file"
 manifest_filename=${manifest_dir}/${base_os}-director-manifest.yml
-cp ${PWD}/director-manifest-file/${base_os}-director-manifest.yml  manifest_filename
+cp ${PWD}/director-manifest-file/${base_os}-director-manifest.yml  ${manifest_filename}
 
 
 #on success, clean up bosh director

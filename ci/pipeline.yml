@@ -115,7 +115,7 @@ jobs:
       - put: ubuntu-director-state-file
         params: {from: deploy/director-state-file/ubuntu-director-manifest-state.json}
       - put: ubuntu-director-manifest-file
-        params: {from: deploy/director-state-file/ubuntu-director-manifest.yml}
+        params: {from: director-state-file/ubuntu-director-manifest.yml}
 
 - name: bats-ubuntu
   serial_groups: [ubuntu]
