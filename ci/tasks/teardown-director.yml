@@ -8,6 +8,9 @@ inputs:
 - name: director-state-file
 - name: director-manifest-file
 - name: bosh-init              # --- bosh-init executable to do deploy
+- name: bosh-release           # -\
+- name: stemcell               # -/
+
 run:
   path: bosh-cpi-release/ci/tasks/teardown-director.sh
 params:
