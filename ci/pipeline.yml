@@ -155,7 +155,7 @@ jobs:
       ensure:
         do:
         - put: ubuntu-director-state-file
-          params: {from: director-state-file/ubuntu-director-manifest-state.json}
+          params: {from: test/director-state-file/ubuntu-director-manifest-state.json}
 
 
 - name: terraform-centos
@@ -249,7 +249,7 @@ jobs:
       ensure:
         do:
         - put: centos-director-state-file
-          params: {from: director-state-file/centos-director-manifest-state.json}
+          params: {from: test/director-state-file/centos-director-manifest-state.json}
 
 - name: promote-candidate
   plan:
