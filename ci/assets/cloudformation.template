@@ -128,7 +128,7 @@
       }
     },
 
-    "IPAddressUbuntuDirector" : {
+    "UbuntuDirectorIPAddress" : {
       "Type" : "AWS::EC2::EIP",
       "DependsOn" : "AttachGateway",
       "Properties" : {
@@ -136,7 +136,7 @@
       }
     },
 
-    "IPAddressUbuntuBATS" : {
+    "UbuntuBATSIPAddress" : {
       "Type" : "AWS::EC2::EIP",
       "DependsOn" : "AttachGateway",
       "Properties" : {
@@ -144,7 +144,7 @@
       }
     },
 
-    "IPAddressCentosDirector" : {
+    "CentosDirectorIPAddress" : {
       "Type" : "AWS::EC2::EIP",
       "DependsOn" : "AttachGateway",
       "Properties" : {
@@ -152,7 +152,7 @@
       }
     },
 
-    "IPAddressCentosBATS" : {
+    "CentosBATSIPAddress" : {
       "Type" : "AWS::EC2::EIP",
       "DependsOn" : "AttachGateway",
       "Properties" : {
@@ -173,7 +173,7 @@
       "Type": "AWS::EC2::SecurityGroupIngress",
        "Properties": {
           "GroupId": { "Ref": "BATSSecurityGroup" },
-          "IpProtocol": "tcp",
+          "IpProtocol": "-1",
           "SourceSecurityGroupId": { "Ref": "BATSSecurityGroup" },
           "FromPort" : "0",
           "ToPort": "65535"
@@ -184,41 +184,8 @@
       "Type": "AWS::EC2::SecurityGroupIngress",
        "Properties": {
           "GroupId": { "Ref" : "BATSSecurityGroup" },
-          "IpProtocol": "tcp",
+          "IpProtocol": "-1",
           "CidrIp" : "0.0.0.0/0",
-           "FromPort" : "22",
-          "ToPort": "22"
-      }
-    },
-
-    "SGIngress3": {
-      "Type": "AWS::EC2::SecurityGroupIngress",
-       "Properties": {
-          "GroupId": { "Ref" : "BATSSecurityGroup" },
-          "IpProtocol": "tcp",
-          "CidrIp" : "0.0.0.0/0",
-          "FromPort" : "6868",
-          "ToPort": "6868"
-      }
-    },
-
-    "SGIngress4": {
-      "Type": "AWS::EC2::SecurityGroupIngress",
-       "Properties": {
-          "GroupId": { "Ref" : "BATSSecurityGroup" },
-          "IpProtocol": "tcp",
-          "CidrIp" : "0.0.0.0/0",
-          "FromPort" : "25555",
-          "ToPort": "25555"
-      }
-    },
-
-    "SGIngress5": {
-      "Type": "AWS::EC2::SecurityGroupIngress",
-       "Properties": {
-          "GroupId": { "Ref" : "BATSSecurityGroup" },
-          "IpProtocol": "udp",
-          "SourceSecurityGroupId": { "Ref": "BATSSecurityGroup" },
           "FromPort" : "0",
           "ToPort": "65535"
       }
@@ -228,29 +195,29 @@
       "Type": "AWS::EC2::SecurityGroupEgress",
        "Properties": {
           "GroupId": { "Ref" : "BATSSecurityGroup" },
-          "IpProtocol": "udp",
+          "IpProtocol": "-1",
           "CidrIp" : "0.0.0.0/0",
           "FromPort" : "0",
-          "ToPort": "0"
+          "ToPort": "65535"
       }
     }
   },
 
   "Outputs" : {
     "ubuntudirectorvip" : {
-      "Value" : { "Ref" : "IPAddressUbuntuDirector"},
+      "Value" : { "Ref" : "UbuntuDirectorIPAddress"},
       "Description" : "EIP Allocated for Ubuntu Director"
     },
     "ubuntubatsvip" : {
-      "Value" : { "Ref" : "IPAddressUbuntuBATS"},
+      "Value" : { "Ref" : "UbuntuBATSIPAddress"},
       "Description" : "EIP Allocated for Ubuntu BATS"
     },
     "centosdirectorvip" : {
-      "Value" : { "Ref" : "IPAddressCentosDirector"},
+      "Value" : { "Ref" : "CentosDirectorIPAddress"},
       "Description" : "EIP Allocated for Centos Director"
     },
     "centosbatsvip" : {
-      "Value" : { "Ref" : "IPAddressCentosBATS"},
+      "Value" : { "Ref" : "CentosBATSIPAddress"},
       "Description" : "EIP Allocated for Centos BATS"
     },
     "ubuntusubnetid" : {
