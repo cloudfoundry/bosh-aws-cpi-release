@@ -64,9 +64,6 @@ properties:
       security_groups: [$BAT_SECURITY_GROUP_NAME]
 EOF
 
-cat $BAT_DEPLOYMENT_SPEC # todo: do not cat out the deployment spec
-
-#cd bats
-#bundle install
-#bundle exec rspec spec
-exit 0
+cd bats
+bundle install
+bundle exec rspec spec
