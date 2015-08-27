@@ -13,10 +13,9 @@ export AWS_SECRET_ACCESS_KEY=${aws_secret_access_key}
 export AWS_DEFAULT_REGION=${region_name}
 
 stack_name="aws-cpi-stack"
+describe_cmd="aws cloudformation describe-stacks --stack-name ${stack_name}"
 
 aws cloudformation delete-stack --stack-name ${stack_name}
-
-describe_cmd="aws cloudformation describe-stacks --stack-name ${stack_name}"
 
 while true; do
   if stack_info=$(${describe_cmd}); then
@@ -33,19 +32,22 @@ while true; do
   fi
 done
 
+
 aws cloudformation create-stack \
     --stack-name      ${stack_name} \
     --template-body   file:///${PWD}/bosh-cpi-release/ci/assets/cloudformation.template
 
-stack_info=$(aws cloudformation describe-stacks --stack-name ${stack_name})
-stack_status=$(echo $stack_info | jq '.Stacks[].StackStatus')
+stack_status='"CREATE_IN_PROGRESS"'
 while true; do
   echo "StackStatus ${stack_status}"
   if [ $stack_status == '"CREATE_IN_PROGRESS"' ]; then
-  echo "sleeping 5"
-  sleep 5s
-  stack_info=$(aws cloudformation describe-stacks --stack-name ${stack_name})
-  stack_status=$(echo $stack_info | jq '.Stacks[].StackStatus')
+    echo "sleeping 5"
+    sleep 5s
+    stack_info=$(${describe_cmd})
+    stack_status=$(echo $stack_info | jq '.Stacks[].StackStatus')
+  else
+    break
+  fi
 done
 
 if [ $stack_status != '"CREATE_COMPLETE"' ]; then
