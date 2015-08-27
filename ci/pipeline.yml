@@ -254,7 +254,7 @@ jobs:
 - name: promote-candidate
   plan:
   - aggregate:
-    - {trigger: true,  passed: [lifecycle, bats-ubuntu, bats-centos], get: bosh-cpi-dev-artifacts}
+    - {trigger: false, get: bosh-cpi-dev-artifacts, passed: [lifecycle, bats-ubuntu, bats-centos]}
     - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-out}
 
   - task: promote
