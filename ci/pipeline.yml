@@ -3,10 +3,9 @@ groups:
   - name: bosh-aws-cpi-release
     jobs:
       - build-candidate
-      - terraform-ubuntu
+      - recreate-infrastructure
       - deploy-ubuntu
       - bats-ubuntu
-      - terraform-centos
       - deploy-centos
       - bats-centos
       - lifecycle
@@ -15,7 +14,6 @@ groups:
   - name: ubuntu
     jobs:
       - build-candidate
-      - terraform-ubuntu
       - deploy-ubuntu
       - bats-ubuntu
       - promote-candidate
@@ -23,7 +21,6 @@ groups:
   - name: centos
     jobs:
       - build-candidate
-      - terraform-centos
       - deploy-centos
       - bats-centos
       - promote-candidate
@@ -64,26 +61,18 @@ jobs:
         BOSH_AWS_LIFECYCLE_MANUAL_IP: {{lifecycle_BOSH_AWS_LIFECYCLE_MANUAL_IP}}
         BOSH_AWS_DEFAULT_KEY_NAME:    {{lifecycle_BOSH_AWS_DEFAULT_KEY_NAME}}
 
-- name: terraform-ubuntu
-  serial_groups: [ubuntu]
+- name: recreate-infrastructure
   plan:
   - aggregate:
-    - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-in}
-    - {trigger: false, get: terraform-state, resource: terraform-ubuntu-state}
+    - {trigger: false, get: bosh-cpi-release,     resource: bosh-cpi-release-in}
 
-  - task: terraform
-    file: bosh-cpi-release/ci/tasks/terraform.yml
+  - task: cloudformation
+    file: bosh-cpi-release/ci/tasks/cloudformation.yml
     config:
       params:
-        aws_access_key_id:          {{s3_aws_cpi_access_key}}
-        aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
-        base_os:                    ubuntu
-    ensure:
-      do:
-      - put: terraform-ubuntu-state
-        params: {from: terraform/terraform-state/ubuntu-bats.tfstate$}
-      - put: terraform-ubuntu-exports
-        params: {from: terraform/terraform-state/terraform-ubuntu-exports.sh$}
+        aws_access_key_id:        {{s3_aws_cpi_access_key}}
+        aws_secret_access_key:    {{s3_aws_cpi_secret_key}}
+        region_name:              us-east-1
 
 - name: deploy-ubuntu
   serial_groups: [ubuntu]
@@ -93,7 +82,6 @@ jobs:
     - {trigger: false, passed: [build-candidate],  get: version-semver}
     - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
     - {trigger: false,                             get: director-state-file, resource: ubuntu-director-state-file}
-    - {trigger: false, passed: [terraform-ubuntu], get: terraform-exports, resource: terraform-ubuntu-exports}
     - {trigger: false,                             get: bosh-init}
     - {trigger: false,                             get: bosh-release}
     - {trigger: false,                             get: stemcell, resource: aws-ubuntu-stemcell}
@@ -124,7 +112,6 @@ jobs:
     - {trigger: true,  passed: [deploy-ubuntu],    get: bosh-cpi-dev-artifacts}
     - {trigger: false, passed: [deploy-ubuntu],    get: stemcell, resource: aws-ubuntu-stemcell}
     - {trigger: false, passed: [deploy-ubuntu],    get: bosh-cpi-release, resource: bosh-cpi-release-in}
-    - {trigger: false, passed: [terraform-ubuntu], get: terraform-exports, resource: terraform-ubuntu-exports}
     - {trigger: false,                             get: bats}
     - {trigger: false,                             get: bosh-init}
     - {trigger: false,                             get: director-state-file, resource: ubuntu-director-state-file}
@@ -157,28 +144,6 @@ jobs:
         - put: ubuntu-director-state-file
           params: {from: test/director-state-file/ubuntu-director-manifest-state.json}
 
-
-- name: terraform-centos
-  serial_groups: [centos]
-  plan:
-  - aggregate:
-    - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-in}
-    - {trigger: false, get: terraform-state, resource: terraform-centos-state}
-
-  - task: terraform
-    file: bosh-cpi-release/ci/tasks/terraform.yml
-    config:
-      params:
-        aws_access_key_id:          {{s3_aws_cpi_access_key}}
-        aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
-        base_os:                    centos
-    ensure:
-      do:
-      - put: terraform-centos-state
-        params: {from: terraform/terraform-state/centos-bats.tfstate$}
-      - put: terraform-centos-exports
-        params: {from: terraform/terraform-state/terraform-centos-exports.sh$}
-
 - name: deploy-centos
   serial_groups: [centos] # shouldn't deploy while bats run
   plan:
@@ -187,7 +152,6 @@ jobs:
     - {trigger: false, passed: [build-candidate],  get: version-semver}
     - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
     - {trigger: false,                             get: director-state-file, resource: centos-director-state-file}
-    - {trigger: false, passed: [terraform-centos], get: terraform-exports, resource: terraform-centos-exports}
     - {trigger: false,                             get: bosh-init}
     - {trigger: false,                             get: bosh-release}
     - {trigger: false,                             get: stemcell, resource: aws-centos-stemcell}
@@ -218,7 +182,6 @@ jobs:
     - {trigger: true,  passed: [deploy-centos],    get: bosh-cpi-dev-artifacts}
     - {trigger: false, passed: [deploy-centos],    get: stemcell, resource: aws-centos-stemcell}
     - {trigger: false, passed: [deploy-centos],    get: bosh-cpi-release, resource: bosh-cpi-release-in}
-    - {trigger: false, passed: [terraform-centos], get: terraform-exports, resource: terraform-centos-exports}
     - {trigger: false,                             get: bosh-init}
     - {trigger: false,                             get: director-state-file, resource: centos-director-state-file}
     - {trigger: false,                             get: director-manifest-file, resource: centos-director-manifest-file}
@@ -384,39 +347,3 @@ resources:
   type: bosh-io-stemcell
   source:
     name: bosh-aws-xen-centos-7-go_agent
-
-- name: terraform-ubuntu-state
-  type: s3
-  source:
-    versioned_file: ubuntu-bats.tfstate
-    bucket: {{s3_bosh_aws_cpi_terraform_state_ubuntu_bucket}}
-    region_name: {{s3_aws_cpi_region}}
-    access_key_id: {{s3_bosh_aws_cpi_terraform_state_ubuntu_access_key_id}}
-    secret_access_key: {{s3_bosh_aws_cpi_terraform_state_ubuntu_secret_access_key}}
-
-- name: terraform-centos-state
-  type: s3
-  source:
-    versioned_file: centos-bats.tfstate
-    bucket: {{s3_bosh_aws_cpi_terraform_state_centos_bucket}}
-    region_name: {{s3_aws_cpi_region}}
-    access_key_id: {{s3_bosh_aws_cpi_terraform_state_centos_access_key_id}}
-    secret_access_key: {{s3_bosh_aws_cpi_terraform_state_centos_secret_access_key}}
-
-- name: terraform-ubuntu-exports
-  type: s3
-  source:
-    versioned_file: terraform-ubuntu-exports.sh
-    bucket: {{s3_bosh_aws_cpi_terraform_state_ubuntu_bucket}}
-    region_name: {{s3_aws_cpi_region}}
-    access_key_id: {{s3_bosh_aws_cpi_terraform_state_ubuntu_access_key_id}}
-    secret_access_key: {{s3_bosh_aws_cpi_terraform_state_ubuntu_secret_access_key}}
-
-- name: terraform-centos-exports
-  type: s3
-  source:
-    versioned_file: terraform-centos-exports.sh
-    bucket: {{s3_bosh_aws_cpi_terraform_state_centos_bucket}}
-    region_name: {{s3_aws_cpi_region}}
-    access_key_id: {{s3_bosh_aws_cpi_terraform_state_centos_access_key_id}}
-    secret_access_key: {{s3_bosh_aws_cpi_terraform_state_centos_secret_access_key}}
