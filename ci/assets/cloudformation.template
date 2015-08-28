@@ -228,10 +228,6 @@
       "Value" : { "Ref" : "CentosSubnet"},
       "Description" : "centos-bats-subnet id"
     },
-    "securitygroupname" : {
-      "Value" : { "Ref" : "BATSSecurityGroup"},
-      "Description" : "bats security group id"
-    },
     "ubuntuavailabilityzone" : {
       "Value" : { "Fn::GetAtt" : ["UbuntuSubnet", "AvailabilityZone"] },
       "Description" : "bats subnet availability zone"

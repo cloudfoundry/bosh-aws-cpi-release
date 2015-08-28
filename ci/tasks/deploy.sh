@@ -3,7 +3,6 @@
 set -e
 
 source bosh-cpi-release/ci/tasks/utils.sh
-source terraform-exports/terraform-${base_os}-exports.sh
 
 check_param base_os
 check_param aws_access_key_id
@@ -13,13 +12,20 @@ check_param region_name
 check_param AWS_NETWORK_CIDR
 check_param AWS_NETWORK_GATEWAY
 check_param PRIVATE_DIRECTOR_STATIC_IP
-check_param SUBNET_ID
-check_param AVAILABILITY_ZONE
-check_param DIRECTOR
-check_param SECURITY_GROUP_NAME
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
+
+export AWS_ACCESS_KEY_ID=${aws_access_key_id}
+export AWS_SECRET_ACCESS_KEY=${aws_secret_access_key}
+export AWS_DEFAULT_REGION=${region_name}
+
+stack_name="aws-cpi-stack"
+stack_info=$(get_stack_info $stack_name)
+
+DIRECTOR=$(get_stack_info_of "${stack_info}" "${base_os}directorvip")
+SUBNET_ID=$(get_stack_info_of "${stack_info}" "${base_os}subnetid")
+AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "${base_os}availabilityzone")
 
 semver=`cat version-semver/number`
 cpi_release_name=bosh-aws-cpi
@@ -145,7 +151,7 @@ jobs:
       access_key_id: $aws_access_key_id
       secret_access_key: $aws_secret_access_key
       default_key_name: "bats"
-      default_security_groups: [$SECURITY_GROUP_NAME]
+      default_security_groups: ["bats"]
       region: "${region_name}"
 
     # Tells agents how to contact nats
