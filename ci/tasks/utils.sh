@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
 get_stack_info() {
-  stack_name=$1
-  return $(aws cloudformation describe-stacks --stack-name ${stack_name})
+  local stack_name=$1
+
+  echo $(aws cloudformation describe-stacks) | \
+  jq --arg stack_name ${stack_name} '.Stacks[] | select(.StackName=="\($stack_name)")'
 }
 
 get_stack_info_of() {
@@ -10,17 +12,17 @@ get_stack_info_of() {
   local key=$2
   local stack_name=$3
 
-  stack_info=get_stack_info $stack_name
-  return $( echo ${stack_info} | \
-          jq --arg base_os ${base_os} --arg key ${key} \
-          '.Stacks[].Outputs[] | select(.OutputKey=="\($base_os)\($key)").OutputValue' )
+  stack_info=$(get_stack_info $stack_name)
+  echo ${stack_info} | \
+  jq --arg base_os ${base_os} --arg key ${key} \
+  '.Outputs[] | select(.OutputKey=="\($base_os)\($key)").OutputValue'
 }
 
 get_stack_status() {
   local stack_name=$1
 
-  stack_info=get_stack_info $stack_name
-  return $( echo ${stack_info} | jq '.Stacks[].StackStatus' )
+  local stack_info=$(get_stack_info $stack_name)
+  echo $stack_info | jq '.StackStatus'
 }
 
 check_param() {
