@@ -20,3 +20,4 @@ params:
   AWS_NETWORK_CIDR:           replace-me
   AWS_NETWORK_GATEWAY:        replace-me
   PRIVATE_DIRECTOR_STATIC_IP: replace-me
+  BOSH_INIT_LOG_LEVEL:        warn

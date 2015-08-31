@@ -220,6 +220,10 @@
       "Value" : { "Ref" : "CentosBATSIPAddress"},
       "Description" : "EIP Allocated for Centos BATS"
     },
+    "securitygroupid" : {
+      "Value" : { "Ref" : "BATSSecurityGroup"},
+      "Description" : "bats security group id"
+    },
     "ubuntusubnetid" : {
       "Value" : { "Ref" : "UbuntuSubnet"},
       "Description" : "ubuntu-bats-subnet id"

@@ -3,26 +3,21 @@
 get_stack_info() {
   local stack_name=$1
 
-  echo $(aws cloudformation describe-stacks) | \
+  echo "$(aws cloudformation describe-stacks)" | \
   jq --arg stack_name ${stack_name} '.Stacks[] | select(.StackName=="\($stack_name)")'
 }
 
 get_stack_info_of() {
-  local base_os=$1
+  local stack_info=$1
   local key=$2
-  local stack_name=$3
-
-  stack_info=$(get_stack_info $stack_name)
-  echo ${stack_info} | \
-  jq --arg base_os ${base_os} --arg key ${key} \
-  '.Outputs[] | select(.OutputKey=="\($base_os)\($key)").OutputValue'
+  echo "${stack_info}" | jq -r --arg key ${key} '.Outputs[] | select(.OutputKey=="\($key)").OutputValue'
 }
 
 get_stack_status() {
   local stack_name=$1
 
   local stack_info=$(get_stack_info $stack_name)
-  echo $stack_info | jq '.StackStatus'
+  echo "${stack_info}" | jq -r '.StackStatus'
 }
 
 check_param() {
