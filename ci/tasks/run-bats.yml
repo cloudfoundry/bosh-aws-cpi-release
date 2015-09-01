@@ -6,15 +6,15 @@ inputs:
 - name: stemcell
 - name: version-semver
 - name: bosh-cpi-release
-- name: terraform-exports
 - name: bats
 - name: director-state-file
-- name: director-manifest-file
-- name: bosh-init              # --- bosh-init executable to do deploy
 run:
   path: bosh-cpi-release/ci/tasks/run-bats.sh
 params:
   base_os:                      replace-me
+  aws_access_key_id:            replace-me
+  aws_secret_access_key:        replace-me
+  region_name:                  replace-me
   private_key_data:             replace-me
   BAT_VCAP_PASSWORD:            replace-me
   BAT_STEMCELL_NAME:            replace-me

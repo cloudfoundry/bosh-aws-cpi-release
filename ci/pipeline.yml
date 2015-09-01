@@ -124,6 +124,9 @@ jobs:
     config:
       params:
         base_os:                    ubuntu
+        aws_access_key_id:          {{s3_aws_cpi_access_key}}
+        aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
+        region_name:                {{s3_aws_cpi_region}}
         BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
         private_key_data:           {{bosh_private_key}}
         BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_ubuntu}}
@@ -194,6 +197,9 @@ jobs:
     config:
       params:
         base_os:                    centos
+        aws_access_key_id:          {{s3_aws_cpi_access_key}}
+        aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
+        region_name:                {{s3_aws_cpi_region}}
         BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
         private_key_data:           {{bosh_private_key}}
         BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_centos}}

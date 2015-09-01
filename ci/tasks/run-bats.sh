@@ -5,6 +5,9 @@ set -e
 source bosh-cpi-release/ci/tasks/utils.sh
 
 check_param base_os
+check_param aws_access_key_id
+check_param aws_secret_access_key
+check_param region_name
 check_param private_key_data
 check_param BAT_VCAP_PASSWORD
 check_param BAT_SECOND_STATIC_IP
@@ -18,7 +21,19 @@ check_param BAT_STEMCELL_NAME
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
 
-source terraform-exports/terraform-${base_os}-exports.sh
+export AWS_ACCESS_KEY_ID=${aws_access_key_id}
+export AWS_SECRET_ACCESS_KEY=${aws_secret_access_key}
+export AWS_DEFAULT_REGION=${region_name}
+
+stack_name="aws-cpi-stack"
+stack_info=$(get_stack_info $stack_name)
+
+DIRECTOR=$(get_stack_info_of "${stack_info}" "${base_os}directorvip")
+VIP=$(get_stack_info_of "${stack_info}" "${base_os}batsvip")
+SUBNET_ID=$(get_stack_info_of "${stack_info}" "${base_os}subnetid")
+sg_id=$(get_stack_info_of "${stack_info}" "securitygroupid")
+SECURITY_GROUP_NAME=$(aws ec2 describe-security-groups --group-ids ${sg_id} | jq -r '.SecurityGroups[] .GroupName')
+AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "${base_os}availabilityzone")
 
 mkdir -p $PWD/keys
 echo "$private_key_data" > $PWD/keys/bats.pem
@@ -65,5 +80,6 @@ properties:
 EOF
 
 cd bats
+./write_gemfile
 bundle install
 bundle exec rspec spec
