@@ -32,7 +32,7 @@ while true; do
   if [[ -z "$stack_status" ]]; then #get empty status due to stack not existed on aws
     echo "No stack found"; break
     break
-  elif [ $stack_status == '"DELETE_IN_PROGRESS"' ]; then
+  elif [ $stack_status == 'DELETE_IN_PROGRESS' ]; then
     echo "${stack_status}: sleeping 5s"; sleep 5s
   else
     echo "Expecting the stack to either be deleted or in the process of being deleted but was ${stack_status}"
@@ -49,14 +49,14 @@ echo "Running: ${cmd}"; ${cmd}
 while true; do
   stack_status=$(get_stack_status $stack_name)
   echo "StackStatus ${stack_status}"
-  if [ $stack_status == '"CREATE_IN_PROGRESS"' ]; then
+  if [ $stack_status == 'CREATE_IN_PROGRESS' ]; then
     echo "sleeping 5s"; sleep 5s
   else
     break
   fi
 done
 
-if [ $stack_status != '"CREATE_COMPLETE"' ]; then
+if [ $stack_status != 'CREATE_COMPLETE' ]; then
   echo "cloudformation failed stack info:\n$(get_stack_info $stack_name)"
   exit 1
 fi
