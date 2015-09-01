@@ -204,6 +204,10 @@
   },
 
   "Outputs" : {
+    "vpcid" : {
+      "Value" : { "Ref" : "VPC"},
+      "Description" : "VPC for AWS CPI Infrastructure"
+    },
     "ubuntudirectorvip" : {
       "Value" : { "Ref" : "UbuntuDirectorIPAddress"},
       "Description" : "EIP Allocated for Ubuntu Director"
