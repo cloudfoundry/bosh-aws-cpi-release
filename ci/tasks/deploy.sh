@@ -7,8 +7,8 @@ source bosh-cpi-release/ci/tasks/utils.sh
 check_param base_os
 check_param aws_access_key_id
 check_param aws_secret_access_key
-check_param private_key_data
 check_param region_name
+check_param private_key_data
 check_param AWS_NETWORK_CIDR
 check_param AWS_NETWORK_GATEWAY
 check_param PRIVATE_DIRECTOR_STATIC_IP
@@ -24,7 +24,7 @@ stack_name="aws-cpi-stack"
 stack_info=$(get_stack_info $stack_name)
 
 sg_id=$(get_stack_info_of "${stack_info}" "securitygroupid")
-sg_group_name=$(aws ec2 describe-security-groups --group-ids ${sg_id} | jq -r '.SecurityGroups[] .GroupName')
+SECURITY_GROUP_NAME=$(aws ec2 describe-security-groups --group-ids ${sg_id} | jq -r '.SecurityGroups[] .GroupName')
 
 DIRECTOR=$(get_stack_info_of "${stack_info}" "${base_os}directorvip")
 SUBNET_ID=$(get_stack_info_of "${stack_info}" "${base_os}subnetid")
@@ -154,7 +154,7 @@ jobs:
       access_key_id: $aws_access_key_id
       secret_access_key: $aws_secret_access_key
       default_key_name: "bats"
-      default_security_groups: ["${sg_group_name}"]
+      default_security_groups: ["${SECURITY_GROUP_NAME}"]
       region: "${region_name}"
 
     # Tells agents how to contact nats

@@ -93,8 +93,8 @@ jobs:
         base_os:                    ubuntu
         aws_access_key_id:          {{s3_aws_cpi_access_key}}
         aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
-        private_key_data:           {{bosh_private_key}}
         region_name:                {{s3_aws_cpi_region}}
+        private_key_data:           {{bosh_private_key}}
         AWS_NETWORK_CIDR:           {{AWS_NETWORK_CIDR}}
         AWS_NETWORK_GATEWAY:        {{AWS_NETWORK_GATEWAY}}
         PRIVATE_DIRECTOR_STATIC_IP: {{PRIVATE_DIRECTOR_STATIC_IP}}
@@ -163,8 +163,8 @@ jobs:
         base_os:                    centos
         aws_access_key_id:          {{s3_aws_cpi_access_key}}
         aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
-        private_key_data:           {{bosh_private_key}}
         region_name:                {{s3_aws_cpi_region}}
+        private_key_data:           {{bosh_private_key}}
         AWS_NETWORK_CIDR:           {{AWS_NETWORK_CIDR}}
         AWS_NETWORK_GATEWAY:        {{AWS_NETWORK_GATEWAY}}
         PRIVATE_DIRECTOR_STATIC_IP: {{PRIVATE_DIRECTOR_STATIC_IP}}
