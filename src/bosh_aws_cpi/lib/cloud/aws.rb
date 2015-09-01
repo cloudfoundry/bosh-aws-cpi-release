@@ -21,7 +21,6 @@ require "bosh/registry/client"
 require "cloud"
 require "cloud/aws/helpers"
 require "cloud/aws/cloud"
-require "cloud/aws/version"
 
 require "cloud/aws/aki_picker"
 require "cloud/aws/network_configurator"
