@@ -6,6 +6,7 @@ inputs:
 run:
   path: bosh-cpi-release/ci/tasks/run-lifecycle.sh
 params:
-  BOSH_AWS_ACCESS_KEY_ID:       replace-me
-  BOSH_AWS_SECRET_ACCESS_KEY:   replace-me
-  region_name:                  replace-me
+  aws_access_key_id:     replace-me
+  aws_secret_access_key: replace-me
+  region_name:           replace-me
+  lifecycle_manual_ip:   replace-me

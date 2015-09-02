@@ -53,9 +53,10 @@ jobs:
     file: bosh-cpi-release/ci/tasks/run-lifecycle.yml
     config:
       params:
-        BOSH_AWS_ACCESS_KEY_ID:       {{s3_aws_cpi_access_key}}
-        BOSH_AWS_SECRET_ACCESS_KEY:   {{s3_aws_cpi_secret_key}}
+        aws_access_key_id:            {{s3_aws_cpi_access_key}}
+        aws_secret_access_key:        {{s3_aws_cpi_secret_key}}
         region_name:                  {{s3_aws_cpi_region}}
+        lifecycle_manual_ip:          {{lifecycle_BOSH_AWS_LIFECYCLE_MANUAL_IP}}
 
 - name: recreate-infrastructure
   plan:
