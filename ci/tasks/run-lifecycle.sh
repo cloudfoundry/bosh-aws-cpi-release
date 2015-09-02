@@ -16,12 +16,12 @@ export AWS_DEFAULT_REGION=${region_name}
 stack_name="aws-cpi-stack"
 stack_info=$(get_stack_info $stack_name)
 
-BOSH_AWS_ACCESS_KEY_ID=${aws_access_key_id}
-BOSH_AWS_SECRET_ACCESS_KEY=${aws_secret_access_key}
-BOSH_AWS_DEFAULT_KEY_NAME='bats'
-BOSH_AWS_SUBNET_ID=$(get_stack_info_of "${stack_info}" "lifecyclesubnetid")
-BOSH_AWS_SUBNET_ZONE=$(get_stack_info_of "${stack_info}" "lifecycleavailabilityzone")
-BOSH_AWS_LIFECYCLE_MANUAL_IP=${lifecycle_manual_ip}
+export BOSH_AWS_ACCESS_KEY_ID=${aws_access_key_id}
+export BOSH_AWS_SECRET_ACCESS_KEY=${aws_secret_access_key}
+export BOSH_AWS_DEFAULT_KEY_NAME='bats'
+export BOSH_AWS_SUBNET_ID=$(get_stack_info_of "${stack_info}" "lifecyclesubnetid")
+export BOSH_AWS_SUBNET_ZONE=$(get_stack_info_of "${stack_info}" "lifecycleavailabilityzone")
+export BOSH_AWS_LIFECYCLE_MANUAL_IP=${lifecycle_manual_ip}
 
 export BOSH_CLI_SILENCE_SLOW_LOAD_WARNING=true
 
