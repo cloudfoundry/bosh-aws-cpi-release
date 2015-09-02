@@ -47,7 +47,7 @@ jobs:
   plan:
   - aggregate:
     - {trigger: true,  passed: [build-candidate], get: bosh-cpi-dev-artifacts}
-    - {trigger: false,                            get: bosh-cpi-release, resource: bosh-cpi-release-in}
+    - {trigger: false, passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-release-in}
 
   - task: test
     file: bosh-cpi-release/ci/tasks/run-lifecycle.yml
