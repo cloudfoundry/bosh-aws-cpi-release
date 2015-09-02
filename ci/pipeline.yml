@@ -324,12 +324,6 @@ resources:
     bucket: {{s3_bosh_init_bucket}}
     region_name: {{s3_aws_cpi_region}}
 
-- name: bosh-src
-  type: git
-  source:
-    uri: https://github.com/cloudfoundry/bosh.git
-    branch: master
-
 - name: bats
   type: git
   source:
