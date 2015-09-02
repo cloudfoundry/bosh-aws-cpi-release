@@ -94,8 +94,6 @@ describe Bosh::AwsCloud::Instance do
       it 'logs a message and considers the instance to be terminated' do
         expect(registry).to receive(:delete_settings).with(instance_id)
 
-        allow(Bosh::AwsCloud::ResourceWait).to receive(:task_checkpoint)
-
         allow(aws_instance).to receive(:status).
                                    with(no_args).and_raise(AWS::EC2::Errors::InvalidInstanceID::NotFound)
 

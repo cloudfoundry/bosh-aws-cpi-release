@@ -4,9 +4,9 @@ require "spec_helper"
 
 describe Bosh::AwsCloud::Cloud do
 
-  let(:manual) { {"type" => "manual", 
+  let(:manual) { {"type" => "manual",
                   "cloud_properties" => {"subnet" => "sn-xxxxxxxx", "security_groups" => %w[default]}} }
-  
+
   before(:each) do
     @registry = mock_registry
   end
@@ -57,15 +57,14 @@ describe Bosh::AwsCloud::Cloud do
     expect {
       cloud.configure_networks("i-foobar", network_spec)
     }.to raise_error(Bosh::Clouds::NotSupported, "IP address change requires VM recreation: 10.10.10.1 to 10.10.10.2")
-  end  
-  
+  end
+
   it "adds elastic ip from to the instance for vip network" do
     sec_grp = double("security_group", :name => "default")
     instance = double("instance",
                       :id => "i-foobar",
                       :security_groups => [sec_grp],
                       :private_ip_address => "10.10.10.1")
-    allow(Bosh::Clouds::Config).to receive(:task_checkpoint)
 
     cloud = mock_cloud do |ec2|
       allow(ec2.instances).to receive(:[]).

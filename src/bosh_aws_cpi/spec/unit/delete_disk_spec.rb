@@ -24,7 +24,6 @@ describe Bosh::AwsCloud::Cloud do
 
   it 'retries deleting the volume if it is in use' do
     allow(Bosh::AwsCloud::ResourceWait).to receive_messages(for_volume: {volume: volume, state: :deleted})
-    allow(Bosh::Clouds::Config).to receive(:task_checkpoint)
 
     expect(volume).to receive(:delete).once.ordered.and_raise(AWS::EC2::Errors::VolumeInUse)
     expect(volume).to receive(:delete).ordered
@@ -33,8 +32,6 @@ describe Bosh::AwsCloud::Cloud do
   end
 
   it 'raises an error if the volume remains in use after every deletion retry' do
-    allow(Bosh::Clouds::Config).to receive(:task_checkpoint)
-
     expect(volume).to receive(:delete).
       exactly(Bosh::AwsCloud::ResourceWait::DEFAULT_WAIT_ATTEMPTS).times.
       and_raise(AWS::EC2::Errors::VolumeInUse)

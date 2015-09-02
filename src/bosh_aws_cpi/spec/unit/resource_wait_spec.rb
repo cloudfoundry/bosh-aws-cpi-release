@@ -2,7 +2,6 @@ require 'spec_helper'
 
 describe Bosh::AwsCloud::ResourceWait do
   before { allow(Kernel).to receive(:sleep) }
-  before { allow(described_class).to receive(:task_checkpoint) }
 
   describe '.for_instance' do
     let(:instance) { double(AWS::EC2::Instance, id: 'i-1234') }

@@ -47,7 +47,6 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
 
   let(:cloud) do
     cloud = described_class.new(options)
-    allow(cloud).to receive(:task_checkpoint)
     cloud
   end
 

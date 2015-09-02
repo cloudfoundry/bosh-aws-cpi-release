@@ -53,8 +53,6 @@ describe Bosh::AwsCloud::Cloud do
     ).instances.tagged('delete_me').each(&:terminate)
   end
 
-  before { Bosh::Clouds::Config.configure(double('delegate', task_checkpoint: nil)) }
-
   before { allow(Bosh::Clouds::Config).to receive_messages(logger: logger) }
   let(:logger) { Logger.new(STDERR) }
 
