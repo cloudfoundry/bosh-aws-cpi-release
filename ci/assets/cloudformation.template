@@ -31,6 +31,15 @@
       }
     },
 
+    "LifecycleSubnet" : {
+      "Type" : "AWS::EC2::Subnet",
+      "Properties" : {
+        "VpcId" : { "Ref" : "VPC" },
+        "CidrBlock" : "10.0.2.0/24",
+        "Tags" : [ {"Key" : "Name", "Value" : "lifecycle" } ]
+      }
+    },
+
     "InternetGateway" : {
       "Type" : "AWS::EC2::InternetGateway",
       "Properties" : {
@@ -80,6 +89,14 @@
       }
     },
 
+    "LifecycleSubnetRouteTableAssociation" : {
+      "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties" : {
+        "SubnetId" : { "Ref" : "LifecycleSubnet" },
+        "RouteTableId" : { "Ref" : "RouteTable" }
+      }
+    },
+
     "NetworkAcl" : {
       "Type" : "AWS::EC2::NetworkAcl",
       "Properties" : {
@@ -124,6 +141,14 @@
       "Type" : "AWS::EC2::SubnetNetworkAclAssociation",
       "Properties" : {
         "SubnetId" : { "Ref" : "CentosSubnet" },
+        "NetworkAclId" : { "Ref" : "NetworkAcl" }
+      }
+    },
+
+    "LifecycleSubnetNetworkAclAssociation" : {
+      "Type" : "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties" : {
+        "SubnetId" : { "Ref" : "LifecycleSubnet" },
         "NetworkAclId" : { "Ref" : "NetworkAcl" }
       }
     },
@@ -236,6 +261,10 @@
       "Value" : { "Ref" : "CentosSubnet"},
       "Description" : "centos-bats-subnet id"
     },
+    "lifecyclesubnetid" : {
+      "Value" : { "Ref" : "LifecycleSubnet"},
+      "Description" : "lifecycle-subnet id"
+    },
     "ubuntuavailabilityzone" : {
       "Value" : { "Fn::GetAtt" : ["UbuntuSubnet", "AvailabilityZone"] },
       "Description" : "bats subnet availability zone"
@@ -243,6 +272,10 @@
     "centosavailabilityzone" : {
       "Value" : { "Fn::GetAtt" : ["CentosSubnet", "AvailabilityZone"] },
       "Description" : "bats subnet availability zone"
+    },
+    "lifecycleavailabilityzone" : {
+      "Value" : { "Fn::GetAtt" : ["LifecycleSubnet", "AvailabilityZone"] },
+      "Description" : "lifecycle subnet availability zone"
     }
   }
 }
