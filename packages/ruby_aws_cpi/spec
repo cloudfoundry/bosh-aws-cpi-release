@@ -2,6 +2,6 @@
 name: ruby_aws_cpi
 files:
 - ruby_aws_cpi/yaml-0.1.5.tar.gz
-- ruby_aws_cpi/ruby-1.9.3-p545.tar.gz
+- ruby_aws_cpi/ruby-2.1.7.tar.gz
 - ruby_aws_cpi/rubygems-2.1.11.tgz
 - ruby_aws_cpi/bundler-1.8.2.gem
