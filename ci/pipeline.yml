@@ -70,9 +70,9 @@ jobs:
 - name: bats-ubuntu
   plan:
   - aggregate:
-    - {trigger: true,  passed: [deploy-ubuntu],    get: bosh-cpi-dev-artifacts}
-    - {trigger: false, passed: [deploy-ubuntu],    get: stemcell, resource: aws-ubuntu-stemcell}
-    - {trigger: false, passed: [deploy-ubuntu],    get: bosh-cpi-release, resource: bosh-cpi-release-in}
+    - {trigger: true,                              get: bosh-cpi-dev-artifacts}
+    - {trigger: false,                             get: stemcell, resource: aws-ubuntu-stemcell}
+    - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
     - {trigger: false,                             get: bats}
     - {trigger: false,                             get: bosh-init}
     - {trigger: false, passed: [build-candidate],  get: version-semver}
@@ -115,9 +115,9 @@ jobs:
   serial_groups: [centos] # can't run while deploying
   plan:
   - aggregate:
-    - {trigger: true,  passed: [deploy-centos],    get: bosh-cpi-dev-artifacts}
-    - {trigger: false, passed: [deploy-centos],    get: stemcell, resource: aws-centos-stemcell}
-    - {trigger: false, passed: [deploy-centos],    get: bosh-cpi-release, resource: bosh-cpi-release-in}
+    - {trigger: true,                              get: bosh-cpi-dev-artifacts}
+    - {trigger: false,                             get: stemcell, resource: aws-centos-stemcell}
+    - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
     - {trigger: false,                             get: bosh-init}
     - {trigger: false, passed: [build-candidate],  get: version-semver}
     - {trigger: false,                             get: bats}
