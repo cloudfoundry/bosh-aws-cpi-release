@@ -2,16 +2,7 @@
 platform: linux
 image: docker:///boshcpi/aws-cpi-release
 inputs:
-- name: bosh-cpi-dev-artifacts
-- name: version-semver
 - name: bosh-cpi-release
-- name: director-state-file
-- name: director-manifest-file
-- name: bosh-init              # --- bosh-init executable to do deploy
-- name: bosh-release           # -\
-- name: stemcell               # -/
-
+- name: setup-director
 run:
   path: bosh-cpi-release/ci/tasks/teardown-director.sh
-params:
-  base_os:                      replace-me

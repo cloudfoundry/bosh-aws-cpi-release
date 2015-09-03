@@ -4,9 +4,7 @@ groups:
     jobs:
       - build-candidate
       - recreate-infrastructure
-      - deploy-ubuntu
       - bats-ubuntu
-      - deploy-centos
       - bats-centos
       - lifecycle
       - promote-candidate
@@ -14,18 +12,29 @@ groups:
   - name: ubuntu
     jobs:
       - build-candidate
-      - deploy-ubuntu
       - bats-ubuntu
       - promote-candidate
 
   - name: centos
     jobs:
       - build-candidate
-      - deploy-centos
       - bats-centos
       - promote-candidate
 
 jobs:
+- name: recreate-infrastructure
+  plan:
+  - aggregate:
+    - {trigger: false, get: bosh-cpi-release,     resource: bosh-cpi-release-in}
+
+  - task: cloudformation
+    file: bosh-cpi-release/ci/tasks/cloudformation.yml
+    config:
+      params:
+        aws_access_key_id:        {{s3_aws_cpi_access_key}}
+        aws_secret_access_key:    {{s3_aws_cpi_secret_key}}
+        region_name:              us-east-1
+
 - name: build-candidate
   serial: true
   plan:
@@ -58,33 +67,19 @@ jobs:
         region_name:                  {{s3_aws_cpi_region}}
         lifecycle_manual_ip:          {{lifecycle_BOSH_AWS_LIFECYCLE_MANUAL_IP}}
 
-- name: recreate-infrastructure
+- name: bats-ubuntu
   plan:
   - aggregate:
-    - {trigger: false, get: bosh-cpi-release,     resource: bosh-cpi-release-in}
-
-  - task: cloudformation
-    file: bosh-cpi-release/ci/tasks/cloudformation.yml
-    config:
-      params:
-        aws_access_key_id:        {{s3_aws_cpi_access_key}}
-        aws_secret_access_key:    {{s3_aws_cpi_secret_key}}
-        region_name:              us-east-1
-
-- name: deploy-ubuntu
-  serial_groups: [ubuntu]
-  plan:
-  - aggregate:
-    - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-dev-artifacts}
-    - {trigger: false, passed: [build-candidate],  get: version-semver}
-    - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
-    - {trigger: false,                             get: director-state-file, resource: ubuntu-director-state-file}
-    - {trigger: false,                             get: bosh-init}
-    - {trigger: false,                             get: bosh-release}
+    - {trigger: true,                              get: bosh-cpi-dev-artifacts}
     - {trigger: false,                             get: stemcell, resource: aws-ubuntu-stemcell}
+    - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
+    - {trigger: false,                             get: bats}
+    - {trigger: false,                             get: bosh-init}
+    - {trigger: false, passed: [build-candidate],  get: version-semver}
+    - {trigger: false,                             get: bosh-release}
 
-  - task: deploy
-    file: bosh-cpi-release/ci/tasks/deploy.yml
+  - task: setup-director
+    file: bosh-cpi-release/ci/tasks/setup-director.yml
     config:
       params:
         base_os:                    ubuntu
@@ -95,28 +90,8 @@ jobs:
         AWS_NETWORK_CIDR:           {{AWS_NETWORK_CIDR_ubuntu}}
         AWS_NETWORK_GATEWAY:        {{AWS_NETWORK_GATEWAY_ubuntu}}
         PRIVATE_DIRECTOR_STATIC_IP: {{PRIVATE_DIRECTOR_STATIC_IP_ubuntu}}
-    ensure:
-      do:
-      - put: ubuntu-director-state-file
-        params: {from: deploy/director-state-file/ubuntu-director-manifest-state.json}
-      - put: ubuntu-director-manifest-file
-        params: {from: director-state-file/ubuntu-director-manifest.yml}
 
-- name: bats-ubuntu
-  serial_groups: [ubuntu]
-  plan:
-  - aggregate:
-    - {trigger: true,  passed: [deploy-ubuntu],    get: bosh-cpi-dev-artifacts}
-    - {trigger: false, passed: [deploy-ubuntu],    get: stemcell, resource: aws-ubuntu-stemcell}
-    - {trigger: false, passed: [deploy-ubuntu],    get: bosh-cpi-release, resource: bosh-cpi-release-in}
-    - {trigger: false,                             get: bats}
-    - {trigger: false,                             get: bosh-init}
-    - {trigger: false,                             get: director-state-file, resource: ubuntu-director-state-file}
-    - {trigger: false,                             get: director-manifest-file, resource: ubuntu-director-manifest-file}
-    - {trigger: false, passed: [build-candidate],  get: version-semver}
-    - {trigger: false,                             get: bosh-release}
-
-  - task: test
+  - task: run-bats
     file: bosh-cpi-release/ci/tasks/run-bats.yml
     config:
       params:
@@ -125,7 +100,6 @@ jobs:
         aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
         region_name:                {{s3_aws_cpi_region}}
         BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
-        private_key_data:           {{bosh_private_key}}
         BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_ubuntu}}
         BAT_SECOND_STATIC_IP:       {{BAT_SECOND_STATIC_IP_ubuntu}}
         BAT_NETWORK_STATIC_IP:      {{BAT_NETWORK_STATIC_IP_ubuntu}}
@@ -133,31 +107,24 @@ jobs:
         BAT_NETWORK_RESERVED_RANGE: {{BAT_NETWORK_RESERVED_RANGE_ubuntu}}
         BAT_NETWORK_GATEWAY:        {{AWS_NETWORK_GATEWAY_ubuntu}}
         BAT_NETWORK_STATIC_RANGE:   {{BAT_NETWORK_STATIC_RANGE_ubuntu}}
-    on_success:
-      task: teardown-director
-      file: bosh-cpi-release/ci/tasks/teardown-director.yml
-      config:
-        params:
-          base_os:                  ubuntu
-      ensure:
-        do:
-        - put: ubuntu-director-state-file
-          params: {from: test/director-state-file/ubuntu-director-manifest-state.json}
 
-- name: deploy-centos
-  serial_groups: [centos] # shouldn't deploy while bats run
+  - task: teardown-director
+    file: bosh-cpi-release/ci/tasks/teardown-director.yml
+
+- name: bats-centos
+  serial_groups: [centos] # can't run while deploying
   plan:
   - aggregate:
-    - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-dev-artifacts}
-    - {trigger: false, passed: [build-candidate],  get: version-semver}
-    - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
-    - {trigger: false,                             get: director-state-file, resource: centos-director-state-file}
-    - {trigger: false,                             get: bosh-init}
-    - {trigger: false,                             get: bosh-release}
+    - {trigger: true,                              get: bosh-cpi-dev-artifacts}
     - {trigger: false,                             get: stemcell, resource: aws-centos-stemcell}
+    - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
+    - {trigger: false,                             get: bosh-init}
+    - {trigger: false, passed: [build-candidate],  get: version-semver}
+    - {trigger: false,                             get: bats}
+    - {trigger: false,                             get: bosh-release}
 
-  - task: deploy
-    file: bosh-cpi-release/ci/tasks/deploy.yml
+  - task: setup-director
+    file: bosh-cpi-release/ci/tasks/setup-director.yml
     config:
       params:
         base_os:                    centos
@@ -168,28 +135,8 @@ jobs:
         AWS_NETWORK_CIDR:           {{AWS_NETWORK_CIDR_centos}}
         AWS_NETWORK_GATEWAY:        {{AWS_NETWORK_GATEWAY_centos}}
         PRIVATE_DIRECTOR_STATIC_IP: {{PRIVATE_DIRECTOR_STATIC_IP_centos}}
-    ensure:
-      do:
-      - put: centos-director-state-file
-        params: {from: deploy/director-state-file/centos-director-manifest-state.json}
-      - put: centos-director-manifest-file
-        params: {from: deploy/director-state-file/centos-director-manifest.yml}
 
-- name: bats-centos
-  serial_groups: [centos] # can't run while deploying
-  plan:
-  - aggregate:
-    - {trigger: true,  passed: [deploy-centos],    get: bosh-cpi-dev-artifacts}
-    - {trigger: false, passed: [deploy-centos],    get: stemcell, resource: aws-centos-stemcell}
-    - {trigger: false, passed: [deploy-centos],    get: bosh-cpi-release, resource: bosh-cpi-release-in}
-    - {trigger: false,                             get: bosh-init}
-    - {trigger: false,                             get: director-state-file, resource: centos-director-state-file}
-    - {trigger: false,                             get: director-manifest-file, resource: centos-director-manifest-file}
-    - {trigger: false, passed: [build-candidate],  get: version-semver}
-    - {trigger: false,                             get: bats}
-    - {trigger: false,                             get: bosh-release}
-
-  - task: test
+  - task: run-bats
     file: bosh-cpi-release/ci/tasks/run-bats.yml
     config:
       params:
@@ -198,7 +145,6 @@ jobs:
         aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
         region_name:                {{s3_aws_cpi_region}}
         BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
-        private_key_data:           {{bosh_private_key}}
         BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_centos}}
         BAT_SECOND_STATIC_IP:       {{BAT_SECOND_STATIC_IP_centos}}
         BAT_NETWORK_STATIC_IP:      {{BAT_NETWORK_STATIC_IP_centos}}
@@ -206,16 +152,9 @@ jobs:
         BAT_NETWORK_RESERVED_RANGE: {{BAT_NETWORK_RESERVED_RANGE_centos}}
         BAT_NETWORK_GATEWAY:        {{AWS_NETWORK_GATEWAY_centos}}
         BAT_NETWORK_STATIC_RANGE:   {{BAT_NETWORK_STATIC_RANGE_centos}}
-    on_success:
-      task: teardown-director
-      file: bosh-cpi-release/ci/tasks/teardown-director.yml
-      config:
-        params:
-          base_os:                  centos
-      ensure:
-        do:
-        - put: centos-director-state-file
-          params: {from: test/director-state-file/centos-director-manifest-state.json}
+
+  - task: teardown-director
+    file: bosh-cpi-release/ci/tasks/teardown-director.yml
 
 - name: promote-candidate
   plan:
@@ -247,42 +186,6 @@ resources:
     region_name: {{s3_aws_cpi_region}}
     access_key_id: {{s3_aws_cpi_access_key}}
     secret_access_key: {{s3_aws_cpi_secret_key}}
-
-- name: ubuntu-director-state-file
-  type: s3
-  source:
-    bucket:            {{s3_aws_cpi_ubuntu_director_state_file_bucket}}
-    versioned_file:    ubuntu-director-manifest-state.json
-    region_name:       us-east-1
-    access_key_id:     {{s3_aws_cpi_ubuntu_director_state_file_access_key}}
-    secret_access_key: {{s3_aws_cpi_ubuntu_director_state_file_secret_key}}
-
-- name: centos-director-state-file
-  type: s3
-  source:
-    bucket:            {{s3_aws_cpi_centos_director_state_file_bucket}}
-    versioned_file:    centos-director-manifest-state.json
-    region_name:       us-east-1
-    access_key_id:     {{s3_aws_cpi_centos_director_state_file_access_key}}
-    secret_access_key: {{s3_aws_cpi_centos_director_state_file_secret_key}}
-
-- name: ubuntu-director-manifest-file
-  type: s3
-  source:
-    bucket:            {{s3_aws_cpi_ubuntu_director_state_file_bucket}}
-    versioned_file:    ubuntu-director-manifest.yml
-    region_name:       us-east-1
-    access_key_id:     {{s3_aws_cpi_ubuntu_director_state_file_access_key}}
-    secret_access_key: {{s3_aws_cpi_ubuntu_director_state_file_secret_key}}
-
-- name: centos-director-manifest-file
-  type: s3
-  source:
-    bucket:            {{s3_aws_cpi_centos_director_state_file_bucket}}
-    versioned_file:    centos-director-manifest.yml
-    region_name:       us-east-1
-    access_key_id:     {{s3_aws_cpi_centos_director_state_file_access_key}}
-    secret_access_key: {{s3_aws_cpi_centos_director_state_file_secret_key}}
 
 - name: bosh-cpi-release-in
   type: git

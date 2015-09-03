@@ -8,7 +8,6 @@ check_param base_os
 check_param aws_access_key_id
 check_param aws_secret_access_key
 check_param region_name
-check_param private_key_data
 check_param BAT_VCAP_PASSWORD
 check_param BAT_SECOND_STATIC_IP
 check_param BAT_NETWORK_CIDR
@@ -35,11 +34,9 @@ sg_id=$(get_stack_info_of "${stack_info}" "securitygroupid")
 SECURITY_GROUP_NAME=$(aws ec2 describe-security-groups --group-ids ${sg_id} | jq -r '.SecurityGroups[] .GroupName')
 AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "${base_os}availabilityzone")
 
-mkdir -p $PWD/keys
-echo "$private_key_data" > $PWD/keys/bats.pem
 eval $(ssh-agent)
-chmod go-r $PWD/keys/bats.pem
-ssh-add $PWD/keys/bats.pem
+private_key=${PWD}/setup-director/deployment/bats.pem
+ssh-add ${private_key}
 
 export BAT_DIRECTOR=$DIRECTOR
 export BAT_DNS_HOST=$DIRECTOR
@@ -50,7 +47,7 @@ export BAT_NETWORKING=manual
 export BAT_VIP=$VIP
 export BAT_SUBNET_ID=$SUBNET_ID
 export BAT_SECURITY_GROUP_NAME=$SECURITY_GROUP_NAME
-export BAT_VCAP_PRIVATE_KEY=$PWD/keys/bats.pem
+export BAT_VCAP_PRIVATE_KEY=${private_key}
 
 bosh -n target $BAT_DIRECTOR
 
