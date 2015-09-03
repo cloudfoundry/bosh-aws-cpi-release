@@ -64,7 +64,7 @@ networks:
   - range:    ${AWS_NETWORK_CIDR}
     gateway:  ${AWS_NETWORK_GATEWAY}
     dns:      [8.8.8.8]
-    cloud_properties: {subnet: $SUBNET_ID}
+    cloud_properties: {subnet: ${SUBNET_ID}}
 - name: public
   type: vip
 
@@ -75,7 +75,7 @@ resource_pools:
     url: file://stemcell.tgz
   cloud_properties:
     instance_type: m3.xlarge
-    availability_zone: $AVAILABILITY_ZONE
+    availability_zone: ${AVAILABILITY_ZONE}
     ephemeral_disk:
       size: 25000
       type: gp2
@@ -103,10 +103,10 @@ jobs:
 
   networks:
   - name: private
-    static_ips: [$PRIVATE_DIRECTOR_STATIC_IP]
+    static_ips: [${PRIVATE_DIRECTOR_STATIC_IP}]
     default: [dns, gateway]
   - name: public
-    static_ips: [$DIRECTOR]
+    static_ips: [${DIRECTOR}]
 
   properties:
     nats:
@@ -128,8 +128,8 @@ jobs:
 
     # Tells the Director/agents how to contact registry
     registry:
-      address: $PRIVATE_DIRECTOR_STATIC_IP
-      host: $PRIVATE_DIRECTOR_STATIC_IP
+      address: ${PRIVATE_DIRECTOR_STATIC_IP}
+      host: ${PRIVATE_DIRECTOR_STATIC_IP}
       db: *db
       http: {user: admin, password: admin, port: 25777}
       username: admin
@@ -138,7 +138,7 @@ jobs:
 
     # Tells the Director/agents how to contact blobstore
     blobstore:
-      address: $PRIVATE_DIRECTOR_STATIC_IP
+      address: ${PRIVATE_DIRECTOR_STATIC_IP}
       port: 25250
       provider: dav
       director: {user: director, password: director-password}
@@ -155,14 +155,14 @@ jobs:
       director_account: {user: admin, password: admin}
 
     aws: &aws
-      access_key_id: $aws_access_key_id
-      secret_access_key: $aws_secret_access_key
+      access_key_id: ${aws_access_key_id}
+      secret_access_key: ${aws_secret_access_key}
       default_key_name: "bats"
       default_security_groups: ["${SECURITY_GROUP_NAME}"]
       region: "${region_name}"
 
     # Tells agents how to contact nats
-    agent: {mbus: "nats://nats:nats-password@$PRIVATE_DIRECTOR_STATIC_IP:4222"}
+    agent: {mbus: "nats://nats:nats-password@${PRIVATE_DIRECTOR_STATIC_IP}:4222"}
 
     ntp: &ntp
     - 0.north-america.pool.ntp.org
@@ -173,13 +173,13 @@ cloud_provider:
 
   # Tells bosh-micro how to SSH into deployed VM
   ssh_tunnel:
-    host: $DIRECTOR
+    host: ${DIRECTOR}
     port: 22
     user: vcap
     private_key: ${private_key}
 
   # Tells bosh-micro how to contact remote agent
-  mbus: https://mbus-user:mbus-password@$DIRECTOR:6868
+  mbus: https://mbus-user:mbus-password@${DIRECTOR}:6868
 
   properties:
     aws: *aws
@@ -196,7 +196,7 @@ EOF
 
 initver=$(cat bosh-init/version)
 initexe="$PWD/bosh-init/bosh-init-${initver}-linux-amd64"
-chmod +x $initexe
+chmod +x ${initexe}
 
 echo "using bosh-init CLI version..."
 $initexe version

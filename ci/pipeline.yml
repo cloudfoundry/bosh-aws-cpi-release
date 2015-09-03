@@ -100,7 +100,6 @@ jobs:
         aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
         region_name:                {{s3_aws_cpi_region}}
         BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
-        private_key_data:           {{bosh_private_key}}
         BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_ubuntu}}
         BAT_SECOND_STATIC_IP:       {{BAT_SECOND_STATIC_IP_ubuntu}}
         BAT_NETWORK_STATIC_IP:      {{BAT_NETWORK_STATIC_IP_ubuntu}}
@@ -146,7 +145,6 @@ jobs:
         aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
         region_name:                {{s3_aws_cpi_region}}
         BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
-        private_key_data:           {{bosh_private_key}}
         BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_centos}}
         BAT_SECOND_STATIC_IP:       {{BAT_SECOND_STATIC_IP_centos}}
         BAT_NETWORK_STATIC_IP:      {{BAT_NETWORK_STATIC_IP_centos}}
