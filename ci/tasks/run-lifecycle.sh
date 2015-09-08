@@ -22,6 +22,8 @@ export BOSH_AWS_DEFAULT_KEY_NAME='bats'
 export BOSH_AWS_SUBNET_ID=$(get_stack_info_of "${stack_info}" "lifecyclesubnetid")
 export BOSH_AWS_SUBNET_ZONE=$(get_stack_info_of "${stack_info}" "lifecycleavailabilityzone")
 export BOSH_AWS_LIFECYCLE_MANUAL_IP=${lifecycle_manual_ip}
+export BOSH_AWS_ELB_ENDPOINT=$(get_stack_info_of "${stack_info}" "lifecycleelb")
+export BOSH_AWS_ELB_ID="bosh-aws-cpi-lifecycle-elb"
 
 export BOSH_CLI_SILENCE_SLOW_LOAD_WARNING=true
 

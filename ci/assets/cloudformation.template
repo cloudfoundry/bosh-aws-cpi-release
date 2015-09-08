@@ -40,6 +40,22 @@
       }
     },
 
+    "LifecycleELB" : {
+      "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties" : {
+        "Listeners": [{
+            "InstancePort" : 80,
+            "LoadBalancerPort" : 80,
+            "Protocol" : "HTTP"
+          }
+        ],
+        "LoadBalancerName" : "bosh-aws-cpi-lifecycle-elb",
+        "SecurityGroups" : [ {"Ref" : "BATSSecurityGroup"} ],
+        "Subnets" : [ {"Ref" : "LifecycleSubnet"} ],
+        "Tags" : [ {"Key" : "Name", "Value" : "bosh-aws-cpi-lifecycle-elb" } ]
+      }
+    },
+
     "InternetGateway" : {
       "Type" : "AWS::EC2::InternetGateway",
       "Properties" : {
@@ -276,6 +292,10 @@
     "lifecycleavailabilityzone" : {
       "Value" : { "Fn::GetAtt" : ["LifecycleSubnet", "AvailabilityZone"] },
       "Description" : "lifecycle subnet availability zone"
+    },
+    "lifecycleelb" : {
+      "Value" : { "Fn::GetAtt" : ["LifecycleELB", "DNSName"] },
+      "Description" : "lifecycle elb endpoint"
     }
   }
 }
