@@ -11,6 +11,8 @@ describe Bosh::AwsCloud::Cloud do
     @subnet_id         = ENV['BOSH_AWS_SUBNET_ID']           || raise("Missing BOSH_AWS_SUBNET_ID")
     @subnet_zone       = ENV['BOSH_AWS_SUBNET_ZONE']         || raise("Missing BOSH_AWS_SUBNET_ZONE")
     @manual_ip         = ENV['BOSH_AWS_LIFECYCLE_MANUAL_IP'] || raise("Missing BOSH_AWS_LIFECYCLE_MANUAL_IP")
+    @elb_endpoint      = ENV['BOSH_AWS_ELB_ENDPOINT']        || raise("Missing BOSH_AWS_ELB_ENDPOINT")
+    @elb_id            = ENV['BOSH_AWS_ELB_ID']              || raise("Missing BOSH_AWS_ELB_ID")
   end
 
   let(:instance_type_with_ephemeral)    { ENV.fetch('BOSH_AWS_INSTANCE_TYPE', 'm3.medium') }
@@ -36,7 +38,8 @@ describe Bosh::AwsCloud::Cloud do
         'fast_path_delete' => 'yes',
         'access_key_id' => @access_key_id,
         'secret_access_key' => @secret_access_key,
-        'default_availability_zone' => @subnet_zone
+        'default_availability_zone' => @subnet_zone,
+        'elb_endpoint' => @elb_endpoint
       },
       'registry' => {
         'endpoint' => 'fake',
@@ -88,6 +91,46 @@ describe Bosh::AwsCloud::Cloud do
         }
 
       }
+    end
+
+    context 'resource_pool specifies elb for instance' do
+      let(:resource_pool) { { 'instance_type' => instance_type, 'elbs' => [@elb_id] } }
+
+      it 'registers new instance with elb' do
+        begin
+          disk_id = cpi.create_disk(2048, {})
+          expect(cpi.has_disk?(disk_id)).to be(true)
+
+          stemcell_id = cpi.create_stemcell('/not/a/real/path', {'ami' => {'us-east-1' => ami}})
+          vm_id = cpi.create_vm(
+            nil,
+            stemcell_id,
+            resource_pool,
+            network_spec,
+            [disk_id],
+            nil,
+          )
+          aws_params = {
+            'access_key_id' => @access_key_id,
+            'secret_access_key' => @secret_access_key
+          }
+            elb_client = AWS::ELB::Client.new(aws_params)
+          instances = elb_client.describe_load_balancers({:load_balancer_names => [@elb_id]})[:load_balancer_descriptions]
+                        .first[:instances].first[:instance_id]
+          expect(instances).to include(vm_id)
+
+
+          cpi.delete_vm(vm_id)
+          vm_id=nil
+          instances = elb_client.describe_load_balancers({:load_balancer_names => [@elb_id]})[:load_balancer_descriptions]
+                        .first[:instances]
+          expect(instances).to be_empty
+        ensure
+          cpi.delete_disk(disk_id) if disk_id
+          cpi.delete_stemcell(stemcell_id) if stemcell_id
+          cpi.delete_vm(vm_id) if vm_id
+        end
+      end
     end
 
     context 'without existing disks' do

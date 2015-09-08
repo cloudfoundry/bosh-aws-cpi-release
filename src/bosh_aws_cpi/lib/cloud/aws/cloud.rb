@@ -57,7 +57,12 @@ module Bosh::AwsCloud
       initialize_aws
       initialize_registry
 
-      elb = AWS::ELB.new(@aws_params)
+      aws_elb_params = {
+        access_key_id:     aws_properties['access_key_id'],
+        secret_access_key: aws_properties['secret_access_key']
+      }
+
+      elb = AWS::ELB.new(aws_elb_params)
 
       @instance_manager = InstanceManager.new(region, registry, elb, az_selector, @logger)
 
