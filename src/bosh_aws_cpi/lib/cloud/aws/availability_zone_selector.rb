@@ -9,7 +9,12 @@ module Bosh::AwsCloud
 
     def common_availability_zone(volume_az_names, resource_pool_az_name, vpc_subnet_az_name)
       zone_names = (volume_az_names + [resource_pool_az_name, vpc_subnet_az_name]).compact.uniq
-      ensure_same_availability_zone(zone_names)
+      if zone_names.size > 1
+        raise Bosh::Clouds::CloudError,
+          "can't use multiple availability zones: Volume in #{volume_az_names.first}, " +
+              "Resource Pool in #{resource_pool_az_name}, " +
+              "Subnet in #{vpc_subnet_az_name}"
+      end
 
       zone_names.first || @default
     end
@@ -30,11 +35,6 @@ module Bosh::AwsCloud
       zones = []
       region.availability_zones.each { |zone| zones << zone.name }
       zones[Random.rand(zones.size)]
-    end
-
-    def ensure_same_availability_zone(zone_names)
-      raise Bosh::Clouds::CloudError,
-            "can't use multiple availability zones: #{zone_names.join(', ')}" if zone_names.size > 1
     end
   end
 end
