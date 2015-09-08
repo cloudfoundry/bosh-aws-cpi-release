@@ -59,7 +59,8 @@ module Bosh::AwsCloud
 
       aws_elb_params = {
         access_key_id:     aws_properties['access_key_id'],
-        secret_access_key: aws_properties['secret_access_key']
+        secret_access_key: aws_properties['secret_access_key'],
+        region:            aws_properties['region']
       }
 
       elb = AWS::ELB.new(aws_elb_params)
