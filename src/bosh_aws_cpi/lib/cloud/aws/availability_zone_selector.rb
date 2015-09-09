@@ -11,7 +11,7 @@ module Bosh::AwsCloud
       zone_names = (volume_az_names + [resource_pool_az_name, vpc_subnet_az_name]).compact.uniq
       if zone_names.size > 1
         raise Bosh::Clouds::CloudError,
-          "can't use multiple availability zones: Volume in #{volume_az_names.first}, " +
+          "can't use multiple availability zones: Volume in #{volume_az_names.join(', ')}, " +
               "Resource Pool in #{resource_pool_az_name}, " +
               "Subnet in #{vpc_subnet_az_name}"
       end

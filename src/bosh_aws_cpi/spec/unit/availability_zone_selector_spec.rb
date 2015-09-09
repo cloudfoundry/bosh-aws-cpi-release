@@ -14,8 +14,8 @@ describe Bosh::AwsCloud::AvailabilityZoneSelector do
 
     it 'should raise an error when multiple availability zones are present' do
       expect {
-        subject.common_availability_zone(%w[this_zone], 'other_zone', 'another_zone')
-      }.to raise_error Bosh::Clouds::CloudError, "can't use multiple availability zones: Volume in this_zone, Resource Pool in other_zone, Subnet in another_zone"
+        subject.common_availability_zone(%w[this_zone that_zone], 'other_zone', 'another_zone')
+      }.to raise_error Bosh::Clouds::CloudError, "can't use multiple availability zones: Volume in this_zone, that_zone, Resource Pool in other_zone, Subnet in another_zone"
     end
 
     it 'should select the common availability zone' do
