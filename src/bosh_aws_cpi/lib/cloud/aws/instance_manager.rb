@@ -5,60 +5,68 @@ module Bosh::AwsCloud
   class InstanceManager
     include Helpers
 
+    class DiskInfo
+      attr_reader :size, :count
+      def initialize(size, count)
+        @size = size
+        @count = count
+      end
+    end
+
     InstanceStorageMap = {
         # previous generation
-        'm1.small' => 160,
-        'm1.medium' => 410,
-        'm1.large' => 420,
-        'm1.xlarge' => 420,
+        'm1.small' => DiskInfo.new(160, 1),
+        'm1.medium' => DiskInfo.new(410, 1),
+        'm1.large' => DiskInfo.new(420, 2),
+        'm1.xlarge' => DiskInfo.new(420, 4),
 
-        'c1.medium' => 350,
-        'c1.xlarge' => 420,
+        'c1.medium' => DiskInfo.new(350, 1),
+        'c1.xlarge' => DiskInfo.new(420, 4),
 
-        'cc2.8xlarge' => 840,
+        'cc2.8xlarge' => DiskInfo.new(840, 4),
 
-        'cg1.4xlarge' => 840,
+        'cg1.4xlarge' => DiskInfo.new(840, 2),
 
-        'm2.xlarge' => 420,
-        'm2.2xlarge' => 850,
-        'm2.4xlarge' => 840,
+        'm2.xlarge' => DiskInfo.new(420, 1),
+        'm2.2xlarge' => DiskInfo.new(850, 1),
+        'm2.4xlarge' => DiskInfo.new(840, 2),
 
-        'cr1.8xlarge' => 120,
+        'cr1.8xlarge' => DiskInfo.new(120, 2),
 
-        'hi1.4xlarge' => 1024,
+        'hi1.4xlarge' => DiskInfo.new(1024, 2),
 
-        'hs1.8xlarge' => 2000,
+        'hs1.8xlarge' => DiskInfo.new(2000, 24),
 
         # current generation
-        'm3.medium' => 4,
-        'm3.large' => 32,
-        'm3.xlarge' => 40,
-        'm3.2xlarge' => 80,
+        'm3.medium' => DiskInfo.new(4, 1),
+        'm3.large' => DiskInfo.new(32, 1),
+        'm3.xlarge' => DiskInfo.new(40, 2),
+        'm3.2xlarge' => DiskInfo.new(80, 2),
 
-        'c3.large' => 16,
-        'c3.xlarge' => 40,
-        'c3.2xlarge' => 80,
-        'c3.4xlarge' => 160,
-        'c3.8xlarge' => 320,
+        'c3.large' => DiskInfo.new(16, 2),
+        'c3.xlarge' => DiskInfo.new(40, 2),
+        'c3.2xlarge' => DiskInfo.new(80, 2),
+        'c3.4xlarge' => DiskInfo.new(160, 2),
+        'c3.8xlarge' => DiskInfo.new(320, 2),
 
-        'r3.large' => 32,
-        'r3.xlarge' => 80,
-        'r3.2xlarge' => 160,
-        'r3.4xlarge' => 320,
-        'r3.8xlarge' => 320,
+        'r3.large' => DiskInfo.new(32, 1),
+        'r3.xlarge' => DiskInfo.new(80, 1),
+        'r3.2xlarge' => DiskInfo.new(160, 1),
+        'r3.4xlarge' => DiskInfo.new(320, 1),
+        'r3.8xlarge' => DiskInfo.new(320, 2),
 
-        'g2.2xlarge' => 60,
-        'g2.8xlarge' => 120,
+        'g2.2xlarge' => DiskInfo.new(60, 1),
+        'g2.8xlarge' => DiskInfo.new(120, 2),
 
-        'i2.xlarge' => 800,
-        'i2.2xlarge' => 800,
-        'i2.4xlarge' => 800,
-        'i2.8xlarge' => 800,
+        'i2.xlarge' => DiskInfo.new(800, 1),
+        'i2.2xlarge' => DiskInfo.new(800, 2),
+        'i2.4xlarge' => DiskInfo.new(800, 4),
+        'i2.8xlarge' => DiskInfo.new(800, 8),
 
-        'd2.xlarge' => 2000,
-        'd2.2xlarge' => 2000,
-        'd2.4xlarge' => 2000,
-        'd2.8xlarge' => 2000
+        'd2.xlarge' => DiskInfo.new(2000, 3),
+        'd2.2xlarge' => DiskInfo.new(2000, 6),
+        'd2.4xlarge' => DiskInfo.new(2000, 12),
+        'd2.8xlarge' => DiskInfo.new(2000, 24)
     }
 
     def initialize(region, registry, elb, az_selector, logger)
@@ -155,7 +163,8 @@ module Bosh::AwsCloud
       ephemeral_volume_type = ephemeral_disk_options.fetch('type', 'standard')
       instance_type = ephemeral_disk_options.fetch('instance_type', '')
 
-      instance_storage_size_gb = InstanceManager::InstanceStorageMap[instance_type]
+      local_disk_info = InstanceManager::InstanceStorageMap[instance_type]
+      instance_storage_size_gb = local_disk_info.size unless local_disk_info.nil?
 
       if instance_storage_size_gb.nil? || instance_storage_size_gb < ephemeral_volume_size_in_gb
         @logger.debug('Use EBS storage to create the virtual machine')
