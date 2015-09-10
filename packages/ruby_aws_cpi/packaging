@@ -1,5 +1,18 @@
 set -e
 
+tar xzf ruby_aws_cpi/openssl-1.0.2d.tar.gz
+(
+  set -e
+  cd openssl-1.0.2d
+  ./configure darwin64-x86_64-cc --prefix=${BOSH_INSTALL_TARGET}
+  make
+  make install
+)
+if [[ $? != 0 ]] ; then
+  echo "Cannot install openssl"
+  exit 1
+fi
+
 tar xzf ruby_aws_cpi/yaml-0.1.5.tar.gz
 (
   set -e
