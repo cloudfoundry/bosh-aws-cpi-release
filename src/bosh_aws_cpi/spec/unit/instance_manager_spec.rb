@@ -38,7 +38,10 @@ describe Bosh::AwsCloud::InstanceManager do
         security_groups: ['baz'],
         private_ip_address: '1.2.3.4',
         availability_zone: 'us-east-1a',
-        block_device_mappings: { '/dev/sdb' => 'ephemeral0' }
+        block_device_mappings: [{
+                                    device_name: '/dev/sdb',
+                                    virtual_name: 'ephemeral0',
+                                }]
       }
     end
 
@@ -68,24 +71,23 @@ describe Bosh::AwsCloud::InstanceManager do
     let(:disk_locality) { nil }
     let(:environment) { nil }
     let(:instance_options) { {'aws' => {'region' => 'us-east-1'}} }
+    let(:block_devices) {[
+        {
+            device_name: 'fake-image-root-device',
+            ebs: {
+                volume_size: 17
+            }
+        }
+    ]}
 
     before do
       allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
-
-      block_devices = [
-        {
-          device_name: 'fake-image-root-device',
-          ebs: {
-            volume_size: 17
-          }
-        }
-      ]
-
       allow(region).to receive(:images).and_return(
         {
           stemcell_id => instance_double('AWS::EC2::Image',
             block_devices: block_devices,
-            root_device_name: 'fake-image-root-device'
+            root_device_name: 'fake-image-root-device',
+            virtualization_type: :hvm
           )
         }
       )
@@ -248,6 +250,10 @@ describe Bosh::AwsCloud::InstanceManager do
           resource_pool['instance_type'] = type
         end
 
+        def set_raw_instance_storage
+          resource_pool['raw_instance_storage'] = true
+        end
+
         context 'when ephemeral disk size is specified' do
           before do
             resource_pool['ephemeral_disk'] = { 'size' => 0, 'type' => 'gp2' }
@@ -258,41 +264,128 @@ describe Bosh::AwsCloud::InstanceManager do
           end
 
           context 'when instance type has instance storage' do
-            before { set_instance_type 'm3.medium' }
+            before { set_instance_type 'm3.xlarge' }
 
-            it 'uses ebs storage when specified ephemeral disk size is bigger than instance storage' do
-              set_ephemeral_disk_size 5000
+            context 'when raw_instance_storage is false' do
+              it 'uses ebs storage when specified ephemeral disk size is bigger than instance storage' do
+                set_ephemeral_disk_size 51200
 
-              allow(aws_instances).to receive(:create) { aws_instance }
+                allow(aws_instances).to receive(:create) { aws_instance }
 
-              expect(logger).to receive(:debug).with('Use EBS storage to create the virtual machine')
+                expect(logger).to receive(:debug).with('Use EBS storage to create the virtual machine')
 
-              create_instance
+                create_instance
 
-              expect(aws_instances).to have_received(:create) do |instance_params|
-                expect(instance_params[:block_device_mappings]).to eq([
-                  {
-                    device_name: '/dev/sdb',
-                    ebs: {
-                      volume_size: 5,
-                      volume_type: 'gp2',
-                      delete_on_termination: true,
-                    }
-                  }])
+                expect(aws_instances).to have_received(:create) do |instance_params|
+                  expect(instance_params[:block_device_mappings]).to eq([
+                    {
+                      device_name: '/dev/sdb',
+                      ebs: {
+                        volume_size: 50,
+                        volume_type: 'gp2',
+                        delete_on_termination: true,
+                      }
+                    }])
+                end
+              end
+
+              it 'uses instance storage when specified ephemeral disk size is not bigger than instance storage' do
+                set_ephemeral_disk_size 4000
+
+                allow(aws_instances).to receive(:create) { aws_instance }
+
+                expect(logger).to receive(:debug).with('Use instance storage to create the virtual machine')
+
+                create_instance
+
+                expect(aws_instances).to have_received(:create) do |instance_params|
+                  expect(instance_params[:block_device_mappings]).to eq([{
+                                                                            device_name: '/dev/sdb',
+                                                                            virtual_name: 'ephemeral0',
+                                                                        }])
+                end
               end
             end
 
-            it 'uses instance storage when specified ephemeral disk size is not bigger than instance storage' do
-              set_ephemeral_disk_size 4000
+            context 'when raw_instance_storage is true' do
+              before do
+                set_raw_instance_storage
+                set_ephemeral_disk_size 4000
+                allow(aws_instances).to receive(:create) { aws_instance }
+              end
 
-              allow(aws_instances).to receive(:create) { aws_instance }
+              it 'creates an ebs volume for the ephemeral disk' do
+                expect(logger).to receive(:debug).with('Use EBS storage to create the virtual machine')
 
-              expect(logger).to receive(:debug).with('Use instance storage to create the virtual machine')
+                create_instance
 
-              create_instance
+                expect(aws_instances).to have_received(:create) do |instance_params|
+                  expect(instance_params[:block_device_mappings]).to include(
+                    {
+                      device_name: '/dev/sdb',
+                      ebs: {
+                        volume_size: 4,
+                        volume_type: 'gp2',
+                        delete_on_termination: true,
+                      }
+                    })
+                end
+              end
 
-              expect(aws_instances).to have_received(:create) do |instance_params|
-                expect(instance_params[:block_device_mappings]).to eq({ '/dev/sdb' => 'ephemeral0' })
+              it 'requests all available instance storage disks to be attached to the instance' do
+                create_instance
+
+                expect(aws_instances).to have_received(:create) do |instance_params|
+                  expect(instance_params[:block_device_mappings]).to include(
+                     {
+                       virtual_name: 'ephemeral0',
+                       device_name: '/dev/xvdba',
+                     })
+                  expect(instance_params[:block_device_mappings]).to include(
+                     {
+                       virtual_name: 'ephemeral1',
+                       device_name: '/dev/xvdbb',
+                     })
+                end
+              end
+
+              it 'returns information about the raw ephemeral disks for agent settings' do
+                _, disk_info = create_instance
+                expect(disk_info).to eq({
+                                            "ephemeral" => [{"path" => "/dev/sdb"}],
+                                            "raw_ephemeral" => [{"path" => "/dev/xvdba"}, {"path" => "/dev/xvdbb"}],
+                                        })
+              end
+
+              context 'when the instance is paravirtual' do
+
+                before do
+                  allow(region).to receive(:images).and_return(
+                     {
+                         stemcell_id => instance_double('AWS::EC2::Image',
+                                                        block_devices: block_devices,
+                                                        root_device_name: 'fake-image-root-device',
+                                                        virtualization_type: :paravirtual
+                         )
+                     }
+                 )
+                end
+                it 'attaches instance disks under /dev/sd[c-z]' do
+                  create_instance
+
+                  expect(aws_instances).to have_received(:create) do |instance_params|
+                    expect(instance_params[:block_device_mappings]).to include(
+                      {
+                        virtual_name: 'ephemeral0',
+                        device_name: '/dev/sdc',
+                      })
+                    expect(instance_params[:block_device_mappings]).to include(
+                      {
+                        virtual_name: 'ephemeral1',
+                        device_name: '/dev/sdd',
+                      })
+                  end
+                end
               end
             end
           end
@@ -320,6 +413,15 @@ describe Bosh::AwsCloud::InstanceManager do
                   }])
               end
             end
+
+            it 'raises an error when asked for raw instance storage' do
+              set_raw_instance_storage
+              allow(aws_instances).to receive(:create) { aws_instance }
+
+              expect { create_instance }.to raise_error(
+                               Bosh::Clouds::CloudError,
+                               "raw_instance_storage requested for instance type t2.small that does not have instance storage")
+            end
           end
         end
 
@@ -327,13 +429,54 @@ describe Bosh::AwsCloud::InstanceManager do
           context 'when instance type has instance storage' do
             before { set_instance_type 'm3.medium' }
 
-            it 'uses the instance storage for ephemeral disk' do
-              allow(aws_instances).to receive(:create) { aws_instance }
+            context 'when raw_instance_storage is false' do
 
-              create_instance
+              it 'uses the instance storage for ephemeral disk' do
+                allow(aws_instances).to receive(:create) { aws_instance }
 
-              expect(aws_instances).to have_received(:create) do |instance_params|
-                expect(instance_params[:block_device_mappings]).to eq({ '/dev/sdb' => 'ephemeral0' })
+                create_instance
+
+                expect(aws_instances).to have_received(:create) do |instance_params|
+                  expect(instance_params[:block_device_mappings]).to eq([{
+                                                                             device_name: '/dev/sdb',
+                                                                             virtual_name: 'ephemeral0',
+                                                                         }])
+                end
+              end
+            end
+
+            context 'when raw_instance_storage is true' do
+              before do
+                set_raw_instance_storage
+                allow(aws_instances).to receive(:create) { aws_instance }
+              end
+
+              it 'creates a 10GB ebs disk for ephemeral storage' do
+                create_instance
+
+                expect(aws_instances).to have_received(:create) do |instance_params|
+                  expect(instance_params[:block_device_mappings]).to include(
+                    {
+                      device_name: '/dev/sdb',
+                      ebs: {
+                        volume_size: 10,
+                        volume_type: 'standard',
+                        delete_on_termination: true,
+                      }
+                    })
+                end
+              end
+
+              it 'requests all available instance storage disks to be attached to the instance' do
+                create_instance
+
+                expect(aws_instances).to have_received(:create) do |instance_params|
+                  expect(instance_params[:block_device_mappings]).to include(
+                    {
+                      virtual_name: 'ephemeral0',
+                      device_name: '/dev/xvdba',
+                    })
+                end
               end
             end
           end

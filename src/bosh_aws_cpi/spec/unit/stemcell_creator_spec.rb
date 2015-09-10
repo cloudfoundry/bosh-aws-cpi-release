@@ -75,10 +75,14 @@ describe Bosh::AwsCloud::StemcellCreator do
         expect(params[:description]).to eq("stemcell-name 0.7.0")
         expect(params[:kernel_id]).to eq("aki-xxxxxxxx")
         expect(params[:root_device_name]).to eq("/dev/sda1")
-        expect(params[:block_device_mappings]).to eq({
-          "/dev/sda"=>{:snapshot_id=>"id"},
-          "/dev/sdb"=>"ephemeral0"
-        })
+        expect(params[:block_device_mappings]).to eq(
+                {
+                    "/dev/sda" => {
+                      :snapshot_id=>"id"
+                    },
+                    "/dev/sdb" => "ephemeral0"
+                }
+              )
       end
     end
 
@@ -93,10 +97,14 @@ describe Bosh::AwsCloud::StemcellCreator do
         expect(params).not_to have_key(:kernel_id)
         expect(params[:root_device_name]).to eq("/dev/xvda")
         expect(params[:sriov_net_support]).to eq("simple")
-        expect(params[:block_device_mappings]).to eq({
-          "/dev/xvda"=>{:snapshot_id=>"id"},
-          "/dev/sdb"=>"ephemeral0"
-        })
+        expect(params[:block_device_mappings]).to eq(
+               {
+                   "/dev/xvda" => {
+                      :snapshot_id=>"id"
+                   },
+                   "/dev/sdb" => "ephemeral0"
+               }
+             )
         expect(params[:virtualization_type]).to eq("hvm")
       end
     end

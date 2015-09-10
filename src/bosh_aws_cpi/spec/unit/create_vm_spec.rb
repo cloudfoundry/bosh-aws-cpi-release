@@ -6,6 +6,12 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
   let(:availability_zone_selector) { double("availability zone selector") }
   let(:stemcell) { double("stemcell", root_device_name: "root name", image_id: stemcell_id) }
   let(:instance_manager) { instance_double("Bosh::AwsCloud::InstanceManager") }
+  let (:block_device_agent_info) {
+    {
+        "ephemeral" => [{"path" => "/dev/sdz"}],
+        "raw_ephemeral" => [{"path" => "/dev/xvdba"}, {"path" => "/dev/xvdbb"}],
+    }
+  }
   let(:instance) { instance_double("Bosh::AwsCloud::Instance", id: "fake-id") }
   let(:network_configurator) { double("network configurator") }
 
@@ -67,7 +73,7 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
 
     allow(instance_manager).to receive(:create).
         with(agent_id, stemcell_id, resource_pool, networks_spec, disk_locality, environment, options).
-        and_return(instance)
+        and_return([instance, block_device_agent_info])
 
     allow(Bosh::AwsCloud::NetworkConfigurator).to receive(:new).
         with(networks_spec).
@@ -88,7 +94,7 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
       anything,
       anything,
       anything,
-    ).and_return(instance)
+    ).and_return([instance, block_device_agent_info])
     expect(cloud.create_vm(agent_id, stemcell_id, resource_pool, networks_spec, disk_locality, environment)).to eq("fake-id")
   end
 
@@ -124,7 +130,8 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
         },
         "disks" => {
             "system" => "root name",
-            "ephemeral" => "/dev/sdb",
+            "ephemeral" => "/dev/sdz",
+            "raw_ephemeral" => [{"path" => "/dev/xvdba"}, {"path" => "/dev/xvdbb"}],
             "persistent" => {}
         },
         "env" => environment,

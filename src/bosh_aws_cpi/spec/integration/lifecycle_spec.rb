@@ -23,8 +23,12 @@ describe Bosh::AwsCloud::Cloud do
   let(:disks) { [] }
   let(:network_spec) { {} }
   let(:resource_pool) { { 'instance_type' => instance_type } }
+  let(:registry) { instance_double(Bosh::Registry::Client).as_null_object }
 
-  before { allow(Bosh::Registry::Client).to receive_messages(new: double('registry').as_null_object) }
+  before {
+    allow(Bosh::Registry::Client).to receive(:new).and_return(registry)
+    allow(registry).to receive(:read_settings).and_return({})
+  }
 
   # Use subject-bang because AWS SDK needs to be reconfigured
   # with a current test's logger before new AWS::EC2 object is created.
@@ -217,6 +221,33 @@ describe Bosh::AwsCloud::Cloud do
 
           ephemeral_volume = cpi.ec2.volumes[disks[1]]
           expect(ephemeral_volume.size).to eq(4)
+        end
+      end
+    end
+
+    context 'when raw_instance_storage is true' do
+      let(:resource_pool) do
+        {
+            'instance_type' => instance_type,
+            'raw_instance_storage' => true,
+            'ephemeral_disk' => {
+                'size' => 4 * 1024,
+                'type' => 'gp2'
+            }
+        }
+      end
+      let(:instance_type) { instance_type_with_ephemeral }
+
+      it 'requests all available instance disks and puts the mappings in the registry' do
+        vm_lifecycle do |instance_id|
+          expect(registry).to have_received(:update_settings).with(instance_id, hash_including({
+                "disks" => {
+                    "system" => "/dev/xvda",
+                    "persistent" => {},
+                    "ephemeral" => "/dev/sdb",
+                    "raw_ephemeral" => [{"path" => "/dev/xvdba"}]
+                }
+            }))
         end
       end
     end

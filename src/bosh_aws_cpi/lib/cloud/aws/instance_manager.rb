@@ -78,7 +78,7 @@ module Bosh::AwsCloud
     end
 
     def create(agent_id, stemcell_id, resource_pool, networks_spec, disk_locality, environment, options)
-      instance_params = build_instance_params(stemcell_id, resource_pool, networks_spec, disk_locality, options)
+      instance_params, block_device_info = build_instance_params(stemcell_id, resource_pool, networks_spec, disk_locality, options)
 
       @logger.info("Creating new instance with: #{instance_params.inspect}")
 
@@ -101,7 +101,12 @@ module Bosh::AwsCloud
         raise
       end
 
-      instance
+      block_device_agent_info = block_device_info
+                                    .group_by { |v| v[:bosh_type] }
+                                    .map { |type, devices| {type => devices.map { |device| {"path" => device[:device_name] }}}}
+                                    .inject({}) { |a, b| a.merge(b) }
+
+      return instance, block_device_agent_info
     end
 
     # @param [String] instance_id EC2 instance id
@@ -112,13 +117,13 @@ module Bosh::AwsCloud
     private
 
     def build_instance_params(stemcell_id, resource_pool, networks_spec, disk_locality, options)
+      virtualization_type = @region.images[stemcell_id].virtualization_type
+      block_device_info = block_device_mapping(virtualization_type, resource_pool)
+
       instance_params = {count: 1}
       instance_params[:image_id] = stemcell_id
       instance_params[:instance_type] = resource_pool["instance_type"]
-
-      ephemeral_disk_options = resource_pool.fetch("ephemeral_disk", {})
-      ephemeral_disk_options["instance_type"] = resource_pool["instance_type"]
-      instance_params[:block_device_mappings] = block_device_mapping(ephemeral_disk_options)
+      instance_params[:block_device_mappings] = block_device_info.map { |entry| entry.reject{ |k| k == :bosh_type } }
       instance_params[:placement_group] = resource_pool["placement_group"] if resource_pool["placement_group"]
       instance_params[:dedicated_tenancy] = true if resource_pool["tenancy"] == "dedicated"
 
@@ -133,7 +138,8 @@ module Bosh::AwsCloud
         resource_pool["availability_zone"],
         (instance_params[:subnet].availability_zone_name if instance_params[:subnet])
       )
-      instance_params
+
+      return instance_params, block_device_info
     end
 
     def create_aws_instance(instance_params, spot_bid_price)
@@ -157,16 +163,21 @@ module Bosh::AwsCloud
 
     def instance_create_wait_time; 30; end
 
-    def block_device_mapping(ephemeral_disk_options)
+    def block_device_mapping(virtualization_type, resource_pool)
+      ephemeral_disk_options = resource_pool.fetch("ephemeral_disk", {})
+
       ephemeral_volume_size_in_mb = ephemeral_disk_options.fetch('size', 0)
       ephemeral_volume_size_in_gb = (ephemeral_volume_size_in_mb / 1024.0).ceil
       ephemeral_volume_type = ephemeral_disk_options.fetch('type', 'standard')
-      instance_type = ephemeral_disk_options.fetch('instance_type', '')
+      instance_type = resource_pool.fetch('instance_type', '')
+      raw_instance_storage = resource_pool.fetch('raw_instance_storage', false)
 
       local_disk_info = InstanceManager::InstanceStorageMap[instance_type]
-      instance_storage_size_gb = local_disk_info.size unless local_disk_info.nil?
+      if raw_instance_storage && local_disk_info.nil?
+        raise Bosh::Clouds::CloudError, "raw_instance_storage requested for instance type #{instance_type} that does not have instance storage"
+      end
 
-      if instance_storage_size_gb.nil? || instance_storage_size_gb < ephemeral_volume_size_in_gb
+      if raw_instance_storage || local_disk_info.nil? || local_disk_info.size < ephemeral_volume_size_in_gb
         @logger.debug('Use EBS storage to create the virtual machine')
 
         ephemeral_volume_size_in_gb = 10 if ephemeral_volume_size_in_gb == 0
@@ -176,7 +187,32 @@ module Bosh::AwsCloud
         block_device_mapping_param = default_ephemeral_disk_mapping
       end
 
+      block_device_mapping_param[0][:bosh_type] = 'ephemeral'
+
+      if raw_instance_storage
+        next_device = first_raw_ephemeral_device(virtualization_type)
+        for i in 0..local_disk_info.count - 1 do
+          block_device_mapping_param << {
+              virtual_name: "ephemeral#{i}",
+              device_name: next_device,
+              bosh_type: "raw_ephemeral",
+          }
+          next_device = next_device.next
+        end
+      end
+
       block_device_mapping_param
+    end
+
+    def first_raw_ephemeral_device(virtualization_type)
+      case virtualization_type
+        when :hvm
+          '/dev/xvdba'
+        when :paravirtual
+          '/dev/sdc'
+        else
+          raise Bosh::Clouds::CloudError, "unknown virtualization type #{virtualization_type}"
+      end
     end
 
     def set_key_name_parameter(instance_params, resource_pool_key_name, default_aws_key_name)

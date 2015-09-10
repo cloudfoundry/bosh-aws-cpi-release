@@ -114,7 +114,7 @@ module Bosh::AwsCloud
         stemcell = StemcellFinder.find_by_region_and_id(region, stemcell_id)
 
         begin
-          instance = @instance_manager.create(
+          instance, block_device_agent_info = @instance_manager.create(
             agent_id,
             stemcell.image_id,
             resource_pool,
@@ -133,6 +133,7 @@ module Bosh::AwsCloud
             network_spec,
             environment,
             stemcell.root_device_name,
+            block_device_agent_info
           )
           registry.update_settings(instance.id, registry_settings)
 
@@ -668,7 +669,6 @@ module Bosh::AwsCloud
         hash[attachment.volume.id] = device_name
         hash
       end
-
       if device_map[volume.id].nil?
         raise Bosh::Clouds::DiskNotAttached.new(true),
               "Disk `#{volume.id}' is not attached to instance `#{instance.id}'"
@@ -716,8 +716,11 @@ module Bosh::AwsCloud
     # @param [Hash] network_spec Agent network spec
     # @param [Hash] environment
     # @param [String] root_device_name root device, e.g. /dev/sda1
+    # @param [Hash] block_device_agent_info disk attachment information to merge into the disks section.
+    #   keys are device type ("ephemeral", "raw_ephemeral") and values are array of strings representing the
+    #   path to the block device. It is expected that "ephemeral" has exactly one value.
     # @return [Hash]
-    def initial_agent_settings(agent_id, network_spec, environment, root_device_name)
+    def initial_agent_settings(agent_id, network_spec, environment, root_device_name, block_device_agent_info)
       settings = {
           "vm" => {
               "name" => "vm-#{SecureRandom.uuid}"
@@ -726,10 +729,12 @@ module Bosh::AwsCloud
           "networks" => agent_network_spec(network_spec),
           "disks" => {
               "system" => root_device_name,
-              "ephemeral" => "/dev/sdb",
               "persistent" => {}
           }
       }
+
+      settings["disks"].merge!(block_device_agent_info)
+      settings["disks"]["ephemeral"] = settings["disks"]["ephemeral"][0]["path"]
 
       settings["env"] = environment if environment
       settings.merge(agent_properties)

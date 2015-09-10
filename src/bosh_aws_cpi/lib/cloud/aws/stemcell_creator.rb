@@ -120,16 +120,21 @@ module Bosh::AwsCloud
       params.merge!(
         :name => "BOSH-#{SecureRandom.uuid}",
         :architecture => architecture,
-        :block_device_mappings => params[:block_device_mappings].merge(
-          default_ephemeral_disk_mapping
-        )
       )
+      merge_default_ephemeral_mapping_for_create_disk(params)
 
       params
     end
 
     def logger
       Bosh::Clouds::Config.logger
+    end
+
+    # adapts the format of the default ephemeral mapping used by create_vm so it
+    # works with the create AMI, and inserts it into the given hash
+    def merge_default_ephemeral_mapping_for_create_disk(params)
+      ephemeral_mapping = default_ephemeral_disk_mapping[0]
+      params[:block_device_mappings][ephemeral_mapping[:device_name]] = ephemeral_mapping[:virtual_name]
     end
   end
 end
