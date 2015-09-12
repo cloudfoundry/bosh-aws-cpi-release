@@ -1,7 +1,7 @@
 # coding: utf-8
 Gem::Specification.new do |s|
   s.name         = 'bosh_aws_cpi'
-  s.version      = '2.0.0' 
+  s.version      = '2.0.1' 
   s.platform     = Gem::Platform::RUBY
   s.summary      = 'BOSH AWS CPI'
   s.description  = 'BOSH AWS CPI'
@@ -11,7 +11,7 @@ Gem::Specification.new do |s|
   s.email        = 'support@cloudfoundry.com'
   s.required_ruby_version = Gem::Requirement.new('>= 1.9.3')
 
-  s.files        = Dir['lib/**/*'].select{ |f| File.file? f } + %w(README.md)
+  s.files        = Dir['README.md', 'lib/**/*', 'scripts/**/*'].select{ |f| File.file? f }
   s.require_path = 'lib'
   s.bindir       = 'bin'
   s.executables  = %w(aws_cpi bosh_aws_console)
