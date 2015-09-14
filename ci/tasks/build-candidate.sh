@@ -12,11 +12,9 @@ mkdir out
 cd bosh-cpi-release
 
 echo "running unit tests"
-
 pushd src/bosh_aws_cpi
-  ./scripts/bundle_from_local_cache
+  bundle install
   bundle exec rspec spec/unit/*
-  git checkout Gemfile.lock # for some reason bundle exec seems to modify our Gemfile.lock...which is certainly not desirable
 popd
 
 echo "using bosh CLI version..."
