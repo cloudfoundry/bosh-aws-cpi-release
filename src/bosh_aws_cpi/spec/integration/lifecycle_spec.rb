@@ -98,16 +98,12 @@ describe Bosh::AwsCloud::Cloud do
 
       it 'registers new instance with elb' do
         begin
-          disk_id = cpi.create_disk(2048, {})
-          expect(cpi.has_disk?(disk_id)).to be(true)
-
           stemcell_id = cpi.create_stemcell('/not/a/real/path', {'ami' => {'us-east-1' => ami}})
           vm_id = cpi.create_vm(
             nil,
             stemcell_id,
             resource_pool,
             network_spec,
-            [disk_id],
             nil,
           )
           aws_params = {
@@ -126,7 +122,6 @@ describe Bosh::AwsCloud::Cloud do
                         .first[:instances]
           expect(instances).to be_empty
         ensure
-          cpi.delete_disk(disk_id) if disk_id
           cpi.delete_stemcell(stemcell_id) if stemcell_id
           cpi.delete_vm(vm_id) if vm_id
         end
