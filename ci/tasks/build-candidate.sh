@@ -18,6 +18,9 @@ pushd src/bosh_aws_cpi
   bundle exec rspec spec/unit/*
 popd
 
+# ensure that we have a clean git state
+git status
+
 echo "using bosh CLI version..."
 bosh version
 
