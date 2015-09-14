@@ -11,7 +11,6 @@ describe Bosh::AwsCloud::Cloud do
     @subnet_id         = ENV['BOSH_AWS_SUBNET_ID']           || raise("Missing BOSH_AWS_SUBNET_ID")
     @subnet_zone       = ENV['BOSH_AWS_SUBNET_ZONE']         || raise("Missing BOSH_AWS_SUBNET_ZONE")
     @manual_ip         = ENV['BOSH_AWS_LIFECYCLE_MANUAL_IP'] || raise("Missing BOSH_AWS_LIFECYCLE_MANUAL_IP")
-    @elb_endpoint      = ENV['BOSH_AWS_ELB_ENDPOINT']        || raise("Missing BOSH_AWS_ELB_ENDPOINT")
     @elb_id            = ENV['BOSH_AWS_ELB_ID']              || raise("Missing BOSH_AWS_ELB_ID")
   end
 
@@ -39,7 +38,6 @@ describe Bosh::AwsCloud::Cloud do
         'access_key_id' => @access_key_id,
         'secret_access_key' => @secret_access_key,
         'default_availability_zone' => @subnet_zone,
-        'elb_endpoint' => @elb_endpoint
       },
       'registry' => {
         'endpoint' => 'fake',
