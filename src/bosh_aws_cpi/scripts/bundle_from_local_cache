@@ -3,4 +3,4 @@
 bundle install --local --no-cache --no-prune
 
 # keep us from accidentally checking in a modified Gemfile.lock
-git checkout Gemfile.lock
+git checkout ../Gemfile.lock
