@@ -1,7 +1,7 @@
 # coding: utf-8
 Gem::Specification.new do |s|
   s.name         = 'bosh_aws_cpi'
-  s.version      = '2.0.1' 
+  s.version      = '2.0.0' 
   s.platform     = Gem::Platform::RUBY
   s.summary      = 'BOSH AWS CPI'
   s.description  = 'BOSH AWS CPI'
