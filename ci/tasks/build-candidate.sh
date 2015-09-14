@@ -15,12 +15,13 @@ echo "running unit tests"
 
 pushd src/bosh_aws_cpi
   ./scripts/bundle_from_local_cache
+
+  # ensure that we have a clean git state
+  git version
+  git status
+
   bundle exec rspec spec/unit/*
 popd
-
-# ensure that we have a clean git state
-git version
-git status
 
 echo "using bosh CLI version..."
 bosh version
