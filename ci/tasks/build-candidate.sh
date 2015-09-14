@@ -19,6 +19,7 @@ pushd src/bosh_aws_cpi
 popd
 
 # ensure that we have a clean git state
+git version
 git status
 
 echo "using bosh CLI version..."
