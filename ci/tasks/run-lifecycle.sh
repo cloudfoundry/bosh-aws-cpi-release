@@ -32,5 +32,5 @@ chruby 2.1.2
 
 cd bosh-cpi-release/src/bosh_aws_cpi
 
-bundle install
+./scripts/bundle_from_local_cache
 bundle exec rspec spec/integration
