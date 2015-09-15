@@ -99,6 +99,42 @@ describe Bosh::AwsCloud::InstanceManager do
       create_instance
     end
 
+    context 'when iam instance options are passed in' do
+      context 'via the resource pool' do
+        let(:resource_pool) { {'instance_type' => 'm1.small', 'iam_instance_profile' => 'some_iam_profile'} }
+
+        it 'sends creates the instance with the passed in profile' do
+          augmented_aws_instance_params = aws_instance_params.merge(iam_instance_profile: 'some_iam_profile')
+          expect(aws_instances).to receive(:create).with(augmented_aws_instance_params).and_return(aws_instance)
+
+          create_instance
+        end
+      end
+
+      context 'via the instance options' do
+        let(:instance_options) { {'aws' => {'region' => 'us-east-1', 'default_iam_instance_profile' => 'some_default_iam_profile'} } }
+
+        it 'sends creates the instance with the passed in profile' do
+          augmented_aws_instance_params = aws_instance_params.merge(iam_instance_profile: 'some_default_iam_profile')
+          expect(aws_instances).to receive(:create).with(augmented_aws_instance_params).and_return(aws_instance)
+
+          create_instance
+        end
+      end
+
+      context 'via the resource pool and instance options' do
+        let(:instance_options) { {'aws' => {'region' => 'us-east-1', 'default_iam_instance_profile' => 'some_default_iam_profile'} } }
+        let(:resource_pool) { {'instance_type' => 'm1.small', 'iam_instance_profile' => 'some_iam_profile'} }
+
+        it 'sends creates the instance with the passed in profile' do
+          augmented_aws_instance_params = aws_instance_params.merge(iam_instance_profile: 'some_iam_profile')
+          expect(aws_instances).to receive(:create).with(augmented_aws_instance_params).and_return(aws_instance)
+
+          create_instance
+        end
+      end
+    end
+
     context 'when spot_bid_price is specified' do
       let(:resource_pool) do
         # NB: The spot_bid_price param should trigger spot instance creation
