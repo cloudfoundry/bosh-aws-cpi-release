@@ -5,8 +5,10 @@ params = {
     "plugin" => "aws",
     "properties" => {
       "aws" => {
-        "access_key_id" => p('aws.access_key_id'),
-        "secret_access_key" => p('aws.secret_access_key'),
+        "credentials_source" => p('aws.credentials_source'),
+        "access_key_id" => p('aws.access_key_id', nil),
+        "secret_access_key" => p('aws.secret_access_key', nil),
+        "default_iam_instance_profile" => p('aws.default_iam_instance_profile', nil),
         "default_key_name" => p('aws.default_key_name'),
         "default_security_groups" => p('aws.default_security_groups'),
         "region" => p('aws.region')
@@ -43,9 +45,11 @@ if_p('blobstore') do
   if p('blobstore.provider') == "s3"
     blobstore["options"] = {
       "bucket_name" => p('blobstore.bucket_name'),
-      "access_key_id" => p(['agent.blobstore.access_key_id', 'blobstore.access_key_id']),
-      "secret_access_key" => p(['agent.blobstore.secret_access_key', 'blobstore.secret_access_key'])
+      "credentials_source" => p(['agent.blobstore.credentials_source', 'blobstore.credentials_source']),
+      "access_key_id" => p(['agent.blobstore.access_key_id', 'blobstore.access_key_id'], nil),
+      "secret_access_key" => p(['agent.blobstore.secret_access_key', 'blobstore.secret_access_key'], nil),
     }
+
     if_p('blobstore.use_ssl') do |use_ssl|
       blobstore["options"]["use_ssl"] = use_ssl
     end

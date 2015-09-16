@@ -23,6 +23,8 @@ These options are passed to the AWS CPI when it is instantiated.
   AWS IAM user access key
 * `secret_access_key` (optional, required when `credentials_source` is `static`)
   AWS IAM secret access key
+* `iam_instance_profile` (optional)
+  the [IAM Instance Profile](http://docs.aws.amazon.com/IAM/latest/UserGuide/roles-usingrole-instanceprofile.html) to use for the instance. This allows EC2 instances to use [IAM Roles](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html) when working with AWS APIs.
 * `ec2_endpoint` (optional)
   URL of the EC2 endpoint to connect to, defaults to the endpoint corresponding to the selected region,
   or `default_ec2_endpoint` if no region has been selected
