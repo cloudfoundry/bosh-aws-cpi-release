@@ -1,8 +1,4 @@
 ---
-ruby_aws_cpi/ruby-1.9.3-p545.tar.gz:
-  object_id: 61fde33c-11e8-487c-a3d2-c69479c8437d
-  sha: 03455364740914e8d2dfd6421f681b3fb68a4313
-  size: 12582277
 ruby_aws_cpi/rubygems-2.1.11.tgz:
   object_id: 56e6250e-0499-4658-9d1c-e9acd59cc668
   sha: ca3033432cae28deb7ced79cda271cb292b70e59
