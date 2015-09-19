@@ -725,13 +725,13 @@ module Bosh::AwsCloud
       end
 
       if credentials_source == 'static'
-        if !options["aws"].has_key?("access_key_id") || !options["aws"].has_key?("secret_access_key")
+        if options['aws']['access_key_id'].nil? || options['aws']['secret_access_key'].nil?
             raise ArgumentError, "Must use access_key_id and secret_access_key with static credentials_source"
         end
       end
 
       if credentials_source == 'env_or_profile'
-        if options["aws"].has_key?("access_key_id") || options["aws"].has_key?("secret_access_key")
+        if !options['aws']['access_key_id'].nil? || !options['aws']['secret_access_key'].nil?
             raise ArgumentError, "Can't use access_key_id and secret_access_key with env_or_profile credentials_source"
         end
       end

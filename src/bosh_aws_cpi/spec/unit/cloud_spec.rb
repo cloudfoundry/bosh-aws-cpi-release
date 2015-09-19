@@ -264,6 +264,8 @@ describe Bosh::AwsCloud::Cloud do
           {
             'aws' => {
               'credentials_source' => 'static',
+              'access_key_id' => nil,
+              'secret_access_key' => nil,
               'region' => 'fake-region',
               'default_key_name' => 'sesame'
             },
@@ -288,6 +290,8 @@ describe Bosh::AwsCloud::Cloud do
         {
           'aws' => {
             'credentials_source' => 'env_or_profile',
+            'access_key_id' => nil,
+            'secret_access_key' => nil,
             'region' => 'fake-region',
             'default_key_name' => 'sesame'
           },
