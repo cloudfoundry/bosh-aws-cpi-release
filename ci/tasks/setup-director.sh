@@ -94,6 +94,7 @@ jobs:
   - {name: blobstore, release: bosh}
   - {name: director, release: bosh}
   - {name: health_monitor, release: bosh}
+  - {name: powerdns, release: bosh}
   - {name: registry, release: bosh}
   - {name: cpi, release: bosh-aws-cpi}
 
@@ -153,6 +154,10 @@ jobs:
     hm:
       http: {user: hm, password: hm-password}
       director_account: {user: admin, password: admin}
+
+    dns:
+      address: 127.0.0.1
+      db: *db
 
     aws: &aws
       access_key_id: ${aws_access_key_id}
