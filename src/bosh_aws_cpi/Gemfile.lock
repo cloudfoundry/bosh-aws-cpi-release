@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    bosh_aws_cpi (2.0.1)
+    bosh_aws_cpi (2.0.2)
       aws-sdk (= 1.60.2)
       bosh-registry
       bosh_common
