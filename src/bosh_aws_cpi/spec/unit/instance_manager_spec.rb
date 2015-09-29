@@ -539,6 +539,125 @@ describe Bosh::AwsCloud::InstanceManager do
             end
           end
         end
+
+        context 'when root disk is not specified'do
+          before { set_instance_type 'm3.medium' }
+
+          it 'should not set root device in block device mapping params' do
+            allow(aws_instances).to receive(:create) {aws_instance}
+
+            create_instance
+
+            expect(aws_instances).to have_received(:create) do |instance_params|
+              expect(instance_params[:block_device_mappings]).to eq([{
+                  device_name: '/dev/sdb',
+                  virtual_name: 'ephemeral0',
+                }])
+            end
+          end
+        end
+
+        context 'when root disk is specified' do
+          before {
+            set_instance_type 'm3.medium'
+          }
+
+          it 'should throw error if root disk size not specified' do
+            resource_pool['root_disk'] = {
+                :type => "standard"
+            }
+
+            allow(aws_instances).to receive(:create) {aws_instance}
+
+            expect { create_instance }.to raise_error(
+              Bosh::Clouds::CloudError,
+              "root_disk block provided without size")
+          end
+
+          it 'should default root disk type to standard if type is not specified' do
+            resource_pool['root_disk'] = {
+                'size'=> 42 * 1024.0
+            }
+
+            allow(aws_instances).to receive(:create) {aws_instance}
+
+            create_instance
+
+            expect(aws_instances).to have_received(:create) do |instance_params|
+              expect(instance_params[:block_device_mappings]).to eq([{
+                     device_name: '/dev/sdb',
+                     virtual_name: 'ephemeral0',
+                 }, {
+                     device_name: "/dev/xvda",
+                     ebs: {
+                         volume_size: 42,
+                         volume_type: 'standard',
+                         delete_on_termination: true
+                     }
+                 }])
+              end
+          end
+
+          it 'should set device name if virtualization type is hvm' do
+            resource_pool['root_disk'] = {
+                'type' => "standard",
+                'size' => 42 * 1024.0
+            }
+
+            allow(aws_instances).to receive(:create) {aws_instance}
+
+            create_instance
+
+            expect(aws_instances).to have_received(:create) do |instance_params|
+              expect(instance_params[:block_device_mappings]).to eq([{
+                     device_name: '/dev/sdb',
+                     virtual_name: 'ephemeral0',
+                 }, {
+                     device_name: "/dev/xvda",
+                     ebs: {
+                         volume_size: 42,
+                         volume_type: 'standard',
+                         delete_on_termination: true
+                     }
+                 }])
+              end
+          end
+
+          it 'should set device name if virtualization type is not hvm' do
+            allow(region).to receive(:images).and_return(
+                 {
+                     stemcell_id => instance_double('AWS::EC2::Image',
+                                                    block_devices: block_devices,
+                                                    root_device_name: 'fake-image-root-device',
+                                                    virtualization_type: "bobz"
+                     )
+                 }
+             )
+
+            resource_pool['root_disk'] = {
+                'type' => "standard",
+                'size' => 42 * 1024.0
+            }
+
+            allow(aws_instances).to receive(:create) {aws_instance}
+
+            create_instance
+
+            expect(aws_instances).to have_received(:create) do |instance_params|
+              expect(instance_params[:block_device_mappings]).to eq([{
+                     device_name: '/dev/sdb',
+                     virtual_name: 'ephemeral0',
+                 }, {
+                     device_name: "/dev/sda",
+                     ebs: {
+                         volume_size: 42,
+                         volume_type: 'standard',
+                         delete_on_termination: true
+                     }
+                 }])
+            end
+          end
+        end
       end
 
       describe 'key_name' do

@@ -63,6 +63,11 @@ These options are specified under `cloud_options` in the `resource_pools` sectio
   the [AWS spot instance](http://aws.amazon.com/ec2/purchasing-options/spot-instances/) bid price to use.  When specified spot instances are started rather than on demand instances.  _NB: this will dramatically slow down resource pool creation._
 * `iam_instance_profile` (optional)
    the [IAM Instance Profile](http://docs.aws.amazon.com/IAM/latest/UserGuide/roles-usingrole-instanceprofile.html) to use for the instance. This allows EC2 instances to use [IAM Roles](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html) when working with AWS APIs.
+* `root_disk` (optional)
+   * `size` (required)
+     the size (in MB) of the root disk if a different size is needed than the default size built into the stemcell.
+   * `type` (optional)
+     the type of the root disk if a different type is needed than 'standard'
 
 ### Network options
 
@@ -106,7 +111,9 @@ This is a sample of how AWS specific properties are used in a BOSH deployment ma
           version: latest
         cloud_properties:
           instance_type: m1.small
-
+          root_disk:
+            size: 11_264
+            type: gp2
     ...
 
     properties:

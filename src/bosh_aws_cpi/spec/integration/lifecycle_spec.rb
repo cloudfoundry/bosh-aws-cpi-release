@@ -250,6 +250,31 @@ describe Bosh::AwsCloud::Cloud do
             }))
         end
       end
+
+      context 'when root_disk properties are specified' do
+        let(:resource_pool) do
+          {
+              'instance_type' => instance_type,
+              'root_disk' => {
+                  'size' => 11 * 1024,
+                  'type' => 'gp2'
+              }
+          }
+        end
+        let(:instance_type) { instance_type_without_ephemeral }
+
+        it 'requests root disk with the specified size and type' do
+          vm_lifecycle do |instance_id|
+            disks = cpi.get_disks(instance_id)
+            expect(disks.size).to eq(2)
+
+            root_disk = cpi.ec2.volumes[disks[0]]
+            expect(root_disk.size).to eq(11)
+            expect(root_disk.type).to eq('gp2')
+
+          end
+        end
+      end
     end
 
     context 'when vm with attached disk is removed' do

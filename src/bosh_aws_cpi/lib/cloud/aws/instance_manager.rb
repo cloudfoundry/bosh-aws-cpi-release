@@ -201,6 +201,35 @@ module Bosh::AwsCloud
         end
       end
 
+      if(resource_pool.has_key?("root_disk"))
+
+        if resource_pool["root_disk"]["size"].nil?
+          raise Bosh::Clouds::CloudError, "root_disk block provided without size"
+        end
+
+        root_disk_size_in_mb = resource_pool["root_disk"]['size']
+        root_disk_type = resource_pool["root_disk"].fetch('type', 'standard')
+
+        root_device  =  {
+            :volume_size => (root_disk_size_in_mb / 1024.0).ceil,
+            :volume_type => root_disk_type,
+            :delete_on_termination => true
+        }
+
+        if virtualization_type == :hvm
+          block_device_mapping_param << {
+              device_name: "/dev/xvda",
+              ebs: root_device
+          }
+        else
+          block_device_mapping_param << {
+              device_name: "/dev/sda",
+              ebs: root_device
+          }
+        end
+      end
+
+
       block_device_mapping_param
     end
 
