@@ -44,7 +44,7 @@ done
 cmd="aws cloudformation create-stack \
     --stack-name      ${stack_name} \
     --template-body   file:///${PWD}/bosh-cpi-release/ci/assets/cloudformation.template \
-    --capabilities    CAPABILITY_IAM""
+    --capabilities    CAPABILITY_IAM"
 
 echo "Running: ${cmd}"; ${cmd}
 while true; do
