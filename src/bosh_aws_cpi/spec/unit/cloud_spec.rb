@@ -307,30 +307,6 @@ describe Bosh::AwsCloud::Cloud do
       end
     end
 
-    context 'when credentials_source is set to env_or_profile and access_key_id is provided' do
-      let(:options) do
-        {
-          'aws' => {
-            'credentials_source' => 'env_or_profile',
-            'access_key_id' => 'some access key',
-            'region' => 'fake-region',
-            'default_key_name' => 'sesame'
-          },
-          'registry' => {
-            'user' => 'abuser',
-            'password' => 'hard2gess',
-            'endpoint' => 'http://websites.com'
-          }
-        }
-      end
-      it 'raises an error' do
-        expect { cloud }.to raise_error(
-        ArgumentError,
-        "Can't use access_key_id and secret_access_key with env_or_profile credentials_source"
-        )
-      end
-    end
-
     context 'when an unknown credentails_source is set' do
       let(:options) do
         {
