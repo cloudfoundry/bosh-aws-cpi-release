@@ -12,9 +12,4 @@ params:
   aws_access_key_id:            replace-me
   aws_secret_access_key:        replace-me
   region_name:                  replace-me
-  bosh_username:                replace-me
-  bosh_password:                replace-me
   stemcell_name:                replace-me
-  NETWORK_CIDR:                 replace-me
-  NETWORK_GATEWAY:              replace-me
-  NETWORK_RESERVED_RANGE:       replace-me

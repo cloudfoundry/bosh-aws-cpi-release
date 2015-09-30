@@ -9,12 +9,6 @@ check_param aws_access_key_id
 check_param aws_secret_access_key
 check_param region_name
 check_param BAT_VCAP_PASSWORD
-check_param BAT_SECOND_STATIC_IP
-check_param BAT_NETWORK_CIDR
-check_param BAT_NETWORK_RESERVED_RANGE
-check_param BAT_NETWORK_STATIC_RANGE
-check_param BAT_NETWORK_GATEWAY
-check_param BAT_NETWORK_STATIC_IP
 check_param BAT_STEMCELL_NAME
 
 source /etc/profile.d/chruby.sh
@@ -27,12 +21,19 @@ export AWS_DEFAULT_REGION=${region_name}
 stack_name="aws-cpi-stack"
 stack_info=$(get_stack_info $stack_name)
 
-DIRECTOR=$(get_stack_info_of "${stack_info}" "${base_os}directorvip")
-VIP=$(get_stack_info_of "${stack_info}" "${base_os}batsvip")
-SUBNET_ID=$(get_stack_info_of "${stack_info}" "${base_os}subnetid")
-sg_id=$(get_stack_info_of "${stack_info}" "securitygroupid")
+DIRECTOR=$(get_stack_info_of "${stack_info}" "${base_os}DirectorEIP")
+VIP=$(get_stack_info_of "${stack_info}" "${base_os}BATsEIP")
+SUBNET_ID=$(get_stack_info_of "${stack_info}" "${base_os}SubnetID")
+sg_id=$(get_stack_info_of "${stack_info}" "SecurityGroupID")
 SECURITY_GROUP_NAME=$(aws ec2 describe-security-groups --group-ids ${sg_id} | jq -r '.SecurityGroups[] .GroupName')
-AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "${base_os}availabilityzone")
+AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "${base_os}AvailabilityZone")
+
+BAT_NETWORK_CIDR=$(get_stack_info_of "${stack_info}" "${base_os}CIDR")
+BAT_NETWORK_GATEWAY=$(get_stack_info_of "${stack_info}" "${base_os}Gateway")
+BAT_NETWORK_RESERVED_RANGE=$(get_stack_info_of "${stack_info}" "${base_os}ReservedRange")
+BAT_NETWORK_STATIC_RANGE=$(get_stack_info_of "${stack_info}" "${base_os}StaticRange")
+BAT_NETWORK_STATIC_IP=$(get_stack_info_of "${stack_info}" "${base_os}StaticIP1")
+BAT_SECOND_STATIC_IP=$(get_stack_info_of "${stack_info}" "${base_os}StaticIP2")
 
 eval $(ssh-agent)
 private_key=${PWD}/setup-director/deployment/bats.pem

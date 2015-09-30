@@ -15,7 +15,7 @@ export AWS_DEFAULT_REGION=${region_name}
 stack_name="aws-cpi-stack"
 
 stack_info=$(get_stack_info $stack_name)
-vpc_id=$(get_stack_info_of "$stack_info" "vpcid")
+vpc_id=$(get_stack_info_of "$stack_info" "VPCID")
 instances=$(aws ec2 describe-instances --query "Reservations[*].Instances[*].InstanceId[]" --filters "Name=vpc-id,Values=${vpc_id}")
 
 if [ ! -z "$instances" ] ; then
@@ -43,7 +43,7 @@ done
 
 cmd="aws cloudformation create-stack \
     --stack-name      ${stack_name} \
-    --template-body   file:///${PWD}/bosh-cpi-release/ci/assets/cloudformation.template \
+    --template-body   file:///${PWD}/bosh-cpi-release/ci/assets/cloudformation.template.json \
     --capabilities    CAPABILITY_IAM"
 
 echo "Running: ${cmd}"; ${cmd}

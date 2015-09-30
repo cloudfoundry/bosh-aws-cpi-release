@@ -9,4 +9,3 @@ params:
   aws_access_key_id:     replace-me
   aws_secret_access_key: replace-me
   region_name:           replace-me
-  lifecycle_manual_ip:   replace-me

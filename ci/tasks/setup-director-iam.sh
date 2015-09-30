@@ -8,9 +8,6 @@ check_param aws_access_key_id
 check_param aws_secret_access_key
 check_param region_name
 check_param private_key_data
-check_param AWS_NETWORK_CIDR
-check_param AWS_NETWORK_GATEWAY
-check_param PRIVATE_DIRECTOR_STATIC_IP
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
@@ -22,13 +19,16 @@ export AWS_DEFAULT_REGION=${region_name}
 stack_name="aws-cpi-stack"
 stack_info=$(get_stack_info $stack_name)
 
-sg_id=$(get_stack_info_of "${stack_info}" "securitygroupid")
+sg_id=$(get_stack_info_of "${stack_info}" "SecurityGroupID")
 SECURITY_GROUP_NAME=$(aws ec2 describe-security-groups --group-ids ${sg_id} | jq -r '.SecurityGroups[] .GroupName')
 
-DIRECTOR=$(get_stack_info_of "${stack_info}" "ubuntudirectorvip")
-SUBNET_ID=$(get_stack_info_of "${stack_info}" "ubuntusubnetid")
-AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "ubuntuavailabilityzone")
-IAM_INSTANCE_PROFILE=$(get_stack_info_of "${stack_info}" "iaminstanceprofile")
+DIRECTOR=$(get_stack_info_of "${stack_info}" "BoshIntegrationEIP")
+SUBNET_ID=$(get_stack_info_of "${stack_info}" "BoshIntegrationSubnetID")
+AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "BoshIntegrationAvailabilityZone")
+IAM_INSTANCE_PROFILE=$(get_stack_info_of "${stack_info}" "BoshIntegrationIAMInstanceProfile")
+AWS_NETWORK_CIDR=$(get_stack_info_of "${stack_info}" "BoshIntegrationCIDR")
+AWS_NETWORK_GATEWAY=$(get_stack_info_of "${stack_info}" "BoshIntegrationGateway")
+PRIVATE_DIRECTOR_STATIC_IP=$(get_stack_info_of "${stack_info}" "BoshIntegrationDirectorStaticIP")
 
 semver=`cat version-semver/number`
 cpi_release_name=bosh-aws-cpi

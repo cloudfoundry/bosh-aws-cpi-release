@@ -7,12 +7,7 @@ source bosh-cpi-release/ci/tasks/utils.sh
 check_param aws_access_key_id
 check_param aws_secret_access_key
 check_param region_name
-check_param bosh_username
-check_param bosh_password
 check_param stemcell_name
-check_param NETWORK_CIDR
-check_param NETWORK_GATEWAY
-check_param NETWORK_RESERVED_RANGE
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
@@ -25,15 +20,18 @@ cpi_release_name="bosh-aws-cpi"
 stack_name="aws-cpi-stack"
 stack_info=$(get_stack_info $stack_name)
 
-DIRECTOR=$(get_stack_info_of "${stack_info}" "ubuntudirectorvip")
-SUBNET_ID=$(get_stack_info_of "${stack_info}" "ubuntusubnetid")
-AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "ubuntuavailabilityzone")
-sg_id=$(get_stack_info_of "${stack_info}" "securitygroupid")
+DIRECTOR=$(get_stack_info_of "${stack_info}" "BoshIntegrationEIP")
+SUBNET_ID=$(get_stack_info_of "${stack_info}" "BoshIntegrationSubnetID")
+AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "BoshIntegrationAvailabilityZone")
+sg_id=$(get_stack_info_of "${stack_info}" "SecurityGroupID")
+NETWORK_CIDR=$(get_stack_info_of "${stack_info}" "BoshIntegrationCIDR")
+NETWORK_GATEWAY=$(get_stack_info_of "${stack_info}" "BoshIntegrationGateway")
+NETWORK_RESERVED_RANGE=$(get_stack_info_of "${stack_info}" "BoshIntegrationReservedRange")
 SECURITY_GROUP_NAME=$(aws ec2 describe-security-groups --group-ids ${sg_id} | jq -r '.SecurityGroups[] .GroupName')
 
 bosh -n target $DIRECTOR
 
-bosh login ${bosh_username} ${bosh_password}
+bosh login admin admin
 
 cat > "dummy-manifest.yml" <<EOF
 ---
@@ -95,4 +93,6 @@ bosh upload release dummy-release/dummy.tgz
 
 bosh -d dummy-manifest.yml -n deploy
 
-bosh delete deployment -n dummy
+bosh -n delete deployment dummy
+
+bosh -n cleanup --all
