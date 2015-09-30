@@ -118,6 +118,14 @@ describe 'cpi.json.erb' do
     before do
       manifest['properties']['blobstore']['provider'] = 's3'
       manifest['properties']['blobstore']['bucket_name'] = 'my_bucket'
+      manifest['properties']['blobstore']['access_key_id'] = 'blobstore-access-key-id'
+      manifest['properties']['blobstore']['secret_access_key'] = 'blobstore-secret-access-key'
+      manifest['properties']['blobstore']['use_ssl'] = false
+      manifest['properties']['blobstore']['s3_port'] = 21
+      manifest['properties']['blobstore']['host'] = 'blobstore-host'
+      manifest['properties']['blobstore']['s3_force_path_style'] = true
+      manifest['properties']['blobstore']['ssl_verify_peer'] = true
+      manifest['properties']['blobstore']['s3_multipart_threshold'] = 123
     end
 
     it 'renders the s3 provider section correctly' do
@@ -127,11 +135,14 @@ describe 'cpi.json.erb' do
           'options' => {
             'bucket_name' => 'my_bucket',
             'credentials_source' => 'static',
-            'access_key_id' => nil,
-            'secret_access_key' => nil,
-            'use_ssl' => true,
-            'port' => 443,
-            's3_force_path_style' => false
+            'access_key_id' => 'blobstore-access-key-id',
+            'secret_access_key' => 'blobstore-secret-access-key',
+            'use_ssl' => false,
+            'host' => 'blobstore-host',
+            'port' => 21,
+            's3_force_path_style' => true,
+            'ssl_verify_peer' => true,
+            's3_multipart_threshold' => 123
           }
         }
       )
@@ -184,14 +195,33 @@ describe 'cpi.json.erb' do
         manifest['properties']['agent'] = {
           'blobstore' => {
             'access_key_id' => 'agent_access_key_id',
-            'secret_access_key' => 'agent_secret_access_key'
+            'secret_access_key' => 'agent_secret_access_key',
+            'use_ssl' => true,
+            's3_port' => 42,
+            'host' => 'agent-host',
+            's3_force_path_style' => true,
+            'ssl_verify_peer' => true,
+            's3_multipart_threshold' => 33
           }
         }
+
         manifest['properties']['blobstore']['access_key_id'] = 'blobstore_access_key_id'
         manifest['properties']['blobstore']['secret_access_key'] = 'blobstore_secret_access_key'
+        manifest['properties']['blobstore']['use_ssl'] = false
+        manifest['properties']['blobstore']['s3_port'] = 21
+        manifest['properties']['blobstore']['host'] = 'blobstore-host'
+        manifest['properties']['blobstore']['s3_force_path_style'] = false
+        manifest['properties']['blobstore']['ssl_verify_peer'] = false
+        manifest['properties']['blobstore']['s3_multipart_threshold'] = 22
 
         expect(rendered_blobstore['options']['access_key_id']).to eq('agent_access_key_id')
         expect(rendered_blobstore['options']['secret_access_key']).to eq('agent_secret_access_key')
+        expect(rendered_blobstore['options']['use_ssl']).to be true
+        expect(rendered_blobstore['options']['port']).to eq(42)
+        expect(rendered_blobstore['options']['host']).to eq('agent-host')
+        expect(rendered_blobstore['options']['s3_force_path_style']).to be true
+        expect(rendered_blobstore['options']['ssl_verify_peer']).to be true
+        expect(rendered_blobstore['options']['s3_multipart_threshold']).to eq(33)
       end
     end
   end

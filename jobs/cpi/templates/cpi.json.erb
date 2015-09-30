@@ -50,18 +50,18 @@ if_p('blobstore') do
       "secret_access_key" => p(['agent.blobstore.secret_access_key', 'blobstore.secret_access_key'], nil),
     }
 
-    if_p('blobstore.use_ssl') do |use_ssl|
-      blobstore["options"]["use_ssl"] = use_ssl
+    def update_blobstore_options(blobstore, manifest_key, rendered_key=manifest_key)
+      value = p(["agent.blobstore.#{manifest_key}", "blobstore.#{manifest_key}"], nil)
+      blobstore["options"][rendered_key] = value unless value.nil?
     end
-    if_p('blobstore.s3_port') do |port|
-      blobstore["options"]["port"] = port
-    end
-    if_p('blobstore.host') do |host|
-      blobstore["options"]["host"] = host
-    end
-    if_p('blobstore.s3_force_path_style') do |s3_force_path_style|
-      blobstore["options"]["s3_force_path_style"] = s3_force_path_style
-    end
+
+    update_blobstore_options(blobstore, 'use_ssl')
+    update_blobstore_options(blobstore, 's3_port', 'port')
+    update_blobstore_options(blobstore, 'host')
+    update_blobstore_options(blobstore, 's3_force_path_style')
+    update_blobstore_options(blobstore, 'ssl_verify_peer')
+    update_blobstore_options(blobstore, 's3_multipart_threshold')
+
   elsif p('blobstore.provider') == 'local'
     blobstore["options"] = {
       "blobstore_path" => p('blobstore.path')
