@@ -730,6 +730,11 @@ module Bosh::AwsCloud
         end
       end
 
+      if credentials_source == 'env_or_profile'
+        if !options['aws']['access_key_id'].nil? || !options['aws']['secret_access_key'].nil?
+            raise ArgumentError, "Can't use access_key_id and secret_access_key with env_or_profile credentials_source"
+        end
+      end
     end
 
     # Generates initial agent settings. These settings will be read by agent
