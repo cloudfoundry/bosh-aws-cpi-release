@@ -3,27 +3,39 @@ groups:
   - name: bosh-aws-cpi-release
     jobs:
       - build-candidate
-      - recreate-infrastructure
       - bats-ubuntu
       - bats-centos
       - lifecycle
       - bosh-integration
       - promote-candidate
 
-  - name: ubuntu
+  - name: primary
     jobs:
       - build-candidate
       - bats-ubuntu
+      - bats-centos
+      - lifecycle
       - promote-candidate
 
-  - name: centos
+  - name: bosh-integration
     jobs:
       - build-candidate
-      - bats-centos
+      - bosh-integration
       - promote-candidate
 
+  - name: all
+    jobs:
+      - build-candidate
+      - bats-ubuntu
+      - bats-centos
+      - lifecycle
+      - bosh-integration
+      - promote-candidate
+      - recreate-infrastructure-primary
+      - recreate-infrastructure-bosh-integration
+
 jobs:
-- name: recreate-infrastructure
+- name: recreate-infrastructure-primary
   plan:
   - aggregate:
     - {trigger: false, get: bosh-cpi-release,     resource: bosh-cpi-release-in}
@@ -32,9 +44,24 @@ jobs:
     file: bosh-cpi-release/ci/tasks/cloudformation.yml
     config:
       params:
-        aws_access_key_id:        {{s3_aws_cpi_access_key}}
-        aws_secret_access_key:    {{s3_aws_cpi_secret_key}}
-        region_name:              us-east-1
+        aws_access_key_id:        {{aws_access_key__primary}}
+        aws_secret_access_key:    {{aws_secret_key__primary}}
+        region_name:              {{aws_region__primary}}
+        stack_name:               primary
+
+- name: recreate-infrastructure-bosh-integration
+  plan:
+  - aggregate:
+    - {trigger: false, get: bosh-cpi-release,     resource: bosh-cpi-release-in}
+
+  - task: cloudformation
+    file: bosh-cpi-release/ci/tasks/cloudformation.yml
+    config:
+      params:
+        aws_access_key_id:        {{aws_access_key__bosh_integration}}
+        aws_secret_access_key:    {{aws_secret_key__bosh_integration}}
+        region_name:              {{aws_region__bosh_integration}}
+        stack_name:               bosh-integration
 
 - name: build-candidate
   serial: true
@@ -63,12 +90,12 @@ jobs:
     file: bosh-cpi-release/ci/tasks/run-lifecycle.yml
     config:
       params:
-        aws_access_key_id:            {{s3_aws_cpi_access_key}}
-        aws_secret_access_key:        {{s3_aws_cpi_secret_key}}
-        region_name:                  {{s3_aws_cpi_region}}
+        aws_access_key_id:            {{aws_access_key__primary}}
+        aws_secret_access_key:        {{aws_secret_key__primary}}
+        region_name:                  {{aws_region__primary}}
 
 - name: bats-ubuntu
-  serial_groups: [reuse-ips]
+  serial: true
   plan:
   - aggregate:
     - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-dev-artifacts}
@@ -84,9 +111,9 @@ jobs:
     config:
       params:
         base_os:                    Ubuntu
-        aws_access_key_id:          {{s3_aws_cpi_access_key}}
-        aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
-        region_name:                {{s3_aws_cpi_region}}
+        aws_access_key_id:          {{aws_access_key__primary}}
+        aws_secret_access_key:      {{aws_secret_key__primary}}
+        region_name:                {{aws_region__primary}}
         private_key_data:           {{bosh_private_key}}
 
   - task: run-bats
@@ -94,9 +121,9 @@ jobs:
     config:
       params:
         base_os:                    Ubuntu
-        aws_access_key_id:          {{s3_aws_cpi_access_key}}
-        aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
-        region_name:                {{s3_aws_cpi_region}}
+        aws_access_key_id:          {{aws_access_key__primary}}
+        aws_secret_access_key:      {{aws_secret_key__primary}}
+        region_name:                {{aws_region__primary}}
         BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
         BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_ubuntu}}
 
@@ -120,9 +147,9 @@ jobs:
     config:
       params:
         base_os:                    Centos
-        aws_access_key_id:          {{s3_aws_cpi_access_key}}
-        aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
-        region_name:                {{s3_aws_cpi_region}}
+        aws_access_key_id:          {{aws_access_key__primary}}
+        aws_secret_access_key:      {{aws_secret_key__primary}}
+        region_name:                {{aws_region__primary}}
         private_key_data:           {{bosh_private_key}}
 
   - task: run-bats
@@ -130,9 +157,9 @@ jobs:
     config:
       params:
         base_os:                    Centos
-        aws_access_key_id:          {{s3_aws_cpi_access_key}}
-        aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
-        region_name:                {{s3_aws_cpi_region}}
+        aws_access_key_id:          {{aws_access_key__primary}}
+        aws_secret_access_key:      {{aws_secret_key__primary}}
+        region_name:                {{aws_region__primary}}
         BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
         BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_centos}}
 
@@ -140,7 +167,7 @@ jobs:
     file: bosh-cpi-release/ci/tasks/teardown-director.yml
 
 - name: bosh-integration
-  serial_groups: [reuse-ips]
+  serial: true
   plan:
   - aggregate:
     - {trigger: true,  passed: [build-candidate], get: bosh-cpi-dev-artifacts}
@@ -155,18 +182,18 @@ jobs:
     file: bosh-cpi-release/ci/tasks/setup-director-iam.yml
     config:
       params:
-        aws_access_key_id:          {{s3_aws_cpi_access_key}}
-        aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
-        region_name:                {{s3_aws_cpi_region}}
+        aws_access_key_id:          {{aws_access_key__bosh_integration}}
+        aws_secret_access_key:      {{aws_secret_key__bosh_integration}}
+        region_name:                {{aws_region__bosh_integration}}
         private_key_data:           {{bosh_private_key}}
 
   - task: test
     file: bosh-cpi-release/ci/tasks/iam-test.yml
     config:
       params:
-        aws_access_key_id:          {{s3_aws_cpi_access_key}}
-        aws_secret_access_key:      {{s3_aws_cpi_secret_key}}
-        region_name:                {{s3_aws_cpi_region}}
+        aws_access_key_id:          {{aws_access_key__bosh_integration}}
+        aws_secret_access_key:      {{aws_secret_key__bosh_integration}}
+        region_name:                {{aws_region__bosh_integration}}
         stemcell_name:              {{BAT_STEMCELL_NAME_ubuntu}}
 
   - task: teardown-director
@@ -183,8 +210,8 @@ jobs:
     file: bosh-cpi-release/ci/tasks/promote-candidate.yml
     config:
       params:
-        aws_access_key_id: {{s3_aws_cpi_access_key}}
-        aws_secret_access_key: {{s3_aws_cpi_secret_key}}
+        aws_access_key_id: {{aws_access_key__primary}}
+        aws_secret_access_key: {{aws_secret_key__primary}}
 
   - put: bosh-cpi-release
     resource: bosh-cpi-release-out
@@ -199,9 +226,9 @@ resources:
   source:
     regexp: bosh-aws-cpi\.tgz
     bucket: {{s3_aws_cpi_pipeline_bucket}}
-    region_name: {{s3_aws_cpi_region}}
-    access_key_id: {{s3_aws_cpi_access_key}}
-    secret_access_key: {{s3_aws_cpi_secret_key}}
+    region_name: {{aws_region__primary}}
+    access_key_id: {{aws_access_key__primary}}
+    secret_access_key: {{aws_secret_key__primary}}
 
 - name: bosh-cpi-release-in
   type: git
@@ -225,32 +252,32 @@ resources:
   source:
     key:               current-version # dev-release version
     bucket:            {{s3_aws_cpi_pipeline_bucket}}
-    access_key_id:     {{s3_aws_cpi_access_key}}
-    secret_access_key: {{s3_aws_cpi_secret_key}}
+    access_key_id:     {{aws_access_key__primary}}
+    secret_access_key: {{aws_secret_key__primary}}
 
 - name: release-version-semver
   type: semver
   source:
     key:               release-current-version
     bucket:            {{s3_aws_cpi_pipeline_bucket}}
-    access_key_id:     {{s3_aws_cpi_access_key}}
-    secret_access_key: {{s3_aws_cpi_secret_key}}
+    access_key_id:     {{aws_access_key__primary}}
+    secret_access_key: {{aws_secret_key__primary}}
 
 - name: bosh-init
   type: s3
   source:
     regexp: bosh-init-([0-9.]+)-linux-amd64
     bucket: {{s3_bosh_init_bucket}}
-    region_name: {{s3_aws_cpi_region}}
+    region_name: {{aws_region__primary}}
 
 - name: dummy-release
   type: s3
   source:
     versioned_file: dummy.tgz
     bucket: {{s3_aws_cpi_pipeline_bucket}}
-    region_name: {{s3_aws_cpi_region}}
-    access_key_id: {{s3_aws_cpi_access_key}}
-    secret_access_key: {{s3_aws_cpi_secret_key}}
+    region_name: {{aws_region__primary}}
+    access_key_id: {{aws_access_key__primary}}
+    secret_access_key: {{aws_secret_key__primary}}
 
 - name: bats
   type: git
