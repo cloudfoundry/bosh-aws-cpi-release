@@ -318,9 +318,9 @@
 
     "BoshIntegrationS3Bucket" : {
       "Type" : "AWS::S3::Bucket",
+      "DeletionPolicy" : "Delete",
       "Properties" : {
         "AccessControl" : "Private",
-        "DeletionPolicy" : "Delete",
         "Tags" : [ {"Key" : "Name", "Value" : "bosh-integration-blobstore-bucket" } ]
       }
     },
