@@ -316,6 +316,15 @@
       }
     },
 
+    "BoshIntegrationS3Bucket" : {
+      "Type" : "AWS::S3::Bucket",
+      "Properties" : {
+        "AccessControl" : "Private",
+        "DeletionPolicy" : "Delete",
+        "Tags" : [ {"Key" : "Name", "Value" : "bosh-integration-blobstore-bucket" } ]
+      }
+    },
+
     "RootRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
@@ -420,6 +429,7 @@
     "BoshIntegrationGateway"            : { "Value" : { "Fn::FindInMap" : [ "IPConfigurations", "BoshIntegration", "Gateway" ]} },
     "BoshIntegrationReservedRange"      : { "Value" : { "Fn::FindInMap" : [ "IPConfigurations", "BoshIntegration", "ReservedRange" ]} },
     "BoshIntegrationDirectorStaticIP"   : { "Value" : { "Fn::FindInMap" : [ "IPConfigurations", "BoshIntegration", "DirectorPrivate" ]} },
-    "BoshIntegrationIAMInstanceProfile" : { "Value" : { "Ref" : "InstanceProfile" } }
+    "BoshIntegrationIAMInstanceProfile" : { "Value" : { "Ref" : "InstanceProfile" } },
+    "BoshIntegrationBucketName"         : { "Value" : { "Ref" : "BoshIntegrationS3Bucket" } }
   }
 }

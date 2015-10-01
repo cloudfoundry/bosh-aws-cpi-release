@@ -29,6 +29,7 @@ IAM_INSTANCE_PROFILE=$(get_stack_info_of "${stack_info}" "BoshIntegrationIAMInst
 AWS_NETWORK_CIDR=$(get_stack_info_of "${stack_info}" "BoshIntegrationCIDR")
 AWS_NETWORK_GATEWAY=$(get_stack_info_of "${stack_info}" "BoshIntegrationGateway")
 PRIVATE_DIRECTOR_STATIC_IP=$(get_stack_info_of "${stack_info}" "BoshIntegrationDirectorStaticIP")
+BLOBSTORE_BUCKET_NAME=$(get_stack_info_of "${stack_info}" "BoshIntegrationBucketName")
 
 semver=`cat version-semver/number`
 cpi_release_name=bosh-aws-cpi
@@ -140,9 +141,9 @@ jobs:
 
     # Tells the Director/agents how to contact blobstore
     blobstore:
-      address: ${PRIVATE_DIRECTOR_STATIC_IP}
-      port: 25250
-      provider: dav
+      provider: s3
+      bucket_name: #{BLOBSTORE_BUCKET_NAME}
+      credentials_source: 'env_or_profile'
       director: {user: director, password: director-password}
       agent: {user: agent, password: agent-password}
 
