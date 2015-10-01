@@ -76,7 +76,7 @@ resource_pools:
     url: file://stemcell.tgz
   cloud_properties:
     iam_instance_profile: ${IAM_INSTANCE_PROFILE}
-    instance_type: m3.xlarge
+    instance_type: m3.medium
     availability_zone: ${AVAILABILITY_ZONE}
     ephemeral_disk:
       size: 25000
