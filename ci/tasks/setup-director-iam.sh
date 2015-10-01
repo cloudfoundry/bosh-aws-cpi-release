@@ -142,7 +142,7 @@ jobs:
     # Tells the Director/agents how to contact blobstore
     blobstore:
       provider: s3
-      bucket_name: #{BLOBSTORE_BUCKET_NAME}
+      bucket_name: ${BLOBSTORE_BUCKET_NAME}
       credentials_source: 'env_or_profile'
       director: {user: director, password: director-password}
       agent: {user: agent, password: agent-password}
