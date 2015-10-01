@@ -13,3 +13,4 @@ params:
   aws_secret_access_key:        replace-me
   region_name:                  replace-me
   stemcell_name:                replace-me
+  stack_name:                   replace-me

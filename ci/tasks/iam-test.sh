@@ -8,6 +8,7 @@ check_param aws_access_key_id
 check_param aws_secret_access_key
 check_param region_name
 check_param stemcell_name
+check_param stack_name
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
@@ -17,7 +18,6 @@ export AWS_SECRET_ACCESS_KEY=${aws_secret_access_key}
 export AWS_DEFAULT_REGION=${region_name}
 
 cpi_release_name="bosh-aws-cpi"
-stack_name="aws-cpi-stack"
 stack_info=$(get_stack_info $stack_name)
 
 DIRECTOR=$(get_stack_info_of "${stack_info}" "BoshIntegrationEIP")

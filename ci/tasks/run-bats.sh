@@ -8,6 +8,7 @@ check_param base_os
 check_param aws_access_key_id
 check_param aws_secret_access_key
 check_param region_name
+check_param stack_name
 check_param BAT_VCAP_PASSWORD
 check_param BAT_STEMCELL_NAME
 
@@ -18,7 +19,6 @@ export AWS_ACCESS_KEY_ID=${aws_access_key_id}
 export AWS_SECRET_ACCESS_KEY=${aws_secret_access_key}
 export AWS_DEFAULT_REGION=${region_name}
 
-stack_name="aws-cpi-stack"
 stack_info=$(get_stack_info $stack_name)
 
 DIRECTOR=$(get_stack_info_of "${stack_info}" "${base_os}DirectorEIP")

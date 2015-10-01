@@ -115,6 +115,7 @@ jobs:
         aws_secret_access_key:      {{aws_secret_key__primary}}
         region_name:                {{aws_region__primary}}
         private_key_data:           {{bosh_private_key}}
+        stack_name:                 primary
 
   - task: run-bats
     file: bosh-cpi-release/ci/tasks/run-bats.yml
@@ -126,6 +127,7 @@ jobs:
         region_name:                {{aws_region__primary}}
         BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
         BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_ubuntu}}
+        stack_name:                 primary
 
   - task: teardown-director
     file: bosh-cpi-release/ci/tasks/teardown-director.yml
@@ -151,6 +153,7 @@ jobs:
         aws_secret_access_key:      {{aws_secret_key__primary}}
         region_name:                {{aws_region__primary}}
         private_key_data:           {{bosh_private_key}}
+        stack_name:                 primary
 
   - task: run-bats
     file: bosh-cpi-release/ci/tasks/run-bats.yml
@@ -162,6 +165,7 @@ jobs:
         region_name:                {{aws_region__primary}}
         BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
         BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_centos}}
+        stack_name:                 primary
 
   - task: teardown-director
     file: bosh-cpi-release/ci/tasks/teardown-director.yml
@@ -186,6 +190,7 @@ jobs:
         aws_secret_access_key:      {{aws_secret_key__bosh_integration}}
         region_name:                {{aws_region__bosh_integration}}
         private_key_data:           {{bosh_private_key}}
+        stack_name:                 bosh-integration
 
   - task: test
     file: bosh-cpi-release/ci/tasks/iam-test.yml
@@ -195,6 +200,7 @@ jobs:
         aws_secret_access_key:      {{aws_secret_key__bosh_integration}}
         region_name:                {{aws_region__bosh_integration}}
         stemcell_name:              {{BAT_STEMCELL_NAME_ubuntu}}
+        stack_name:                 bosh-integration
 
   - task: teardown-director
     file: bosh-cpi-release/ci/tasks/teardown-director.yml
