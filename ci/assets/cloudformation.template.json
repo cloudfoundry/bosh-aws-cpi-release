@@ -423,6 +423,7 @@
     "LifecycleManualIP"                 : { "Value" : { "Fn::FindInMap" : [ "IPConfigurations", "Lifecycle", "ManualIP" ]} },
 
     "BoshIntegrationEIP"                : { "Value" : { "Ref" : "BoshIntegrationIPAddress"} },
+    "BoshIntegrationEIP2"               : { "Value" : { "Ref" : "UbuntuBATSIPAddress"} },
     "BoshIntegrationSubnetID"           : { "Value" : { "Ref" : "BoshIntegrationSubnet"} },
     "BoshIntegrationAvailabilityZone"   : { "Value" : { "Fn::GetAtt" : ["BoshIntegrationSubnet", "AvailabilityZone"] } },
     "BoshIntegrationCIDR"               : { "Value" : { "Fn::FindInMap" : [ "IPConfigurations", "BoshIntegration", "CIDR" ]} },

@@ -68,7 +68,7 @@ jobs:
         region_name:                  {{s3_aws_cpi_region}}
 
 - name: bats-ubuntu
-  serial: true
+  serial_groups: [reuse-ips]
   plan:
   - aggregate:
     - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-dev-artifacts}
@@ -140,7 +140,7 @@ jobs:
     file: bosh-cpi-release/ci/tasks/teardown-director.yml
 
 - name: bosh-integration
-  serial: true
+  serial_groups: [reuse-ips]
   plan:
   - aggregate:
     - {trigger: true,  passed: [build-candidate], get: bosh-cpi-dev-artifacts}

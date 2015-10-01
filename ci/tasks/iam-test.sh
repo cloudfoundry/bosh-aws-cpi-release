@@ -21,6 +21,7 @@ stack_name="aws-cpi-stack"
 stack_info=$(get_stack_info $stack_name)
 
 DIRECTOR=$(get_stack_info_of "${stack_info}" "BoshIntegrationEIP")
+STATIC_IP=$(get_stack_info_of "${stack_info}" "BoshIntegrationEIP2")
 SUBNET_ID=$(get_stack_info_of "${stack_info}" "BoshIntegrationSubnetID")
 AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "BoshIntegrationAvailabilityZone")
 sg_id=$(get_stack_info_of "${stack_info}" "SecurityGroupID")
@@ -76,6 +77,8 @@ networks:
     dns:      ['8.8.8.8']
     reserved: [${NETWORK_RESERVED_RANGE}]
     cloud_properties: {subnet: ${SUBNET_ID}}
+- name: public
+  type: vip
 
 jobs:
 - name: dummy
@@ -85,6 +88,8 @@ jobs:
   networks:
   - name : private
     default: [dns, gateway]
+  - name: public
+    static_ips: [${STATIC_IP}]
 EOF
 
 bosh upload stemcell stemcell/stemcell.tgz
