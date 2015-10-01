@@ -170,7 +170,13 @@ describe Bosh::AwsCloud::InstanceManager do
               :groups=>['sg-baz-1234'],
               :device_index=>0,
               :private_ip_address=>'1.2.3.4'
-            }]
+            }],
+            :block_device_mappings => [
+              {
+                :device_name => '/dev/sdb',
+                :virtual_name => 'ephemeral0',
+              },
+            ],
           })
 
           # return

@@ -22,7 +22,7 @@ module Bosh::AwsCloud
       ResourceWait.for_snapshot(snapshot: snapshot, state: :completed)
 
       params = image_params(snapshot.id)
-      image = region.images.create(params)
+      image = region.images[region.client.register_image(params).image_id]
       ResourceWait.for_image(image: image, state: :available)
 
       TagManager.tag(image, 'Name', params[:description]) if params[:description]
@@ -90,11 +90,14 @@ module Bosh::AwsCloud
                    :virtualization_type => virtualization_type,
                    :root_device_name => "/dev/xvda",
                    :sriov_net_support => "simple",
-                   :block_device_mappings => {
-                     "/dev/xvda" => {
-                       :snapshot_id => snapshot_id
-                     }
-                   }
+                   :block_device_mappings => [
+                     {
+                       :device_name => "/dev/xvda",
+                       :ebs => {
+                         :snapshot_id => snapshot_id,
+                       },
+                     },
+                   ],
                  }
                else
                  root_device_name = stemcell_properties["root_device_name"]
@@ -103,11 +106,14 @@ module Bosh::AwsCloud
                  {
                    :kernel_id => aki,
                    :root_device_name => root_device_name,
-                   :block_device_mappings => {
-                     "/dev/sda" => {
-                       :snapshot_id => snapshot_id
-                     }
-                   }
+                   :block_device_mappings => [
+                     {
+                       :device_name => "/dev/sda",
+                       :ebs => {
+                         :snapshot_id => snapshot_id,
+                       },
+                     },
+                   ],
                  }
                end
 
@@ -121,20 +127,14 @@ module Bosh::AwsCloud
         :name => "BOSH-#{SecureRandom.uuid}",
         :architecture => architecture,
       )
-      merge_default_ephemeral_mapping_for_create_disk(params)
+
+      params[:block_device_mappings].push(*default_ephemeral_disk_mapping)
 
       params
     end
 
     def logger
       Bosh::Clouds::Config.logger
-    end
-
-    # adapts the format of the default ephemeral mapping used by create_vm so it
-    # works with the create AMI, and inserts it into the given hash
-    def merge_default_ephemeral_mapping_for_create_disk(params)
-      ephemeral_mapping = default_ephemeral_disk_mapping[0]
-      params[:block_device_mappings][ephemeral_mapping[:device_name]] = ephemeral_mapping[:virtual_name]
     end
   end
 end
