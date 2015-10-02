@@ -156,10 +156,6 @@ module Bosh::AwsCloud
       end
     end
 
-    def default_ec2_endpoint
-      ['ec2', aws_region, 'amazonaws.com'].compact.join('.')
-    end
-
     def default_elb_endpoint
       ['elasticloadbalancing', aws_region, 'amazonaws.com'].compact.join('.')
     end
@@ -563,6 +559,11 @@ module Bosh::AwsCloud
     attr_reader :az_selector
     attr_reader :region
 
+    def default_ec2_endpoint
+      region_suffix = (aws_region && aws_region.start_with?('cn')) ? 'cn' : nil
+      ['ec2', aws_region, 'amazonaws.com', region_suffix].compact.join('.')
+    end
+
     def agent_properties
       @agent_properties ||= options.fetch('agent', {})
     end
@@ -572,7 +573,7 @@ module Bosh::AwsCloud
     end
 
     def aws_region
-      @aws_region ||= aws_properties.fetch('region', nil)
+      @aws_region ||= aws_properties.fetch('region')
     end
 
     def fast_path_delete?

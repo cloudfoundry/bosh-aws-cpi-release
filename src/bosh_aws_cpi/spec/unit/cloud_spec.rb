@@ -2,14 +2,17 @@ require 'spec_helper'
 
 describe Bosh::AwsCloud::Cloud do
   subject(:cloud) { described_class.new(options) }
+  let(:aws_options) do
+    {
+      'access_key_id' => 'keys to my heart',
+      'secret_access_key' => 'open sesame',
+      'region' => 'fake-region',
+      'default_key_name' => 'sesame',
+    }
+  end
   let(:options) do
     {
-      'aws' => {
-        'access_key_id' => 'keys to my heart',
-        'secret_access_key' => 'open sesame',
-        'region' => 'fake-region',
-        'default_key_name' => 'sesame',
-      },
+      'aws' => aws_options,
       'registry' => {
         'user' => 'abuser',
         'password' => 'hard2gess',
@@ -26,86 +29,119 @@ describe Bosh::AwsCloud::Cloud do
     allow_any_instance_of(AWS::EC2).to receive(:regions).and_return([reg])
   end
 
-  describe 'validating initialization options' do
-    context 'when options are invalid' do
-      let(:options) do
-        {
-          'aws' => {
-            'access_key_id' => 'keys to my heart',
-            'secret_access_key' => 'open sesame'
-          }
-        }
-      end
-
-      it 'raises an error' do
-        expect { cloud }.to raise_error(
-          ArgumentError,
-          'missing configuration parameters > aws:region, aws:default_key_name, registry:endpoint, registry:user, registry:password'
-        )
-      end
-    end
-
-    context 'when all the required configurations are present' do
-      it 'does not raise an error ' do
-        expect { cloud }.to_not raise_error
-      end
-    end
-
-    context 'when optional properties are not provided' do
-      it 'default values are used for endpoints' do
-        expect(cloud.ec2.config.ec2_endpoint).to eq('ec2.fake-region.amazonaws.com')
-        expect(cloud.ec2.config.elb_endpoint).to eq('elasticloadbalancing.fake-region.amazonaws.com')
-      end
-
-      it 'default value is used for max retries' do
-        expect(cloud.ec2.config.max_retries).to be 2
-      end
-
-      it 'default value is used for http properties' do
-        expect(cloud.ec2.config.http_read_timeout).to eq(60)
-        expect(cloud.ec2.config.http_wire_trace).to be false
-        expect(cloud.ec2.config.ssl_verify_peer).to be true
-      end
-    end
-
-    context 'when optional and required properties are provided' do
-      let(:options) do
-        {
+  describe '#initialize' do
+    describe 'validating initialization options' do
+      context 'when options are invalid' do
+        let(:options) do
+          {
             'aws' => {
-                'access_key_id' => 'keys to my heart',
-                'secret_access_key' => 'open sesame',
-                'region' => 'fake-region',
-                'default_key_name' => 'sesame',
-                'http_read_timeout' => 300,
-                'http_wire_trace' => true,
-                'ssl_verify_peer' => false,
-                'ssl_ca_file' => '/custom/cert/ca-certificates',
-                'ssl_ca_path' => '/custom/cert/'
+              'access_key_id' => 'keys to my heart',
+              'secret_access_key' => 'open sesame'
+            }
+          }
+        end
+
+        it 'raises an error' do
+          expect { cloud }.to raise_error(
+              ArgumentError,
+              'missing configuration parameters > aws:region, aws:default_key_name, registry:endpoint, registry:user, registry:password'
+            )
+        end
+      end
+
+      context 'when all the required configurations are present' do
+        it 'does not raise an error ' do
+          expect { cloud }.to_not raise_error
+        end
+      end
+
+      context 'when optional properties are not provided' do
+        it 'default values are used for endpoints' do
+          expect(cloud.ec2.config.ec2_endpoint).to eq('ec2.fake-region.amazonaws.com')
+          expect(cloud.ec2.config.elb_endpoint).to eq('elasticloadbalancing.fake-region.amazonaws.com')
+        end
+
+        it 'default value is used for max retries' do
+          expect(cloud.ec2.config.max_retries).to be 2
+        end
+
+        it 'default value is used for http properties' do
+          expect(cloud.ec2.config.http_read_timeout).to eq(60)
+          expect(cloud.ec2.config.http_wire_trace).to be false
+          expect(cloud.ec2.config.ssl_verify_peer).to be true
+        end
+      end
+
+      context 'when optional and required properties are provided' do
+        let(:options) do
+          {
+            'aws' => {
+              'access_key_id' => 'keys to my heart',
+              'secret_access_key' => 'open sesame',
+              'region' => 'fake-region',
+              'default_key_name' => 'sesame',
+              'http_read_timeout' => 300,
+              'http_wire_trace' => true,
+              'ssl_verify_peer' => false,
+              'ssl_ca_file' => '/custom/cert/ca-certificates',
+              'ssl_ca_path' => '/custom/cert/'
             },
             'registry' => {
-                'user' => 'abuser',
-                'password' => 'hard2gess',
-                'endpoint' => 'http://websites.com'
+              'user' => 'abuser',
+              'password' => 'hard2gess',
+              'endpoint' => 'http://websites.com'
             }
-        }
-      end
+          }
+        end
 
-      it 'passes required properties to AWS SDK' do
-        config = cloud.ec2.config
-        expect(config.access_key_id).to eq('keys to my heart')
-        expect(config.secret_access_key).to eq('open sesame')
-        expect(config.region).to eq('fake-region')
-      end
-      it 'passes optional properties to AWS SDK' do
-        config = cloud.ec2.config
-        expect(config.http_read_timeout).to eq(300)
-        expect(config.http_wire_trace).to be true
-        expect(config.ssl_verify_peer).to be false
-        expect(config.ssl_ca_file).to eq('/custom/cert/ca-certificates')
-        expect(config.ssl_ca_path).to eq('/custom/cert/')
+        it 'passes required properties to AWS SDK' do
+          config = cloud.ec2.config
+          expect(config.access_key_id).to eq('keys to my heart')
+          expect(config.secret_access_key).to eq('open sesame')
+          expect(config.region).to eq('fake-region')
+        end
+        it 'passes optional properties to AWS SDK' do
+          config = cloud.ec2.config
+          expect(config.http_read_timeout).to eq(300)
+          expect(config.http_wire_trace).to be true
+          expect(config.ssl_verify_peer).to be false
+          expect(config.ssl_ca_file).to eq('/custom/cert/ca-certificates')
+          expect(config.ssl_ca_path).to eq('/custom/cert/')
+        end
       end
     end
 
+    describe 'the default ec2 endpoint' do
+      let(:aws_region) { 'fake-region' }
+      let(:aws_options) do
+        {
+          'access_key_id' => 'keys to my heart',
+          'secret_access_key' => 'open sesame',
+          'region' => aws_region,
+          'default_key_name' => 'sesame',
+        }
+      end
+
+      it 'correctly produces the endpoint' do
+        expect(cloud.ec2.config.ec2_endpoint).to eq('ec2.fake-region.amazonaws.com')
+      end
+
+      context 'when running in china' do
+        let(:aws_region) { 'cn-fake-china-region' }
+
+        it 'correctly produces the endpoint' do
+          expect(cloud.ec2.config.ec2_endpoint).to eq('ec2.cn-fake-china-region.amazonaws.com.cn')
+        end
+      end
+
+      context 'region is nil' do
+        let(:aws_region) { nil }
+
+        it 'correctly produces the endpoint' do
+          expect(cloud.ec2.config.ec2_endpoint).to eq('ec2.amazonaws.com')
+        end
+      end
+    end
   end
 
   describe '#create_disk' do
