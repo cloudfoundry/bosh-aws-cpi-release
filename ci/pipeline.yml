@@ -93,6 +93,7 @@ jobs:
         aws_access_key_id:            {{aws_access_key__primary}}
         aws_secret_access_key:        {{aws_secret_key__primary}}
         region_name:                  {{aws_region__primary}}
+        stack_name:                   primary
 
 - name: bats-ubuntu
   serial: true
