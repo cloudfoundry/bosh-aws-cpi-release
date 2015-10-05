@@ -35,274 +35,274 @@ groups:
       - recreate-infrastructure-bosh-integration
 
 jobs:
-- name: recreate-infrastructure-primary
-  plan:
-  - aggregate:
-    - {trigger: false, get: bosh-cpi-release,     resource: bosh-cpi-release-in}
+  - name: recreate-infrastructure-primary
+    plan:
+      - aggregate:
+        - {trigger: false, get: bosh-cpi-release,     resource: bosh-cpi-release-in}
 
-  - task: cloudformation
-    file: bosh-cpi-release/ci/tasks/cloudformation.yml
-    config:
-      params:
-        aws_access_key_id:        {{aws_access_key__primary}}
-        aws_secret_access_key:    {{aws_secret_key__primary}}
-        region_name:              {{aws_region__primary}}
-        stack_name:               primary
+      - task: cloudformation
+        file: bosh-cpi-release/ci/tasks/cloudformation.yml
+        config:
+          params:
+            aws_access_key_id:        {{aws_access_key__primary}}
+            aws_secret_access_key:    {{aws_secret_key__primary}}
+            region_name:              {{aws_region__primary}}
+            stack_name:               primary
 
-- name: recreate-infrastructure-bosh-integration
-  plan:
-  - aggregate:
-    - {trigger: false, get: bosh-cpi-release,     resource: bosh-cpi-release-in}
+  - name: recreate-infrastructure-bosh-integration
+    plan:
+      - aggregate:
+        - {trigger: false, get: bosh-cpi-release,     resource: bosh-cpi-release-in}
 
-  - task: cloudformation
-    file: bosh-cpi-release/ci/tasks/cloudformation.yml
-    config:
-      params:
-        aws_access_key_id:        {{aws_access_key__bosh_integration}}
-        aws_secret_access_key:    {{aws_secret_key__bosh_integration}}
-        region_name:              {{aws_region__bosh_integration}}
-        stack_name:               bosh-integration
+      - task: cloudformation
+        file: bosh-cpi-release/ci/tasks/cloudformation.yml
+        config:
+          params:
+            aws_access_key_id:        {{aws_access_key__bosh_integration}}
+            aws_secret_access_key:    {{aws_secret_key__bosh_integration}}
+            region_name:              {{aws_region__bosh_integration}}
+            stack_name:               bosh-integration
 
-- name: build-candidate
-  serial: true
-  plan:
-  - aggregate:
-    - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-in}
-    - {trigger: false, get: version-semver, params: {bump: patch}}
+  - name: build-candidate
+    serial: true
+    plan:
+      - aggregate:
+        - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-in}
+        - {trigger: false, get: version-semver, params: {bump: patch}}
 
-  - put: version-semver
-    params: {file: version-semver/number}
+      - put: version-semver
+        params: {file: version-semver/number}
 
-  - task: build
-    file: bosh-cpi-release/ci/tasks/build-candidate.yml
+      - task: build
+        file: bosh-cpi-release/ci/tasks/build-candidate.yml
 
-  - put: bosh-cpi-dev-artifacts
-    params: {from: build/out/.*\.tgz}
+      - put: bosh-cpi-dev-artifacts
+        params: {from: build/out/.*\.tgz}
 
-- name: lifecycle
-  serial: true
-  plan:
-  - aggregate:
-    - {trigger: true,  passed: [build-candidate], get: bosh-cpi-dev-artifacts}
-    - {trigger: false, passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-release-in}
+  - name: lifecycle
+    serial: true
+    plan:
+      - aggregate:
+        - {trigger: true,  passed: [build-candidate], get: bosh-cpi-dev-artifacts}
+        - {trigger: false, passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-release-in}
 
-  - task: test
-    file: bosh-cpi-release/ci/tasks/run-lifecycle.yml
-    config:
-      params:
-        aws_access_key_id:            {{aws_access_key__primary}}
-        aws_secret_access_key:        {{aws_secret_key__primary}}
-        region_name:                  {{aws_region__primary}}
-        stack_name:                   primary
+      - task: test
+        file: bosh-cpi-release/ci/tasks/run-lifecycle.yml
+        config:
+          params:
+            aws_access_key_id:            {{aws_access_key__primary}}
+            aws_secret_access_key:        {{aws_secret_key__primary}}
+            region_name:                  {{aws_region__primary}}
+            stack_name:                   primary
 
-- name: bats-ubuntu
-  serial: true
-  plan:
-  - aggregate:
-    - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-dev-artifacts}
-    - {trigger: false,                             get: stemcell, resource: aws-ubuntu-stemcell}
-    - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
-    - {trigger: false,                             get: bats}
-    - {trigger: false,                             get: bosh-init}
-    - {trigger: false, passed: [build-candidate],  get: version-semver}
-    - {trigger: false,                             get: bosh-release}
+  - name: bats-ubuntu
+    serial: true
+    plan:
+      - aggregate:
+        - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-dev-artifacts}
+        - {trigger: false,                             get: stemcell, resource: aws-ubuntu-stemcell}
+        - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
+        - {trigger: false,                             get: bats}
+        - {trigger: false,                             get: bosh-init}
+        - {trigger: false, passed: [build-candidate],  get: version-semver}
+        - {trigger: false,                             get: bosh-release}
 
-  - task: setup-director
-    file: bosh-cpi-release/ci/tasks/setup-director.yml
-    config:
-      params:
-        base_os:                    Ubuntu
-        aws_access_key_id:          {{aws_access_key__primary}}
-        aws_secret_access_key:      {{aws_secret_key__primary}}
-        region_name:                {{aws_region__primary}}
-        private_key_data:           {{bosh_private_key}}
-        stack_name:                 primary
+      - task: setup-director
+        file: bosh-cpi-release/ci/tasks/setup-director.yml
+        config:
+          params:
+            base_os:                    Ubuntu
+            aws_access_key_id:          {{aws_access_key__primary}}
+            aws_secret_access_key:      {{aws_secret_key__primary}}
+            region_name:                {{aws_region__primary}}
+            private_key_data:           {{bosh_private_key}}
+            stack_name:                 primary
 
-  - task: run-bats
-    file: bosh-cpi-release/ci/tasks/run-bats.yml
-    config:
-      params:
-        base_os:                    Ubuntu
-        aws_access_key_id:          {{aws_access_key__primary}}
-        aws_secret_access_key:      {{aws_secret_key__primary}}
-        region_name:                {{aws_region__primary}}
-        BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
-        BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_ubuntu}}
-        stack_name:                 primary
+      - task: run-bats
+        file: bosh-cpi-release/ci/tasks/run-bats.yml
+        config:
+          params:
+            base_os:                    Ubuntu
+            aws_access_key_id:          {{aws_access_key__primary}}
+            aws_secret_access_key:      {{aws_secret_key__primary}}
+            region_name:                {{aws_region__primary}}
+            BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
+            BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_ubuntu}}
+            stack_name:                 primary
 
-  - task: teardown-director
-    file: bosh-cpi-release/ci/tasks/teardown-director.yml
+      - task: teardown-director
+        file: bosh-cpi-release/ci/tasks/teardown-director.yml
 
-- name: bats-centos
-  serial: true
-  plan:
-  - aggregate:
-    - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-dev-artifacts}
-    - {trigger: false,                             get: stemcell, resource: aws-centos-stemcell}
-    - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
-    - {trigger: false,                             get: bosh-init}
-    - {trigger: false, passed: [build-candidate],  get: version-semver}
-    - {trigger: false,                             get: bats}
-    - {trigger: false,                             get: bosh-release}
+  - name: bats-centos
+    serial: true
+    plan:
+      - aggregate:
+        - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-dev-artifacts}
+        - {trigger: false,                             get: stemcell, resource: aws-centos-stemcell}
+        - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
+        - {trigger: false,                             get: bosh-init}
+        - {trigger: false, passed: [build-candidate],  get: version-semver}
+        - {trigger: false,                             get: bats}
+        - {trigger: false,                             get: bosh-release}
 
-  - task: setup-director
-    file: bosh-cpi-release/ci/tasks/setup-director.yml
-    config:
-      params:
-        base_os:                    Centos
-        aws_access_key_id:          {{aws_access_key__primary}}
-        aws_secret_access_key:      {{aws_secret_key__primary}}
-        region_name:                {{aws_region__primary}}
-        private_key_data:           {{bosh_private_key}}
-        stack_name:                 primary
+      - task: setup-director
+        file: bosh-cpi-release/ci/tasks/setup-director.yml
+        config:
+          params:
+            base_os:                    Centos
+            aws_access_key_id:          {{aws_access_key__primary}}
+            aws_secret_access_key:      {{aws_secret_key__primary}}
+            region_name:                {{aws_region__primary}}
+            private_key_data:           {{bosh_private_key}}
+            stack_name:                 primary
 
-  - task: run-bats
-    file: bosh-cpi-release/ci/tasks/run-bats.yml
-    config:
-      params:
-        base_os:                    Centos
-        aws_access_key_id:          {{aws_access_key__primary}}
-        aws_secret_access_key:      {{aws_secret_key__primary}}
-        region_name:                {{aws_region__primary}}
-        BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
-        BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_centos}}
-        stack_name:                 primary
+      - task: run-bats
+        file: bosh-cpi-release/ci/tasks/run-bats.yml
+        config:
+          params:
+            base_os:                    Centos
+            aws_access_key_id:          {{aws_access_key__primary}}
+            aws_secret_access_key:      {{aws_secret_key__primary}}
+            region_name:                {{aws_region__primary}}
+            BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
+            BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_centos}}
+            stack_name:                 primary
 
-  - task: teardown-director
-    file: bosh-cpi-release/ci/tasks/teardown-director.yml
+      - task: teardown-director
+        file: bosh-cpi-release/ci/tasks/teardown-director.yml
 
-- name: bosh-integration
-  serial: true
-  plan:
-  - aggregate:
-    - {trigger: true,  passed: [build-candidate], get: bosh-cpi-dev-artifacts}
-    - {trigger: false,                            get: stemcell, resource: aws-ubuntu-stemcell}
-    - {trigger: false, passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-release-in}
-    - {trigger: false,                            get: bosh-init}
-    - {trigger: false, passed: [build-candidate], get: version-semver}
-    - {trigger: false,                            get: bosh-release}
-    - {trigger: false,                            get: dummy-release}
+  - name: bosh-integration
+    serial: true
+    plan:
+      - aggregate:
+        - {trigger: true,  passed: [build-candidate], get: bosh-cpi-dev-artifacts}
+        - {trigger: false,                            get: stemcell, resource: aws-ubuntu-stemcell}
+        - {trigger: false, passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-release-in}
+        - {trigger: false,                            get: bosh-init}
+        - {trigger: false, passed: [build-candidate], get: version-semver}
+        - {trigger: false,                            get: bosh-release}
+        - {trigger: false,                            get: dummy-release}
 
-  - task: setup-director
-    file: bosh-cpi-release/ci/tasks/setup-director-iam.yml
-    config:
-      params:
-        aws_access_key_id:          {{aws_access_key__bosh_integration}}
-        aws_secret_access_key:      {{aws_secret_key__bosh_integration}}
-        region_name:                {{aws_region__bosh_integration}}
-        private_key_data:           {{bosh_private_key}}
-        stack_name:                 bosh-integration
+      - task: setup-director
+        file: bosh-cpi-release/ci/tasks/setup-director-iam.yml
+        config:
+          params:
+            aws_access_key_id:          {{aws_access_key__bosh_integration}}
+            aws_secret_access_key:      {{aws_secret_key__bosh_integration}}
+            region_name:                {{aws_region__bosh_integration}}
+            private_key_data:           {{bosh_private_key}}
+            stack_name:                 bosh-integration
 
-  - task: test
-    file: bosh-cpi-release/ci/tasks/iam-test.yml
-    config:
-      params:
-        aws_access_key_id:          {{aws_access_key__bosh_integration}}
-        aws_secret_access_key:      {{aws_secret_key__bosh_integration}}
-        region_name:                {{aws_region__bosh_integration}}
-        stemcell_name:              {{BAT_STEMCELL_NAME_ubuntu}}
-        stack_name:                 bosh-integration
+      - task: test
+        file: bosh-cpi-release/ci/tasks/iam-test.yml
+        config:
+          params:
+            aws_access_key_id:          {{aws_access_key__bosh_integration}}
+            aws_secret_access_key:      {{aws_secret_key__bosh_integration}}
+            region_name:                {{aws_region__bosh_integration}}
+            stemcell_name:              {{BAT_STEMCELL_NAME_ubuntu}}
+            stack_name:                 bosh-integration
 
-  - task: teardown-director
-    file: bosh-cpi-release/ci/tasks/teardown-director.yml
+      - task: teardown-director
+        file: bosh-cpi-release/ci/tasks/teardown-director.yml
 
-- name: promote-candidate
-  plan:
-  - aggregate:
-    - {trigger: false, get: bosh-cpi-dev-artifacts, passed: [lifecycle, bats-ubuntu, bats-centos, bosh-integration]}
-    - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-out}
-    - {trigger: false, get: release-version-semver, params: {bump: major}}
+  - name: promote-candidate
+    plan:
+      - aggregate:
+        - {trigger: false, get: bosh-cpi-dev-artifacts, passed: [lifecycle, bats-ubuntu, bats-centos, bosh-integration]}
+        - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-out}
+        - {trigger: false, get: release-version-semver, params: {bump: major}}
 
-  - task: promote
-    file: bosh-cpi-release/ci/tasks/promote-candidate.yml
-    config:
-      params:
-        aws_access_key_id: {{aws_access_key__primary}}
-        aws_secret_access_key: {{aws_secret_key__primary}}
+      - task: promote
+        file: bosh-cpi-release/ci/tasks/promote-candidate.yml
+        config:
+          params:
+            aws_access_key_id: {{aws_access_key__primary}}
+            aws_secret_access_key: {{aws_secret_key__primary}}
 
-  - put: bosh-cpi-release
-    resource: bosh-cpi-release-out
-    params: {repository: promote/bosh-cpi-release, rebase: true, tag_prefix: "v", tag: promote/integer_version}
+      - put: bosh-cpi-release
+        resource: bosh-cpi-release-out
+        params: {repository: promote/bosh-cpi-release, rebase: true, tag_prefix: "v", tag: promote/integer_version}
 
-  - put: release-version-semver
-    params: {file: release-version-semver/number}
+      - put: release-version-semver
+        params: {file: release-version-semver/number}
 
 resources:
-- name: bosh-cpi-dev-artifacts
-  type: s3
-  source:
-    regexp: bosh-aws-cpi\.tgz
-    bucket: {{s3_aws_cpi_pipeline_bucket}}
-    region_name: {{aws_region__primary}}
-    access_key_id: {{aws_access_key__primary}}
-    secret_access_key: {{aws_secret_key__primary}}
+  - name: bosh-cpi-dev-artifacts
+    type: s3
+    source:
+      regexp: bosh-aws-cpi\.tgz
+      bucket: {{s3_aws_cpi_pipeline_bucket}}
+      region_name: {{aws_region__primary}}
+      access_key_id: {{aws_access_key__primary}}
+      secret_access_key: {{aws_secret_key__primary}}
 
-- name: bosh-cpi-release-in
-  type: git
-  source:
-    uri: git@github.com:cloudfoundry-incubator/bosh-aws-cpi-release.git
-    branch: master
-    private_key: {{github_deployment_key__bosh-aws-cpi-release}}
-    ignore_paths:
-      - .final_builds/**/*.yml
-      - releases/**/*.yml
+  - name: bosh-cpi-release-in
+    type: git
+    source:
+      uri: git@github.com:cloudfoundry-incubator/bosh-aws-cpi-release.git
+      branch: master
+      private_key: {{github_deployment_key__bosh-aws-cpi-release}}
+      ignore_paths:
+        - .final_builds/**/*.yml
+        - releases/**/*.yml
 
-- name: bosh-cpi-release-out
-  type: git
-  source:
-    uri: git@github.com:cloudfoundry-incubator/bosh-aws-cpi-release.git
-    branch: master
-    private_key: {{github_deployment_key__bosh-aws-cpi-release}}
+  - name: bosh-cpi-release-out
+    type: git
+    source:
+      uri: git@github.com:cloudfoundry-incubator/bosh-aws-cpi-release.git
+      branch: master
+      private_key: {{github_deployment_key__bosh-aws-cpi-release}}
 
-- name: version-semver
-  type: semver
-  source:
-    key:               current-version # dev-release version
-    bucket:            {{s3_aws_cpi_pipeline_bucket}}
-    access_key_id:     {{aws_access_key__primary}}
-    secret_access_key: {{aws_secret_key__primary}}
+  - name: version-semver
+    type: semver
+    source:
+      key:               current-version # dev-release version
+      bucket:            {{s3_aws_cpi_pipeline_bucket}}
+      access_key_id:     {{aws_access_key__primary}}
+      secret_access_key: {{aws_secret_key__primary}}
 
-- name: release-version-semver
-  type: semver
-  source:
-    key:               release-current-version
-    bucket:            {{s3_aws_cpi_pipeline_bucket}}
-    access_key_id:     {{aws_access_key__primary}}
-    secret_access_key: {{aws_secret_key__primary}}
+  - name: release-version-semver
+    type: semver
+    source:
+      key:               release-current-version
+      bucket:            {{s3_aws_cpi_pipeline_bucket}}
+      access_key_id:     {{aws_access_key__primary}}
+      secret_access_key: {{aws_secret_key__primary}}
 
-- name: bosh-init
-  type: s3
-  source:
-    regexp: bosh-init-([0-9.]+)-linux-amd64
-    bucket: {{s3_bosh_init_bucket}}
-    region_name: {{aws_region__primary}}
+  - name: bosh-init
+    type: s3
+    source:
+      regexp: bosh-init-([0-9.]+)-linux-amd64
+      bucket: {{s3_bosh_init_bucket}}
+      region_name: {{aws_region__primary}}
 
-- name: dummy-release
-  type: s3
-  source:
-    versioned_file: dummy.tgz
-    bucket: {{s3_aws_cpi_pipeline_bucket}}
-    region_name: {{aws_region__primary}}
-    access_key_id: {{aws_access_key__primary}}
-    secret_access_key: {{aws_secret_key__primary}}
+  - name: dummy-release
+    type: s3
+    source:
+      versioned_file: dummy.tgz
+      bucket: {{s3_aws_cpi_pipeline_bucket}}
+      region_name: {{aws_region__primary}}
+      access_key_id: {{aws_access_key__primary}}
+      secret_access_key: {{aws_secret_key__primary}}
 
-- name: bats
-  type: git
-  source:
-    uri: https://github.com/cloudfoundry/bosh-acceptance-tests.git
-    branch: master
+  - name: bats
+    type: git
+    source:
+      uri: https://github.com/cloudfoundry/bosh-acceptance-tests.git
+      branch: master
 
-- name: bosh-release
-  type: bosh-io-release
-  source:
-    repository: cloudfoundry/bosh
+  - name: bosh-release
+    type: bosh-io-release
+    source:
+      repository: cloudfoundry/bosh
 
-- name: aws-ubuntu-stemcell
-  type: bosh-io-stemcell
-  source:
-    name: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+  - name: aws-ubuntu-stemcell
+    type: bosh-io-stemcell
+    source:
+      name: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
 
-- name: aws-centos-stemcell
-  type: bosh-io-stemcell
-  source:
-    name: bosh-aws-xen-centos-7-go_agent
+  - name: aws-centos-stemcell
+    type: bosh-io-stemcell
+    source:
+      name: bosh-aws-xen-centos-7-go_agent
