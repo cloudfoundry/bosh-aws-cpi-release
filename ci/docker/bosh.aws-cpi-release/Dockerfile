@@ -15,7 +15,7 @@ RUN apt-get install -y mysql-client libmysqlclient-dev; apt-get clean
 
 RUN apt-get install -y libpq-dev; apt-get clean
 
-RUN apt-get install -y python python-pip groff jq; apt-get clean; pip install awscli; 
+RUN apt-get install -y python python-pip groff jq; apt-get clean; pip install awscli;
 
 # chruby
 RUN mkdir /tmp/chruby && \
@@ -37,11 +37,19 @@ RUN mkdir /tmp/ruby-install && \
 RUN ruby-install ruby 2.1.2
 
 # Bundler and BOSH CLI
-RUN /bin/bash -l -c "source /etc/profile.d/chruby.sh ;  \
-                     chruby 2.1.2 ;                     \
-                     gem install bundler bosh_cli --no-ri --no-rdoc"
+RUN /bin/bash -l -c "                            \
+  source /etc/profile.d/chruby.sh ;              \
+  chruby 2.1.2 ;                                 \
+  gem install bundler bosh_cli --no-ri --no-rdoc \
+"
 
-#Terraform
-RUN wget https://dl.bintray.com/mitchellh/terraform/terraform_0.6.3_linux_amd64.zip && \
-    unzip terraform*.zip -d /usr/local/bin && \
-    rm terraform*.zip
+# Pre-Bundle the bosh-cpi-release
+COPY cpi-release/src/bosh_aws_cpi /tmp/bosh_aws_cpi
+RUN /bin/bash -l -c "               \
+  source /etc/profile.d/chruby.sh ; \
+  chruby 2.1.2 ;                    \
+  pushd /tmp/bosh_aws_cpi ;     \
+  bundle ;                          \
+  popd ;                            \
+  rm -rf /tmp/bosh_aws_cpi ;    \
+"
