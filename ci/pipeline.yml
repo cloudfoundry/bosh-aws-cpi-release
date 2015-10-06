@@ -176,7 +176,7 @@ jobs:
     plan:
       - aggregate:
         - {trigger: true,  passed: [build-candidate], get: bosh-cpi-dev-artifacts}
-        - {trigger: false,                            get: stemcell, resource: aws-ubuntu-stemcell}
+        - {trigger: false,                            get: stemcell, resource: {{bosh-integration-stemcell-resource-name}} }
         - {trigger: false, passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-release-in}
         - {trigger: false,                            get: bosh-init}
         - {trigger: false, passed: [build-candidate], get: version-semver}
@@ -187,11 +187,11 @@ jobs:
         file: bosh-cpi-release/ci/tasks/setup-director-iam.yml
         config:
           params:
-            aws_access_key_id:          {{aws_access_key__bosh_integration}}
-            aws_secret_access_key:      {{aws_secret_key__bosh_integration}}
-            region_name:                {{aws_region__bosh_integration}}
-            private_key_data:           {{bosh_private_key}}
-            stack_name:                 bosh-integration
+            aws_access_key_id:     {{aws_access_key__bosh_integration}}
+            aws_secret_access_key: {{aws_secret_key__bosh_integration}}
+            region_name:           {{aws_region__bosh_integration}}
+            private_key_data:      {{bosh_private_key}}
+            stack_name:            bosh-integration
 
       - task: test
         file: bosh-cpi-release/ci/tasks/iam-test.yml
@@ -301,6 +301,15 @@ resources:
     type: bosh-io-stemcell
     source:
       name: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+
+  - name: aws-bosh-integration-stemcell
+    type: s3
+    source:
+      versioned_file: stemcell.tgz
+      bucket: {{s3_aws_cpi_bosh_integration_stemcell_bucket}}
+      region_name: {{aws_region__primary}}
+      access_key_id: {{aws_access_key__primary}}
+      secret_access_key: {{aws_secret_key__primary}}
 
   - name: aws-centos-stemcell
     type: bosh-io-stemcell
