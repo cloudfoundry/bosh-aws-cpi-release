@@ -192,6 +192,7 @@ jobs:
             region_name:           {{aws_region__bosh_integration}}
             private_key_data:      {{bosh_private_key}}
             stack_name:            bosh-integration
+            blobstore_s3_endpoint: {{blobstore_s3_endpoint__bosh_integration}}
 
       - task: test
         file: bosh-cpi-release/ci/tasks/iam-test.yml
