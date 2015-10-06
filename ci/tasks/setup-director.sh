@@ -209,4 +209,8 @@ $initexe version
 pushd ${deployment_dir}
   echo "deploying BOSH..."
   $initexe deploy ${manifest_filename}
+  echo "Final state of director deployment:"
+  echo "=========================================="
+  cat director-manifest-state.json
+  echo "=========================================="
 popd
