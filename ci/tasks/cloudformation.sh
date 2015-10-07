@@ -15,11 +15,14 @@ export AWS_DEFAULT_REGION=${region_name}
 
 stack_info=$(get_stack_info $stack_name)
 vpc_id=$(get_stack_info_of "$stack_info" "VPCID")
-instances=$(aws ec2 describe-instances --query "Reservations[*].Instances[*].InstanceId[]" --filters "Name=vpc-id,Values=${vpc_id}")
 
-if [ ! -z "$instances" ] ; then
-  echo "Error: Alive instances found on ${vpc_id}: ${instances}"
-  exit 1
+if [ ! -z "${vpc_id}" ] ; then
+  instances=$(aws ec2 describe-instances --query "Reservations[*].Instances[*].InstanceId[]" --filters "Name=vpc-id,Values=${vpc_id}")
+
+  if [[ (! -z ${instances}) && ($(echo ${instances}| jq '. | length') -gt 0) ]] ; then
+    echo "Error: Alive instances found on ${vpc_id}: ${instances}"
+    exit 1
+  fi
 fi
 
 cmd="aws cloudformation delete-stack --stack-name ${stack_name}"
