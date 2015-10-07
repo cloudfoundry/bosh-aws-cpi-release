@@ -11,10 +11,10 @@ inputs:
 run:
   path: bosh-cpi-release/ci/tasks/setup-director-iam.sh
 params:
-  aws_access_key_id:          replace-me
-  aws_secret_access_key:      replace-me
-  private_key_data:           replace-me
-  region_name:                replace-me
-  stack_name:                 replace-me
-  blobstore_s3_endpoint:      replace-me
-  BOSH_INIT_LOG_LEVEL:        warn
+  aws_access_key_id:     replace-me
+  aws_secret_access_key: replace-me
+  private_key_data:      replace-me
+  region_name:           replace-me
+  stack_name:            replace-me
+  blobstore_s3_host:     replace-me
+  BOSH_INIT_LOG_LEVEL:   warn

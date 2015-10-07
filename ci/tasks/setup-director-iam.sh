@@ -9,7 +9,7 @@ check_param aws_secret_access_key
 check_param region_name
 check_param private_key_data
 check_param stack_name
-check_param blobstore_s3_endpoint
+check_param blobstore_s3_host
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
@@ -147,7 +147,7 @@ jobs:
       credentials_source: 'env_or_profile'
       director: {user: director, password: director-password}
       agent: {user: agent, password: agent-password}
-      host: ${blobstore_s3_endpoint}
+      host: ${blobstore_s3_host}
 
     director:
       address: 127.0.0.1
