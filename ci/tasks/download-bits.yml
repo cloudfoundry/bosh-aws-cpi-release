@@ -1,0 +1,13 @@
+---
+platform: linux
+image: docker:///boshcpi/aws-cpi-release
+inputs:
+- name: bosh-cpi-release
+run:
+  path: bosh-cpi-release/ci/tasks/download-bits.sh
+params:
+  aws_access_key_id:     replace-me
+  aws_secret_access_key: replace-me
+  region_name:           replace-me
+  stack_name:            replace-me
+  private_key_data:      replace-me

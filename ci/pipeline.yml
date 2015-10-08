@@ -23,6 +23,12 @@ groups:
       - bosh-integration
       - promote-candidate
 
+  - name: china
+    jobs:
+      - setup-downloader-infrastructure-cn
+      - download-from-cn
+      - teardown-downloader-infrastructure-cn
+
   - name: all
     jobs:
       - build-candidate
@@ -33,6 +39,9 @@ groups:
       - promote-candidate
       - recreate-infrastructure-primary
       - recreate-infrastructure-bosh-integration
+      - setup-downloader-infrastructure-cn
+      - download-from-cn
+      - teardown-downloader-infrastructure-cn
 
 jobs:
   - name: recreate-infrastructure-primary
@@ -40,28 +49,36 @@ jobs:
       - aggregate:
         - {trigger: false, get: bosh-cpi-release,     resource: bosh-cpi-release-in}
 
-      - task: cloudformation
-        file: bosh-cpi-release/ci/tasks/cloudformation.yml
-        config:
+      - task: check-for-running-instances
+        file: bosh-cpi-release/ci/tasks/check-for-running-instances.yml
+        config: &recreate-primary-config
           params:
             aws_access_key_id:        {{aws_access_key__primary}}
             aws_secret_access_key:    {{aws_secret_key__primary}}
             region_name:              {{aws_region__primary}}
             stack_name:               primary
 
+      - task: cloudformation
+        file: bosh-cpi-release/ci/tasks/cloudformation.yml
+        config: *recreate-primary-config
+
   - name: recreate-infrastructure-bosh-integration
     plan:
       - aggregate:
         - {trigger: false, get: bosh-cpi-release,     resource: bosh-cpi-release-in}
 
-      - task: cloudformation
-        file: bosh-cpi-release/ci/tasks/cloudformation.yml
-        config:
+      - task: check-for-running-instances
+        file: bosh-cpi-release/ci/tasks/check-for-running-instances.yml
+        config: &recreate-bosh-integration-config
           params:
             aws_access_key_id:        {{aws_access_key__bosh_integration}}
             aws_secret_access_key:    {{aws_secret_key__bosh_integration}}
             region_name:              {{aws_region__bosh_integration}}
             stack_name:               bosh-integration
+
+      - task: cloudformation
+        file: bosh-cpi-release/ci/tasks/cloudformation.yml
+        config: *recreate-bosh-integration-config
 
   - name: build-candidate
     serial: true
@@ -228,6 +245,53 @@ jobs:
       - put: release-version-semver
         params: {file: release-version-semver/number}
 
+  - name: setup-downloader-infrastructure-cn
+    serial_groups: [download-cn]
+    plan:
+      - aggregate:
+        - {trigger: true, get: one-hour-timer}
+        - {trigger: false, get: bosh-cpi-release,     resource: bosh-cpi-release-in}
+
+      - task: cloudformation
+        file: bosh-cpi-release/ci/tasks/cloudformation.yml
+        config: &downloader-infrastructure-config
+          params:
+            aws_access_key_id:     {{aws_access_key__downloader}}
+            aws_secret_access_key: {{aws_secret_key__downloader}}
+            region_name:           {{aws_region__downloader}}
+            stack_name:            downloader-cn
+
+  - name: download-from-cn
+    serial_groups: [download-cn]
+    plan:
+      - aggregate:
+        - {trigger: true, get: bosh-cpi-release, passed: [setup-downloader-infrastructure-cn], resource: bosh-cpi-release-in}
+
+      - task: download
+        file: bosh-cpi-release/ci/tasks/download-bits.yml
+        config:
+          params:
+            aws_access_key_id:     {{aws_access_key__downloader}}
+            aws_secret_access_key: {{aws_secret_key__downloader}}
+            region_name:           {{aws_region__downloader}}
+            stack_name:            downloader-cn
+            private_key_data:      {{bosh_private_key}}
+        on_failure:
+          task: teardown
+          file: bosh-cpi-release/ci/tasks/teardown-infrastructure.yml
+          config: *downloader-infrastructure-config
+
+
+  - name: teardown-downloader-infrastructure-cn
+    serial_groups: [download-cn]
+    plan:
+      - aggregate:
+        - {trigger: true, get: bosh-cpi-release, passed: [download-from-cn], resource: bosh-cpi-release-in}
+
+      - task: teardown
+        file: bosh-cpi-release/ci/tasks/teardown-infrastructure.yml
+        config: *downloader-infrastructure-config
+
 resources:
   - name: bosh-cpi-dev-artifacts
     type: s3
@@ -316,3 +380,8 @@ resources:
     type: bosh-io-stemcell
     source:
       name: bosh-aws-xen-centos-7-go_agent
+
+  - name: one-hour-timer
+    type: time
+    source:
+      interval: 1h
