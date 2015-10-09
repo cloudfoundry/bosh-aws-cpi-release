@@ -265,7 +265,8 @@ jobs:
     serial_groups: [download-cn]
     plan:
       - aggregate:
-        - {trigger: true, get: bosh-cpi-release, passed: [setup-downloader-infrastructure-cn], resource: bosh-cpi-release-in}
+        - {trigger: true, get: one-hour-timer, passed: [setup-downloader-infrastructure-cn]}
+        - {trigger: false, get: bosh-cpi-release, passed: [setup-downloader-infrastructure-cn], resource: bosh-cpi-release-in}
 
       - task: download
         file: bosh-cpi-release/ci/tasks/download-bits.yml
@@ -286,7 +287,8 @@ jobs:
     serial_groups: [download-cn]
     plan:
       - aggregate:
-        - {trigger: true, get: bosh-cpi-release, passed: [download-from-cn], resource: bosh-cpi-release-in}
+        - {trigger: true, get: one-hour-timer, passed: [download-from-cn]}
+        - {trigger: false, get: bosh-cpi-release, passed: [download-from-cn], resource: bosh-cpi-release-in}
 
       - task: teardown
         file: bosh-cpi-release/ci/tasks/teardown-infrastructure.yml
