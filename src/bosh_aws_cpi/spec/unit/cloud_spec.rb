@@ -113,11 +113,11 @@ describe Bosh::AwsCloud::Cloud do
 
     context 'when there is no proper network access to AWS' do
       before do
-        allow_any_instance_of(AWS::EC2).to receive(:regions).and_raise(Net::OpenTimeout)
+        allow_any_instance_of(AWS::EC2).to receive(:regions).and_raise(Net::OpenTimeout, 'execution expired')
       end
 
       it 'raises an exception with a user friendly message' do
-        expect { cloud }.to raise_error(Bosh::Clouds::CloudError, 'Please make sure the CPI has proper network access to AWS.')
+        expect { cloud }.to raise_error(Bosh::Clouds::CloudError, 'Please make sure the CPI has proper network access to AWS. #<Net::OpenTimeout: execution expired>')
       end
     end
 

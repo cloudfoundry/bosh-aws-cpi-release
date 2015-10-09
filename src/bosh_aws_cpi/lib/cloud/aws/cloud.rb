@@ -589,7 +589,7 @@ module Bosh::AwsCloud
         @region = @ec2.regions.select {|r| r.name == aws_region}.first
         @az_selector = AvailabilityZoneSelector.new(@region, aws_properties['default_availability_zone'])
       rescue Net::OpenTimeout => e
-        cloud_error("Please make sure the CPI has proper network access to AWS.")
+        cloud_error("Please make sure the CPI has proper network access to AWS. #{e.inspect}")
       end
     end
 
