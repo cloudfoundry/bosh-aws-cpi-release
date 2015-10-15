@@ -12,7 +12,7 @@ packages:
 properties:
   aws.credentials_source:
     description: Where to get AWS credentials for the aws cpi. This can be set to `static` for to use an `access_key_id` and `secret_access_key` or `env_or_profile` to get the credentials from environment variables or an EC2 instance profile.
-    default: 'static'
+    default: static
   aws.access_key_id:
     description: AWS access_key_id for the aws cpi (Required when aws.credentials_source is set to `static`)
     default: null
@@ -23,11 +23,15 @@ properties:
     description: Default AWS iam_instance_profile for the aws cpi
     default: null
   aws.default_key_name:
-    description: Default ssh keypair used by aws cpi when creating vms
+    description: Default SSH keypair used for new VMs (required)
+    example: [bosh]
   aws.default_security_groups:
-    description: Default security group used by aws cpi
+    description: Default security groups for new VMs (required)
+    example: [bosh-grp]
   aws.region:
-    description: AWS Region used by aws cpi
+    description: AWS region name
+    example: us-east-1
+
   registry.username:
     description: User to access the Registry
   registry.password:
@@ -37,6 +41,7 @@ properties:
   registry.port:
     description: Port of the Registry to connect to
     default: 25777
+
   aws.stemcell.kernel_id:
     description: AWS kernel id used by aws cpi
   ntp:
@@ -44,6 +49,7 @@ properties:
     default:
       - 0.pool.ntp.org
       - 1.pool.ntp.org
+
   agent.blobstore.credentials_source:
     description: Where to get AWS credentials for the aws cpi. This can be set to `static` for to use an `access_key_id` and `secret_access_key` or `env_or_profile` to get the credentials from environment variables or an EC2 instance profile.
   agent.blobstore.access_key_id:
@@ -104,6 +110,7 @@ properties:
     description: Username agent uses to connect to blobstore used by simple blobstore plugin
   blobstore.agent.password:
     description: Password agent uses to connect to blobstore used by simple blobstore plugin
+
   agent.mbus:
     description: Agent mbus
   nats.user:
