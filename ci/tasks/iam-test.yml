@@ -14,3 +14,5 @@ params:
   region_name:                  replace-me
   stemcell_name:                replace-me
   stack_name:                   replace-me
+  director_username:            replace-me
+  director_password:            replace-me

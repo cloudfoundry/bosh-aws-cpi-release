@@ -10,6 +10,8 @@ check_param region_name
 check_param private_key_data
 check_param stack_name
 check_param blobstore_s3_host
+check_param director_username
+check_param director_password
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
@@ -135,9 +137,9 @@ jobs:
       address: ${PRIVATE_DIRECTOR_STATIC_IP}
       host: ${PRIVATE_DIRECTOR_STATIC_IP}
       db: *db
-      http: {user: admin, password: admin, port: 25777}
-      username: admin
-      password: admin
+      http: {user: ${director_username}, password: ${director_password}, port: 25777}
+      username: ${director_username}
+      password: ${director_password}
       port: 25777
 
     # Tells the Director/agents how to contact blobstore
@@ -154,10 +156,15 @@ jobs:
       name: micro
       db: *db
       cpi_job: cpi
+      user_management:
+        provider: local
+        local:
+          users:
+            - {name: ${director_username}, password: ${director_password}}
 
     hm:
       http: {user: hm, password: hm-password}
-      director_account: {user: admin, password: admin}
+      director_account: {user: ${director_username}, password: ${director_password}}
 
     dns:
       address: 127.0.0.1

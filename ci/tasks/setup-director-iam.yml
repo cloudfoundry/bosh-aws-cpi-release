@@ -17,4 +17,6 @@ params:
   region_name:           replace-me
   stack_name:            replace-me
   blobstore_s3_host:     replace-me
+  director_username:     replace-me
+  director_password:     replace-me
   BOSH_INIT_LOG_LEVEL:   warn

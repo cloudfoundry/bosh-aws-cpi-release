@@ -237,6 +237,8 @@ jobs:
             private_key_data:      {{bosh_private_key}}
             stack_name:            bosh-integration
             blobstore_s3_host:     {{blobstore_s3_host__bosh_integration}}
+            director_username:     {{bosh_director_username}}
+            director_password:     {{bosh_director_password}}
 
       - task: test
         file: bosh-cpi-release/ci/tasks/iam-test.yml
@@ -247,6 +249,8 @@ jobs:
             region_name:                {{aws_region__bosh_integration}}
             stemcell_name:              {{BAT_STEMCELL_NAME_ubuntu}}
             stack_name:                 bosh-integration
+            director_username:          {{bosh_director_username}}
+            director_password:          {{bosh_director_password}}
 
       - task: teardown-director
         file: bosh-cpi-release/ci/tasks/teardown-director.yml

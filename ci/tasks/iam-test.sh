@@ -9,6 +9,8 @@ check_param aws_secret_access_key
 check_param region_name
 check_param stemcell_name
 check_param stack_name
+check_param director_username
+check_param director_password
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
@@ -32,7 +34,7 @@ SECURITY_GROUP_NAME=$(aws ec2 describe-security-groups --group-ids ${sg_id} | jq
 
 bosh -n target $DIRECTOR
 
-bosh login admin admin
+bosh login ${director_username} ${director_password}
 
 cat > "dummy-manifest.yml" <<EOF
 ---
