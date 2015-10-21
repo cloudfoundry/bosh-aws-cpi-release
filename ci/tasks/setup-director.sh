@@ -96,7 +96,7 @@ jobs:
   - {name: health_monitor, release: bosh}
   - {name: powerdns, release: bosh}
   - {name: registry, release: bosh}
-  - {name: cpi, release: bosh-aws-cpi}
+  - {name: aws_cpi, release: bosh-aws-cpi}
 
   instances: 1
   resource_pool: default
@@ -149,7 +149,7 @@ jobs:
       address: 127.0.0.1
       name: micro
       db: *db
-      cpi_job: cpi
+      cpi_job: aws_cpi
 
     hm:
       http: {user: hm, password: hm-password}
@@ -174,7 +174,7 @@ jobs:
     - 1.north-america.pool.ntp.org
 
 cloud_provider:
-  template: {name: cpi, release: bosh-aws-cpi}
+  template: {name: aws_cpi, release: bosh-aws-cpi}
 
   # Tells bosh-micro how to SSH into deployed VM
   ssh_tunnel:
