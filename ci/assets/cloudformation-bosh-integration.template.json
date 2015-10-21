@@ -1,16 +1,30 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "Template for creating BOSH AWS infrastructure for concourse ci.",
+  "Parameters" : {
+    "KeyPairName" : {
+      "Description" : "Name of an existing EC2 KeyPair",
+      "Type" : "String",
+      "Default" : "bats",
+      "MinLength": "1",
+      "MaxLength": "64",
+      "AllowedPattern" : "[-_ a-zA-Z0-9]*",
+      "ConstraintDescription" : "can contain only alphanumeric characters, spaces, dashes and underscores."
+    }
+   },
   "Mappings": {
     "IPConfigurations": {
       "VPC": {
         "CIDR": "10.0.0.0/16"
       },
-      "BoshIntegration": {
+      "BoshIntegrationPublic": {
         "CIDR": "10.0.3.0/24",
         "ReservedRange": "10.0.3.2-10.0.3.9",
         "Gateway": "10.0.3.1",
         "DirectorPrivate": "10.0.3.6"
+      },
+      "BoshIntegrationPrivate": {
+        "CIDR": "10.0.4.0/24"
       }
     },
     "Region2Principal": {
@@ -54,6 +68,17 @@
         "EC2Principal": "ec2.amazonaws.com",
         "OpsWorksPrincipal": "opsworks.amazonaws.com"
       }
+    },
+    "NatRegionMap" : {
+      "us-east-1"      : { "AMI" : "ami-184dc970" },
+      "us-west-1"      : { "AMI" : "ami-a98396ec" },
+      "us-west-2"      : { "AMI" : "ami-290f4119" },
+      "eu-west-1"      : { "AMI" : "ami-14913f63" },
+      "eu-central-1"   : { "AMI" : "ami-ae380eb3" },
+      "sa-east-1"      : { "AMI" : "ami-8122969c" },
+      "ap-southeast-1" : { "AMI" : "ami-6aa38238" },
+      "ap-southeast-2" : { "AMI" : "ami-893f53b3" },
+      "ap-northeast-1" : { "AMI" : "ami-27d6e626" }
     }
   },
   "Resources": {
@@ -71,6 +96,30 @@
           {
             "Key": "Name",
             "Value": "bosh-integration-vpc"
+          }
+        ]
+      }
+    },
+    "BoshIntegrationPublicSubnet": {
+      "DependsOn": [
+        "VPC"
+      ],
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "CidrBlock": {
+          "Fn::FindInMap": [
+            "IPConfigurations",
+            "BoshIntegrationPublic",
+            "CIDR"
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "bosh-integration-public"
           }
         ]
       }
@@ -101,7 +150,7 @@
         }
       }
     },
-    "RouteTable": {
+    "PublicRouteTable": {
       "DependsOn": [
         "VPC"
       ],
@@ -113,24 +162,39 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "bosh-integration-routetable"
+            "Value": "bosh-integration-rt"
           }
         ]
       }
     },
-    "Route": {
+    "PublicRoute": {
       "DependsOn": [
-        "RouteTable",
+        "PublicRouteTable",
         "AttachGateway"
       ],
       "Type": "AWS::EC2::Route",
       "Properties": {
         "RouteTableId": {
-          "Ref": "RouteTable"
+          "Ref": "PublicRouteTable"
         },
         "DestinationCidrBlock": "0.0.0.0/0",
         "GatewayId": {
           "Ref": "InternetGateway"
+        }
+      }
+    },
+    "BoshIntegrationPublicSubnetRouteTableAssociation": {
+      "DependsOn": [
+        "BoshIntegrationPublicSubnet",
+        "PublicRouteTable"
+      ],
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "BoshIntegrationPublicSubnet"
+        },
+        "RouteTableId": {
+          "Ref": "PublicRouteTable"
         }
       }
     },
@@ -183,6 +247,84 @@
         "CidrBlock": "0.0.0.0/0"
       }
     },
+    "BoshIntegrationPublicSubnetNetworkAclAssociation": {
+      "DependsOn": [
+        "BoshIntegrationPublicSubnet",
+        "NetworkAcl"
+      ],
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "BoshIntegrationPublicSubnet"
+        },
+        "NetworkAclId": {
+          "Ref": "NetworkAcl"
+        }
+      }
+    },
+    "BoshIntegrationPrivateSubnet": {
+      "DependsOn": [
+        "VPC",
+        "BoshIntegrationPublicSubnet"
+      ],
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone" : {
+          "Fn::GetAtt": [
+            "BoshIntegrationPublicSubnet",
+            "AvailabilityZone"
+          ]
+        },
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "CidrBlock": {
+          "Fn::FindInMap": [
+            "IPConfigurations",
+            "BoshIntegrationPrivate",
+            "CIDR"
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "bosh-integration-private"
+          }
+        ]
+      }
+    },
+    "PrivateRouteTable": {
+      "DependsOn": [
+        "VPC"
+      ],
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "bosh-integration-private-rt"
+          }
+        ]
+      }
+    },
+    "BoshIntegrationPrivateSubnetRouteTableAssociation": {
+      "DependsOn": [
+        "BoshIntegrationPrivateSubnet",
+        "PrivateRouteTable"
+      ],
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "BoshIntegrationPrivateSubnet"
+        },
+        "RouteTableId": {
+          "Ref": "PrivateRouteTable"
+        }
+      }
+    },
     "CISecurityGroup": {
       "DependsOn": [
         "VPC"
@@ -215,60 +357,6 @@
             "Value": "ci"
           }
         ]
-      }
-    },
-    "BoshIntegrationSubnet": {
-      "DependsOn": [
-        "VPC"
-      ],
-      "Type": "AWS::EC2::Subnet",
-      "Properties": {
-        "VpcId": {
-          "Ref": "VPC"
-        },
-        "CidrBlock": {
-          "Fn::FindInMap": [
-            "IPConfigurations",
-            "BoshIntegration",
-            "CIDR"
-          ]
-        },
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": "bosh-integration"
-          }
-        ]
-      }
-    },
-    "BoshIntegrationSubnetRouteTableAssociation": {
-      "DependsOn": [
-        "BoshIntegrationSubnet",
-        "RouteTable"
-      ],
-      "Type": "AWS::EC2::SubnetRouteTableAssociation",
-      "Properties": {
-        "SubnetId": {
-          "Ref": "BoshIntegrationSubnet"
-        },
-        "RouteTableId": {
-          "Ref": "RouteTable"
-        }
-      }
-    },
-    "BoshIntegrationSubnetNetworkAclAssociation": {
-      "DependsOn": [
-        "BoshIntegrationSubnet",
-        "NetworkAcl"
-      ],
-      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
-      "Properties": {
-        "SubnetId": {
-          "Ref": "BoshIntegrationSubnet"
-        },
-        "NetworkAclId": {
-          "Ref": "NetworkAcl"
-        }
       }
     },
     "BoshIntegrationIPAddress1": {
@@ -408,6 +496,60 @@
           }
         ]
       }
+    },
+    "NAT" : {
+      "DependsOn" : [
+        "BoshIntegrationPublicSubnet",
+        "CISecurityGroup"
+      ],
+      "Type" : "AWS::EC2::Instance",
+      "Properties" : {
+        "InstanceType" : "t2.micro",
+        "KeyName"  : { "Ref" : "KeyPairName" },
+        "SourceDestCheck" : "false",
+        "ImageId" : { "Fn::FindInMap" : [ "NatRegionMap", { "Ref" : "AWS::Region" }, "AMI" ]},
+        "NetworkInterfaces" : [{
+          "GroupSet"                 : [{ "Ref" : "CISecurityGroup" }],
+          "AssociatePublicIpAddress" : "true",
+          "DeviceIndex"              : "0",
+          "DeleteOnTermination"      : "true",
+          "SubnetId"                 : { "Ref" : "BoshIntegrationPublicSubnet" }
+        }],
+        "Tags" : [
+          { "Key" : "Name", "Value" : "NAT" }
+        ],
+        "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
+          "#!/bin/bash\n",
+          "yum update -y && yum install -y yum-cron && chkconfig yum-cron on"
+        ]]}}
+      }
+    },
+    "NATIPAssignment" : {
+      "Type": "AWS::EC2::EIPAssociation",
+      "Properties": {
+        "EIP": {
+          "Ref": "BoshIntegrationIPAddress2"
+        },
+        "InstanceId": {
+          "Ref": "NAT"
+        }
+      }
+    },
+    "PrivateRoute": {
+      "DependsOn": [
+        "PrivateRouteTable",
+        "NAT"
+      ],
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "PrivateRouteTable"
+        },
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "InstanceId": {
+          "Ref": "NAT"
+        }
+      }
     }
   },
   "Outputs": {
@@ -415,12 +557,13 @@
     "SecurityGroupID": { "Value": { "Ref": "CISecurityGroup"}},
     "BoshIntegrationEIP": { "Value": { "Ref": "BoshIntegrationIPAddress1"}},
     "BoshIntegrationEIP2": { "Value": { "Ref": "BoshIntegrationIPAddress2"}},
-    "BoshIntegrationSubnetID": { "Value": { "Ref": "BoshIntegrationSubnet"}},
-    "BoshIntegrationAvailabilityZone": { "Value": { "Fn::GetAtt": [ "BoshIntegrationSubnet", "AvailabilityZone"]}},
-    "BoshIntegrationCIDR": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "BoshIntegration", "CIDR"]}},
-    "BoshIntegrationGateway": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "BoshIntegration", "Gateway"]}},
-    "BoshIntegrationReservedRange": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "BoshIntegration", "ReservedRange"]}},
-    "BoshIntegrationDirectorStaticIP": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "BoshIntegration", "DirectorPrivate"]}},
+    "BoshIntegrationPublicSubnetID": { "Value": { "Ref": "BoshIntegrationPublicSubnet"}},
+    "BoshIntegrationPrivateSubnetID": { "Value": { "Ref": "BoshIntegrationPrivateSubnet"}},
+    "BoshIntegrationAvailabilityZone": { "Value": { "Fn::GetAtt": [ "BoshIntegrationPublicSubnet", "AvailabilityZone"]}},
+    "BoshIntegrationCIDR": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "BoshIntegrationPublic", "CIDR"]}},
+    "BoshIntegrationGateway": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "BoshIntegrationPublic", "Gateway"]}},
+    "BoshIntegrationReservedRange": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "BoshIntegrationPublic", "ReservedRange"]}},
+    "BoshIntegrationDirectorStaticIP": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "BoshIntegrationPublic", "DirectorPrivate"]}},
     "BoshIntegrationIAMInstanceProfile": { "Value": { "Ref": "InstanceProfile"}},
     "BoshIntegrationBucketName": { "Value": { "Ref": "BoshIntegrationS3Bucket"}}
   }

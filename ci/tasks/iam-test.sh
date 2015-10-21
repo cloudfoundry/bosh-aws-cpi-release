@@ -23,14 +23,8 @@ cpi_release_name="bosh-aws-cpi"
 stack_info=$(get_stack_info $stack_name)
 
 DIRECTOR=$(get_stack_info_of "${stack_info}" "BoshIntegrationEIP")
-STATIC_IP=$(get_stack_info_of "${stack_info}" "BoshIntegrationEIP2")
-SUBNET_ID=$(get_stack_info_of "${stack_info}" "BoshIntegrationSubnetID")
+SUBNET_ID=$(get_stack_info_of "${stack_info}" "BoshIntegrationPrivateSubnetID")
 AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "BoshIntegrationAvailabilityZone")
-sg_id=$(get_stack_info_of "${stack_info}" "SecurityGroupID")
-NETWORK_CIDR=$(get_stack_info_of "${stack_info}" "BoshIntegrationCIDR")
-NETWORK_GATEWAY=$(get_stack_info_of "${stack_info}" "BoshIntegrationGateway")
-NETWORK_RESERVED_RANGE=$(get_stack_info_of "${stack_info}" "BoshIntegrationReservedRange")
-SECURITY_GROUP_NAME=$(aws ec2 describe-security-groups --group-ids ${sg_id} | jq -r '.SecurityGroups[] .GroupName')
 
 bosh -n target $DIRECTOR
 
@@ -72,15 +66,8 @@ resource_pools:
 
 networks:
 - name: private
-  type: manual
-  subnets:
-  - range:    ${NETWORK_CIDR}
-    gateway:  ${NETWORK_GATEWAY}
-    dns:      ['8.8.8.8']
-    reserved: [${NETWORK_RESERVED_RANGE}]
-    cloud_properties: {subnet: ${SUBNET_ID}}
-- name: public
-  type: vip
+  type: dynamic
+  cloud_properties: {subnet: ${SUBNET_ID}}
 
 jobs:
 - name: dummy
@@ -88,10 +75,8 @@ jobs:
   instances: 1
   resource_pool: default
   networks:
-  - name : private
+  - name: private
     default: [dns, gateway]
-  - name: public
-    static_ips: [${STATIC_IP}]
 EOF
 
 bosh upload stemcell stemcell/stemcell.tgz
