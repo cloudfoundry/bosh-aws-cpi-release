@@ -112,7 +112,7 @@ describe Bosh::AwsCloud::Cloud do
             'access_key_id' => @access_key_id,
             'secret_access_key' => @secret_access_key
           }
-            elb_client = AWS::ELB::Client.new(aws_params)
+          elb_client = AWS::ELB::Client.new(aws_params)
           instances = elb_client.describe_load_balancers({:load_balancer_names => [@elb_id]})[:load_balancer_descriptions]
                         .first[:instances].first[:instance_id]
           expect(instances).to include(vm_id)
@@ -330,6 +330,18 @@ describe Bosh::AwsCloud::Cloud do
         }.to_not raise_error
       end
     end
+
+    context '#set_vm_metadata' do
+      it 'correctly sets the tags set by #set_vm_metadata' do
+        vm_lifecycle do |instance_id|
+          tags = cpi.ec2.instances[instance_id].tags
+          expect(tags['deployment']).to eq('deployment')
+          expect(tags['job']).to eq('cpi_spec')
+          expect(tags['index']).to eq('0')
+          expect(tags['delete_me']).to eq('please')
+        end
+      end
+    end
   end
 
   context 'dynamic networking' do
@@ -346,6 +358,7 @@ describe Bosh::AwsCloud::Cloud do
       vm_lifecycle
     end
   end
+
 
   def vm_lifecycle
     stemcell_id = cpi.create_stemcell('/not/a/real/path', { 'ami' => { 'us-east-1' => ami } })

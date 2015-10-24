@@ -38,4 +38,35 @@ describe Bosh::AwsCloud::Cloud, '#set_vm_metadata' do
 
     @cloud.set_vm_metadata('i-foobar', metadata)
   end
+
+  context 'when name is provided in metadata' do
+    it 'sets the Name tag' do
+      metadata = {:name => 'fake-name'}
+
+      expect(Bosh::AwsCloud::TagManager).to receive(:tag).with(instance, 'Name', 'fake-name')
+      expect(Bosh::AwsCloud::TagManager).to_not receive(:tag).with(instance, 'name', 'fake-name')
+
+      @cloud.set_vm_metadata('i-foobar', metadata)
+    end
+
+    it 'sets the Name tag when also given job and index' do
+      metadata = {:name => 'fake-name', :job => 'fake-job', :index => 'fake-index'}
+
+      expect(Bosh::AwsCloud::TagManager).to receive(:tag).with(instance, 'job', 'fake-job')
+      expect(Bosh::AwsCloud::TagManager).to receive(:tag).with(instance, 'index', 'fake-index')
+      expect(Bosh::AwsCloud::TagManager).to receive(:tag).with(instance, 'Name', 'fake-name')
+      expect(Bosh::AwsCloud::TagManager).to_not receive(:tag).with(instance, 'name', 'fake-name')
+
+      @cloud.set_vm_metadata('i-foobar', metadata)
+    end
+
+    it 'overrides the Name tag even for compiling jobs' do
+      metadata = {:name => 'fake-name', :compiling => 'linux'}
+
+      expect(Bosh::AwsCloud::TagManager).to receive(:tag).with(instance, 'compiling', 'linux')
+      expect(Bosh::AwsCloud::TagManager).to receive(:tag).with(instance, 'Name', 'fake-name')
+
+      @cloud.set_vm_metadata('i-foobar', metadata)
+    end
+  end
 end

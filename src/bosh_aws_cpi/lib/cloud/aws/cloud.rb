@@ -523,7 +523,13 @@ module Bosh::AwsCloud
       instance = @ec2.instances[vm]
 
       metadata.each_pair do |key, value|
-        TagManager.tag(instance, key, value)
+        TagManager.tag(instance, key, value) unless key == 'name'
+      end
+
+      name = metadata['name']
+      if name
+        TagManager.tag(instance, "Name", name)
+        return
       end
 
       job = metadata['job']
