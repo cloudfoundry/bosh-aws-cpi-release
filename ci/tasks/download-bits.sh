@@ -18,7 +18,7 @@ stack_info=$(get_stack_info $stack_name)
 downloader_eip=$(get_stack_info_of "$stack_info" "DownloaderCNEIP")
 
 stemcell_name=bosh-aws-xen-ubuntu-trusty-go_agent
-private_key=${PWD}/bats.pem
+private_key=${PWD}/downloader-cn.pem
 
 echo "${private_key_data}" > ${private_key}
 chmod go-r ${private_key}
