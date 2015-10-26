@@ -22,7 +22,7 @@
             "Ref" : "CISecurityGroup"
           }
         ],
-        "KeyName" : "bats",
+        "KeyName" : "downloader-cn",
         "SubnetId" : {
           "Ref": "DownloaderCNSubnet"
         },
