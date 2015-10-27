@@ -555,7 +555,6 @@
     "VPCID": { "Value": { "Ref": "VPC"}},
     "End2EndSecurityGroupID": { "Value": { "Ref": "CISecurityGroup"}},
     "End2EndDirectorEIP": { "Value": { "Ref": "End2EndIPAddress1"}},
-    "End2EndEIP": { "Value": { "Ref": "End2EndIPAddress2"}},
     "End2EndSubnetID": { "Value": { "Ref": "End2EndPublicSubnet"}},
     "End2EndDynamicSubnetID": { "Value": { "Ref": "End2EndPrivateSubnet"}},
     "End2EndAvailabilityZone": { "Value": { "Fn::GetAtt": [ "End2EndPublicSubnet", "AvailabilityZone"]}},

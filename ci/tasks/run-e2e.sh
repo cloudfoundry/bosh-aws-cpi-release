@@ -24,7 +24,6 @@ stack_info=$(get_stack_info $stack_name)
 
 stack_prefix="End2End"
 DIRECTOR=$(get_stack_info_of "${stack_info}" "${stack_prefix}DirectorEIP")
-EIP=$(get_stack_info_of "${stack_info}" "${stack_prefix}EIP")
 SUBNET_ID=$(get_stack_info_of "${stack_info}" "${stack_prefix}DynamicSubnetID")
 AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "${stack_prefix}AvailabilityZone")
 
@@ -67,8 +66,6 @@ resource_pools:
       availability_zone: ${AVAILABILITY_ZONE}
 
 networks:
-  - name: public
-    type: vip
   - name: private
     type: dynamic
     cloud_properties: {subnet: ${SUBNET_ID}}
@@ -79,8 +76,6 @@ jobs:
     instances: 1
     resource_pool: default
     networks:
-      - name: public
-        static_ips: [${EIP}]
       - name: private
         default: [dns, gateway]
 EOF
