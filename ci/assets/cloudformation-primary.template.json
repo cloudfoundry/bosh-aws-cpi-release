@@ -425,7 +425,7 @@
   },
   "Outputs": {
     "VPCID": { "Value": { "Ref": "VPC"}},
-    "SecurityGroupID": { "Value": { "Ref": "CISecurityGroup"}},
+    "UbuntuSecurityGroupID": { "Value": { "Ref": "CISecurityGroup"}},
     "UbuntuDirectorEIP": { "Value": { "Ref": "UbuntuDirectorIPAddress"}},
     "UbuntuBATsEIP": { "Value": { "Ref": "UbuntuBATSIPAddress"}},
     "UbuntuSubnetID": { "Value": { "Ref": "UbuntuSubnet"}},
@@ -437,6 +437,7 @@
     "UbuntuStaticRange": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "UbuntuBATs", "StaticRange"]}},
     "UbuntuStaticIP1": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "UbuntuBATs", "Static1"]}},
     "UbuntuStaticIP2": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "UbuntuBATs", "Static2"]}},
+    "CentosSecurityGroupID": { "Value": { "Ref": "CISecurityGroup"}},
     "CentosDirectorEIP": { "Value": { "Ref": "CentosDirectorIPAddress"}},
     "CentosBATsEIP": { "Value": { "Ref": "CentosBATSIPAddress"}},
     "CentosSubnetID": { "Value": { "Ref": "CentosSubnet"}},

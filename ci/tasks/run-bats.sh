@@ -21,19 +21,20 @@ export AWS_DEFAULT_REGION=${region_name}
 
 stack_info=$(get_stack_info $stack_name)
 
-DIRECTOR=$(get_stack_info_of "${stack_info}" "${base_os}DirectorEIP")
-VIP=$(get_stack_info_of "${stack_info}" "${base_os}BATsEIP")
-SUBNET_ID=$(get_stack_info_of "${stack_info}" "${base_os}SubnetID")
-sg_id=$(get_stack_info_of "${stack_info}" "SecurityGroupID")
+stack_prefix=${base_os}
+DIRECTOR=$(get_stack_info_of "${stack_info}" "${stack_prefix}DirectorEIP")
+VIP=$(get_stack_info_of "${stack_info}" "${stack_prefix}BATsEIP")
+SUBNET_ID=$(get_stack_info_of "${stack_info}" "${stack_prefix}SubnetID")
+sg_id=$(get_stack_info_of "${stack_info}" "${stack_prefix}SecurityGroupID")
 SECURITY_GROUP_NAME=$(aws ec2 describe-security-groups --group-ids ${sg_id} | jq -r '.SecurityGroups[] .GroupName')
-AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "${base_os}AvailabilityZone")
+AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "${stack_prefix}AvailabilityZone")
 
-BAT_NETWORK_CIDR=$(get_stack_info_of "${stack_info}" "${base_os}CIDR")
-BAT_NETWORK_GATEWAY=$(get_stack_info_of "${stack_info}" "${base_os}Gateway")
-BAT_NETWORK_RESERVED_RANGE=$(get_stack_info_of "${stack_info}" "${base_os}ReservedRange")
-BAT_NETWORK_STATIC_RANGE=$(get_stack_info_of "${stack_info}" "${base_os}StaticRange")
-BAT_NETWORK_STATIC_IP=$(get_stack_info_of "${stack_info}" "${base_os}StaticIP1")
-BAT_SECOND_STATIC_IP=$(get_stack_info_of "${stack_info}" "${base_os}StaticIP2")
+BAT_NETWORK_CIDR=$(get_stack_info_of "${stack_info}" "${stack_prefix}CIDR")
+BAT_NETWORK_GATEWAY=$(get_stack_info_of "${stack_info}" "${stack_prefix}Gateway")
+BAT_NETWORK_RESERVED_RANGE=$(get_stack_info_of "${stack_info}" "${stack_prefix}ReservedRange")
+BAT_NETWORK_STATIC_RANGE=$(get_stack_info_of "${stack_info}" "${stack_prefix}StaticRange")
+BAT_NETWORK_STATIC_IP=$(get_stack_info_of "${stack_info}" "${stack_prefix}StaticIP1")
+BAT_SECOND_STATIC_IP=$(get_stack_info_of "${stack_info}" "${stack_prefix}StaticIP2")
 
 eval $(ssh-agent)
 private_key=${PWD}/setup-director/deployment/bats.pem

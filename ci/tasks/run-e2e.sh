@@ -22,9 +22,10 @@ export AWS_DEFAULT_REGION=${region_name}
 cpi_release_name="bosh-aws-cpi"
 stack_info=$(get_stack_info $stack_name)
 
-DIRECTOR=$(get_stack_info_of "${stack_info}" "BoshIntegrationEIP")
-SUBNET_ID=$(get_stack_info_of "${stack_info}" "BoshIntegrationPrivateSubnetID")
-AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "BoshIntegrationAvailabilityZone")
+stack_prefix="End2End"
+DIRECTOR=$(get_stack_info_of "${stack_info}" "${stack_prefix}DirectorEIP")
+SUBNET_ID=$(get_stack_info_of "${stack_info}" "${stack_prefix}DynamicSubnetID")
+AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "${stack_prefix}AvailabilityZone")
 
 bosh -n target $DIRECTOR
 

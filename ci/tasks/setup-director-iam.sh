@@ -22,17 +22,17 @@ export AWS_DEFAULT_REGION=${region_name}
 
 stack_info=$(get_stack_info $stack_name)
 
-sg_id=$(get_stack_info_of "${stack_info}" "SecurityGroupID")
+stack_prefix="End2End"
+sg_id=$(get_stack_info_of "${stack_info}" "${stack_prefix}SecurityGroupID")
 SECURITY_GROUP_NAME=$(aws ec2 describe-security-groups --group-ids ${sg_id} | jq -r '.SecurityGroups[] .GroupName')
-
-DIRECTOR=$(get_stack_info_of "${stack_info}" "BoshIntegrationEIP")
-SUBNET_ID=$(get_stack_info_of "${stack_info}" "BoshIntegrationPublicSubnetID")
-AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "BoshIntegrationAvailabilityZone")
-IAM_INSTANCE_PROFILE=$(get_stack_info_of "${stack_info}" "BoshIntegrationIAMInstanceProfile")
-AWS_NETWORK_CIDR=$(get_stack_info_of "${stack_info}" "BoshIntegrationCIDR")
-AWS_NETWORK_GATEWAY=$(get_stack_info_of "${stack_info}" "BoshIntegrationGateway")
-PRIVATE_DIRECTOR_STATIC_IP=$(get_stack_info_of "${stack_info}" "BoshIntegrationDirectorStaticIP")
-BLOBSTORE_BUCKET_NAME=$(get_stack_info_of "${stack_info}" "BoshIntegrationBucketName")
+DIRECTOR=$(get_stack_info_of "${stack_info}" "${stack_prefix}DirectorEIP")
+SUBNET_ID=$(get_stack_info_of "${stack_info}" "${stack_prefix}SubnetID")
+AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "${stack_prefix}AvailabilityZone")
+AWS_NETWORK_CIDR=$(get_stack_info_of "${stack_info}" "${stack_prefix}CIDR")
+AWS_NETWORK_GATEWAY=$(get_stack_info_of "${stack_info}" "${stack_prefix}Gateway")
+PRIVATE_DIRECTOR_STATIC_IP=$(get_stack_info_of "${stack_info}" "${stack_prefix}DirectorStaticIP")
+IAM_INSTANCE_PROFILE=$(get_stack_info_of "${stack_info}" "${stack_prefix}IAMInstanceProfile")
+BLOBSTORE_BUCKET_NAME=$(get_stack_info_of "${stack_info}" "${stack_prefix}BlobstoreBucketName")
 
 semver=`cat version-semver/number`
 cpi_release_name=bosh-aws-cpi

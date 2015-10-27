@@ -17,13 +17,12 @@
       "VPC": {
         "CIDR": "10.0.0.0/16"
       },
-      "BoshIntegrationPublic": {
+      "End2EndPublic": {
         "CIDR": "10.0.3.0/24",
-        "ReservedRange": "10.0.3.2-10.0.3.9",
         "Gateway": "10.0.3.1",
         "DirectorPrivate": "10.0.3.6"
       },
-      "BoshIntegrationPrivate": {
+      "End2EndPrivate": {
         "CIDR": "10.0.4.0/24"
       }
     },
@@ -95,12 +94,12 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "bosh-integration-vpc"
+            "Value": "end2end-vpc"
           }
         ]
       }
     },
-    "BoshIntegrationPublicSubnet": {
+    "End2EndPublicSubnet": {
       "DependsOn": [
         "VPC"
       ],
@@ -112,14 +111,14 @@
         "CidrBlock": {
           "Fn::FindInMap": [
             "IPConfigurations",
-            "BoshIntegrationPublic",
+            "End2EndPublic",
             "CIDR"
           ]
         },
         "Tags": [
           {
             "Key": "Name",
-            "Value": "bosh-integration-public"
+            "Value": "end2end-public"
           }
         ]
       }
@@ -130,7 +129,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "bosh-integration-gateway"
+            "Value": "end2end-gateway"
           }
         ]
       }
@@ -162,7 +161,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "bosh-integration-rt"
+            "Value": "end2end-rt"
           }
         ]
       }
@@ -183,15 +182,15 @@
         }
       }
     },
-    "BoshIntegrationPublicSubnetRouteTableAssociation": {
+    "End2EndPublicSubnetRouteTableAssociation": {
       "DependsOn": [
-        "BoshIntegrationPublicSubnet",
+        "End2EndPublicSubnet",
         "PublicRouteTable"
       ],
       "Type": "AWS::EC2::SubnetRouteTableAssociation",
       "Properties": {
         "SubnetId": {
-          "Ref": "BoshIntegrationPublicSubnet"
+          "Ref": "End2EndPublicSubnet"
         },
         "RouteTableId": {
           "Ref": "PublicRouteTable"
@@ -210,7 +209,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "bosh-integration-ACL"
+            "Value": "end2end-ACL"
           }
         ]
       }
@@ -247,31 +246,31 @@
         "CidrBlock": "0.0.0.0/0"
       }
     },
-    "BoshIntegrationPublicSubnetNetworkAclAssociation": {
+    "End2EndPublicSubnetNetworkAclAssociation": {
       "DependsOn": [
-        "BoshIntegrationPublicSubnet",
+        "End2EndPublicSubnet",
         "NetworkAcl"
       ],
       "Type": "AWS::EC2::SubnetNetworkAclAssociation",
       "Properties": {
         "SubnetId": {
-          "Ref": "BoshIntegrationPublicSubnet"
+          "Ref": "End2EndPublicSubnet"
         },
         "NetworkAclId": {
           "Ref": "NetworkAcl"
         }
       }
     },
-    "BoshIntegrationPrivateSubnet": {
+    "End2EndPrivateSubnet": {
       "DependsOn": [
         "VPC",
-        "BoshIntegrationPublicSubnet"
+        "End2EndPublicSubnet"
       ],
       "Type": "AWS::EC2::Subnet",
       "Properties": {
         "AvailabilityZone" : {
           "Fn::GetAtt": [
-            "BoshIntegrationPublicSubnet",
+            "End2EndPublicSubnet",
             "AvailabilityZone"
           ]
         },
@@ -281,14 +280,14 @@
         "CidrBlock": {
           "Fn::FindInMap": [
             "IPConfigurations",
-            "BoshIntegrationPrivate",
+            "End2EndPrivate",
             "CIDR"
           ]
         },
         "Tags": [
           {
             "Key": "Name",
-            "Value": "bosh-integration-private"
+            "Value": "end2end-private"
           }
         ]
       }
@@ -305,20 +304,20 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "bosh-integration-private-rt"
+            "Value": "end2end-private-rt"
           }
         ]
       }
     },
-    "BoshIntegrationPrivateSubnetRouteTableAssociation": {
+    "End2EndPrivateSubnetRouteTableAssociation": {
       "DependsOn": [
-        "BoshIntegrationPrivateSubnet",
+        "End2EndPrivateSubnet",
         "PrivateRouteTable"
       ],
       "Type": "AWS::EC2::SubnetRouteTableAssociation",
       "Properties": {
         "SubnetId": {
-          "Ref": "BoshIntegrationPrivateSubnet"
+          "Ref": "End2EndPrivateSubnet"
         },
         "RouteTableId": {
           "Ref": "PrivateRouteTable"
@@ -359,7 +358,7 @@
         ]
       }
     },
-    "BoshIntegrationIPAddress1": {
+    "End2EndIPAddress1": {
       "DependsOn": [
         "AttachGateway"
       ],
@@ -368,7 +367,7 @@
         "Domain": "vpc"
       }
     },
-    "BoshIntegrationIPAddress2": {
+    "End2EndIPAddress2": {
       "DependsOn": [
         "AttachGateway"
       ],
@@ -377,7 +376,7 @@
         "Domain": "vpc"
       }
     },
-    "BoshIntegrationS3Bucket": {
+    "End2EndS3Bucket": {
       "Type": "AWS::S3::Bucket",
       "DeletionPolicy": "Delete",
       "Properties": {
@@ -385,7 +384,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "bosh-integration-blobstore-bucket"
+            "Value": "end2end-blobstore-bucket"
           }
         ]
       }
@@ -499,7 +498,7 @@
     },
     "NAT" : {
       "DependsOn" : [
-        "BoshIntegrationPublicSubnet",
+        "End2EndPublicSubnet",
         "CISecurityGroup"
       ],
       "Type" : "AWS::EC2::Instance",
@@ -513,7 +512,7 @@
           "AssociatePublicIpAddress" : "true",
           "DeviceIndex"              : "0",
           "DeleteOnTermination"      : "true",
-          "SubnetId"                 : { "Ref" : "BoshIntegrationPublicSubnet" }
+          "SubnetId"                 : { "Ref" : "End2EndPublicSubnet" }
         }],
         "Tags" : [
           { "Key" : "Name", "Value" : "NAT" }
@@ -528,7 +527,7 @@
       "Type": "AWS::EC2::EIPAssociation",
       "Properties": {
         "EIP": {
-          "Ref": "BoshIntegrationIPAddress2"
+          "Ref": "End2EndIPAddress2"
         },
         "InstanceId": {
           "Ref": "NAT"
@@ -554,17 +553,16 @@
   },
   "Outputs": {
     "VPCID": { "Value": { "Ref": "VPC"}},
-    "SecurityGroupID": { "Value": { "Ref": "CISecurityGroup"}},
-    "BoshIntegrationEIP": { "Value": { "Ref": "BoshIntegrationIPAddress1"}},
-    "BoshIntegrationEIP2": { "Value": { "Ref": "BoshIntegrationIPAddress2"}},
-    "BoshIntegrationPublicSubnetID": { "Value": { "Ref": "BoshIntegrationPublicSubnet"}},
-    "BoshIntegrationPrivateSubnetID": { "Value": { "Ref": "BoshIntegrationPrivateSubnet"}},
-    "BoshIntegrationAvailabilityZone": { "Value": { "Fn::GetAtt": [ "BoshIntegrationPublicSubnet", "AvailabilityZone"]}},
-    "BoshIntegrationCIDR": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "BoshIntegrationPublic", "CIDR"]}},
-    "BoshIntegrationGateway": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "BoshIntegrationPublic", "Gateway"]}},
-    "BoshIntegrationReservedRange": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "BoshIntegrationPublic", "ReservedRange"]}},
-    "BoshIntegrationDirectorStaticIP": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "BoshIntegrationPublic", "DirectorPrivate"]}},
-    "BoshIntegrationIAMInstanceProfile": { "Value": { "Ref": "InstanceProfile"}},
-    "BoshIntegrationBucketName": { "Value": { "Ref": "BoshIntegrationS3Bucket"}}
+    "End2EndSecurityGroupID": { "Value": { "Ref": "CISecurityGroup"}},
+    "End2EndDirectorEIP": { "Value": { "Ref": "End2EndIPAddress1"}},
+    "End2EndEIP2": { "Value": { "Ref": "End2EndIPAddress2"}},
+    "End2EndSubnetID": { "Value": { "Ref": "End2EndPublicSubnet"}},
+    "End2EndDynamicSubnetID": { "Value": { "Ref": "End2EndPrivateSubnet"}},
+    "End2EndAvailabilityZone": { "Value": { "Fn::GetAtt": [ "End2EndPublicSubnet", "AvailabilityZone"]}},
+    "End2EndCIDR": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "End2EndPublic", "CIDR"]}},
+    "End2EndGateway": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "End2EndPublic", "Gateway"]}},
+    "End2EndDirectorStaticIP": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "End2EndPublic", "DirectorPrivate"]}},
+    "End2EndIAMInstanceProfile": { "Value": { "Ref": "InstanceProfile"}},
+    "End2EndBlobstoreBucketName": { "Value": { "Ref": "End2EndS3Bucket"}}
   }
 }

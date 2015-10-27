@@ -6,21 +6,25 @@ groups:
       - bats-ubuntu
       - bats-centos
       - lifecycle
-      - bosh-integration
+      - end2end-primary
       - promote-candidate
 
   - name: primary
     jobs:
+      - recreate-infrastructure-primary
+      - recreate-infrastructure-end2end-primary
       - build-candidate
       - bats-ubuntu
       - bats-centos
       - lifecycle
+      - end2end-primary
       - promote-candidate
 
-  - name: bosh-integration
+  - name: end2end
     jobs:
+      - recreate-infrastructure-end2end-primary
       - build-candidate
-      - bosh-integration
+      - end2end-primary
       - promote-candidate
 
   - name: china
@@ -30,15 +34,15 @@ groups:
 
   - name: all
     jobs:
+      - recreate-infrastructure-primary
+      - recreate-infrastructure-end2end-primary
+      - recreate-infrastructure-cn-downloader
       - build-candidate
       - bats-ubuntu
       - bats-centos
       - lifecycle
-      - bosh-integration
+      - end2end-primary
       - promote-candidate
-      - recreate-infrastructure-primary
-      - recreate-infrastructure-bosh-integration
-      - recreate-infrastructure-cn-downloader
       - download-from-cn
 
 jobs:
@@ -65,7 +69,7 @@ jobs:
         file: bosh-cpi-release/ci/tasks/setup-infrastructure.yml
         config: *recreate-primary-config
 
-  - name: recreate-infrastructure-bosh-integration
+  - name: recreate-infrastructure-end2end-primary
     serial: true
     plan:
       - aggregate:
@@ -73,20 +77,20 @@ jobs:
 
       - task: check-for-running-instances
         file: bosh-cpi-release/ci/tasks/check-for-running-instances.yml
-        config: &recreate-bosh-integration-config
+        config: &recreate-end2end-primary-config
           params:
-            aws_access_key_id:        {{aws_access_key__bosh_integration}}
-            aws_secret_access_key:    {{aws_secret_key__bosh_integration}}
-            region_name:              {{aws_region__bosh_integration}}
-            stack_name:               bosh-integration
+            aws_access_key_id:        {{aws_access_key__e2e_primary}}
+            aws_secret_access_key:    {{aws_secret_key__e2e_primary}}
+            region_name:              {{aws_region__e2e_primary}}
+            stack_name:               end2end
 
       - task: teardown-infrastructure
         file: bosh-cpi-release/ci/tasks/teardown-infrastructure.yml
-        config: *recreate-bosh-integration-config
+        config: *recreate-end2end-primary-config
 
       - task: setup-infrastructure
         file: bosh-cpi-release/ci/tasks/setup-infrastructure.yml
-        config: *recreate-bosh-integration-config
+        config: *recreate-end2end-primary-config
 
   - name: recreate-infrastructure-cn-downloader
     serial: true
@@ -215,12 +219,12 @@ jobs:
       - task: teardown-director
         file: bosh-cpi-release/ci/tasks/teardown-director.yml
 
-  - name: bosh-integration
+  - name: end2end-primary
     serial: true
     plan:
       - aggregate:
         - {trigger: true,  passed: [build-candidate], get: bosh-cpi-dev-artifacts}
-        - {trigger: false,                            get: stemcell, resource: {{bosh-integration-stemcell-resource-name}} }
+        - {trigger: false,                            get: stemcell, resource: aws-ubuntu-stemcell }
         - {trigger: false, passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-release-in}
         - {trigger: false,                            get: bosh-init}
         - {trigger: false, passed: [build-candidate], get: version-semver}
@@ -231,24 +235,24 @@ jobs:
         file: bosh-cpi-release/ci/tasks/setup-director-iam.yml
         config:
           params:
-            aws_access_key_id:     {{aws_access_key__bosh_integration}}
-            aws_secret_access_key: {{aws_secret_key__bosh_integration}}
-            region_name:           {{aws_region__bosh_integration}}
+            aws_access_key_id:     {{aws_access_key__e2e_primary}}
+            aws_secret_access_key: {{aws_secret_key__e2e_primary}}
+            region_name:           {{aws_region__e2e_primary}}
             private_key_data:      {{bosh_private_key}}
-            stack_name:            bosh-integration
-            blobstore_s3_host:     {{blobstore_s3_host__bosh_integration}}
+            stack_name:            end2end
+            blobstore_s3_host:     {{blobstore_s3_host__e2e_primary}}
             director_username:     {{bosh_director_username}}
             director_password:     {{bosh_director_password}}
 
       - task: test
-        file: bosh-cpi-release/ci/tasks/iam-test.yml
+        file: bosh-cpi-release/ci/tasks/run-e2e.yml
         config:
           params:
-            aws_access_key_id:          {{aws_access_key__bosh_integration}}
-            aws_secret_access_key:      {{aws_secret_key__bosh_integration}}
-            region_name:                {{aws_region__bosh_integration}}
+            aws_access_key_id:          {{aws_access_key__e2e_primary}}
+            aws_secret_access_key:      {{aws_secret_key__e2e_primary}}
+            region_name:                {{aws_region__e2e_primary}}
             stemcell_name:              {{BAT_STEMCELL_NAME_ubuntu}}
-            stack_name:                 bosh-integration
+            stack_name:                 end2end
             director_username:          {{bosh_director_username}}
             director_password:          {{bosh_director_password}}
 
@@ -258,7 +262,7 @@ jobs:
   - name: promote-candidate
     plan:
       - aggregate:
-        - {trigger: false, get: bosh-cpi-dev-artifacts, passed: [lifecycle, bats-ubuntu, bats-centos, bosh-integration]}
+        - {trigger: false, get: bosh-cpi-dev-artifacts, passed: [lifecycle, bats-ubuntu, bats-centos, end2end-primary]}
         - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-out}
         - {trigger: false, get: release-version-semver, params: {bump: major}}
 
@@ -367,15 +371,6 @@ resources:
     type: bosh-io-stemcell
     source:
       name: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
-
-  - name: aws-bosh-integration-stemcell
-    type: s3
-    source:
-      versioned_file: stemcell.tgz
-      bucket: {{s3_aws_cpi_bosh_integration_stemcell_bucket}}
-      region_name: {{aws_region__primary}}
-      access_key_id: {{aws_access_key__primary}}
-      secret_access_key: {{aws_secret_key__primary}}
 
   - name: aws-centos-stemcell
     type: bosh-io-stemcell

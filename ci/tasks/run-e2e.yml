@@ -7,7 +7,7 @@ inputs:
 - name: bosh-cpi-release
 - name: dummy-release
 run:
-  path: bosh-cpi-release/ci/tasks/iam-test.sh
+  path: bosh-cpi-release/ci/tasks/run-e2e.sh
 params:
   aws_access_key_id:            replace-me
   aws_secret_access_key:        replace-me
