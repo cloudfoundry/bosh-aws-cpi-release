@@ -37,8 +37,8 @@ name: dummy
 director_uuid: $(bosh status --uuid)
 
 releases:
-- name: dummy
-  version: latest
+  - name: dummy
+    version: latest
 
 compilation:
   reuse_compilation_vms: true
@@ -55,29 +55,29 @@ update:
   max_in_flight: 3
 
 resource_pools:
-- name: default
-  stemcell:
-    name: ${stemcell_name}
-    version: latest
-  network: private
-  size: 1
-  cloud_properties:
-    instance_type: m3.medium
-    availability_zone: ${AVAILABILITY_ZONE}
+  - name: default
+    stemcell:
+      name: ${stemcell_name}
+      version: latest
+    network: private
+    size: 1
+    cloud_properties:
+      instance_type: m3.medium
+      availability_zone: ${AVAILABILITY_ZONE}
 
 networks:
-- name: private
-  type: dynamic
-  cloud_properties: {subnet: ${SUBNET_ID}}
+  - name: private
+    type: dynamic
+    cloud_properties: {subnet: ${SUBNET_ID}}
 
 jobs:
-- name: dummy
-  template: dummy
-  instances: 1
-  resource_pool: default
-  networks:
-  - name: private
-    default: [dns, gateway]
+  - name: dummy
+    template: dummy
+    instances: 1
+    resource_pool: default
+    networks:
+      - name: private
+        default: [dns, gateway]
 EOF
 
 bosh upload stemcell stemcell/stemcell.tgz
