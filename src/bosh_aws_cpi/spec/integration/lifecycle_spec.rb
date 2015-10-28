@@ -119,7 +119,7 @@ describe Bosh::AwsCloud::Cloud do
 
 
           cpi.delete_vm(vm_id)
-	  expect { cpi.has_vm?(vm_id) }.to be(false)
+	  expect(cpi.has_vm?(vm_id)).to be(false)
 
           vm_id=nil
           instances = elb_client.describe_load_balancers({:load_balancer_names => [@elb_id]})[:load_balancer_descriptions]
