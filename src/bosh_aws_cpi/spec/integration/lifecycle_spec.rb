@@ -3,6 +3,7 @@ require 'bosh/cpi/compatibility_helpers/delete_vm'
 require 'tempfile'
 require 'logger'
 require 'cloud'
+require 'common/common'
 
 describe Bosh::AwsCloud::Cloud do
   before(:all) do
@@ -117,13 +118,22 @@ describe Bosh::AwsCloud::Cloud do
                         .first[:instances].first[:instance_id]
           expect(instances).to include(vm_id)
 
-
           cpi.delete_vm(vm_id)
-	  expect(cpi.has_vm?(vm_id)).to be(false)
 
           vm_id=nil
+
+          retry_options = { sleep: 10, tries: 30, on: RegisteredInstances }
+
+          expect {
+            Bosh::Common.retryable(retry_options) do |tries, error|
+              @logger.error("Instances are registered with ELB after #{tries}") unless error.nil?
+              ensure_no_instances_registered_with_elb(elb_client, @elb_id)
+            end
+          }.to_not raise_error
+
           instances = elb_client.describe_load_balancers({:load_balancer_names => [@elb_id]})[:load_balancer_descriptions]
                         .first[:instances]
+
           expect(instances).to be_empty
         ensure
           cpi.delete_stemcell(stemcell_id) if stemcell_id
@@ -382,5 +392,17 @@ describe Bosh::AwsCloud::Cloud do
   ensure
     cpi.delete_vm(instance_id) if instance_id
     cpi.delete_stemcell(stemcell_id) if stemcell_id
+  end
+end
+
+
+class RegisteredInstances < StandardError; end
+
+def ensure_no_instances_registered_with_elb(elb_client, elb_id)
+  instances = elb_client.describe_load_balancers({:load_balancer_names => [elb_id]})[:load_balancer_descriptions]
+                        .first[:instances].first[:instance_id]
+
+  if !instances.empty?
+    raise RegisteredInstances
   end
 end
