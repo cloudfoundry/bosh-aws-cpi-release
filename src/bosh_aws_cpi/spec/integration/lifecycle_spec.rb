@@ -400,7 +400,7 @@ class RegisteredInstances < StandardError; end
 
 def ensure_no_instances_registered_with_elb(elb_client, elb_id)
   instances = elb_client.describe_load_balancers({:load_balancer_names => [elb_id]})[:load_balancer_descriptions]
-                        .first[:instances].first[:instance_id]
+                        .first[:instances]
 
   if !instances.empty?
     raise RegisteredInstances
