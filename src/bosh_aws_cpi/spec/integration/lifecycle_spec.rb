@@ -122,7 +122,7 @@ describe Bosh::AwsCloud::Cloud do
 
           vm_id=nil
 
-          retry_options = { sleep: 10, tries: 30, on: RegisteredInstances }
+          retry_options = { sleep: 30, tries: 100, on: RegisteredInstances }
 
           expect {
             Bosh::Common.retryable(retry_options) do |tries, error|
