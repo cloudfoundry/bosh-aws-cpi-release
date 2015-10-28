@@ -126,8 +126,8 @@ describe Bosh::AwsCloud::Cloud do
 
           expect {
             Bosh::Common.retryable(retry_options) do |tries, error|
-              @logger.error("Instances are registered with ELB after #{tries}") unless error.nil?
-              ensure_no_instances_registered_with_elb(elb_client, @elb_id)
+              logger.error("Instances are registered with ELB after #{tries}") unless error.nil?
+              ensure_no_instances_registered_with_elb(logger, elb_client, @elb_id)
             end
           }.to_not raise_error
 
@@ -398,11 +398,12 @@ end
 
 class RegisteredInstances < StandardError; end
 
-def ensure_no_instances_registered_with_elb(elb_client, elb_id)
+def ensure_no_instances_registered_with_elb(logger, elb_client, elb_id)
   instances = elb_client.describe_load_balancers({:load_balancer_names => [elb_id]})[:load_balancer_descriptions]
                         .first[:instances]
 
   if !instances.empty?
+    logger.warn("we believe #{instances} are attached to elb #{elb_id}")
     raise RegisteredInstances
   end
 end
