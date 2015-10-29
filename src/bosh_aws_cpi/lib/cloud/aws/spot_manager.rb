@@ -101,7 +101,7 @@ module Bosh::AwsCloud
     end
 
     def fail_spot_creation(message)
-      @logger.warn(message)when ephemeral disk size is not specified
+      @logger.warn(message)
       cancel_pending_spot_requests
       raise Bosh::Clouds::VMCreationFailed.new(false), message
     end
