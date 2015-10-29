@@ -3,7 +3,6 @@ require 'bosh/cpi/compatibility_helpers/delete_vm'
 require 'tempfile'
 require 'logger'
 require 'cloud'
-require 'common/common'
 
 describe Bosh::AwsCloud::Cloud do
   before(:all) do
@@ -109,24 +108,27 @@ describe Bosh::AwsCloud::Cloud do
             network_spec,
             nil,
           )
+
           aws_params = {
             'access_key_id' => @access_key_id,
             'secret_access_key' => @secret_access_key
           }
+
           elb_client = AWS::ELB::Client.new(aws_params)
           instances = elb_client.describe_load_balancers({:load_balancer_names => [@elb_id]})[:load_balancer_descriptions]
                         .first[:instances].first[:instance_id]
+
           expect(instances).to include(vm_id)
 
           cpi.delete_vm(vm_id)
 
           vm_id=nil
 
-          retry_options = { sleep: 30, tries: 100, on: RegisteredInstances }
+          retry_options = { sleep: 10, tries: 10, on: RegisteredInstances }
 
+          logger.debug("Waiting for deregistration from ELB")
           expect {
             Bosh::Common.retryable(retry_options) do |tries, error|
-              logger.error("Instances are registered with ELB after #{tries}") unless error.nil?
               ensure_no_instances_registered_with_elb(logger, elb_client, @elb_id)
             end
           }.to_not raise_error
@@ -402,8 +404,11 @@ def ensure_no_instances_registered_with_elb(logger, elb_client, elb_id)
   instances = elb_client.describe_load_balancers({:load_balancer_names => [elb_id]})[:load_balancer_descriptions]
                         .first[:instances]
 
+  logger.debug("we believe instances: #{instances} are attached to elb #{elb_id}")
+
   if !instances.empty?
-    logger.warn("we believe #{instances} are attached to elb #{elb_id}")
     raise RegisteredInstances
   end
+
+  true
 end
