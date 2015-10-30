@@ -29,6 +29,8 @@ DIRECTOR_IP=$(get_stack_info_of "${stack_info}" "${stack_prefix}DirectorEIP")
 IAM_INSTANCE_PROFILE=$(get_stack_info_of "${stack_info}" "End2EndIAMInstanceProfile")
 
 e2e_deployment_name=e2e-test
+e2e_release_name=${e2e_deployment_name}-release
+e2e_release_version=1.0.0
 e2e_manifest_filename=${PWD}/e2e-manifest.yml
 export E2E_CONFIG_FILENAME="${PWD}/e2e-config.json"
 cat > "${E2E_CONFIG_FILENAME}" << EOF
@@ -38,7 +40,7 @@ cat > "${E2E_CONFIG_FILENAME}" << EOF
   "director_username": "${director_username}",
   "director_password": "${director_password}",
   "stemcell": "${PWD}/stemcell/stemcell.tgz",
-  "release": "${PWD}/bosh-cpi-release/ci/assets/e2e-test-release/e2e-test-release.tgz",
+  "release": "${PWD}/bosh-cpi-release/ci/assets/e2e-test-release/dev_releases/${e2e_release_name}/${e2e_release_name}-${e2e_release_version}.tgz",
   "deployment_name": "${e2e_deployment_name}"
 }
 EOF
@@ -120,7 +122,7 @@ gem 'bosh_cli'
 EOF
 
 pushd bosh-cpi-release/ci/assets/e2e-test-release
-  bosh -n create release --force --with-tarball
+  bosh -n create release --force --with-tarball --name ${e2e_release_name} --version ${e2e_release_version}
 popd
 
 pushd bosh-cpi-release/src/bosh_aws_cpi/spec/integration
