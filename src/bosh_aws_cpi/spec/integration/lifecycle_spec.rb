@@ -61,12 +61,6 @@ describe Bosh::AwsCloud::Cloud do
   before { allow(Bosh::Clouds::Config).to receive_messages(logger: logger) }
   let(:logger) { Logger.new(STDERR) }
 
-  before { @instance_id = nil }
-  after  { cpi.delete_vm(@instance_id) if @instance_id }
-
-  before { @volume_id = nil }
-  after  { cpi.delete_disk(@volume_id) if @volume_id }
-
   extend Bosh::Cpi::CompatibilityHelpers
 
   describe 'deleting things that no longer exist' do
@@ -147,37 +141,40 @@ describe Bosh::AwsCloud::Cloud do
     context 'without existing disks' do
       it 'should exercise the vm lifecycle' do
         vm_lifecycle do |instance_id|
-          volume_id = cpi.create_disk(2048, {}, instance_id)
-          expect(volume_id).not_to be_nil
-          expect(cpi.has_disk?(volume_id)).to be(true)
+          begin
+            volume_id = cpi.create_disk(2048, {}, instance_id)
+            expect(volume_id).not_to be_nil
+            expect(cpi.has_disk?(volume_id)).to be(true)
 
-          cpi.attach_disk(instance_id, volume_id)
+            cpi.attach_disk(instance_id, volume_id)
 
-          snapshot_metadata = vm_metadata.merge(
-            bosh_data: 'bosh data',
-            instance_id: 'instance',
-            agent_id: 'agent',
-            director_name: 'Director',
-            director_uuid: '6d06b0cc-2c08-43c5-95be-f1b2dd247e18',
-          )
+            snapshot_metadata = vm_metadata.merge(
+              bosh_data: 'bosh data',
+              instance_id: 'instance',
+              agent_id: 'agent',
+              director_name: 'Director',
+              director_uuid: '6d06b0cc-2c08-43c5-95be-f1b2dd247e18',
+            )
 
-          snapshot_id = cpi.snapshot_disk(volume_id, snapshot_metadata)
-          expect(snapshot_id).not_to be_nil
+            snapshot_id = cpi.snapshot_disk(volume_id, snapshot_metadata)
+            expect(snapshot_id).not_to be_nil
 
-          snapshot = cpi.ec2.snapshots[snapshot_id]
-          expect(snapshot.tags.device).to eq '/dev/sdf'
-          expect(snapshot.tags.agent_id).to eq 'agent'
-          expect(snapshot.tags.instance_id).to eq 'instance'
-          expect(snapshot.tags.director_name).to eq 'Director'
-          expect(snapshot.tags.director_uuid).to eq '6d06b0cc-2c08-43c5-95be-f1b2dd247e18'
+            snapshot = cpi.ec2.snapshots[snapshot_id]
+            expect(snapshot.tags.device).to eq '/dev/sdf'
+            expect(snapshot.tags.agent_id).to eq 'agent'
+            expect(snapshot.tags.instance_id).to eq 'instance'
+            expect(snapshot.tags.director_name).to eq 'Director'
+            expect(snapshot.tags.director_uuid).to eq '6d06b0cc-2c08-43c5-95be-f1b2dd247e18'
 
-          expect(snapshot.tags[:Name]).to eq 'deployment/cpi_spec/0/sdf'
+            expect(snapshot.tags[:Name]).to eq 'deployment/cpi_spec/0/sdf'
 
-          cpi.delete_snapshot(snapshot_id)
-
-          Bosh::Common.retryable(tries: 20, on: Bosh::Clouds::DiskNotAttached, sleep: lambda { |n, _| [2**(n-1), 30].min }) do
-            cpi.detach_disk(instance_id, volume_id)
-            true
+          ensure
+            cpi.delete_snapshot(snapshot_id)
+            Bosh::Common.retryable(tries: 20, on: Bosh::Clouds::DiskNotAttached, sleep: lambda { |n, _| [2**(n-1), 30].min }) do
+              cpi.detach_disk(instance_id, volume_id)
+              true
+            end
+            cpi.delete_disk(volume_id)
           end
         end
       end
@@ -188,18 +185,21 @@ describe Bosh::AwsCloud::Cloud do
       let(:disks) { [existing_volume_id] }
       after  { cpi.delete_disk(existing_volume_id) if existing_volume_id }
 
-      it 'can excercise the vm lifecycle and list the disks' do
+      it 'can exercise the vm lifecycle and list the disks' do
         vm_lifecycle do |instance_id|
-          volume_id = cpi.create_disk(2048, {}, instance_id)
-          expect(volume_id).not_to be_nil
-          expect(cpi.has_disk?(volume_id)).to be(true)
+          begin
+            volume_id = cpi.create_disk(2048, {}, instance_id)
+            expect(volume_id).not_to be_nil
+            expect(cpi.has_disk?(volume_id)).to be(true)
 
-          cpi.attach_disk(instance_id, volume_id)
-          expect(cpi.get_disks(instance_id)).to include(volume_id)
-
-          Bosh::Common.retryable(tries: 20, on: Bosh::Clouds::DiskNotAttached, sleep: lambda { |n, _| [2**(n-1), 30].min }) do
-            cpi.detach_disk(instance_id, volume_id)
-            true
+            cpi.attach_disk(instance_id, volume_id)
+            expect(cpi.get_disks(instance_id)).to include(volume_id)
+          ensure
+            Bosh::Common.retryable(tries: 20, on: Bosh::Clouds::DiskNotAttached, sleep: lambda { |n, _| [2**(n-1), 30].min }) do
+              cpi.detach_disk(instance_id, volume_id)
+              true
+            end
+            cpi.delete_disk(volume_id)
           end
         end
       end
@@ -207,12 +207,16 @@ describe Bosh::AwsCloud::Cloud do
 
     it 'can create encrypted disks' do
       vm_lifecycle do |instance_id|
-        volume_id = cpi.create_disk(2048, {'encrypted' => true}, instance_id)
-        expect(volume_id).not_to be_nil
-        expect(cpi.has_disk?(volume_id)).to be(true)
+        begin
+          volume_id = cpi.create_disk(2048, {'encrypted' => true}, instance_id)
+          expect(volume_id).not_to be_nil
+          expect(cpi.has_disk?(volume_id)).to be(true)
 
-        encrypted_volume = cpi.ec2.volumes[volume_id]
-        expect(encrypted_volume.encrypted?).to be(true)
+          encrypted_volume = cpi.ec2.volumes[volume_id]
+          expect(encrypted_volume.encrypted?).to be(true)
+        ensure
+          cpi.delete_disk(volume_id)
+        end
       end
     end
 
