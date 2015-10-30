@@ -14,43 +14,30 @@ describe 'Bosh - AWS CPI End 2 End tests' do
     @release = configuration['release']                     || raise('missing configuration entry: "release"')
     @deployment_name = configuration['deployment_name']     || raise('missing configuration entry: "deployment_name"')
 
-    run_command("bosh -n target #{@director_ip}")
-    run_command("bosh login #{@director_username} #{@director_password}")
-    run_command("bosh upload stemcell #{@stemcell} --skip-if-exists")
-    run_command("bosh deployment #{@manifest_filename}")
+    bosh("-n target #{@director_ip}")
+    bosh("login #{@director_username} #{@director_password}")
+    bosh_uuid = bosh("status --uuid")
+    edit_manifest { |manifest| manifest["director_uuid"] = bosh_uuid }
+    bosh("upload stemcell #{@stemcell} --skip-if-exists")
+    bosh("upload release #{@release} --skip-if-exists")
+    bosh("deployment #{@manifest_filename}")
+    bosh('-n deploy')
   end
 
   after(:all) do
-    run_command("bosh -n delete deployment #{@deployment_name}")
-    run_command('bosh -n cleanup --all')
+    bosh("-n delete deployment #{@deployment_name}")
+    bosh('-n cleanup --all')
   end
 
   context 'with dynamic networking' do
-
     context 'with IAM instance profile' do
       it 'properly sets IAM instance profile' do
-        run_command('bosh -n deploy')
-        run_command('bosh run errand iam-instance-profile-test')
+        bosh('run errand iam-instance-profile-test')
       end
 
       context 'with raw ephemeral disk' do
-        let(:manifest) { YAML.load_file(@manifest_filename) }
-
-        after(:each) do
-          File.open(@manifest_filename,'w') do |h|
-            h.write manifest.to_yaml
-          end
-        end
-
         it 'properly sets up raw ephemeral disk' do
-          new_manifest = manifest.dup
-          new_manifest['resource_pools'].first['cloud_properties']['raw_instance_storage'] = true
-          File.open(@manifest_filename,'w') do |h|
-            h.write new_manifest.to_yaml
-          end
-
-          run_command('bosh -n deploy')
-          run_command('bosh run errand raw-ephemeral-disk-test')
+          bosh('run errand raw-ephemeral-disk-test')
         end
       end
     end
@@ -73,11 +60,25 @@ describe 'Bosh - AWS CPI End 2 End tests' do
 
     puts "...'#{command}' exited with status #{status.exitstatus} after #{compute_duration(start_time, finish_time)}\n"
     expect(status.exitstatus).to be(0)
+
+    stdout_string
+  end
+
+  def bosh(args)
+    run_command("bosh #{args}")
   end
 
   def compute_duration(start, finish)
     seconds = (finish - start) % 60
     minutes = (((finish - start) / 60)).to_i
     sprintf("%02d:%02d (MM:SS)", minutes, seconds)
+  end
+
+  def edit_manifest
+    manifest = YAML.load_file(@manifest_filename)
+    yield manifest
+    File.open(@manifest_filename,'w') do |h|
+      h.write manifest.to_yaml
+    end
   end
 end

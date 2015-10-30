@@ -28,10 +28,6 @@ AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "${stack_prefix}Availabili
 DIRECTOR_IP=$(get_stack_info_of "${stack_info}" "${stack_prefix}DirectorEIP")
 IAM_INSTANCE_PROFILE=$(get_stack_info_of "${stack_info}" "End2EndIAMInstanceProfile")
 
-bosh -n target ${DIRECTOR_IP}
-bosh login ${director_username} ${director_password}
-DIRECTOR_UUID=$(bosh status --uuid)
-
 e2e_deployment_name=e2e-test
 e2e_manifest_filename=${PWD}/e2e-manifest.yml
 export E2E_CONFIG_FILENAME="${PWD}/e2e-config.json"
@@ -50,7 +46,7 @@ EOF
 cat > "${e2e_manifest_filename}" <<EOF
 ---
 name: ${e2e_deployment_name}
-director_uuid: ${DIRECTOR_UUID}
+director_uuid: replace-me
 
 releases:
   - name: e2e-test
@@ -71,15 +67,21 @@ update:
   max_in_flight: 3
 
 resource_pools:
-  - name: default
+  - &default_resource_pool
+    name: default
     stemcell:
       name: ${stemcell_name}
       version: latest
     network: private
     size: 1
-    cloud_properties:
+    cloud_properties: &default_cloud_properties
       instance_type: m3.medium
       availability_zone: ${AVAILABILITY_ZONE}
+  - <<: *default_resource_pool
+    name: raw_ephemeral_pool
+    cloud_properties:
+      <<: *default_cloud_properties
+      raw_instance_storage: true
 
 networks:
   - name: private
@@ -99,7 +101,7 @@ jobs:
     template: raw-ephemeral-disk-test
     lifecycle: errand
     instances: 1
-    resource_pool: default
+    resource_pool: raw_ephemeral_pool
     networks:
       - name: private
         default: [dns, gateway]
@@ -118,11 +120,10 @@ gem 'bosh_cli'
 EOF
 
 pushd bosh-cpi-release/ci/assets/e2e-test-release
-  bosh -n create release --force
-  bosh upload release --skip-if-exists
+  bosh -n create release --force --with-tarball
 popd
 
 pushd bosh-cpi-release/src/bosh_aws_cpi/spec/integration
   bundle install
-  bundle exec rspec e2e_spec.rb
+  bundle exec rspec --color --warnings e2e_spec.rb
 popd
