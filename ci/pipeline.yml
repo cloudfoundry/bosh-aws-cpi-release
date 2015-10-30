@@ -229,7 +229,6 @@ jobs:
         - {trigger: false,                            get: bosh-init}
         - {trigger: false, passed: [build-candidate], get: version-semver}
         - {trigger: false,                            get: bosh-release}
-        - {trigger: false,                            get: dummy-release}
 
       - task: setup-director
         file: bosh-cpi-release/ci/tasks/setup-director-iam.yml
@@ -238,7 +237,7 @@ jobs:
             aws_access_key_id:     {{aws_access_key__e2e_primary}}
             aws_secret_access_key: {{aws_secret_key__e2e_primary}}
             region_name:           {{aws_region__e2e_primary}}
-            private_key_data:      {{bosh_private_key}}
+            private_key_data:      {{e2e_private_key}}
             stack_name:            end2end
             blobstore_s3_host:     {{blobstore_s3_host__e2e_primary}}
             director_username:     {{bosh_director_username}}
@@ -346,15 +345,6 @@ resources:
       regexp: bosh-init-([0-9.]+)-linux-amd64
       bucket: {{s3_bosh_init_bucket}}
       region_name: {{aws_region__primary}}
-
-  - name: dummy-release
-    type: s3
-    source:
-      versioned_file: dummy.tgz
-      bucket: {{s3_aws_cpi_pipeline_bucket}}
-      region_name: {{aws_region__primary}}
-      access_key_id: {{aws_access_key__primary}}
-      secret_access_key: {{aws_secret_key__primary}}
 
   - name: bats
     type: git

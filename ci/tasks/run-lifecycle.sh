@@ -29,7 +29,7 @@ export BOSH_CLI_SILENCE_SLOW_LOAD_WARNING=true
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
 
-cd bosh-cpi-release/src/bosh_aws_cpi
-
-bundle install
-bundle exec rspec spec/integration
+pushd bosh-cpi-release/src/bosh_aws_cpi
+  bundle install
+  bundle exec rspec spec/integration/lifecycle_spec.rb
+popd

@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -e
+
+export PATH=$(readlink -nf /var/vcap/packages/jq):${PATH}
+
+echo "Querying instance metadata for IAM instance profile..."
+instance_profile_arn=$(curl http://169.254.169.254/latest/meta-data/iam/info | jq ".InstanceProfileArn")
+if ! [[ $instance_profile_arn =~ <%= p("iam_instance_profile") %> ]] ; then
+  echo "IAM Instance Profile did not match!"
+  exit 1
+fi
+
+echo "IAM Instance Profile matches!"

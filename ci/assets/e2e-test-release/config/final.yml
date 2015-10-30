@@ -1,0 +1,6 @@
+---
+final_name: e2e-test
+blobstore:
+  provider: s3
+  options:
+    bucket_name: bosh-aws-cpi-e2e-testing-blobs

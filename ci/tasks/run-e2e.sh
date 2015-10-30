@@ -23,21 +23,37 @@ cpi_release_name="bosh-aws-cpi"
 stack_info=$(get_stack_info $stack_name)
 
 stack_prefix="End2End"
-DIRECTOR=$(get_stack_info_of "${stack_info}" "${stack_prefix}DirectorEIP")
 SUBNET_ID=$(get_stack_info_of "${stack_info}" "${stack_prefix}DynamicSubnetID")
 AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "${stack_prefix}AvailabilityZone")
+DIRECTOR_IP=$(get_stack_info_of "${stack_info}" "${stack_prefix}DirectorEIP")
+IAM_INSTANCE_PROFILE=$(get_stack_info_of "${stack_info}" "End2EndIAMInstanceProfile")
 
-bosh -n target $DIRECTOR
-
+bosh -n target ${DIRECTOR_IP}
 bosh login ${director_username} ${director_password}
+DIRECTOR_UUID=$(bosh status --uuid)
 
-cat > "dummy-manifest.yml" <<EOF
+e2e_deployment_name=e2e-test
+e2e_manifest_filename=${PWD}/e2e-manifest.yml
+export E2E_CONFIG_FILENAME="${PWD}/e2e-config.json"
+cat > "${E2E_CONFIG_FILENAME}" << EOF
+{
+  "director_ip": "${DIRECTOR_IP}",
+  "manifest_filename": "${e2e_manifest_filename}",
+  "director_username": "${director_username}",
+  "director_password": "${director_password}",
+  "stemcell": "${PWD}/stemcell/stemcell.tgz",
+  "release": "${PWD}/bosh-cpi-release/ci/assets/e2e-test-release/e2e-test-release.tgz",
+  "deployment_name": "${e2e_deployment_name}"
+}
+EOF
+
+cat > "${e2e_manifest_filename}" <<EOF
 ---
-name: dummy
-director_uuid: $(bosh status --uuid)
+name: ${e2e_deployment_name}
+director_uuid: ${DIRECTOR_UUID}
 
 releases:
-  - name: dummy
+  - name: e2e-test
     version: latest
 
 compilation:
@@ -71,21 +87,42 @@ networks:
     cloud_properties: {subnet: ${SUBNET_ID}}
 
 jobs:
-  - name: dummy
-    template: dummy
+  - name: iam-instance-profile-test
+    template: iam-instance-profile-test
+    lifecycle: errand
     instances: 1
     resource_pool: default
     networks:
       - name: private
         default: [dns, gateway]
+  - name: raw-ephemeral-disk-test
+    template: raw-ephemeral-disk-test
+    lifecycle: errand
+    instances: 1
+    resource_pool: default
+    networks:
+      - name: private
+        default: [dns, gateway]
+
+properties:
+  iam_instance_profile: ${IAM_INSTANCE_PROFILE}
 EOF
 
-bosh upload stemcell stemcell/stemcell.tgz
+cat >> bosh-cpi-release/src/bosh_aws_cpi/spec/integration/Gemfile << EOF
+source 'https://rubygems.org'
 
-bosh upload release dummy-release/dummy.tgz
+gem 'rspec'
+gem 'rubysl-open3'
+gem 'json'
+gem 'bosh_cli'
+EOF
 
-bosh -d dummy-manifest.yml -n deploy
+pushd bosh-cpi-release/ci/assets/e2e-test-release
+  bosh -n create release --force
+  bosh upload release --skip-if-exists
+popd
 
-bosh -n delete deployment dummy
-
-bosh -n cleanup --all
+pushd bosh-cpi-release/src/bosh_aws_cpi/spec/integration
+  bundle install
+  bundle exec rspec e2e_spec.rb
+popd

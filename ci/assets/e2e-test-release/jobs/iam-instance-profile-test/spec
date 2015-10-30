@@ -1,0 +1,12 @@
+---
+name: iam-instance-profile-test
+
+packages:
+- jq
+
+templates:
+  run.erb: bin/run
+
+properties:
+  iam_instance_profile:
+    description: The IAM Instance Profile to be verified

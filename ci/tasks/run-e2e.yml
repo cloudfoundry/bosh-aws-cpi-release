@@ -4,7 +4,6 @@ image: docker:///boshcpi/aws-cpi-release
 inputs:
 - name: stemcell
 - name: bosh-cpi-release
-- name: dummy-release
 run:
   path: bosh-cpi-release/ci/tasks/run-e2e.sh
 params:

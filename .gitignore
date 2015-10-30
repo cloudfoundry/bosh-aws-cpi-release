@@ -4,8 +4,8 @@
 .final_builds/packages/**/*.tgz
 .idea
 blobs
-config/dev.yml
-config/private.yml
+**/config/dev.yml
+**/config/private.yml
 dev_releases
 releases/*.tgz
 releases/**/*.tgz

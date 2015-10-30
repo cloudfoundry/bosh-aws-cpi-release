@@ -38,7 +38,7 @@ semver=`cat version-semver/number`
 cpi_release_name=bosh-aws-cpi
 deployment_dir="${PWD}/deployment"
 manifest_filename="director-manifest.yml"
-private_key=${deployment_dir}/bats.pem
+private_key=${deployment_dir}/e2e.pem
 
 echo "setting up artifacts used in $manifest_filename"
 mkdir -p ${deployment_dir}
@@ -173,7 +173,7 @@ jobs:
     aws: &aws
       credentials_source: 'env_or_profile'
       default_iam_instance_profile: ${IAM_INSTANCE_PROFILE}
-      default_key_name: "bats"
+      default_key_name: "e2e"
       default_security_groups: ["${SECURITY_GROUP_NAME}"]
       region: "${region_name}"
 
@@ -201,7 +201,7 @@ cloud_provider:
     aws:
       access_key_id: ${aws_access_key_id}
       secret_access_key: ${aws_secret_access_key}
-      default_key_name: "bats"
+      default_key_name: "e2e"
       default_security_groups: ["${SECURITY_GROUP_NAME}"]
       region: "${region_name}"
 
