@@ -302,7 +302,7 @@ jobs:
     plan:
       - aggregate:
         - {trigger: true,  passed: [build-candidate], get: bosh-cpi-dev-artifacts}
-        - {trigger: false,                            get: stemcell, resource: aws-ubuntu-stemcell }
+        - {trigger: false,                            get: stemcell, resource: aws-ubuntu-hvm-stemcell }
         - {trigger: false, passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-release-in}
         - {trigger: false,                            get: bosh-init}
         - {trigger: false, passed: [build-candidate], get: version-semver}
@@ -328,7 +328,7 @@ jobs:
             aws_access_key_id:          {{aws_access_key__e2e_primary}}
             aws_secret_access_key:      {{aws_secret_key__e2e_primary}}
             region_name:                {{aws_region__e2e_primary}}
-            stemcell_name:              {{BAT_STEMCELL_NAME_ubuntu}}
+            stemcell_name:              {{BAT_STEMCELL_NAME_hvm_ubuntu}}
             stack_name:                 end2end
             director_username:          {{bosh_director_username}}
             director_password:          {{bosh_director_password}}
