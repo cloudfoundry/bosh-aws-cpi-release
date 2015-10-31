@@ -17,7 +17,7 @@ describe 'Bosh - AWS CPI End 2 End tests' do
     bosh("-n target #{@director_ip}")
     bosh("login #{@director_username} #{@director_password}")
     bosh_uuid = bosh("status --uuid")
-    edit_manifest { |manifest| manifest["director_uuid"] = bosh_uuid }
+    edit_manifest { |manifest| manifest["director_uuid"] = bosh_uuid.strip }
     bosh("upload stemcell #{@stemcell} --skip-if-exists")
     bosh("upload release #{@release} --skip-if-exists")
     bosh("deployment #{@manifest_filename}")
