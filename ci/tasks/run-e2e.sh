@@ -40,7 +40,7 @@ cat > "${E2E_CONFIG_FILENAME}" << EOF
   "director_username": "${director_username}",
   "director_password": "${director_password}",
   "stemcell": "${PWD}/stemcell/stemcell.tgz",
-  "release": "${PWD}/bosh-cpi-release/ci/assets/e2e-test-release/dev_releases/${e2e_release_name}/${e2e_deployment_name}-${e2e_release_version}.tgz",
+  "release": "${PWD}/bosh-cpi-release/ci/assets/e2e-test-release/dev_releases/${e2e_deployment_name}/${e2e_deployment_name}-${e2e_release_version}.tgz",
   "deployment_name": "${e2e_deployment_name}"
 }
 EOF
@@ -75,7 +75,6 @@ resource_pools:
       name: ${stemcell_name}
       version: latest
     network: private
-    size: 1
     cloud_properties: &default_cloud_properties
       instance_type: m3.medium
       availability_zone: ${AVAILABILITY_ZONE}
