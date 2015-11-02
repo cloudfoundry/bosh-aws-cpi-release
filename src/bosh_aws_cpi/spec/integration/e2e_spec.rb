@@ -30,7 +30,7 @@ describe 'Bosh - AWS CPI End 2 End tests' do
   end
 
   context 'with dynamic networking' do
-    context 'with IAM instance profile' do
+    context 'with IAM instance profile and an S3 blobstore' do
       it 'properly sets IAM instance profile' do
         bosh('run errand iam-instance-profile-test')
       end
