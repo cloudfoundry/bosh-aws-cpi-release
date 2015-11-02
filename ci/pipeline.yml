@@ -210,7 +210,7 @@ jobs:
         file: bosh-cpi-release/ci/tasks/run-bats.yml
         config:
           params:
-            base_os:                    Centos
+            base_os:                    CentosHVM
             aws_access_key_id:          {{aws_access_key__primary}}
             aws_secret_access_key:      {{aws_secret_key__primary}}
             region_name:                {{aws_region__primary}}
