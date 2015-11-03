@@ -3,8 +3,8 @@ groups:
   - name: bosh-aws-cpi-release
     jobs:
       - build-candidate
-      - bats-hvm-ubuntu
-      - bats-hvm-centos
+      - bats-ubuntu
+      - bats-centos
       - lifecycle
       - end2end-primary
       - promote-candidate
@@ -14,8 +14,8 @@ groups:
       - recreate-infrastructure-primary
       - recreate-infrastructure-end2end-primary
       - build-candidate
-      - bats-hvm-ubuntu
-      - bats-hvm-centos
+      - bats-ubuntu
+      - bats-centos
       - lifecycle
       - end2end-primary
       - promote-candidate
@@ -38,10 +38,10 @@ groups:
       - recreate-infrastructure-end2end-primary
       - recreate-infrastructure-cn-downloader
       - build-candidate
-      - bats-hvm-ubuntu
-      - bats-hvm-centos
       - bats-ubuntu
       - bats-centos
+      - ubuntu-pv-radiator
+      - centos-pv-radiator
       - lifecycle
       - end2end-primary
       - promote-candidate
@@ -145,7 +145,7 @@ jobs:
             region_name:                  {{aws_region__primary}}
             stack_name:                   primary
 
-  - name: bats-hvm-ubuntu
+  - name: bats-ubuntu
     serial: true
     plan:
       - aggregate:
@@ -161,7 +161,7 @@ jobs:
         file: bosh-cpi-release/ci/tasks/setup-director.yml
         config:
           params:
-            base_os:                    UbuntuHVM
+            base_os:                    Ubuntu
             aws_access_key_id:          {{aws_access_key__primary}}
             aws_secret_access_key:      {{aws_secret_key__primary}}
             region_name:                {{aws_region__primary}}
@@ -172,7 +172,7 @@ jobs:
         file: bosh-cpi-release/ci/tasks/run-bats.yml
         config:
           params:
-            base_os:                    UbuntuHVM
+            base_os:                    Ubuntu
             aws_access_key_id:          {{aws_access_key__primary}}
             aws_secret_access_key:      {{aws_secret_key__primary}}
             region_name:                {{aws_region__primary}}
@@ -183,7 +183,7 @@ jobs:
       - task: teardown-director
         file: bosh-cpi-release/ci/tasks/teardown-director.yml
 
-  - name: bats-hvm-centos
+  - name: bats-centos
     serial: true
     plan:
       - aggregate:
@@ -199,7 +199,7 @@ jobs:
         file: bosh-cpi-release/ci/tasks/setup-director.yml
         config:
           params:
-            base_os:                    CentosHVM
+            base_os:                    Centos
             aws_access_key_id:          {{aws_access_key__primary}}
             aws_secret_access_key:      {{aws_secret_key__primary}}
             region_name:                {{aws_region__primary}}
@@ -210,7 +210,7 @@ jobs:
         file: bosh-cpi-release/ci/tasks/run-bats.yml
         config:
           params:
-            base_os:                    CentosHVM
+            base_os:                    Centos
             aws_access_key_id:          {{aws_access_key__primary}}
             aws_secret_access_key:      {{aws_secret_key__primary}}
             region_name:                {{aws_region__primary}}
@@ -221,81 +221,87 @@ jobs:
       - task: teardown-director
         file: bosh-cpi-release/ci/tasks/teardown-director.yml
 
-  - name: bats-ubuntu
+  - name: ubuntu-pv-radiator
     serial: true
     plan:
       - aggregate:
-        - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-dev-artifacts}
-        - {trigger: false,                             get: stemcell, resource: aws-ubuntu-stemcell}
-        - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
-        - {trigger: false,                             get: bats}
-        - {trigger: false,                             get: bosh-init}
-        - {trigger: false, passed: [build-candidate],  get: version-semver}
-        - {trigger: false,                             get: bosh-release}
+        - {trigger: true,  get: three-hour-timer}
+        - {trigger: false, get: bosh-aws-cpi-release}
+        - {trigger: false, get: stemcell, resource: aws-ubuntu-stemcell}
+        - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-in}
+        - {trigger: false, get: bosh-init}
+        - {trigger: false, get: bosh-release}
 
       - task: setup-director
-        file: bosh-cpi-release/ci/tasks/setup-director.yml
+        file: bosh-cpi-release/ci/tasks/setup-director-radiator.yml
         config:
           params:
-            base_os:                    Ubuntu
+            base_os:                    UbuntuPV
             aws_access_key_id:          {{aws_access_key__primary}}
             aws_secret_access_key:      {{aws_secret_key__primary}}
             region_name:                {{aws_region__primary}}
-            private_key_data:           {{bosh_private_key}}
+            private_key_data:           {{radiator_private_key}}
             stack_name:                 primary
+        on_failure:
+          task: teardown-director
+          file: bosh-cpi-release/ci/tasks/teardown-director.yml
 
-      - task: run-bats
-        file: bosh-cpi-release/ci/tasks/run-bats.yml
+      - task: deploy-dummy
+        file: bosh-cpi-release/ci/tasks/deploy-dummy.yml
         config:
           params:
-            base_os:                    Ubuntu
+            base_os:                    UbuntuPV
             aws_access_key_id:          {{aws_access_key__primary}}
             aws_secret_access_key:      {{aws_secret_key__primary}}
             region_name:                {{aws_region__primary}}
-            BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
-            BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_ubuntu}}
+            stemcell_name:              {{BAT_STEMCELL_NAME_ubuntu}}
             stack_name:                 primary
+            director_username:          {{bosh_director_username}}
+            director_password:          {{bosh_director_password}}
+        ensure:
+          task: teardown-director
+          file: bosh-cpi-release/ci/tasks/teardown-director.yml
 
-      - task: teardown-director
-        file: bosh-cpi-release/ci/tasks/teardown-director.yml
-
-  - name: bats-centos
+  - name: centos-pv-radiator
     serial: true
     plan:
       - aggregate:
-        - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-dev-artifacts}
-        - {trigger: false,                             get: stemcell, resource: aws-centos-stemcell}
-        - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
-        - {trigger: false,                             get: bosh-init}
-        - {trigger: false, passed: [build-candidate],  get: version-semver}
-        - {trigger: false,                             get: bats}
-        - {trigger: false,                             get: bosh-release}
+        - {trigger: true,  get: three-hour-timer}
+        - {trigger: false, get: bosh-aws-cpi-release}
+        - {trigger: false, get: stemcell, resource: aws-centos-stemcell}
+        - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-in}
+        - {trigger: false, get: bosh-init}
+        - {trigger: false, get: bosh-release}
 
       - task: setup-director
-        file: bosh-cpi-release/ci/tasks/setup-director.yml
+        file: bosh-cpi-release/ci/tasks/setup-director-radiator.yml
         config:
           params:
-            base_os:                    Centos
+            base_os:                    CentosPV
             aws_access_key_id:          {{aws_access_key__primary}}
             aws_secret_access_key:      {{aws_secret_key__primary}}
             region_name:                {{aws_region__primary}}
-            private_key_data:           {{bosh_private_key}}
+            private_key_data:           {{radiator_private_key}}
             stack_name:                 primary
+        on_failure:
+          task: teardown-director
+          file: bosh-cpi-release/ci/tasks/teardown-director.yml
 
-      - task: run-bats
-        file: bosh-cpi-release/ci/tasks/run-bats.yml
+      - task: deploy-dummy
+        file: bosh-cpi-release/ci/tasks/deploy-dummy.yml
         config:
           params:
-            base_os:                    Centos
+            base_os:                    CentosPV
             aws_access_key_id:          {{aws_access_key__primary}}
             aws_secret_access_key:      {{aws_secret_key__primary}}
             region_name:                {{aws_region__primary}}
-            BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
-            BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_centos}}
+            stemcell_name:              {{BAT_STEMCELL_NAME_centos}}
             stack_name:                 primary
-
-      - task: teardown-director
-        file: bosh-cpi-release/ci/tasks/teardown-director.yml
+            director_username:          {{bosh_director_username}}
+            director_password:          {{bosh_director_password}}
+        ensure:
+          task: teardown-director
+          file: bosh-cpi-release/ci/tasks/teardown-director.yml
 
   - name: end2end-primary
     serial: true
@@ -339,7 +345,7 @@ jobs:
   - name: promote-candidate
     plan:
       - aggregate:
-        - {trigger: false, get: bosh-cpi-dev-artifacts, passed: [lifecycle, bats-hvm-ubuntu, bats-hvm-centos, end2end-primary]}
+        - {trigger: false, get: bosh-cpi-dev-artifacts, passed: [lifecycle, bats-ubuntu, bats-centos, end2end-primary]}
         - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-out}
         - {trigger: false, get: release-version-semver, params: {bump: major}}
 
@@ -435,6 +441,11 @@ resources:
     source:
       repository: cloudfoundry/bosh
 
+  - name: bosh-aws-cpi-release
+    type: bosh-io-release
+    source:
+      repository: cloudfoundry-incubator/bosh-aws-cpi-release
+
   - name: aws-ubuntu-hvm-stemcell
     type: bosh-io-stemcell
     source:
@@ -459,3 +470,8 @@ resources:
     type: time
     source:
       interval: 1h
+
+  - name: three-hour-timer
+    type: time
+    source:
+      interval: 3h

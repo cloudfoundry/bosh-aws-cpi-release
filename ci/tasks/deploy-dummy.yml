@@ -1,0 +1,17 @@
+---
+platform: linux
+image: docker:///boshcpi/aws-cpi-release
+inputs:
+- name: stemcell
+- name: bosh-cpi-release
+run:
+  path: bosh-cpi-release/ci/tasks/deploy-dummy.sh
+params:
+  base_os:                      replace-me
+  aws_access_key_id:            replace-me
+  aws_secret_access_key:        replace-me
+  region_name:                  replace-me
+  stemcell_name:                replace-me
+  stack_name:                   replace-me
+  director_username:            replace-me
+  director_password:            replace-me

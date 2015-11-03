@@ -6,7 +6,7 @@
       "VPC": {
         "CIDR": "10.0.0.0/16"
       },
-      "UbuntuHVMBATs": {
+      "UbuntuBATs": {
         "CIDR": "10.0.0.0/24",
         "ReservedRange": "10.0.0.2-10.0.0.9",
         "StaticRange": "10.0.0.10-10.0.0.30",
@@ -15,7 +15,7 @@
         "Static2": "10.0.0.30",
         "Gateway": "10.0.0.1"
       },
-      "CentosHVMBATs": {
+      "CentosBATs": {
         "CIDR": "10.0.1.0/24",
         "ReservedRange": "10.0.1.2-10.0.1.9",
         "StaticRange": "10.0.1.10-10.0.1.30",
@@ -28,7 +28,7 @@
         "CIDR": "10.0.2.0/24",
         "ManualIP": "10.0.2.9"
       },
-      "UbuntuBATs": {
+      "UbuntuPVBATs": {
         "CIDR": "10.0.3.0/24",
         "ReservedRange": "10.0.3.2-10.0.3.9",
         "StaticRange": "10.0.3.10-10.0.3.30",
@@ -37,7 +37,7 @@
         "Static2": "10.0.3.30",
         "Gateway": "10.0.3.1"
       },
-      "CentosBATs": {
+      "CentosPVBATs": {
         "CIDR": "10.0.4.0/24",
         "ReservedRange": "10.0.4.2-10.0.4.9",
         "StaticRange": "10.0.4.10-10.0.4.30",
@@ -209,237 +209,6 @@
         ]
       }
     },
-    "UbuntuHVMSubnet": {
-      "DependsOn": [
-        "VPC"
-      ],
-      "Type": "AWS::EC2::Subnet",
-      "Properties": {
-        "VpcId": {
-          "Ref": "VPC"
-        },
-        "CidrBlock": {
-          "Fn::FindInMap": [
-            "IPConfigurations",
-            "UbuntuHVMBATs",
-            "CIDR"
-          ]
-        },
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": "bats-ubuntu-hvm"
-          }
-        ]
-      }
-    },
-    "UbuntuHVMSubnetRouteTableAssociation": {
-      "DependsOn": [
-        "UbuntuHVMSubnet",
-        "RouteTable"
-      ],
-      "Type": "AWS::EC2::SubnetRouteTableAssociation",
-      "Properties": {
-        "SubnetId": {
-          "Ref": "UbuntuHVMSubnet"
-        },
-        "RouteTableId": {
-          "Ref": "RouteTable"
-        }
-      }
-    },
-    "UbuntuHVMSubnetNetworkAclAssociation": {
-      "DependsOn": [
-        "UbuntuHVMSubnet",
-        "NetworkAcl"
-      ],
-      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
-      "Properties": {
-        "SubnetId": {
-          "Ref": "UbuntuHVMSubnet"
-        },
-        "NetworkAclId": {
-          "Ref": "NetworkAcl"
-        }
-      }
-    },
-    "UbuntuHVMDirectorIPAddress": {
-      "DependsOn": [
-        "AttachGateway"
-      ],
-      "Type": "AWS::EC2::EIP",
-      "Properties": {
-        "Domain": "vpc"
-      }
-    },
-    "UbuntuHVMBATSIPAddress": {
-      "DependsOn": [
-        "AttachGateway"
-      ],
-      "Type": "AWS::EC2::EIP",
-      "Properties": {
-        "Domain": "vpc"
-      }
-    },
-    "CentosHVMSubnet": {
-      "DependsOn": [
-        "VPC"
-      ],
-      "Type": "AWS::EC2::Subnet",
-      "Properties": {
-        "VpcId": {
-          "Ref": "VPC"
-        },
-        "CidrBlock": {
-          "Fn::FindInMap": [
-            "IPConfigurations",
-            "CentosHVMBATs",
-            "CIDR"
-          ]
-        },
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": "bats-centos-hvm"
-          }
-        ]
-      }
-    },
-    "CentosHVMSubnetRouteTableAssociation": {
-      "DependsOn": [
-        "CentosHVMSubnet",
-        "RouteTable"
-      ],
-      "Type": "AWS::EC2::SubnetRouteTableAssociation",
-      "Properties": {
-        "SubnetId": {
-          "Ref": "CentosHVMSubnet"
-        },
-        "RouteTableId": {
-          "Ref": "RouteTable"
-        }
-      }
-    },
-    "CentosHVMSubnetNetworkAclAssociation": {
-      "DependsOn": [
-        "CentosHVMSubnet",
-        "NetworkAcl"
-      ],
-      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
-      "Properties": {
-        "SubnetId": {
-          "Ref": "CentosHVMSubnet"
-        },
-        "NetworkAclId": {
-          "Ref": "NetworkAcl"
-        }
-      }
-    },
-    "CentosHVMDirectorIPAddress": {
-      "DependsOn": [
-        "AttachGateway"
-      ],
-      "Type": "AWS::EC2::EIP",
-      "Properties": {
-        "Domain": "vpc"
-      }
-    },
-    "CentosHVMBATSIPAddress": {
-      "DependsOn": [
-        "AttachGateway"
-      ],
-      "Type": "AWS::EC2::EIP",
-      "Properties": {
-        "Domain": "vpc"
-      }
-    },
-    "LifecycleSubnet": {
-      "DependsOn": [
-        "VPC"
-      ],
-      "Type": "AWS::EC2::Subnet",
-      "Properties": {
-        "VpcId": {
-          "Ref": "VPC"
-        },
-        "CidrBlock": {
-          "Fn::FindInMap": [
-            "IPConfigurations",
-            "Lifecycle",
-            "CIDR"
-          ]
-        },
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": "lifecycle"
-          }
-        ]
-      }
-    },
-    "LifecycleSubnetRouteTableAssociation": {
-      "DependsOn": [
-        "LifecycleSubnet",
-        "RouteTable"
-      ],
-      "Type": "AWS::EC2::SubnetRouteTableAssociation",
-      "Properties": {
-        "SubnetId": {
-          "Ref": "LifecycleSubnet"
-        },
-        "RouteTableId": {
-          "Ref": "RouteTable"
-        }
-      }
-    },
-    "LifecycleSubnetNetworkAclAssociation": {
-      "DependsOn": [
-        "LifecycleSubnet",
-        "NetworkAcl"
-      ],
-      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
-      "Properties": {
-        "SubnetId": {
-          "Ref": "LifecycleSubnet"
-        },
-        "NetworkAclId": {
-          "Ref": "NetworkAcl"
-        }
-      }
-    },
-    "LifecycleELB": {
-      "DependsOn": [
-        "LifecycleSubnet",
-        "CISecurityGroup"
-      ],
-      "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
-      "Properties": {
-        "Listeners": [
-          {
-            "InstancePort": 80,
-            "LoadBalancerPort": 80,
-            "Protocol": "HTTP"
-          }
-        ],
-        "LoadBalancerName": "bosh-aws-cpi-lifecycle-elb",
-        "SecurityGroups": [
-          {
-            "Ref": "CISecurityGroup"
-          }
-        ],
-        "Subnets": [
-          {
-            "Ref": "LifecycleSubnet"
-          }
-        ],
-        "Tags": [
-          {
-            "Key": "Name",
-            "Value": "bosh-aws-cpi-lifecycle-elb"
-          }
-        ]
-      }
-    },
     "UbuntuSubnet": {
       "DependsOn": [
         "VPC"
@@ -583,38 +352,240 @@
       "Properties": {
         "Domain": "vpc"
       }
+    },
+    "LifecycleSubnet": {
+      "DependsOn": [
+        "VPC"
+      ],
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "CidrBlock": {
+          "Fn::FindInMap": [
+            "IPConfigurations",
+            "Lifecycle",
+            "CIDR"
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "lifecycle"
+          }
+        ]
+      }
+    },
+    "LifecycleSubnetRouteTableAssociation": {
+      "DependsOn": [
+        "LifecycleSubnet",
+        "RouteTable"
+      ],
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "LifecycleSubnet"
+        },
+        "RouteTableId": {
+          "Ref": "RouteTable"
+        }
+      }
+    },
+    "LifecycleSubnetNetworkAclAssociation": {
+      "DependsOn": [
+        "LifecycleSubnet",
+        "NetworkAcl"
+      ],
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "LifecycleSubnet"
+        },
+        "NetworkAclId": {
+          "Ref": "NetworkAcl"
+        }
+      }
+    },
+    "LifecycleELB": {
+      "DependsOn": [
+        "LifecycleSubnet",
+        "CISecurityGroup"
+      ],
+      "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties": {
+        "Listeners": [
+          {
+            "InstancePort": 80,
+            "LoadBalancerPort": 80,
+            "Protocol": "HTTP"
+          }
+        ],
+        "LoadBalancerName": "bosh-aws-cpi-lifecycle-elb",
+        "SecurityGroups": [
+          {
+            "Ref": "CISecurityGroup"
+          }
+        ],
+        "Subnets": [
+          {
+            "Ref": "LifecycleSubnet"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "bosh-aws-cpi-lifecycle-elb"
+          }
+        ]
+      }
+    },
+    "UbuntuPVSubnet": {
+      "DependsOn": [
+        "VPC"
+      ],
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "CidrBlock": {
+          "Fn::FindInMap": [
+            "IPConfigurations",
+            "UbuntuPVBATs",
+            "CIDR"
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "bats-ubuntu-hvm"
+          }
+        ]
+      }
+    },
+    "UbuntuPVSubnetRouteTableAssociation": {
+      "DependsOn": [
+        "UbuntuPVSubnet",
+        "RouteTable"
+      ],
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "UbuntuPVSubnet"
+        },
+        "RouteTableId": {
+          "Ref": "RouteTable"
+        }
+      }
+    },
+    "UbuntuPVSubnetNetworkAclAssociation": {
+      "DependsOn": [
+        "UbuntuPVSubnet",
+        "NetworkAcl"
+      ],
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "UbuntuPVSubnet"
+        },
+        "NetworkAclId": {
+          "Ref": "NetworkAcl"
+        }
+      }
+    },
+    "UbuntuPVDirectorIPAddress": {
+      "DependsOn": [
+        "AttachGateway"
+      ],
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc"
+      }
+    },
+    "UbuntuPVBATSIPAddress": {
+      "DependsOn": [
+        "AttachGateway"
+      ],
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc"
+      }
+    },
+    "CentosPVSubnet": {
+      "DependsOn": [
+        "VPC"
+      ],
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPC"
+        },
+        "CidrBlock": {
+          "Fn::FindInMap": [
+            "IPConfigurations",
+            "CentosPVBATs",
+            "CIDR"
+          ]
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "bats-centos-hvm"
+          }
+        ]
+      }
+    },
+    "CentosPVSubnetRouteTableAssociation": {
+      "DependsOn": [
+        "CentosPVSubnet",
+        "RouteTable"
+      ],
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "CentosPVSubnet"
+        },
+        "RouteTableId": {
+          "Ref": "RouteTable"
+        }
+      }
+    },
+    "CentosPVSubnetNetworkAclAssociation": {
+      "DependsOn": [
+        "CentosPVSubnet",
+        "NetworkAcl"
+      ],
+      "Type": "AWS::EC2::SubnetNetworkAclAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "CentosPVSubnet"
+        },
+        "NetworkAclId": {
+          "Ref": "NetworkAcl"
+        }
+      }
+    },
+    "CentosPVDirectorIPAddress": {
+      "DependsOn": [
+        "AttachGateway"
+      ],
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc"
+      }
+    },
+    "CentosPVBATSIPAddress": {
+      "DependsOn": [
+        "AttachGateway"
+      ],
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc"
+      }
     }
   },
   "Outputs": {
-    "VPCID": { "Value": { "Ref": "VPC"}},
-    "UbuntuHVMSecurityGroupID": { "Value": { "Ref": "CISecurityGroup"}},
-    "UbuntuHVMDirectorEIP": { "Value": { "Ref": "UbuntuHVMDirectorIPAddress"}},
-    "UbuntuHVMBATsEIP": { "Value": { "Ref": "UbuntuHVMBATSIPAddress"}},
-    "UbuntuHVMSubnetID": { "Value": { "Ref": "UbuntuHVMSubnet"}},
-    "UbuntuHVMAvailabilityZone": { "Value": { "Fn::GetAtt": [ "UbuntuHVMSubnet", "AvailabilityZone"]}},
-    "UbuntuHVMCIDR": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "UbuntuHVMBATs", "CIDR"]}},
-    "UbuntuHVMGateway": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "UbuntuHVMBATs", "Gateway"]}},
-    "UbuntuHVMReservedRange": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "UbuntuHVMBATs", "ReservedRange"]}},
-    "UbuntuHVMDirectorStaticIP": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "UbuntuHVMBATs", "DirectorPrivate"]}},
-    "UbuntuHVMStaticRange": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "UbuntuHVMBATs", "StaticRange"]}},
-    "UbuntuHVMStaticIP1": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "UbuntuHVMBATs", "Static1"]}},
-    "UbuntuHVMStaticIP2": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "UbuntuHVMBATs", "Static2"]}},
-    "CentosHVMSecurityGroupID": { "Value": { "Ref": "CISecurityGroup"}},
-    "CentosHVMDirectorEIP": { "Value": { "Ref": "CentosHVMDirectorIPAddress"}},
-    "CentosHVMBATsEIP": { "Value": { "Ref": "CentosHVMBATSIPAddress"}},
-    "CentosHVMSubnetID": { "Value": { "Ref": "CentosHVMSubnet"}},
-    "CentosHVMAvailabilityZone": { "Value": { "Fn::GetAtt": [ "CentosHVMSubnet", "AvailabilityZone"]}},
-    "CentosHVMCIDR": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosHVMBATs", "CIDR"]}},
-    "CentosHVMGateway": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosHVMBATs", "Gateway"]}},
-    "CentosHVMReservedRange": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosHVMBATs", "ReservedRange"]}},
-    "CentosHVMDirectorStaticIP": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosHVMBATs", "DirectorPrivate"]}},
-    "CentosHVMStaticRange": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosHVMBATs", "StaticRange"]}},
-    "CentosHVMStaticIP1": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosHVMBATs", "Static1"]}},
-    "CentosHVMStaticIP2": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosHVMBATs", "Static2"]}},
-    "LifecycleSubnetID": { "Value": { "Ref": "LifecycleSubnet"}},
-    "LifecycleAvailabilityZone": { "Value": { "Fn::GetAtt": [ "LifecycleSubnet", "AvailabilityZone"]}},
-    "LifecycleELB": { "Value": { "Fn::GetAtt": [ "LifecycleELB", "DNSName"]}},
-    "LifecycleManualIP": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "Lifecycle", "ManualIP"]}},
     "UbuntuSecurityGroupID": { "Value": { "Ref": "CISecurityGroup"}},
     "UbuntuDirectorEIP": { "Value": { "Ref": "UbuntuDirectorIPAddress"}},
     "UbuntuBATsEIP": { "Value": { "Ref": "UbuntuBATSIPAddress"}},
@@ -638,6 +609,35 @@
     "CentosDirectorStaticIP": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosBATs", "DirectorPrivate"]}},
     "CentosStaticRange": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosBATs", "StaticRange"]}},
     "CentosStaticIP1": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosBATs", "Static1"]}},
-    "CentosStaticIP2": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosBATs", "Static2"]}}
+    "CentosStaticIP2": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosBATs", "Static2"]}},
+    "LifecycleSubnetID": { "Value": { "Ref": "LifecycleSubnet"}},
+    "LifecycleAvailabilityZone": { "Value": { "Fn::GetAtt": [ "LifecycleSubnet", "AvailabilityZone"]}},
+    "LifecycleELB": { "Value": { "Fn::GetAtt": [ "LifecycleELB", "DNSName"]}},
+    "LifecycleManualIP": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "Lifecycle", "ManualIP"]}},
+    "VPCID": { "Value": { "Ref": "VPC"}},
+    "UbuntuPVSecurityGroupID": { "Value": { "Ref": "CISecurityGroup"}},
+    "UbuntuPVDirectorEIP": { "Value": { "Ref": "UbuntuPVDirectorIPAddress"}},
+    "UbuntuPVBATsEIP": { "Value": { "Ref": "UbuntuPVBATSIPAddress"}},
+    "UbuntuPVSubnetID": { "Value": { "Ref": "UbuntuPVSubnet"}},
+    "UbuntuPVAvailabilityZone": { "Value": { "Fn::GetAtt": [ "UbuntuPVSubnet", "AvailabilityZone"]}},
+    "UbuntuPVCIDR": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "UbuntuPVBATs", "CIDR"]}},
+    "UbuntuPVGateway": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "UbuntuPVBATs", "Gateway"]}},
+    "UbuntuPVReservedRange": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "UbuntuPVBATs", "ReservedRange"]}},
+    "UbuntuPVDirectorStaticIP": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "UbuntuPVBATs", "DirectorPrivate"]}},
+    "UbuntuPVStaticRange": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "UbuntuPVBATs", "StaticRange"]}},
+    "UbuntuPVStaticIP1": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "UbuntuPVBATs", "Static1"]}},
+    "UbuntuPVStaticIP2": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "UbuntuPVBATs", "Static2"]}},
+    "CentosPVSecurityGroupID": { "Value": { "Ref": "CISecurityGroup"}},
+    "CentosPVDirectorEIP": { "Value": { "Ref": "CentosPVDirectorIPAddress"}},
+    "CentosPVBATsEIP": { "Value": { "Ref": "CentosPVBATSIPAddress"}},
+    "CentosPVSubnetID": { "Value": { "Ref": "CentosPVSubnet"}},
+    "CentosPVAvailabilityZone": { "Value": { "Fn::GetAtt": [ "CentosPVSubnet", "AvailabilityZone"]}},
+    "CentosPVCIDR": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosPVBATs", "CIDR"]}},
+    "CentosPVGateway": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosPVBATs", "Gateway"]}},
+    "CentosPVReservedRange": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosPVBATs", "ReservedRange"]}},
+    "CentosPVDirectorStaticIP": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosPVBATs", "DirectorPrivate"]}},
+    "CentosPVStaticRange": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosPVBATs", "StaticRange"]}},
+    "CentosPVStaticIP1": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosPVBATs", "Static1"]}},
+    "CentosPVStaticIP2": { "Value": { "Fn::FindInMap": [ "IPConfigurations", "CentosPVBATs", "Static2"]}}
   }
 }
