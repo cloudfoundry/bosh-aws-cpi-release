@@ -1,4 +1,9 @@
 ---
+groups:
+  - name: build-light-stemcell-china
+    jobs:
+      - recreate-infrastructure-light-stemcell-china
+      - build-light-stemcell-china
 
 jobs:
   - name: recreate-infrastructure-light-stemcell-china
@@ -18,11 +23,11 @@ jobs:
 
       - task: teardown-infrastructure
         file: bosh-cpi-release/ci/tasks/teardown-infrastructure.yml
-        config: &recreate-china-light-stemcell-config
+        config: *recreate-china-light-stemcell-config
 
       - task: setup-infrastructure
         file: bosh-cpi-release/ci/tasks/setup-infrastructure.yml
-        config: &recreate-china-light-stemcell-config
+        config: *recreate-china-light-stemcell-config
 
   - name: build-light-stemcell-china
     serial: true
