@@ -4,10 +4,10 @@
   "Mappings": {
     "IPConfigurations": {
       "VPC": {
-        "CIDR": "10.0.0.0/16"
+        "CIDR": "10.0.0.0/24"
       },
       "DownloaderCN": {
-        "CIDR": "10.0.3.0/24"
+        "CIDR": "10.0.0.0/24"
       }
     }
   },
