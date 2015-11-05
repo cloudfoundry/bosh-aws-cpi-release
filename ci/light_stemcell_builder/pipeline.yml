@@ -1,0 +1,74 @@
+---
+
+jobs:
+  - name: recreate-infrastructure-light-stemcell-china
+    serial: true
+    plan:
+      - {trigger: false, get: bosh-cpi-release}
+
+      - task: check-for-running-instances
+        file: bosh-cpi-release/ci/tasks/check-for-running-instances.yml
+        config: &recreate-china-light-stemcell-config
+          params:
+            aws_access_key_id:        {{aws_access_key__light_stemcell_china}}
+            aws_secret_access_key:    {{aws_secret_key__light_stemcell_china}}
+            region_name:              {{aws_region__light_stemcell_china}}
+            public_key_data:          {{light-stemcell-builder-public_key_data}}
+            stack_name:               light-stemcell
+
+      - task: teardown-infrastructure
+        file: bosh-cpi-release/ci/tasks/teardown-infrastructure.yml
+        config: &recreate-china-light-stemcell-config
+
+      - task: setup-infrastructure
+        file: bosh-cpi-release/ci/tasks/setup-infrastructure.yml
+        config: &recreate-china-light-stemcell-config
+
+  - name: build-light-stemcell-china
+    serial: true
+    plan:
+      - aggregate:
+        - {trigger: true,  get: bosh-aws-full-stemcell}
+        - {trigger: false, get: bosh-src}
+        - {trigger: false, get: bosh-cpi-release}
+
+      - task: build
+        file: bosh-cpi-release/ci/tasks/build_light_stemcell.yml
+        config:
+          params:
+            aws_access_key_id:     {{aws_access_key__light_stemcell_china}}
+            aws_secret_access_key: {{aws_secret_key__light_stemcell_china}}
+            vm_ami:                {{light-stemcell-builder-ami}}
+            vm_user:               {{light-stemcell-builder-user}}
+            private_key_data:      {{light-stemcell-builder-private_key_data}}
+            vm_vm_name:            light-stemcell-builder.cn-north-1
+            stack_name:            light-stemcell
+
+      - put: aws-china-light-stemcell
+        params: {file: build/out/*light*.tgz}
+
+resources:
+  - name: bosh-cpi-release
+    type: git
+    source:
+      uri: https://github.com/cloudfoundry-incubator/bosh-aws-cpi-release.git
+      branch: master
+
+  - name: bosh-src
+    type: git
+    source:
+      uri: https://github.com/cloudfoundry/bosh.git
+      branch: master
+
+  - name: bosh-aws-full-stemcell
+    type: bosh-io-stemcell
+    source:
+      name: bosh-aws-xen-ubuntu-trusty-go_agent
+
+  - name: aws-china-light-stemcell
+    type: s3
+    source:
+      bucket: {{aws_stemcell_bucket__light_stemcell_china}}
+      region_name: {{aws_region__light_stemcell_china}}
+      access_key_id: {{aws_access_key__light_stemcell_china}}
+      secret_access_key: {{aws_secret_key__light_stemcell_china}}
