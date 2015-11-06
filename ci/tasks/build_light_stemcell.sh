@@ -44,7 +44,6 @@ EOF
 workspace="${PWD}/bosh-cpi-release/ci/light_stemcell_builder"
 out_dir="${PWD}/out"
 
-full_stemcell_file=${PWD}/bosh-aws-full-stemcell/stemcell.tgz
 full_stemcell_url=$(cat bosh-aws-full-stemcell/url | awk '{ gsub(/light-/, ""); print }')
 full_stemcell_name=china-$(echo ${full_stemcell_url} | grep -o "[^/]*$")
 
@@ -52,12 +51,12 @@ pushd ${workspace}
   vagrant box add dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
   vagrant up --provider=aws
   vagrant ssh << EOF
-    wget ${full_stemcell_url} /home/${vm_user}/${full_stemcell_name}
+    wget ${full_stemcell_url} -O /home/${vm_user}/${full_stemcell_name}
     cd /bosh/bosh-stemcell
     bundle exec rake stemcell:build_light[/home/${vm_user}/${full_stemcell_name},hvm]
 EOF
   mkdir -p ${out_dir}
   vagrant ssh-config > ./vagrant.ssh.config
-  scp -F vagrant.ssh.config default:/home/${vm_user}/*light*.tgz ${out_dir}
+  scp -F vagrant.ssh.config default:/home/${vm_user}/*light*.tgz ${out_dir}/
   vagrant destroy -f
 popd
