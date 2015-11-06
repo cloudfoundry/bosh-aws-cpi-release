@@ -15,11 +15,11 @@ jobs:
         file: bosh-cpi-release/ci/tasks/check-for-running-instances.yml
         config: &recreate-china-light-stemcell-config
           params:
-            aws_access_key_id:        {{aws_access_key__light_stemcell_china}}
-            aws_secret_access_key:    {{aws_secret_key__light_stemcell_china}}
-            region_name:              {{aws_region__light_stemcell_china}}
-            public_key_data:          {{light-stemcell-builder-public_key_data}}
-            stack_name:               light-stemcell
+            aws_access_key_id:     {{aws_access_key__light_stemcell_china}}
+            aws_secret_access_key: {{aws_secret_key__light_stemcell_china}}
+            region_name:           cn-north-1
+            public_key_data:       {{light-stemcell-builder-public_key_data}}
+            stack_name:            light-stemcell
 
       - task: teardown-infrastructure
         file: bosh-cpi-release/ci/tasks/teardown-infrastructure.yml
@@ -43,10 +43,12 @@ jobs:
           params:
             aws_access_key_id:     {{aws_access_key__light_stemcell_china}}
             aws_secret_access_key: {{aws_secret_key__light_stemcell_china}}
+            region_name:           cn-north-1
             vm_ami:                {{light-stemcell-builder-ami}}
             vm_user:               {{light-stemcell-builder-user}}
             private_key_data:      {{light-stemcell-builder-private_key_data}}
-            vm_vm_name:            light-stemcell-builder.cn-north-1
+            public_key_name:       {{light-stemcell-builder-public_key_name}}
+            vm_name:               light-stemcell-builder.cn-north-1
             stack_name:            light-stemcell
 
       - put: aws-china-light-stemcell
@@ -69,11 +71,12 @@ resources:
     type: bosh-io-stemcell
     source:
       name: bosh-aws-xen-ubuntu-trusty-go_agent
+      tarball: false
 
   - name: aws-china-light-stemcell
     type: s3
     source:
       bucket: {{aws_stemcell_bucket__light_stemcell_china}}
-      region_name: {{aws_region__light_stemcell_china}}
+      region_name: cn-north-1
       access_key_id: {{aws_access_key__light_stemcell_china}}
       secret_access_key: {{aws_secret_key__light_stemcell_china}}

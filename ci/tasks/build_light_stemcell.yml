@@ -1,6 +1,6 @@
 ---
 platform: linux
-image: docker:///boshcpi/aws-cpi-release
+image: docker:///boshinfrastructure/light-stemcell-builder
 inputs:
   - name: bosh-aws-full-stemcell
   - name: bosh-src
@@ -10,8 +10,10 @@ run:
 params:
   aws_access_key_id:     replace-me
   aws_secret_access_key: replace-me
+  region_name:           replace-me
   vm_ami:                replace-me
   vm_user:               replace-me
   private_key_data:      replace-me
-  vm_vm_name:            replace-me
+  public_key_name:       replace-me
+  vm_name:               replace-me
   stack_name:            replace-me
