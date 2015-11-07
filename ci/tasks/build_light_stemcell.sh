@@ -53,6 +53,9 @@ pushd ${workspace}
   vagrant ssh << EOF
     wget ${full_stemcell_url} -O /home/${vm_user}/${full_stemcell_name}
     cd /bosh/bosh-stemcell
+    BOSH_AWS_REGION=${region_name} \
+    BOSH_AWS_ACCESS_KEY_ID=${aws_access_key_id} \
+    BOSH_AWS_SECRET_ACCESS_KEY=${aws_secret_access_key} \
     bundle exec rake stemcell:build_light[/home/${vm_user}/${full_stemcell_name},hvm]
 EOF
   mkdir -p ${out_dir}
