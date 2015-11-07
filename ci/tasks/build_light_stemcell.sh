@@ -23,6 +23,8 @@ private_key_file=$PWD/vm_private_key.pem
 echo "${private_key_data}" > ${private_key_file}
 chmod go-r ${private_key_file}
 
+stemcell_copy_file=stemcell-copy
+
 export VAGRANT_CONFIG_FILE="${PWD}/vagrant_light_stemcell_builder_config.json"
 cat > "${VAGRANT_CONFIG_FILE}"<<EOF
 {
@@ -37,7 +39,8 @@ cat > "${VAGRANT_CONFIG_FILE}"<<EOF
   "VM_KEYPAIR_NAME": "${public_key_name}",
   "AWS_SUBNET_ID": "$(get_stack_info_of "${stack_info}" "SubnetID")",
   "AWS_ENDPOINT": "https://$(aws ec2 describe-regions | jq -r --arg key ${region_name} '.Regions[] | select(.RegionName=="\($key)").Endpoint')",
-  "VM_PRIVATE_KEY_FILE": "${private_key_file}"
+  "VM_PRIVATE_KEY_FILE": "${private_key_file}",
+  "STEMCELL_COPY_FILE": "${stemcell_copy_file}"
 }
 EOF
 
@@ -48,6 +51,7 @@ full_stemcell_url=$(cat bosh-aws-full-stemcell/url | awk '{ gsub(/light-/, ""); 
 full_stemcell_name=china-$(echo ${full_stemcell_url} | grep -o "[^/]*$")
 
 pushd ${workspace}
+  cp ../../src/bosh_aws_cpi/scripts/stemcell-copy.sh ./${stemcell_copy_file}
   vagrant box add dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
   vagrant up --provider=aws
   vagrant ssh << EOF
