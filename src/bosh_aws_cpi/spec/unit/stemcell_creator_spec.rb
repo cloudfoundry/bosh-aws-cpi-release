@@ -125,14 +125,18 @@ describe Bosh::AwsCloud::StemcellCreator do
   describe "#find_in_path" do
     it "should not find a missing file" do
       creator = described_class.new(region, stemcell_properties)
-      expect(creator.find_in_path("program-that-doesnt-exist")).to be_nil
+      expect(creator.find_in_path("some_non_existant_file")).to be_nil
     end
 
     it "should find stemcell-copy" do
-      creator = described_class.new(region, stemcell_properties)
-      path = ENV["PATH"]
-      path += ":#{File.expand_path('../../assets', __FILE__)}"
-      expect(creator.find_in_path("stemcell-copy", path)).to_not be_nil
+      Dir.mktmpdir do |dir|
+        ENV["PATH"] += ":#{dir}"
+        f = File.open(File.join(dir, 'fake-stemcell-copy'), 'w')
+        filename = f.path
+        f.close
+        creator = described_class.new(region, stemcell_properties)
+        expect(creator.find_in_path(File.basename('fake-stemcell-copy'))).to eq(filename)
+      end
     end
   end
 
