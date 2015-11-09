@@ -4,7 +4,6 @@ groups:
     jobs:
       - recreate-infrastructure-light-stemcell-china
       - build-light-stemcell-china
-      - test-s3-bucket-regexp
 
 jobs:
   - name: recreate-infrastructure-light-stemcell-china
@@ -53,19 +52,7 @@ jobs:
             stack_name:            light-stemcell
 
       - put: aws-china-light-stemcell
-        params: {file: build/out/*light*.tgz}
-
-  - name: test-s3-bucket-regexp
-    serial:  true
-    plan:
-      - aggregate:
-        - {trigger: false, get: bosh-cpi-release}
-
-      - task: build
-        file: bosh-cpi-release/ci/tasks/make_fake_china_light_stemcell.yml
-
-      - put: aws-china-light-stemcell
-        params: {file: china-light-stemcell/light-china-bosh-stemcell-.*-aws-xen-ubuntu-trusty-go_agent.tgz}
+        params: { from: 'china-light-stemcell/light-china-bosh-stemcell-(.*)-aws-xen-ubuntu-trusty-go_agent\.tgz' }
 
 resources:
   - name: bosh-cpi-release
@@ -89,8 +76,8 @@ resources:
   - name: aws-china-light-stemcell
     type: s3
     source:
-      bucket: {{aws_stemcell_bucket__light_stemcell_china}}
-      region_name: cn-north-1
-      access_key_id: {{aws_access_key__light_stemcell_china}}
-      secret_access_key: {{aws_secret_key__light_stemcell_china}}
-      regexp: "light-china-bosh-stemcell-.*-aws-xen-ubuntu-trusty-go_agent.tgz"
+      bucket: {{aws_bucket__light_stemcell_china_bucket}}
+      region_name: {{aws_region_name__light_stemcell_china_bucket}}
+      access_key_id: {{aws_access_key__light_stemcell_china_bucket}}
+      secret_access_key: {{aws_secret_key__light_stemcell_china_bucket}}
+      regexp: 'light-china-bosh-stemcell-(.*)-aws-xen-ubuntu-trusty-go_agent\.tgz'

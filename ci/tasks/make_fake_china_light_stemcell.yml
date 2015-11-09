@@ -1,9 +1,0 @@
----
-platform: linux
-image: docker:///boshinfrastructure/light-stemcell-builder
-inputs:
-  - name: bosh-cpi-release
-outputs:
-  - name: china-light-stemcell
-run:
-  path: bosh-cpi-release/ci/tasks/make_fake_china_light_stemcell.sh
