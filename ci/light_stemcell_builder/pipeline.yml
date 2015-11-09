@@ -52,7 +52,7 @@ jobs:
             stack_name:            light-stemcell
 
       - put: aws-china-light-stemcell
-        params: { from: 'china-light-stemcell/light-china-bosh-stemcell-(.*)-aws-xen-ubuntu-trusty-go_agent\.tgz' }
+        params: { from: 'china-light-stemcell/light-china-bosh-stemcell-(.*)-aws-xen-hvm-ubuntu-trusty-go_agent\.tgz' }
 
 resources:
   - name: bosh-cpi-release
@@ -80,4 +80,4 @@ resources:
       region_name: {{aws_region_name__light_stemcell_china_bucket}}
       access_key_id: {{aws_access_key__light_stemcell_china_bucket}}
       secret_access_key: {{aws_secret_key__light_stemcell_china_bucket}}
-      regexp: 'light-china-bosh-stemcell-(.*)-aws-xen-ubuntu-trusty-go_agent\.tgz'
+      regexp: 'light-china-bosh-stemcell-(.*)-aws-xen-hvm-ubuntu-trusty-go_agent\.tgz'
