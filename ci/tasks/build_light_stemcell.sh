@@ -53,6 +53,7 @@ full_stemcell_name=china-$(echo ${full_stemcell_url} | grep -o "[^/]*$")
 pushd ${workspace}
   cp ../../src/bosh_aws_cpi/scripts/stemcell-copy.sh ./${stemcell_copy_file}
   vagrant box add dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
+  add_on_exit "vagrant destroy -f"
   vagrant up --provider=aws
   vagrant ssh << EOF
     wget ${full_stemcell_url} -O /home/${vm_user}/${full_stemcell_name}
@@ -65,5 +66,4 @@ EOF
   mkdir -p ${out_dir}
   vagrant ssh-config > ./vagrant.ssh.config
   scp -F vagrant.ssh.config default:/home/${vm_user}/*light*.tgz ${out_dir}/
-  vagrant destroy -f
 popd
