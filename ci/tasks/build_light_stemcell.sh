@@ -45,7 +45,7 @@ cat > "${VAGRANT_CONFIG_FILE}"<<EOF
 EOF
 
 workspace="${PWD}/bosh-cpi-release/ci/light_stemcell_builder"
-out_dir="${PWD}/out"
+out_dir="${PWD}/china-light-stemcell"
 
 full_stemcell_url=$(cat bosh-aws-full-stemcell/url | awk '{ gsub(/light-/, ""); print }')
 full_stemcell_name=china-$(echo ${full_stemcell_url} | grep -o "[^/]*$")
