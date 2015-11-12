@@ -313,6 +313,9 @@ module Bosh::AwsCloud
         end
         logger.info("Attached `#{disk_id}' to `#{instance_id}'")
       end
+
+      # log registry settings for debugging
+      logger.debug("updated registry settings: #{registry.read_settings(instance.id)}")
     end
 
     # Detach an EBS volume from an EC2 instance
