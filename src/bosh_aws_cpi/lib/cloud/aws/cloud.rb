@@ -234,9 +234,9 @@ module Bosh::AwsCloud
     end
 
     ##
-    # Check whether an OpenStack volume exists or not
+    # Check whether an EBS volume exists or not
     #
-    # @param [String] disk_id OpenStack volume UUID
+    # @param [String] disk_id EBS volume UUID
     # @return [bool] whether the specific disk is there or not
     def has_disk?(disk_id)
       with_thread_name("has_disk?(#{disk_id})") do
