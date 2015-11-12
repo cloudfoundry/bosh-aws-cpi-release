@@ -16,4 +16,4 @@ params:
   private_key_data:           replace-me
   region_name:                replace-me
   stack_name:                 replace-me
-  BOSH_INIT_LOG_LEVEL:        info
+  BOSH_INIT_LOG_LEVEL:        debug
