@@ -29,16 +29,14 @@ describe 'Bosh - AWS CPI End 2 End tests' do
     bosh('-n cleanup --all')
   end
 
-  context 'with dynamic networking' do
-    context 'with IAM instance profile and an S3 blobstore' do
-      it 'properly sets IAM instance profile' do
-        bosh('run errand iam-instance-profile-test')
-      end
+  context 'with dynamic networking, IAM instance profile, and an S3 blobstore' do
+    it 'properly sets IAM instance profile' do
+      bosh('run errand iam-instance-profile-test')
+    end
 
-      context 'with raw ephemeral disk' do
-        it 'properly sets up raw ephemeral disk' do
-          bosh('run errand raw-ephemeral-disk-test')
-        end
+    context 'with raw ephemeral disk' do
+      it 'properly sets up raw ephemeral disk' do
+        bosh('run errand raw-ephemeral-disk-test')
       end
     end
   end

@@ -6,36 +6,42 @@ groups:
       - bats-ubuntu
       - bats-centos
       - lifecycle
-      - end2end-primary
+      - end2end-us
+      - end2end-china
       - promote-candidate
 
   - name: primary
     jobs:
       - recreate-infrastructure-primary
-      - recreate-infrastructure-end2end-primary
+      - recreate-infrastructure-end2end-us
       - build-candidate
       - bats-ubuntu
       - bats-centos
       - lifecycle
-      - end2end-primary
+      - end2end-us
       - promote-candidate
 
   - name: end2end
     jobs:
-      - recreate-infrastructure-end2end-primary
+      - recreate-infrastructure-end2end-us
+      - recreate-infrastructure-end2end-china
       - build-candidate
-      - end2end-primary
+      - end2end-us
+      - end2end-china
       - promote-candidate
 
   - name: china
     jobs:
       - recreate-infrastructure-cn-downloader
+      - recreate-infrastructure-end2end-china
       - download-from-cn
+      - end2end-china
 
   - name: all
     jobs:
       - recreate-infrastructure-primary
-      - recreate-infrastructure-end2end-primary
+      - recreate-infrastructure-end2end-us
+      - recreate-infrastructure-end2end-china
       - recreate-infrastructure-cn-downloader
       - build-candidate
       - bats-ubuntu
@@ -43,7 +49,8 @@ groups:
       - ubuntu-pv-radiator
       - centos-pv-radiator
       - lifecycle
-      - end2end-primary
+      - end2end-us
+      - end2end-china
       - promote-candidate
       - download-from-cn
 
@@ -71,7 +78,7 @@ jobs:
         file: bosh-cpi-release/ci/tasks/setup-infrastructure.yml
         config: *recreate-primary-config
 
-  - name: recreate-infrastructure-end2end-primary
+  - name: recreate-infrastructure-end2end-us
     serial: true
     plan:
       - aggregate:
@@ -79,20 +86,43 @@ jobs:
 
       - task: check-for-running-instances
         file: bosh-cpi-release/ci/tasks/check-for-running-instances.yml
-        config: &recreate-end2end-primary-config
+        config: &recreate-end2end-us-config
           params:
-            aws_access_key_id:        {{aws_access_key__e2e_primary}}
-            aws_secret_access_key:    {{aws_secret_key__e2e_primary}}
-            region_name:              {{aws_region__e2e_primary}}
+            aws_access_key_id:        {{aws_access_key__e2e_us}}
+            aws_secret_access_key:    {{aws_secret_key__e2e_us}}
+            region_name:              {{aws_region__e2e_us}}
             stack_name:               end2end
 
       - task: teardown-infrastructure
         file: bosh-cpi-release/ci/tasks/teardown-infrastructure.yml
-        config: *recreate-end2end-primary-config
+        config: *recreate-end2end-us-config
 
       - task: setup-infrastructure
         file: bosh-cpi-release/ci/tasks/setup-infrastructure.yml
-        config: *recreate-end2end-primary-config
+        config: *recreate-end2end-us-config
+
+  - name: recreate-infrastructure-end2end-china
+    serial: true
+    plan:
+      - aggregate:
+        - {trigger: false, get: bosh-cpi-release,     resource: bosh-cpi-release-in}
+
+      - task: check-for-running-instances
+        file: bosh-cpi-release/ci/tasks/check-for-running-instances.yml
+        config: &recreate-end2end-cn-config
+          params:
+            aws_access_key_id:        {{aws_access_key__e2e_china}}
+            aws_secret_access_key:    {{aws_secret_key__e2e_china}}
+            region_name:              {{aws_region__e2e_china}}
+            stack_name:               end2end
+
+      - task: teardown-infrastructure
+        file: bosh-cpi-release/ci/tasks/teardown-infrastructure.yml
+        config: *recreate-end2end-cn-config
+
+      - task: setup-infrastructure
+        file: bosh-cpi-release/ci/tasks/setup-infrastructure.yml
+        config: *recreate-end2end-cn-config
 
   - name: recreate-infrastructure-cn-downloader
     serial: true
@@ -303,7 +333,7 @@ jobs:
           task: teardown-director
           file: bosh-cpi-release/ci/tasks/teardown-director.yml
 
-  - name: end2end-primary
+  - name: end2end-us
     serial: true
     plan:
       - aggregate:
@@ -318,12 +348,12 @@ jobs:
         file: bosh-cpi-release/ci/tasks/setup-director-iam.yml
         config:
           params:
-            aws_access_key_id:     {{aws_access_key__e2e_primary}}
-            aws_secret_access_key: {{aws_secret_key__e2e_primary}}
-            region_name:           {{aws_region__e2e_primary}}
+            aws_access_key_id:     {{aws_access_key__e2e_us}}
+            aws_secret_access_key: {{aws_secret_key__e2e_us}}
+            region_name:           {{aws_region__e2e_us}}
             private_key_data:      {{e2e_private_key}}
             stack_name:            end2end
-            blobstore_s3_host:     {{blobstore_s3_host__e2e_primary}}
+            blobstore_s3_host:     {{blobstore_s3_host__e2e_us}}
             director_username:     {{bosh_director_username}}
             director_password:     {{bosh_director_password}}
 
@@ -331,9 +361,48 @@ jobs:
         file: bosh-cpi-release/ci/tasks/run-e2e.yml
         config:
           params:
-            aws_access_key_id:          {{aws_access_key__e2e_primary}}
-            aws_secret_access_key:      {{aws_secret_key__e2e_primary}}
-            region_name:                {{aws_region__e2e_primary}}
+            aws_access_key_id:          {{aws_access_key__e2e_us}}
+            aws_secret_access_key:      {{aws_secret_key__e2e_us}}
+            region_name:                {{aws_region__e2e_us}}
+            stemcell_name:              {{BAT_STEMCELL_NAME_hvm_ubuntu}}
+            stack_name:                 end2end
+            director_username:          {{bosh_director_username}}
+            director_password:          {{bosh_director_password}}
+
+      - task: teardown-director
+        file: bosh-cpi-release/ci/tasks/teardown-director.yml
+
+  - name: end2end-china
+    serial: true
+    plan:
+      - aggregate:
+        - {trigger: true,  passed: [build-candidate], get: bosh-cpi-dev-artifacts}
+        - {trigger: false,                            get: stemcell, resource: aws-china-ubuntu-stemcell }
+        - {trigger: false, passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-release-in}
+        - {trigger: false,                            get: bosh-init}
+        - {trigger: false, passed: [build-candidate], get: version-semver}
+        - {trigger: false,                            get: bosh-release}
+
+      - task: setup-director
+        file: bosh-cpi-release/ci/tasks/setup-director-iam.yml
+        config:
+          params:
+            aws_access_key_id:     {{aws_access_key__e2e_china}}
+            aws_secret_access_key: {{aws_secret_key__e2e_china}}
+            region_name:           {{aws_region__e2e_china}}
+            private_key_data:      {{e2e_private_key}}
+            stack_name:            end2end
+            blobstore_s3_host:     {{blobstore_s3_host__e2e_china}}
+            director_username:     {{bosh_director_username}}
+            director_password:     {{bosh_director_password}}
+
+      - task: test
+        file: bosh-cpi-release/ci/tasks/run-e2e.yml
+        config:
+          params:
+            aws_access_key_id:          {{aws_access_key__e2e_china}}
+            aws_secret_access_key:      {{aws_secret_key__e2e_china}}
+            region_name:                {{aws_region__e2e_china}}
             stemcell_name:              {{BAT_STEMCELL_NAME_hvm_ubuntu}}
             stack_name:                 end2end
             director_username:          {{bosh_director_username}}
@@ -345,7 +414,7 @@ jobs:
   - name: promote-candidate
     plan:
       - aggregate:
-        - {trigger: false, get: bosh-cpi-dev-artifacts, passed: [lifecycle, bats-ubuntu, bats-centos, end2end-primary]}
+        - {trigger: false, get: bosh-cpi-dev-artifacts, passed: [lifecycle, bats-ubuntu, bats-centos, end2end-us]}
         - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-out}
         - {trigger: false, get: release-version-semver, params: {bump: major}}
 
@@ -465,6 +534,13 @@ resources:
     type: bosh-io-stemcell
     source:
       name: bosh-aws-xen-centos-7-go_agent
+
+  - name: aws-china-ubuntu-stemcell
+    type: s3
+    source:
+      regexp: light-china-bosh-stemcell-([0-9]+)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
+      bucket: {{s3_aws_china_ubuntu_stemcell_bucket}}
+      region_name: {{aws_region__primary}}
 
   - name: one-hour-timer
     type: time

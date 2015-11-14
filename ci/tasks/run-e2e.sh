@@ -39,7 +39,7 @@ cat > "${E2E_CONFIG_FILENAME}" << EOF
   "manifest_filename": "${e2e_manifest_filename}",
   "director_username": "${director_username}",
   "director_password": "${director_password}",
-  "stemcell": "${PWD}/stemcell/stemcell.tgz",
+  "stemcell": "$(echo ${PWD}/stemcell/*.tgz)",
   "release": "${PWD}/bosh-cpi-release/ci/assets/e2e-test-release/dev_releases/${e2e_deployment_name}/${e2e_deployment_name}-${e2e_release_version}.tgz",
   "deployment_name": "${e2e_deployment_name}"
 }
