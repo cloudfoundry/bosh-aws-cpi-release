@@ -37,6 +37,7 @@ describe Bosh::AwsCloud::Cloud do
     }
 
     expect(@registry).to receive(:read_settings).
+      twice.
       with('i-test').
       and_return(old_settings)
 
@@ -67,6 +68,7 @@ describe Bosh::AwsCloud::Cloud do
     }
 
     expect(@registry).to receive(:read_settings).
+      twice.
       with('i-test').
       and_return(old_settings)
 
@@ -97,6 +99,7 @@ describe Bosh::AwsCloud::Cloud do
     }
 
     expect(@registry).to receive(:read_settings).
+      twice.
       with('i-test').
       and_return(old_settings)
 

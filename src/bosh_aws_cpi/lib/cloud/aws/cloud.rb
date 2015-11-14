@@ -315,7 +315,7 @@ module Bosh::AwsCloud
       end
 
       # log registry settings for debugging
-      logger.debug("updated registry settings: #{registry.read_settings(instance.id)}")
+      logger.debug("updated registry settings: #{registry.read_settings(instance_id)}")
     end
 
     # Detach an EBS volume from an EC2 instance
