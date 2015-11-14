@@ -77,7 +77,8 @@
       "sa-east-1"      : { "AMI" : "ami-8122969c" },
       "ap-southeast-1" : { "AMI" : "ami-6aa38238" },
       "ap-southeast-2" : { "AMI" : "ami-893f53b3" },
-      "ap-northeast-1" : { "AMI" : "ami-27d6e626" }
+      "ap-northeast-1" : { "AMI" : "ami-27d6e626" },
+      "cn-north-1"     : { "AMI" : "ami-b23fad8b" }
     }
   },
   "Resources": {
