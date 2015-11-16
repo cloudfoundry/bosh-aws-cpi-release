@@ -78,7 +78,6 @@ else
 EO_BLOBSTORE_CFG_DAV
 fi
 
-semver=`cat version-semver/number`
 cpi_release_name=bosh-aws-cpi
 deployment_dir="${PWD}/deployment"
 manifest_filename="director-manifest.yml"

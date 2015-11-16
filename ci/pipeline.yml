@@ -184,7 +184,6 @@ jobs:
         - {trigger: false, passed: [build-candidate],  get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {trigger: false,                             get: bats}
         - {trigger: false,                             get: bosh-init}
-        - {trigger: false, passed: [build-candidate],  get: version-semver}
         - {trigger: false,                             get: bosh-release}
 
       - task: setup-director
@@ -225,7 +224,6 @@ jobs:
         - {trigger: false,                             get: stemcell, resource: aws-centos-hvm-stemcell}
         - {trigger: false, passed: [build-candidate],  get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {trigger: false,                             get: bosh-init}
-        - {trigger: false, passed: [build-candidate],  get: version-semver}
         - {trigger: false,                             get: bats}
         - {trigger: false,                             get: bosh-release}
 
@@ -355,7 +353,6 @@ jobs:
         - {trigger: false,                            get: stemcell, resource: aws-ubuntu-hvm-stemcell }
         - {trigger: false, passed: [build-candidate], get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {trigger: false,                            get: bosh-init}
-        - {trigger: false, passed: [build-candidate], get: version-semver}
         - {trigger: false,                            get: bosh-release}
 
       - task: setup-director
@@ -397,7 +394,6 @@ jobs:
         - {trigger: false,                            get: stemcell, resource: aws-china-ubuntu-stemcell }
         - {trigger: false, passed: [build-candidate], get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {trigger: false,                            get: bosh-init}
-        - {trigger: false, passed: [build-candidate], get: version-semver}
         - {trigger: false,                            get: bosh-release}
 
       - task: setup-director
