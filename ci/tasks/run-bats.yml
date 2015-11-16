@@ -17,3 +17,4 @@ params:
   stack_name:                   replace-me
   BAT_VCAP_PASSWORD:            replace-me
   BAT_STEMCELL_NAME:            replace-me
+  public_key_name:              replace-me

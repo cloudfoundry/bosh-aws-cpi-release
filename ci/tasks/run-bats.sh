@@ -11,6 +11,7 @@ check_param region_name
 check_param stack_name
 check_param BAT_VCAP_PASSWORD
 check_param BAT_STEMCELL_NAME
+check_param public_key_name
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
@@ -37,7 +38,7 @@ BAT_NETWORK_STATIC_IP=$(get_stack_info_of "${stack_info}" "${stack_prefix}Static
 BAT_SECOND_STATIC_IP=$(get_stack_info_of "${stack_info}" "${stack_prefix}StaticIP2")
 
 eval $(ssh-agent)
-private_key=${PWD}/setup-director/deployment/bats.pem
+private_key=${PWD}/setup-director/deployment/private_key.pem
 ssh-add ${private_key}
 
 export BAT_DIRECTOR=$DIRECTOR
@@ -65,7 +66,7 @@ properties:
     name: ${BAT_STEMCELL_NAME}
     version: latest
   instances: 1
-  key_name:  bats
+  key_name:  ${public_key_name}
   networks:
     - name: default
       static_ip: $BAT_NETWORK_STATIC_IP

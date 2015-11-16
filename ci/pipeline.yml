@@ -211,6 +211,7 @@ jobs:
             region_name:           {{aws_region__primary}}
             BAT_VCAP_PASSWORD:     {{BAT_VCAP_PASSWORD}}
             BAT_STEMCELL_NAME:     {{BAT_STEMCELL_NAME_hvm_ubuntu}}
+            public_key_name:       {{bosh_public_key_name}}
             stack_name:            primary
 
       - task: teardown-director
@@ -246,13 +247,14 @@ jobs:
         file: bosh-cpi-src/ci/tasks/run-bats.yml
         config:
           params:
-            base_os:                    Centos
-            aws_access_key_id:          {{aws_access_key__primary}}
-            aws_secret_access_key:      {{aws_secret_key__primary}}
-            region_name:                {{aws_region__primary}}
-            BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
-            BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_hvm_centos}}
-            stack_name:                 primary
+            base_os:               Centos
+            aws_access_key_id:     {{aws_access_key__primary}}
+            aws_secret_access_key: {{aws_secret_key__primary}}
+            region_name:           {{aws_region__primary}}
+            BAT_VCAP_PASSWORD:     {{BAT_VCAP_PASSWORD}}
+            BAT_STEMCELL_NAME:     {{BAT_STEMCELL_NAME_hvm_centos}}
+            public_key_name:       {{bosh_public_key_name}}
+            stack_name:            primary
 
       - task: teardown-director
         file: bosh-cpi-src/ci/tasks/teardown-director.yml
