@@ -191,24 +191,27 @@ jobs:
         file: bosh-cpi-release/ci/tasks/setup-director.yml
         config:
           params:
-            base_os:                    Ubuntu
-            aws_access_key_id:          {{aws_access_key__primary}}
-            aws_secret_access_key:      {{aws_secret_key__primary}}
-            region_name:                {{aws_region__primary}}
-            private_key_data:           {{bosh_private_key}}
-            stack_name:                 primary
+            stack_prefix:          Ubuntu
+            stack_name:            primary
+            aws_access_key_id:     {{aws_access_key__primary}}
+            aws_secret_access_key: {{aws_secret_key__primary}}
+            region_name:           {{aws_region__primary}}
+            private_key_data:      {{bosh_private_key}}
+            public_key_name:       {{bosh_public_key_name}}
+            director_username:     {{bosh_director_username}}
+            director_password:     {{bosh_director_password}}
 
       - task: run-bats
         file: bosh-cpi-release/ci/tasks/run-bats.yml
         config:
           params:
-            base_os:                    Ubuntu
-            aws_access_key_id:          {{aws_access_key__primary}}
-            aws_secret_access_key:      {{aws_secret_key__primary}}
-            region_name:                {{aws_region__primary}}
-            BAT_VCAP_PASSWORD:          {{BAT_VCAP_PASSWORD}}
-            BAT_STEMCELL_NAME:          {{BAT_STEMCELL_NAME_hvm_ubuntu}}
-            stack_name:                 primary
+            base_os:               Ubuntu
+            aws_access_key_id:     {{aws_access_key__primary}}
+            aws_secret_access_key: {{aws_secret_key__primary}}
+            region_name:           {{aws_region__primary}}
+            BAT_VCAP_PASSWORD:     {{BAT_VCAP_PASSWORD}}
+            BAT_STEMCELL_NAME:     {{BAT_STEMCELL_NAME_hvm_ubuntu}}
+            stack_name:            primary
 
       - task: teardown-director
         file: bosh-cpi-release/ci/tasks/teardown-director.yml
@@ -229,12 +232,15 @@ jobs:
         file: bosh-cpi-release/ci/tasks/setup-director.yml
         config:
           params:
-            base_os:                    Centos
-            aws_access_key_id:          {{aws_access_key__primary}}
-            aws_secret_access_key:      {{aws_secret_key__primary}}
-            region_name:                {{aws_region__primary}}
-            private_key_data:           {{bosh_private_key}}
-            stack_name:                 primary
+            stack_prefix:          Centos
+            stack_name:            primary
+            aws_access_key_id:     {{aws_access_key__primary}}
+            aws_secret_access_key: {{aws_secret_key__primary}}
+            region_name:           {{aws_region__primary}}
+            private_key_data:      {{bosh_private_key}}
+            public_key_name:       {{bosh_public_key_name}}
+            director_username:     {{bosh_director_username}}
+            director_password:     {{bosh_director_password}}
 
       - task: run-bats
         file: bosh-cpi-release/ci/tasks/run-bats.yml
@@ -345,14 +351,17 @@ jobs:
         - {trigger: false,                            get: bosh-release}
 
       - task: setup-director
-        file: bosh-cpi-release/ci/tasks/setup-director-iam.yml
+        file: bosh-cpi-release/ci/tasks/setup-director.yml
         config:
           params:
+            stack_prefix:          End2End
+            stack_name:            end2end
+            use_iam:               true
             aws_access_key_id:     {{aws_access_key__e2e_us}}
             aws_secret_access_key: {{aws_secret_key__e2e_us}}
             region_name:           {{aws_region__e2e_us}}
             private_key_data:      {{e2e_private_key}}
-            stack_name:            end2end
+            public_key_name:       {{e2e_public_key_name}}
             blobstore_s3_host:     {{blobstore_s3_host__e2e_us}}
             director_username:     {{bosh_director_username}}
             director_password:     {{bosh_director_password}}
@@ -384,17 +393,21 @@ jobs:
         - {trigger: false,                            get: bosh-release}
 
       - task: setup-director
-        file: bosh-cpi-release/ci/tasks/setup-director-iam.yml
+        file: bosh-cpi-release/ci/tasks/setup-director.yml
         config:
           params:
+            stack_prefix:          End2End
+            stack_name:            end2end
+            use_iam:               true
             aws_access_key_id:     {{aws_access_key__e2e_china}}
             aws_secret_access_key: {{aws_secret_key__e2e_china}}
             region_name:           {{aws_region__e2e_china}}
             private_key_data:      {{e2e_private_key}}
-            stack_name:            end2end
+            public_key_name:       {{e2e_public_key_name}}
             blobstore_s3_host:     {{blobstore_s3_host__e2e_china}}
             director_username:     {{bosh_director_username}}
             director_password:     {{bosh_director_password}}
+
 
       - task: test
         file: bosh-cpi-release/ci/tasks/run-e2e.yml

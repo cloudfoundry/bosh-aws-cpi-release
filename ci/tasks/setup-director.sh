@@ -4,12 +4,15 @@ set -e
 
 source bosh-cpi-release/ci/tasks/utils.sh
 
-check_param base_os
+check_param stack_prefix
+check_param stack_name
 check_param aws_access_key_id
 check_param aws_secret_access_key
 check_param region_name
 check_param private_key_data
-check_param stack_name
+check_param public_key_name
+check_param director_username
+check_param director_password
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
@@ -20,7 +23,6 @@ export AWS_DEFAULT_REGION=${region_name}
 
 stack_info=$(get_stack_info $stack_name)
 
-stack_prefix=${base_os}
 sg_id=$(get_stack_info_of "${stack_info}" "${stack_prefix}SecurityGroupID")
 SECURITY_GROUP_NAME=$(aws ec2 describe-security-groups --group-ids ${sg_id} | jq -r '.SecurityGroups[] .GroupName')
 
@@ -31,11 +33,56 @@ AWS_NETWORK_CIDR=$(get_stack_info_of "${stack_info}" "${stack_prefix}CIDR")
 AWS_NETWORK_GATEWAY=$(get_stack_info_of "${stack_info}" "${stack_prefix}Gateway")
 PRIVATE_DIRECTOR_STATIC_IP=$(get_stack_info_of "${stack_info}" "${stack_prefix}DirectorStaticIP")
 
+if [ -n "${use_iam}" ]; then
+  IAM_INSTANCE_PROFILE=$(get_stack_info_of "${stack_info}" "${stack_prefix}IAMInstanceProfile")
+  resource_pool_cloud_config_key="iam_instance_profile: ${IAM_INSTANCE_PROFILE}"
+  read -r -d '' AWS_CONFIGURATION <<EO_AWS_CFG_IAM || true
+    aws:
+      credentials_source: 'env_or_profile'
+      default_iam_instance_profile: ${IAM_INSTANCE_PROFILE}
+      default_key_name: ${public_key_name}
+      default_security_groups: ["${SECURITY_GROUP_NAME}"]
+      region: "${region_name}"
+EO_AWS_CFG_IAM
+else
+  read -r -d '' AWS_CONFIGURATION <<EO_AWS_CFG_STATIC || true
+    aws:
+      access_key_id: ${aws_access_key_id}
+      secret_access_key: ${aws_secret_access_key}
+      default_key_name: ${public_key_name}
+      default_security_groups: ["${SECURITY_GROUP_NAME}"]
+      region: "${region_name}"
+EO_AWS_CFG_STATIC
+fi
+
+
+if [ -n "${blobstore_s3_host}" ]; then
+  BLOBSTORE_BUCKET_NAME=$(get_stack_info_of "${stack_info}" "${stack_prefix}BlobstoreBucketName")
+  read -r -d '' BLOBSTORE_CONFIGURATION <<EO_BLOBSTORE_CFG_S3 || true
+    blobstore:
+      provider: s3
+      bucket_name: ${BLOBSTORE_BUCKET_NAME}
+      credentials_source: 'env_or_profile'
+      host: ${blobstore_s3_host}
+      director: {user: director, password: director-password}
+      agent: {user: agent, password: agent-password}
+EO_BLOBSTORE_CFG_S3
+else
+  read -r -d '' BLOBSTORE_CONFIGURATION <<EO_BLOBSTORE_CFG_DAV || true
+    blobstore:
+      provider: dav
+      port: 25250
+      address: ${PRIVATE_DIRECTOR_STATIC_IP}
+      director: {user: director, password: director-password}
+      agent: {user: agent, password: agent-password}
+EO_BLOBSTORE_CFG_DAV
+fi
+
 semver=`cat version-semver/number`
 cpi_release_name=bosh-aws-cpi
 deployment_dir="${PWD}/deployment"
 manifest_filename="director-manifest.yml"
-private_key=${deployment_dir}/bats.pem
+private_key=${deployment_dir}/private_key.pem
 
 echo "setting up artifacts used in $manifest_filename"
 mkdir -p ${deployment_dir}
@@ -55,8 +102,8 @@ name: bosh
 releases:
 - name: bosh
   url: file://bosh-release.tgz
-- name: bosh-aws-cpi
-  url: file://bosh-aws-cpi.tgz
+- name: ${cpi_release_name}
+  url: file://${cpi_release_name}.tgz
 
 networks:
 - name: private
@@ -75,6 +122,7 @@ resource_pools:
   stemcell:
     url: file://stemcell.tgz
   cloud_properties:
+    ${resource_pool_cloud_config_key}
     instance_type: m3.medium
     availability_zone: ${AVAILABILITY_ZONE}
     ephemeral_disk:
@@ -97,7 +145,7 @@ jobs:
   - {name: health_monitor, release: bosh}
   - {name: powerdns, release: bosh}
   - {name: registry, release: bosh}
-  - {name: aws_cpi, release: bosh-aws-cpi}
+  - {name: aws_cpi, release: ${cpi_release_name}}
 
   instances: 1
   resource_pool: default
@@ -133,39 +181,33 @@ jobs:
       address: ${PRIVATE_DIRECTOR_STATIC_IP}
       host: ${PRIVATE_DIRECTOR_STATIC_IP}
       db: *db
-      http: {user: admin, password: admin, port: 25777}
-      username: admin
-      password: admin
+      http: {user: ${director_username}, password: ${director_password}, port: 25777}
+      username: ${director_username}
+      password: ${director_password}
       port: 25777
 
-    # Tells the Director/agents how to contact blobstore
-    blobstore:
-      address: ${PRIVATE_DIRECTOR_STATIC_IP}
-      port: 25250
-      provider: dav
-      director: {user: director, password: director-password}
-      agent: {user: agent, password: agent-password}
+    ${BLOBSTORE_CONFIGURATION}
 
     director:
       address: 127.0.0.1
       name: micro
       db: *db
       cpi_job: aws_cpi
+      user_management:
+        provider: local
+        local:
+          users:
+            - {name: ${director_username}, password: ${director_password}}
 
     hm:
       http: {user: hm, password: hm-password}
-      director_account: {user: admin, password: admin}
+      director_account: {user: ${director_username}, password: ${director_password}}
 
     dns:
       address: 127.0.0.1
       db: *db
 
-    aws: &aws
-      access_key_id: ${aws_access_key_id}
-      secret_access_key: ${aws_secret_access_key}
-      default_key_name: "bats"
-      default_security_groups: ["${SECURITY_GROUP_NAME}"]
-      region: "${region_name}"
+    ${AWS_CONFIGURATION}
 
     # Tells agents how to contact nats
     agent: {mbus: "nats://nats:nats-password@${PRIVATE_DIRECTOR_STATIC_IP}:4222"}
@@ -188,7 +230,12 @@ cloud_provider:
   mbus: https://mbus-user:mbus-password@${DIRECTOR}:6868
 
   properties:
-    aws: *aws
+    aws:
+      access_key_id: ${aws_access_key_id}
+      secret_access_key: ${aws_secret_access_key}
+      default_key_name: ${public_key_name}
+      default_security_groups: ["${SECURITY_GROUP_NAME}"]
+      region: "${region_name}"
 
     # Tells CPI how agent should listen for requests
     agent: {mbus: "https://mbus-user:mbus-password@0.0.0.0:6868"}
