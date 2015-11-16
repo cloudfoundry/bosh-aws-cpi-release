@@ -262,22 +262,25 @@ jobs:
     plan:
       - aggregate:
         - {trigger: true,  get: three-hour-timer}
-        - {trigger: false, get: bosh-aws-cpi-release}
+        - {trigger: false, get: bosh-cpi-release, resource: bosh-aws-cpi-release}
         - {trigger: false, get: stemcell, resource: aws-ubuntu-stemcell}
         - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {trigger: false, get: bosh-init}
         - {trigger: false, get: bosh-release}
 
       - task: setup-director
-        file: bosh-cpi-src/ci/tasks/setup-director-radiator.yml
+        file: bosh-cpi-src/ci/tasks/setup-director.yml
         config:
           params:
-            base_os:                    UbuntuPV
-            aws_access_key_id:          {{aws_access_key__primary}}
-            aws_secret_access_key:      {{aws_secret_key__primary}}
-            region_name:                {{aws_region__primary}}
-            private_key_data:           {{radiator_private_key}}
-            stack_name:                 primary
+            stack_prefix:          UbuntuPV
+            stack_name:            primary
+            aws_access_key_id:     {{aws_access_key__primary}}
+            aws_secret_access_key: {{aws_secret_key__primary}}
+            region_name:           {{aws_region__primary}}
+            private_key_data:      {{radiator_private_key}}
+            public_key_name:       {{radiator_public_key_name}}
+            director_username:     {{bosh_director_username}}
+            director_password:     {{bosh_director_password}}
         on_failure:
           task: teardown-director
           file: bosh-cpi-src/ci/tasks/teardown-director.yml
@@ -303,22 +306,25 @@ jobs:
     plan:
       - aggregate:
         - {trigger: true,  get: three-hour-timer}
-        - {trigger: false, get: bosh-aws-cpi-release}
+        - {trigger: false, get: bosh-cpi-release, resource: bosh-aws-cpi-release}
         - {trigger: false, get: stemcell, resource: aws-centos-stemcell}
         - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {trigger: false, get: bosh-init}
         - {trigger: false, get: bosh-release}
 
       - task: setup-director
-        file: bosh-cpi-src/ci/tasks/setup-director-radiator.yml
+        file: bosh-cpi-src/ci/tasks/setup-director.yml
         config:
           params:
-            base_os:                    CentosPV
-            aws_access_key_id:          {{aws_access_key__primary}}
-            aws_secret_access_key:      {{aws_secret_key__primary}}
-            region_name:                {{aws_region__primary}}
-            private_key_data:           {{radiator_private_key}}
-            stack_name:                 primary
+            stack_prefix:          CentosPV
+            stack_name:            primary
+            aws_access_key_id:     {{aws_access_key__primary}}
+            aws_secret_access_key: {{aws_secret_key__primary}}
+            region_name:           {{aws_region__primary}}
+            private_key_data:      {{radiator_private_key}}
+            public_key_name:       {{radiator_public_key_name}}
+            director_username:     {{bosh_director_username}}
+            director_password:     {{bosh_director_password}}
         on_failure:
           task: teardown-director
           file: bosh-cpi-src/ci/tasks/teardown-director.yml

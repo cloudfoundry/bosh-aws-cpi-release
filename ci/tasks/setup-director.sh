@@ -86,7 +86,7 @@ private_key=${deployment_dir}/private_key.pem
 
 echo "setting up artifacts used in $manifest_filename"
 mkdir -p ${deployment_dir}
-cp ./bosh-cpi-release/${cpi_release_name}-${semver}.tgz ${deployment_dir}/${cpi_release_name}.tgz
+cp ./bosh-cpi-release/*.tgz ${deployment_dir}/${cpi_release_name}.tgz
 cp ./bosh-release/release.tgz ${deployment_dir}/bosh-release.tgz
 cp ./stemcell/stemcell.tgz ${deployment_dir}/stemcell.tgz
 echo "${private_key_data}" > ${private_key}
