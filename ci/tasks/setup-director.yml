@@ -2,14 +2,14 @@
 platform: linux
 image: docker:///boshcpi/aws-cpi-release
 inputs:
-  - name: bosh-cpi-dev-artifacts # -++ used for deployment manifest referenced by manifest_path
+  - name: bosh-cpi-release # -++ used for deployment manifest referenced by manifest_path
   - name: version-semver         # -//
-  - name: bosh-cpi-release
+  - name: bosh-cpi-src
   - name: bosh-init              # --- bosh-init executable to do deploy
   - name: bosh-release           # -\
   - name: stemcell               # -/
 run:
-  path: bosh-cpi-release/ci/tasks/setup-director.sh
+  path: bosh-cpi-src/ci/tasks/setup-director.sh
 params:
   stack_prefix:          replace-me
   stack_name:            replace-me

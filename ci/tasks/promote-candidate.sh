@@ -2,14 +2,14 @@
 
 set -e -x
 
-source bosh-cpi-release/ci/tasks/utils.sh
+source bosh-cpi-src/ci/tasks/utils.sh
 
 # Creates an integer version number from the semantic version format
 # May be changed when we decide to fully use semantic versions for releases
 integer_version=`cut -d "." -f1 release-version-semver/number`
 echo $integer_version > integer_version
 
-cd bosh-cpi-release
+cd bosh-cpi-src
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
@@ -29,7 +29,7 @@ echo "using bosh CLI version..."
 bosh version
 
 echo "finalizing CPI release..."
-bosh finalize release ../bosh-cpi-dev-artifacts/*.tgz --version $integer_version
+bosh finalize release ../bosh-cpi-release/*.tgz --version $integer_version
 
 rm config/private.yml
 

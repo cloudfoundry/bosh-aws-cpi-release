@@ -4,11 +4,11 @@ image: docker:///boshinfrastructure/light-stemcell-builder
 inputs:
   - name: bosh-aws-full-stemcell
   - name: bosh-src
-  - name: bosh-cpi-release
+  - name: bosh-cpi-src
 outputs:
   - name: china-light-stemcell
 run:
-  path: bosh-cpi-release/ci/tasks/build_light_stemcell.sh
+  path: bosh-cpi-src/ci/tasks/build_light_stemcell.sh
 params:
   aws_access_key_id:     replace-me
   aws_secret_access_key: replace-me

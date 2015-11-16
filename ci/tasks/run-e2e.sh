@@ -2,7 +2,7 @@
 
 set -e
 
-source bosh-cpi-release/ci/tasks/utils.sh
+source bosh-cpi-src/ci/tasks/utils.sh
 
 check_param aws_access_key_id
 check_param aws_secret_access_key
@@ -40,7 +40,7 @@ cat > "${E2E_CONFIG_FILENAME}" << EOF
   "director_username": "${director_username}",
   "director_password": "${director_password}",
   "stemcell": "$(echo ${PWD}/stemcell/*.tgz)",
-  "release": "${PWD}/bosh-cpi-release/ci/assets/e2e-test-release/dev_releases/${e2e_deployment_name}/${e2e_deployment_name}-${e2e_release_version}.tgz",
+  "release": "${PWD}/bosh-cpi-src/ci/assets/e2e-test-release/dev_releases/${e2e_deployment_name}/${e2e_deployment_name}-${e2e_release_version}.tgz",
   "deployment_name": "${e2e_deployment_name}"
 }
 EOF
@@ -111,7 +111,7 @@ properties:
   iam_instance_profile: ${IAM_INSTANCE_PROFILE}
 EOF
 
-cat >> bosh-cpi-release/src/bosh_aws_cpi/spec/integration/Gemfile << EOF
+cat >> bosh-cpi-src/src/bosh_aws_cpi/spec/integration/Gemfile << EOF
 source 'https://rubygems.org'
 
 gem 'rspec'
@@ -120,11 +120,11 @@ gem 'json'
 gem 'bosh_cli'
 EOF
 
-pushd bosh-cpi-release/ci/assets/e2e-test-release
+pushd bosh-cpi-src/ci/assets/e2e-test-release
   bosh -n create release --force --with-tarball --name ${e2e_deployment_name} --version ${e2e_release_version}
 popd
 
-pushd bosh-cpi-release/src/bosh_aws_cpi/spec/integration
+pushd bosh-cpi-src/src/bosh_aws_cpi/spec/integration
   bundle install
   bundle exec rspec --color --warnings e2e_spec.rb
 popd

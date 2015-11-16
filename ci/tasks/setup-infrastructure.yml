@@ -2,9 +2,9 @@
 platform: linux
 image: docker:///boshcpi/aws-cpi-release 
 inputs:
-- name: bosh-cpi-release
+- name: bosh-cpi-src
 run:
-  path: bosh-cpi-release/ci/tasks/setup-infrastructure.sh
+  path: bosh-cpi-src/ci/tasks/setup-infrastructure.sh
 params:
   aws_access_key_id:         replace-me
   aws_secret_access_key:     replace-me

@@ -2,7 +2,7 @@
 
 set -e
 
-source bosh-cpi-release/ci/tasks/utils.sh
+source bosh-cpi-src/ci/tasks/utils.sh
 
 check_param base_os
 check_param aws_access_key_id

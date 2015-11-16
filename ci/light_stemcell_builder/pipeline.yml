@@ -9,10 +9,10 @@ jobs:
   - name: recreate-infrastructure-light-stemcell-china
     serial: true
     plan:
-      - {trigger: false, get: bosh-cpi-release}
+      - {trigger: false, get: bosh-cpi-src}
 
       - task: check-for-running-instances
-        file: bosh-cpi-release/ci/tasks/check-for-running-instances.yml
+        file: bosh-cpi-src/ci/tasks/check-for-running-instances.yml
         config: &recreate-china-light-stemcell-config
           params:
             aws_access_key_id:     {{aws_access_key__light_stemcell_china}}
@@ -22,11 +22,11 @@ jobs:
             stack_name:            light-stemcell
 
       - task: teardown-infrastructure
-        file: bosh-cpi-release/ci/tasks/teardown-infrastructure.yml
+        file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
         config: *recreate-china-light-stemcell-config
 
       - task: setup-infrastructure
-        file: bosh-cpi-release/ci/tasks/setup-infrastructure.yml
+        file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
         config: *recreate-china-light-stemcell-config
 
   - name: build-light-stemcell-china
@@ -35,10 +35,10 @@ jobs:
       - aggregate:
         - {trigger: true,  get: bosh-aws-full-stemcell}
         - {trigger: false, get: bosh-src}
-        - {trigger: false, get: bosh-cpi-release}
+        - {trigger: false, get: bosh-cpi-src}
 
       - task: build
-        file: bosh-cpi-release/ci/tasks/build_light_stemcell.yml
+        file: bosh-cpi-src/ci/tasks/build_light_stemcell.yml
         config:
           params:
             aws_access_key_id:     {{aws_access_key__light_stemcell_china}}
@@ -55,7 +55,7 @@ jobs:
         params: { from: 'china-light-stemcell/light-china-bosh-stemcell-(.*)-aws-xen-hvm-ubuntu-trusty-go_agent\.tgz' }
 
 resources:
-  - name: bosh-cpi-release
+  - name: bosh-cpi-src
     type: git
     source:
       uri: https://github.com/cloudfoundry-incubator/bosh-aws-cpi-release.git

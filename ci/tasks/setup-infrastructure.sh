@@ -2,7 +2,7 @@
 
 set -e
 
-source bosh-cpi-release/ci/tasks/utils.sh
+source bosh-cpi-src/ci/tasks/utils.sh
 
 check_param aws_access_key_id
 check_param aws_secret_access_key
@@ -15,7 +15,7 @@ export AWS_DEFAULT_REGION=${region_name}
 
 cmd="aws cloudformation create-stack \
     --stack-name      ${stack_name} \
-    --template-body   file:///${PWD}/bosh-cpi-release/ci/assets/cloudformation-${stack_name}.template.json \
+    --template-body   file:///${PWD}/bosh-cpi-src/ci/assets/cloudformation-${stack_name}.template.json \
     --capabilities    CAPABILITY_IAM"
 
 echo "Running: ${cmd}"; ${cmd}

@@ -9,7 +9,7 @@ semver=`cat version-semver/number`
 
 mkdir out
 
-cd bosh-cpi-release
+cd bosh-cpi-src
 
 echo "running unit tests"
 pushd src/bosh_aws_cpi

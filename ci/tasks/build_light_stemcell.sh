@@ -2,7 +2,7 @@
 
 set -e
 
-source bosh-cpi-release/ci/tasks/utils.sh
+source bosh-cpi-src/ci/tasks/utils.sh
 
 check_param aws_access_key_id
 check_param aws_secret_access_key
@@ -44,7 +44,7 @@ cat > "${VAGRANT_CONFIG_FILE}"<<EOF
 }
 EOF
 
-workspace="${PWD}/bosh-cpi-release/ci/light_stemcell_builder"
+workspace="${PWD}/bosh-cpi-src/ci/light_stemcell_builder"
 out_dir="${PWD}/china-light-stemcell"
 
 full_stemcell_url=$(cat bosh-aws-full-stemcell/url | awk '{ gsub(/light-/, ""); print }')

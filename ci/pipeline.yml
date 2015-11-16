@@ -59,10 +59,10 @@ jobs:
     serial: true
     plan:
       - aggregate:
-        - {trigger: false, get: bosh-cpi-release,     resource: bosh-cpi-release-in}
+        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
 
       - task: check-for-running-instances
-        file: bosh-cpi-release/ci/tasks/check-for-running-instances.yml
+        file: bosh-cpi-src/ci/tasks/check-for-running-instances.yml
         config: &recreate-primary-config
           params:
             aws_access_key_id:        {{aws_access_key__primary}}
@@ -71,21 +71,21 @@ jobs:
             stack_name:               primary
 
       - task: teardown-infrastructure
-        file: bosh-cpi-release/ci/tasks/teardown-infrastructure.yml
+        file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
         config: *recreate-primary-config
 
       - task: setup-infrastructure
-        file: bosh-cpi-release/ci/tasks/setup-infrastructure.yml
+        file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
         config: *recreate-primary-config
 
   - name: recreate-infrastructure-end2end-us
     serial: true
     plan:
       - aggregate:
-        - {trigger: false, get: bosh-cpi-release,     resource: bosh-cpi-release-in}
+        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
 
       - task: check-for-running-instances
-        file: bosh-cpi-release/ci/tasks/check-for-running-instances.yml
+        file: bosh-cpi-src/ci/tasks/check-for-running-instances.yml
         config: &recreate-end2end-us-config
           params:
             aws_access_key_id:        {{aws_access_key__e2e_us}}
@@ -94,21 +94,21 @@ jobs:
             stack_name:               end2end
 
       - task: teardown-infrastructure
-        file: bosh-cpi-release/ci/tasks/teardown-infrastructure.yml
+        file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
         config: *recreate-end2end-us-config
 
       - task: setup-infrastructure
-        file: bosh-cpi-release/ci/tasks/setup-infrastructure.yml
+        file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
         config: *recreate-end2end-us-config
 
   - name: recreate-infrastructure-end2end-china
     serial: true
     plan:
       - aggregate:
-        - {trigger: false, get: bosh-cpi-release,     resource: bosh-cpi-release-in}
+        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
 
       - task: check-for-running-instances
-        file: bosh-cpi-release/ci/tasks/check-for-running-instances.yml
+        file: bosh-cpi-src/ci/tasks/check-for-running-instances.yml
         config: &recreate-end2end-cn-config
           params:
             aws_access_key_id:        {{aws_access_key__e2e_china}}
@@ -117,21 +117,21 @@ jobs:
             stack_name:               end2end
 
       - task: teardown-infrastructure
-        file: bosh-cpi-release/ci/tasks/teardown-infrastructure.yml
+        file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
         config: *recreate-end2end-cn-config
 
       - task: setup-infrastructure
-        file: bosh-cpi-release/ci/tasks/setup-infrastructure.yml
+        file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
         config: *recreate-end2end-cn-config
 
   - name: recreate-infrastructure-cn-downloader
     serial: true
     plan:
       - aggregate:
-        - {trigger: false, get: bosh-cpi-release,     resource: bosh-cpi-release-in}
+        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
 
       - task: teardown-infrastructure
-        file: bosh-cpi-release/ci/tasks/teardown-infrastructure.yml
+        file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
         config: &recreate-downloader-config
           params:
             aws_access_key_id:     {{aws_access_key__downloader}}
@@ -140,21 +140,21 @@ jobs:
             stack_name:            downloader-cn
 
       - task: setup-infrastructure
-        file: bosh-cpi-release/ci/tasks/setup-infrastructure.yml
+        file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
         config: *recreate-downloader-config
 
   - name: build-candidate
     serial: true
     plan:
       - aggregate:
-        - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-in}
+        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {trigger: false, get: version-semver, params: {bump: patch}}
 
       - put: version-semver
         params: {file: version-semver/number}
 
       - task: build
-        file: bosh-cpi-release/ci/tasks/build-candidate.yml
+        file: bosh-cpi-src/ci/tasks/build-candidate.yml
 
       - put: bosh-cpi-dev-artifacts
         params: {from: build/out/.*\.tgz}
@@ -163,11 +163,11 @@ jobs:
     serial: true
     plan:
       - aggregate:
-        - {trigger: true,  passed: [build-candidate], get: bosh-cpi-dev-artifacts}
-        - {trigger: false, passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-release-in}
+        - {trigger: true,  passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
+        - {trigger: false, passed: [build-candidate], get: bosh-cpi-src, resource: bosh-cpi-src-in}
 
       - task: test
-        file: bosh-cpi-release/ci/tasks/run-lifecycle.yml
+        file: bosh-cpi-src/ci/tasks/run-lifecycle.yml
         config:
           params:
             aws_access_key_id:            {{aws_access_key__primary}}
@@ -179,16 +179,16 @@ jobs:
     serial: true
     plan:
       - aggregate:
-        - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-dev-artifacts}
+        - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
         - {trigger: false,                             get: stemcell, resource: aws-ubuntu-hvm-stemcell}
-        - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
+        - {trigger: false, passed: [build-candidate],  get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {trigger: false,                             get: bats}
         - {trigger: false,                             get: bosh-init}
         - {trigger: false, passed: [build-candidate],  get: version-semver}
         - {trigger: false,                             get: bosh-release}
 
       - task: setup-director
-        file: bosh-cpi-release/ci/tasks/setup-director.yml
+        file: bosh-cpi-src/ci/tasks/setup-director.yml
         config:
           params:
             stack_prefix:          Ubuntu
@@ -202,7 +202,7 @@ jobs:
             director_password:     {{bosh_director_password}}
 
       - task: run-bats
-        file: bosh-cpi-release/ci/tasks/run-bats.yml
+        file: bosh-cpi-src/ci/tasks/run-bats.yml
         config:
           params:
             base_os:               Ubuntu
@@ -214,22 +214,22 @@ jobs:
             stack_name:            primary
 
       - task: teardown-director
-        file: bosh-cpi-release/ci/tasks/teardown-director.yml
+        file: bosh-cpi-src/ci/tasks/teardown-director.yml
 
   - name: bats-centos
     serial: true
     plan:
       - aggregate:
-        - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-dev-artifacts}
+        - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
         - {trigger: false,                             get: stemcell, resource: aws-centos-hvm-stemcell}
-        - {trigger: false, passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-release-in}
+        - {trigger: false, passed: [build-candidate],  get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {trigger: false,                             get: bosh-init}
         - {trigger: false, passed: [build-candidate],  get: version-semver}
         - {trigger: false,                             get: bats}
         - {trigger: false,                             get: bosh-release}
 
       - task: setup-director
-        file: bosh-cpi-release/ci/tasks/setup-director.yml
+        file: bosh-cpi-src/ci/tasks/setup-director.yml
         config:
           params:
             stack_prefix:          Centos
@@ -243,7 +243,7 @@ jobs:
             director_password:     {{bosh_director_password}}
 
       - task: run-bats
-        file: bosh-cpi-release/ci/tasks/run-bats.yml
+        file: bosh-cpi-src/ci/tasks/run-bats.yml
         config:
           params:
             base_os:                    Centos
@@ -255,7 +255,7 @@ jobs:
             stack_name:                 primary
 
       - task: teardown-director
-        file: bosh-cpi-release/ci/tasks/teardown-director.yml
+        file: bosh-cpi-src/ci/tasks/teardown-director.yml
 
   - name: ubuntu-pv-radiator
     serial: true
@@ -264,12 +264,12 @@ jobs:
         - {trigger: true,  get: three-hour-timer}
         - {trigger: false, get: bosh-aws-cpi-release}
         - {trigger: false, get: stemcell, resource: aws-ubuntu-stemcell}
-        - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-in}
+        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {trigger: false, get: bosh-init}
         - {trigger: false, get: bosh-release}
 
       - task: setup-director
-        file: bosh-cpi-release/ci/tasks/setup-director-radiator.yml
+        file: bosh-cpi-src/ci/tasks/setup-director-radiator.yml
         config:
           params:
             base_os:                    UbuntuPV
@@ -280,10 +280,10 @@ jobs:
             stack_name:                 primary
         on_failure:
           task: teardown-director
-          file: bosh-cpi-release/ci/tasks/teardown-director.yml
+          file: bosh-cpi-src/ci/tasks/teardown-director.yml
 
       - task: deploy-dummy
-        file: bosh-cpi-release/ci/tasks/deploy-dummy.yml
+        file: bosh-cpi-src/ci/tasks/deploy-dummy.yml
         config:
           params:
             base_os:                    UbuntuPV
@@ -296,7 +296,7 @@ jobs:
             director_password:          {{bosh_director_password}}
         ensure:
           task: teardown-director
-          file: bosh-cpi-release/ci/tasks/teardown-director.yml
+          file: bosh-cpi-src/ci/tasks/teardown-director.yml
 
   - name: centos-pv-radiator
     serial: true
@@ -305,12 +305,12 @@ jobs:
         - {trigger: true,  get: three-hour-timer}
         - {trigger: false, get: bosh-aws-cpi-release}
         - {trigger: false, get: stemcell, resource: aws-centos-stemcell}
-        - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-in}
+        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {trigger: false, get: bosh-init}
         - {trigger: false, get: bosh-release}
 
       - task: setup-director
-        file: bosh-cpi-release/ci/tasks/setup-director-radiator.yml
+        file: bosh-cpi-src/ci/tasks/setup-director-radiator.yml
         config:
           params:
             base_os:                    CentosPV
@@ -321,10 +321,10 @@ jobs:
             stack_name:                 primary
         on_failure:
           task: teardown-director
-          file: bosh-cpi-release/ci/tasks/teardown-director.yml
+          file: bosh-cpi-src/ci/tasks/teardown-director.yml
 
       - task: deploy-dummy
-        file: bosh-cpi-release/ci/tasks/deploy-dummy.yml
+        file: bosh-cpi-src/ci/tasks/deploy-dummy.yml
         config:
           params:
             base_os:                    CentosPV
@@ -337,21 +337,21 @@ jobs:
             director_password:          {{bosh_director_password}}
         ensure:
           task: teardown-director
-          file: bosh-cpi-release/ci/tasks/teardown-director.yml
+          file: bosh-cpi-src/ci/tasks/teardown-director.yml
 
   - name: end2end-us
     serial: true
     plan:
       - aggregate:
-        - {trigger: true,  passed: [build-candidate], get: bosh-cpi-dev-artifacts}
+        - {trigger: true,  passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
         - {trigger: false,                            get: stemcell, resource: aws-ubuntu-hvm-stemcell }
-        - {trigger: false, passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-release-in}
+        - {trigger: false, passed: [build-candidate], get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {trigger: false,                            get: bosh-init}
         - {trigger: false, passed: [build-candidate], get: version-semver}
         - {trigger: false,                            get: bosh-release}
 
       - task: setup-director
-        file: bosh-cpi-release/ci/tasks/setup-director.yml
+        file: bosh-cpi-src/ci/tasks/setup-director.yml
         config:
           params:
             stack_prefix:          End2End
@@ -367,7 +367,7 @@ jobs:
             director_password:     {{bosh_director_password}}
 
       - task: test
-        file: bosh-cpi-release/ci/tasks/run-e2e.yml
+        file: bosh-cpi-src/ci/tasks/run-e2e.yml
         config:
           params:
             aws_access_key_id:          {{aws_access_key__e2e_us}}
@@ -379,21 +379,21 @@ jobs:
             director_password:          {{bosh_director_password}}
 
       - task: teardown-director
-        file: bosh-cpi-release/ci/tasks/teardown-director.yml
+        file: bosh-cpi-src/ci/tasks/teardown-director.yml
 
   - name: end2end-china
     serial: true
     plan:
       - aggregate:
-        - {trigger: true,  passed: [build-candidate], get: bosh-cpi-dev-artifacts}
+        - {trigger: true,  passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
         - {trigger: false,                            get: stemcell, resource: aws-china-ubuntu-stemcell }
-        - {trigger: false, passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-release-in}
+        - {trigger: false, passed: [build-candidate], get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {trigger: false,                            get: bosh-init}
         - {trigger: false, passed: [build-candidate], get: version-semver}
         - {trigger: false,                            get: bosh-release}
 
       - task: setup-director
-        file: bosh-cpi-release/ci/tasks/setup-director.yml
+        file: bosh-cpi-src/ci/tasks/setup-director.yml
         config:
           params:
             stack_prefix:          End2End
@@ -410,7 +410,7 @@ jobs:
 
 
       - task: test
-        file: bosh-cpi-release/ci/tasks/run-e2e.yml
+        file: bosh-cpi-src/ci/tasks/run-e2e.yml
         config:
           params:
             aws_access_key_id:          {{aws_access_key__e2e_china}}
@@ -422,25 +422,25 @@ jobs:
             director_password:          {{bosh_director_password}}
 
       - task: teardown-director
-        file: bosh-cpi-release/ci/tasks/teardown-director.yml
+        file: bosh-cpi-src/ci/tasks/teardown-director.yml
 
   - name: promote-candidate
     plan:
       - aggregate:
-        - {trigger: false, get: bosh-cpi-dev-artifacts, passed: [lifecycle, bats-ubuntu, bats-centos, end2end-us]}
-        - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-out}
+        - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts, passed: [lifecycle, bats-ubuntu, bats-centos, end2end-us]}
+        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-out}
         - {trigger: false, get: release-version-semver, params: {bump: major}}
 
       - task: promote
-        file: bosh-cpi-release/ci/tasks/promote-candidate.yml
+        file: bosh-cpi-src/ci/tasks/promote-candidate.yml
         config:
           params:
             aws_access_key_id: {{aws_access_key__primary}}
             aws_secret_access_key: {{aws_secret_key__primary}}
 
-      - put: bosh-cpi-release
-        resource: bosh-cpi-release-out
-        params: {repository: promote/bosh-cpi-release, rebase: true, tag_prefix: "v", tag: promote/integer_version}
+      - put: bosh-cpi-src
+        resource: bosh-cpi-src-out
+        params: {repository: promote/bosh-cpi-src, rebase: true, tag_prefix: "v", tag: promote/integer_version}
 
       - put: release-version-semver
         params: {file: release-version-semver/number}
@@ -450,10 +450,10 @@ jobs:
     plan:
       - aggregate:
         - {trigger: true,  get: one-hour-timer}
-        - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-release-in}
+        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
 
       - task: download
-        file: bosh-cpi-release/ci/tasks/download-bits.yml
+        file: bosh-cpi-src/ci/tasks/download-bits.yml
         config:
           params:
             aws_access_key_id:     {{aws_access_key__downloader}}
@@ -472,7 +472,7 @@ resources:
       access_key_id: {{aws_access_key__primary}}
       secret_access_key: {{aws_secret_key__primary}}
 
-  - name: bosh-cpi-release-in
+  - name: bosh-cpi-src-in
     type: git
     source:
       uri: git@github.com:cloudfoundry-incubator/bosh-aws-cpi-release.git
@@ -482,7 +482,7 @@ resources:
         - .final_builds/**/*.yml
         - releases/**/*.yml
 
-  - name: bosh-cpi-release-out
+  - name: bosh-cpi-src-out
     type: git
     source:
       uri: git@github.com:cloudfoundry-incubator/bosh-aws-cpi-release.git

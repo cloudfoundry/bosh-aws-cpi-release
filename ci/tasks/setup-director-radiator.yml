@@ -2,13 +2,13 @@
 platform: linux
 image: docker:///boshcpi/aws-cpi-release
 inputs:
-  - name: bosh-cpi-release
+  - name: bosh-cpi-src
   - name: bosh-aws-cpi-release
   - name: bosh-init              # --- bosh-init executable to do deploy
   - name: bosh-release           # -\
   - name: stemcell               # -/
 run:
-  path: bosh-cpi-release/ci/tasks/setup-director-radiator.sh
+  path: bosh-cpi-src/ci/tasks/setup-director-radiator.sh
 params:
   base_os:                    replace-me
   aws_access_key_id:          replace-me
