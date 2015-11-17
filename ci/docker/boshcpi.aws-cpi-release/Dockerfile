@@ -44,7 +44,7 @@ RUN /bin/bash -l -c "                            \
 "
 
 # Pre-Bundle the bosh-cpi-release
-COPY cpi-release/src/bosh_aws_cpi /tmp/bosh_aws_cpi
+COPY bosh_aws_cpi /tmp/bosh_aws_cpi
 RUN /bin/bash -l -c "               \
   source /etc/profile.d/chruby.sh ; \
   chruby 2.1.2 ;                    \

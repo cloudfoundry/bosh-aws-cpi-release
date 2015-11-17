@@ -2,9 +2,8 @@
 
 set -e
 
-DOCKER_IMAGE=${DOCKER_IMAGE:-boshinfrastructure/light-stemcell-builder}
+DOCKER_IMAGE=${DOCKER_IMAGE:-boshcpi/aws-light-stemcell-builder}
 
-docker login
 
 echo "Building docker image..."
 docker build -t $DOCKER_IMAGE .
