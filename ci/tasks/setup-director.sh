@@ -84,7 +84,6 @@ manifest_filename="director-manifest.yml"
 private_key=${deployment_dir}/private_key.pem
 
 echo "setting up artifacts used in $manifest_filename"
-mkdir -p ${deployment_dir}
 cp ./bosh-cpi-release/*.tgz ${deployment_dir}/${cpi_release_name}.tgz
 cp ./bosh-release/release.tgz ${deployment_dir}/bosh-release.tgz
 cp ./stemcell/*.tgz ${deployment_dir}/stemcell.tgz
@@ -93,7 +92,6 @@ chmod go-r ${private_key}
 eval $(ssh-agent)
 ssh-add ${private_key}
 
-#create director manifest as heredoc
 cat > "${deployment_dir}/${manifest_filename}"<<EOF
 ---
 name: bosh
@@ -246,18 +244,18 @@ cloud_provider:
     ntp: *ntp
 EOF
 
-initver=$(cat bosh-init/version)
-initexe="$PWD/bosh-init/bosh-init-${initver}-linux-amd64"
-chmod +x ${initexe}
-
-echo "using bosh-init CLI version..."
-$initexe version
-
 pushd ${deployment_dir}
+  chmod +x ../bosh-init/bosh-init*
+  echo "using bosh-init CLI version..."
+  ../bosh-init/bosh-init* version
+
   echo "deploying BOSH..."
-  $initexe deploy ${manifest_filename}
+  ../bosh-init/bosh-init* deploy ${manifest_filename}
+
   echo "Final state of director deployment:"
   echo "=========================================="
   cat director-manifest-state.json
   echo "=========================================="
+
+  cp -r $HOME/.bosh_init ./
 popd

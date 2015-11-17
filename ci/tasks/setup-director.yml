@@ -7,6 +7,8 @@ inputs:
   - name: bosh-init
   - name: bosh-release
   - name: stemcell
+output:
+  - name: deployment
 run:
   path: bosh-cpi-src/ci/tasks/setup-director.sh
 params:
