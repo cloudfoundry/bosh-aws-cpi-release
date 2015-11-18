@@ -245,17 +245,21 @@ cloud_provider:
 EOF
 
 pushd ${deployment_dir}
+
+  function finish {
+    echo "Final state of director deployment:"
+    echo "=========================================="
+    cat director-manifest-state.json
+    echo "=========================================="
+
+    cp -r $HOME/.bosh_init ./
+  }
+  trap finish EXIT
+
   chmod +x ../bosh-init/bosh-init*
   echo "using bosh-init CLI version..."
   ../bosh-init/bosh-init* version
 
   echo "deploying BOSH..."
   ../bosh-init/bosh-init* deploy ${manifest_filename}
-
-  echo "Final state of director deployment:"
-  echo "=========================================="
-  cat director-manifest-state.json
-  echo "=========================================="
-
-  cp -r $HOME/.bosh_init ./
 popd
