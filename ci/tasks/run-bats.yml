@@ -2,10 +2,10 @@
 platform: linux
 image: docker:///boshcpi/aws-cpi-release
 inputs:
-- name: stemcell
-- name: bosh-cpi-src
-- name: bats
-- name: deployment
+  - name: stemcell
+  - name: bosh-cpi-src
+  - name: bats
+  - name: deployment
 run:
   path: bosh-cpi-src/ci/tasks/run-bats.sh
 params:
