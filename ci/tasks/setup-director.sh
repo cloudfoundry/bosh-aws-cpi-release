@@ -254,7 +254,7 @@ pushd ${deployment_dir}
 
     cp -r $HOME/.bosh_init ./
   }
-  trap finish EXIT
+  trap finish ERR
 
   chmod +x ../bosh-init/bosh-init*
   echo "using bosh-init CLI version..."
@@ -262,4 +262,7 @@ pushd ${deployment_dir}
 
   echo "deploying BOSH..."
   ../bosh-init/bosh-init* deploy ${manifest_filename}
+
+  trap - ERR
+  finish
 popd
