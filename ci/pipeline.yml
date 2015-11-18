@@ -442,9 +442,8 @@ jobs:
             aws_access_key_id: {{aws_access_key__primary}}
             aws_secret_access_key: {{aws_secret_key__primary}}
 
-      - put: bosh-cpi-src
-        resource: bosh-cpi-src-out
-        params: {repository: promote/bosh-cpi-src, rebase: true, tag_prefix: "v", tag: promote/integer_version}
+      - put: bosh-cpi-src-out
+        params: {repository: promoted/repo, rebase: true, tag_prefix: "v", tag: promoted/integer_version}
 
       - put: release-version-semver
         params: {file: release-version-semver/number}
