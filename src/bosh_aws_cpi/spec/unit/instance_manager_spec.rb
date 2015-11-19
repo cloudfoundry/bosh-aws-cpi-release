@@ -234,6 +234,7 @@ describe Bosh::AwsCloud::InstanceManager do
       expect(aws_instances).to receive(:create).with(aws_instance_params).and_raise(AWS::EC2::Errors::InvalidIPAddress::InUse)
       expect(aws_instances).to receive(:create).with(aws_instance_params).and_return(aws_instance)
       allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
+      expect(logger).to receive(:warn).with(/IP address was in use/).once
 
       allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
 
@@ -246,6 +247,7 @@ describe Bosh::AwsCloud::InstanceManager do
       expect(aws_instances).to receive(:create).with(aws_instance_params).and_raise(AWS::EC2::Errors::RequestLimitExceeded)
       expect(aws_instances).to receive(:create).with(aws_instance_params).and_return(aws_instance)
       allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
+      expect(logger).not_to receive(:warn).with(/IP address was in use/)
 
       allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
 

@@ -165,7 +165,9 @@ module Bosh::AwsCloud
       errors = [AWS::EC2::Errors::InvalidIPAddress::InUse, AWS::EC2::Errors::RequestLimitExceeded]
       Bosh::Common.retryable(sleep: instance_create_wait_time, tries: 20, on: errors) do |tries, error|
         @logger.info("Launching on demand instance...")
-        @logger.warn("IP address was in use: #{error}") if tries > 0
+        if error.class == AWS::EC2::Errors::InvalidIPAddress::InUse
+          @logger.warn("IP address was in use: #{error}")
+        end
         @region.instances.create(instance_params)
       end
     end
