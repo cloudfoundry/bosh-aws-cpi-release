@@ -67,6 +67,22 @@ describe Bosh::AwsCloud::Instance do
       instance.terminate
     end
 
+    it 'should retry if rate limited is exceeded' do
+      allow(instance).to receive(:remove_from_load_balancers).ordered
+
+      allow(instance).to receive(:retry_wait_time).and_return(0)
+      expect(aws_instance).to receive(:terminate).with(no_args).
+        and_raise(AWS::EC2::Errors::RequestLimitExceeded).ordered
+
+      expect(aws_instance).to receive(:terminate).with(no_args).ordered
+      expect(registry).to receive(:delete_settings).with(instance_id).ordered
+
+      expect(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).
+        with(instance: aws_instance, state: :terminated).ordered
+
+      instance.terminate
+    end
+
     context 'when instance was deleted in AWS and no longer exists (showing in AWS console)' do
       before do
         # AWS returns NotFound error if instance no longer exists in AWS console
