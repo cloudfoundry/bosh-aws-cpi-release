@@ -62,8 +62,8 @@ if [ -n "${blobstore_s3_host}" ]; then
     blobstore:
       provider: s3
       bucket_name: ${BLOBSTORE_BUCKET_NAME}
-      credentials_source: 'env_or_profile'
-      host: ${blobstore_s3_host}
+      access_key_id: ${aws_access_key_id}
+      secret_access_key: ${aws_secret_access_key}
       director: {user: director, password: director-password}
       agent: {user: agent, password: agent-password}
 EO_BLOBSTORE_CFG_S3
