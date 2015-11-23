@@ -361,7 +361,7 @@ jobs:
           params:
             stack_prefix:          End2End
             stack_name:            end2end
-            use_iam:               true
+            use_iam:               false
             aws_access_key_id:     {{aws_access_key__e2e_us}}
             aws_secret_access_key: {{aws_secret_key__e2e_us}}
             region_name:           {{aws_region__e2e_us}}
