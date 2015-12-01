@@ -17,10 +17,14 @@ stack_info=$(get_stack_info $stack_name)
 vpc_id=$(get_stack_info_of "$stack_info" "VPCID")
 
 if [ ! -z "${vpc_id}" ] ; then
-  instances=$(aws ec2 describe-instances --query "Reservations[*].Instances[*].InstanceId[]" --filters "Name=vpc-id,Values=${vpc_id}")
+  found_instances=$(aws ec2 describe-instances --query "Reservations[*].Instances[*].InstanceId[]" --filters "Name=vpc-id,Values=${vpc_id}" | jq '.[]' --raw-output)
 
-  if [[ (! -z ${instances}) && ($(echo ${instances}| jq '. | length') -gt 0) ]] ; then
-    echo "Error: Alive instances found on ${vpc_id}: ${instances}"
-    exit 1
-  fi
+  for i in $found_instances
+  do
+    instance_tags=$(aws ec2 describe-instances --instance-ids $i | jq '.Reservations[].Instances[].Tags[].Value')
+    if ! [[ ${instance_tags} =~ "${stack_name}" ]] ; then
+      echo "Error: Unexpected instances found on ${vpc_id}: ${i}"
+      exit 1
+    fi
+  done
 fi
