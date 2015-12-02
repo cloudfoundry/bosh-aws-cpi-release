@@ -69,6 +69,7 @@ jobs:
             aws_secret_access_key:    {{aws_secret_key__primary}}
             region_name:              {{aws_region__primary}}
             stack_name:               primary
+            stack_prefix:             not-applicable
 
       - task: teardown-infrastructure
         file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
@@ -92,6 +93,7 @@ jobs:
             aws_secret_access_key:    {{aws_secret_key__e2e_us}}
             region_name:              {{aws_region__e2e_us}}
             stack_name:               end2end
+            stack_prefix:             End2End
 
       - task: teardown-infrastructure
         file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
@@ -115,6 +117,7 @@ jobs:
             aws_secret_access_key:    {{aws_secret_key__e2e_china}}
             region_name:              {{aws_region__e2e_china}}
             stack_name:               end2end
+            stack_prefix:             End2End
 
       - task: teardown-infrastructure
         file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
@@ -138,6 +141,7 @@ jobs:
             aws_secret_access_key: {{aws_secret_key__downloader}}
             region_name:           {{aws_region__downloader}}
             stack_name:            downloader-cn
+            stack_prefix:          not-applicable
 
       - task: setup-infrastructure
         file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml

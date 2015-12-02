@@ -10,3 +10,4 @@ params:
   aws_secret_access_key:     replace-me
   region_name:               replace-me
   stack_name:                replace-me
+  stack_prefix:              replace-me
