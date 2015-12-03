@@ -37,7 +37,7 @@ groups:
 
 jobs:
   - name: recreate-infrastructure-primary
-    serial_groups: [primary-centos, primary-ubuntu]
+    serial_groups: [bats-centos, bats-ubuntu, radiator-centos, radiator-ubuntu]
     plan:
       - aggregate:
         - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
@@ -113,7 +113,7 @@ jobs:
             stack_name:                   primary
 
   - name: bats-ubuntu
-    serial_groups: [primary-ubuntu]
+    serial_groups: [bats-ubuntu]
     plan:
       - aggregate:
         - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
@@ -154,7 +154,7 @@ jobs:
         file: bosh-cpi-src/ci/tasks/teardown-director.yml
 
   - name: bats-centos
-    serial_groups: [primary-centos]
+    serial_groups: [bats-centos]
     plan:
       - aggregate:
         - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
@@ -195,7 +195,7 @@ jobs:
         file: bosh-cpi-src/ci/tasks/teardown-director.yml
 
   - name: ubuntu-pv-radiator
-    serial_groups: [primary-ubuntu]
+    serial_groups: [radiator-ubuntu]
     plan:
       - aggregate:
         - {trigger: true,  get: three-hour-timer}
@@ -239,7 +239,7 @@ jobs:
           file: bosh-cpi-src/ci/tasks/teardown-director.yml
 
   - name: centos-pv-radiator
-    serial_groups: [primary-centos]
+    serial_groups: [radiator-centos]
     plan:
       - aggregate:
         - {trigger: true,  get: three-hour-timer}
