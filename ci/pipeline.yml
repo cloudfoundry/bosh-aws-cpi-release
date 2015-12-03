@@ -56,7 +56,7 @@ groups:
 
 jobs:
   - name: recreate-infrastructure-primary
-    serial: true
+    serial_groups: [primary-centos, primary-ubuntu]
     plan:
       - aggregate:
         - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
@@ -128,7 +128,7 @@ jobs:
         config: *recreate-end2end-cn-config
 
   - name: recreate-infrastructure-cn-downloader
-    serial: true
+    serial_groups: [china]
     plan:
       - aggregate:
         - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
@@ -180,7 +180,7 @@ jobs:
             stack_name:                   primary
 
   - name: bats-ubuntu
-    serial: true
+    serial_groups: [primary-ubuntu]
     plan:
       - aggregate:
         - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
@@ -221,7 +221,7 @@ jobs:
         file: bosh-cpi-src/ci/tasks/teardown-director.yml
 
   - name: bats-centos
-    serial: true
+    serial_groups: [primary-centos]
     plan:
       - aggregate:
         - {trigger: true,  passed: [build-candidate],  get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
@@ -262,7 +262,7 @@ jobs:
         file: bosh-cpi-src/ci/tasks/teardown-director.yml
 
   - name: ubuntu-pv-radiator
-    serial: true
+    serial_groups: [primary-ubuntu]
     plan:
       - aggregate:
         - {trigger: true,  get: three-hour-timer}
@@ -306,7 +306,7 @@ jobs:
           file: bosh-cpi-src/ci/tasks/teardown-director.yml
 
   - name: centos-pv-radiator
-    serial: true
+    serial_groups: [primary-centos]
     plan:
       - aggregate:
         - {trigger: true,  get: three-hour-timer}
@@ -453,7 +453,7 @@ jobs:
         params: {file: release-version-semver/number}
 
   - name: download-from-cn
-    serial: true
+    serial_groups: [primary-china]
     plan:
       - aggregate:
         - {trigger: true,  get: one-hour-timer}
