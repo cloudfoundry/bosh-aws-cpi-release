@@ -1,0 +1,195 @@
+---
+groups:
+  - name: end2end
+    jobs:
+      - end2end-us
+      - end2end-china
+
+  - name: us
+    jobs:
+      - recreate-infrastructure-end2end-us
+      - end2end-us
+
+
+  - name: china
+    jobs:
+      - recreate-infrastructure-end2end-china
+      - end2end-china
+
+  - name: all
+    jobs:
+      - recreate-infrastructure-end2end-us
+      - recreate-infrastructure-end2end-china
+      - end2end-us
+      - end2end-china
+
+jobs:
+  - name: recreate-infrastructure-end2end-us
+    serial_groups: [us]
+    plan:
+      - aggregate:
+        - {trigger: false, get: bosh-cpi-src}
+
+      - task: check-for-running-instances
+        file: bosh-cpi-src/ci/tasks/check-for-running-instances.yml
+        config: &recreate-end2end-us-config
+          params:
+            aws_access_key_id:        {{aws_access_key__e2e_us}}
+            aws_secret_access_key:    {{aws_secret_key__e2e_us}}
+            region_name:              {{aws_region__e2e_us}}
+            stack_name:               end2end
+            stack_prefix:             End2End
+
+      - task: teardown-infrastructure
+        file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
+        config: *recreate-end2end-us-config
+
+      - task: setup-infrastructure
+        file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
+        config: *recreate-end2end-us-config
+
+  - name: recreate-infrastructure-end2end-china
+    serial_groups: [china]
+    plan:
+      - aggregate:
+        - {trigger: false, get: bosh-cpi-src}
+
+      - task: check-for-running-instances
+        file: bosh-cpi-src/ci/tasks/check-for-running-instances.yml
+        config: &recreate-end2end-cn-config
+          params:
+            aws_access_key_id:        {{aws_access_key__e2e_china}}
+            aws_secret_access_key:    {{aws_secret_key__e2e_china}}
+            region_name:              {{aws_region__e2e_china}}
+            stack_name:               end2end
+            stack_prefix:             End2End
+
+      - task: teardown-infrastructure
+        file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
+        config: *recreate-end2end-cn-config
+
+      - task: setup-infrastructure
+        file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
+        config: *recreate-end2end-cn-config
+
+  - name: end2end-us
+    serial_groups: [us]
+    plan:
+      - aggregate:
+        - {trigger: true,  get: stemcell,         resource: aws-ubuntu-hvm-stemcell }
+        - {trigger: false, get: bosh-cpi-release, resource: bosh-aws-cpi-release}
+        - {trigger: false, get: bosh-cpi-src}
+        - {trigger: false, get: bosh-init}
+        - {trigger: false, get: bosh-release}
+
+      - task: setup-director
+        file: bosh-cpi-src/ci/tasks/setup-director.yml
+        config:
+          params:
+            stack_prefix:          End2End
+            stack_name:            end2end
+            use_iam:               true
+            aws_access_key_id:     {{aws_access_key__e2e_us}}
+            aws_secret_access_key: {{aws_secret_key__e2e_us}}
+            region_name:           {{aws_region__e2e_us}}
+            private_key_data:      {{e2e_private_key}}
+            public_key_name:       {{e2e_public_key_name}}
+            blobstore_s3_host:     {{blobstore_s3_host__e2e_us}}
+            director_username:     {{bosh_director_username}}
+            director_password:     {{bosh_director_password}}
+
+      - task: test
+        file: bosh-cpi-src/ci/tasks/run-e2e.yml
+        config:
+          params:
+            aws_access_key_id:          {{aws_access_key__e2e_us}}
+            aws_secret_access_key:      {{aws_secret_key__e2e_us}}
+            region_name:                {{aws_region__e2e_us}}
+            stemcell_name:              bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+            stack_name:                 end2end
+            director_username:          {{bosh_director_username}}
+            director_password:          {{bosh_director_password}}
+
+      - task: teardown-director
+        file: bosh-cpi-src/ci/tasks/teardown-director.yml
+
+  - name: end2end-china
+    serial_groups: [china]
+    plan:
+      - aggregate:
+        - {trigger: true,  get: stemcell,         resource: aws-china-ubuntu-stemcell }
+        - {trigger: false, get: bosh-cpi-release, resource: bosh-aws-cpi-release}
+        - {trigger: false, get: bosh-cpi-src}
+        - {trigger: false, get: bosh-init}
+        - {trigger: false, get: bosh-release}
+
+      - task: setup-director
+        file: bosh-cpi-src/ci/tasks/setup-director.yml
+        config:
+          params:
+            stack_prefix:          End2End
+            stack_name:            end2end
+            use_iam:               true
+            aws_access_key_id:     {{aws_access_key__e2e_china}}
+            aws_secret_access_key: {{aws_secret_key__e2e_china}}
+            region_name:           {{aws_region__e2e_china}}
+            private_key_data:      {{e2e_private_key}}
+            public_key_name:       {{e2e_public_key_name}}
+            blobstore_s3_host:     {{blobstore_s3_host__e2e_china}}
+            director_username:     {{bosh_director_username}}
+            director_password:     {{bosh_director_password}}
+
+      - task: test
+        file: bosh-cpi-src/ci/tasks/run-e2e.yml
+        config:
+          params:
+            aws_access_key_id:          {{aws_access_key__e2e_china}}
+            aws_secret_access_key:      {{aws_secret_key__e2e_china}}
+            region_name:                {{aws_region__e2e_china}}
+            stemcell_name:              bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+            stack_name:                 end2end
+            director_username:          {{bosh_director_username}}
+            director_password:          {{bosh_director_password}}
+
+      - task: teardown-director
+        file: bosh-cpi-src/ci/tasks/teardown-director.yml
+
+resources:
+  - name: bosh-cpi-src
+    type: git
+    source:
+      uri: git@github.com:cloudfoundry-incubator/bosh-aws-cpi-release.git
+      branch: master
+      private_key: {{github_deployment_key__bosh-aws-cpi-release}}
+      ignore_paths:
+        - .final_builds/**/*.yml
+        - releases/**/*.yml
+
+  - name: bosh-release
+    type: bosh-io-release
+    source:
+      repository: cloudfoundry/bosh
+
+  - name: bosh-aws-cpi-release
+    type: bosh-io-release
+    source:
+      repository: cloudfoundry-incubator/bosh-aws-cpi-release
+
+  - name: aws-ubuntu-hvm-stemcell
+    type: bosh-io-stemcell
+    source:
+      name: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+
+  - name: aws-china-ubuntu-stemcell
+    type: s3
+    source:
+      regexp: light-china-bosh-stemcell-([0-9]+)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
+      bucket: {{s3_aws_china_ubuntu_stemcell_bucket}}
+      region_name: {{aws_region__primary}}
+
+  - name: bosh-init
+    type: s3
+    source:
+      regexp: bosh-init-([0-9.]+)-linux-amd64
+      bucket: {{s3_bosh_init_bucket}}
+      region_name: {{aws_region__primary}}
