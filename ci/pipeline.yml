@@ -303,7 +303,7 @@ jobs:
         params: {file: release-version-semver/number}
 
   - name: download-from-cn
-    serial_groups: [primary-china]
+    serial_groups: [china]
     plan:
       - aggregate:
         - {trigger: true,  get: one-hour-timer}
