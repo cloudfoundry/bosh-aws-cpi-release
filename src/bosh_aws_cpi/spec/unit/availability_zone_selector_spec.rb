@@ -11,11 +11,16 @@ describe Bosh::AwsCloud::AvailabilityZoneSelector do
   let(:subject) { described_class.new(region, 'default_zone') }
 
   describe '#common_availability_zone' do
-
-    it 'should raise an error when multiple availability zones are present' do
+    it 'should raise an error when multiple availability zones are present and volume information is passed in' do
       expect {
         subject.common_availability_zone(%w[this_zone that_zone], 'other_zone', 'another_zone')
-      }.to raise_error Bosh::Clouds::CloudError, "can't use multiple availability zones: Volume in this_zone, that_zone, Resource Pool in other_zone, Subnet in another_zone"
+      }.to raise_error Bosh::Clouds::CloudError, "can't use multiple availability zones: subnet in another_zone, VM in other_zone, and volume in this_zone, that_zone"
+    end
+
+    it 'should raise an error when multiple availability zones are present and no volume information is passed in' do
+      expect {
+        subject.common_availability_zone([], 'other_zone', 'another_zone')
+      }.to raise_error Bosh::Clouds::CloudError, "can't use multiple availability zones: subnet in another_zone, VM in other_zone"
     end
 
     it 'should select the common availability zone' do
