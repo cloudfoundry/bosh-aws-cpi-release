@@ -88,13 +88,13 @@ jobs:
           params:
             stack_prefix:          End2End
             stack_name:            end2end
-            use_iam:               true
+            use_iam:               false
             aws_access_key_id:     {{aws_access_key__e2e_us}}
             aws_secret_access_key: {{aws_secret_key__e2e_us}}
             region_name:           {{aws_region__e2e_us}}
             private_key_data:      {{e2e_private_key}}
             public_key_name:       {{e2e_public_key_name}}
-            blobstore_s3_host:     {{blobstore_s3_host__e2e_us}}
+            blobstore_s3_region:   {{blobstore_s3_region__e2e_us}}
             director_username:     {{bosh_director_username}}
             director_password:     {{bosh_director_password}}
 
@@ -129,13 +129,13 @@ jobs:
           params:
             stack_prefix:          End2End
             stack_name:            end2end
-            use_iam:               true
+            use_iam:               false
             aws_access_key_id:     {{aws_access_key__e2e_china}}
             aws_secret_access_key: {{aws_secret_key__e2e_china}}
             region_name:           {{aws_region__e2e_china}}
             private_key_data:      {{e2e_private_key}}
             public_key_name:       {{e2e_public_key_name}}
-            blobstore_s3_host:     {{blobstore_s3_host__e2e_china}}
+            blobstore_s3_region:   {{blobstore_s3_region__e2e_china}}
             director_username:     {{bosh_director_username}}
             director_password:     {{bosh_director_password}}
 
