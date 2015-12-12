@@ -13,6 +13,7 @@ check_param private_key_data
 check_param public_key_name
 check_param director_username
 check_param director_password
+check_param use_iam
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2

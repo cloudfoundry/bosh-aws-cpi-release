@@ -129,6 +129,7 @@ jobs:
           params:
             stack_prefix:          Ubuntu
             stack_name:            primary
+            use_iam:               false
             aws_access_key_id:     {{aws_access_key__primary}}
             aws_secret_access_key: {{aws_secret_key__primary}}
             region_name:           {{aws_region__primary}}
@@ -170,6 +171,7 @@ jobs:
           params:
             stack_prefix:          Centos
             stack_name:            primary
+            use_iam:               false
             aws_access_key_id:     {{aws_access_key__primary}}
             aws_secret_access_key: {{aws_secret_key__primary}}
             region_name:           {{aws_region__primary}}
@@ -211,6 +213,7 @@ jobs:
           params:
             stack_prefix:          UbuntuPV
             stack_name:            primary
+            use_iam:               false
             aws_access_key_id:     {{aws_access_key__primary}}
             aws_secret_access_key: {{aws_secret_key__primary}}
             region_name:           {{aws_region__primary}}
@@ -255,6 +258,7 @@ jobs:
           params:
             stack_prefix:          CentosPV
             stack_name:            primary
+            use_iam:               false
             aws_access_key_id:     {{aws_access_key__primary}}
             aws_secret_access_key: {{aws_secret_key__primary}}
             region_name:           {{aws_region__primary}}
