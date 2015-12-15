@@ -14,6 +14,7 @@ check_param public_key_name
 check_param director_username
 check_param director_password
 check_param use_iam
+check_param use_s3_blobstore
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
@@ -34,7 +35,7 @@ AWS_NETWORK_CIDR=$(get_stack_info_of "${stack_info}" "${stack_prefix}CIDR")
 AWS_NETWORK_GATEWAY=$(get_stack_info_of "${stack_info}" "${stack_prefix}Gateway")
 PRIVATE_DIRECTOR_STATIC_IP=$(get_stack_info_of "${stack_info}" "${stack_prefix}DirectorStaticIP")
 
-if [ -n "${use_iam}" ]; then
+if [ "${use_iam}" = true ]; then
   IAM_INSTANCE_PROFILE=$(get_stack_info_of "${stack_info}" "${stack_prefix}IAMInstanceProfile")
   resource_pool_cloud_config_key="iam_instance_profile: ${IAM_INSTANCE_PROFILE}"
   read -r -d '' AWS_CONFIGURATION <<EO_AWS_CFG_IAM || true
@@ -56,12 +57,12 @@ else
 EO_AWS_CFG_STATIC
 fi
 
-if [ -n "${blobstore_s3_region}" ]; then
+if [ "${use_s3_blobstore}" = true ]; then
   BLOBSTORE_BUCKET_NAME=$(get_stack_info_of "${stack_info}" "${stack_prefix}BlobstoreBucketName")
   read -r -d '' BLOBSTORE_CONFIGURATION <<EO_BLOBSTORE_CFG_S3 || true
     blobstore:
       provider: s3
-      region: ${blobstore_s3_region}
+      region: ${region_name}
       bucket_name: ${BLOBSTORE_BUCKET_NAME}
       access_key_id: ${aws_access_key_id}
       secret_access_key: ${aws_secret_access_key}

@@ -22,5 +22,5 @@ params:
   director_username:     replace-me
   director_password:     replace-me
   use_iam:               replace-me
-  blobstore_s3_region:
+  use_s3_blobstore:      replace-me
   BOSH_INIT_LOG_LEVEL:   warn

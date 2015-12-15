@@ -135,6 +135,7 @@ jobs:
             region_name:           {{aws_region__primary}}
             private_key_data:      {{bosh_private_key}}
             public_key_name:       {{bosh_public_key_name}}
+            use_s3_blobstore:      false
             director_username:     {{bosh_director_username}}
             director_password:     {{bosh_director_password}}
 
@@ -177,6 +178,7 @@ jobs:
             region_name:           {{aws_region__primary}}
             private_key_data:      {{bosh_private_key}}
             public_key_name:       {{bosh_public_key_name}}
+            use_s3_blobstore:      false
             director_username:     {{bosh_director_username}}
             director_password:     {{bosh_director_password}}
 
@@ -219,6 +221,7 @@ jobs:
             region_name:           {{aws_region__primary}}
             private_key_data:      {{radiator_private_key}}
             public_key_name:       {{radiator_public_key_name}}
+            use_s3_blobstore:      false
             director_username:     {{bosh_director_username}}
             director_password:     {{bosh_director_password}}
         on_failure:
@@ -264,6 +267,7 @@ jobs:
             region_name:           {{aws_region__primary}}
             private_key_data:      {{radiator_private_key}}
             public_key_name:       {{radiator_public_key_name}}
+            use_s3_blobstore:      false
             director_username:     {{bosh_director_username}}
             director_password:     {{bosh_director_password}}
         on_failure:
