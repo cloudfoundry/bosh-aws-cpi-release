@@ -227,7 +227,7 @@ describe Bosh::AwsCloud::Cloud do
           'ephemeral_disk' => {
             'size' => 4 * 1024,
             'type' => 'io1',
-            'iops' => 10000
+            'iops' => 100
           }
         }
       end
@@ -241,7 +241,7 @@ describe Bosh::AwsCloud::Cloud do
           ephemeral_volume = cpi.ec2.volumes[disks[1]]
           expect(ephemeral_volume.size).to eq(4)
           expect(ephemeral_volume.type).to eq('io1')
-          expect(ephemeral_volume.iops).to eq(10000)
+          expect(ephemeral_volume.iops).to eq(100)
         end
       end
     end
