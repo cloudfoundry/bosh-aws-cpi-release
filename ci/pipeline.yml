@@ -253,7 +253,7 @@ jobs:
         - {trigger: false, get: stemcell, resource: aws-centos-stemcell}
         - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {trigger: false, get: bosh-init}
-        - {trigger: false, get: bosh-release}
+        - {trigger: false, get: bosh-release, resource: bosh-release-that-doesnt-delete-vms-on-failure}
 
       - task: setup-director
         file: bosh-cpi-src/ci/tasks/setup-director.yml
@@ -376,6 +376,13 @@ resources:
       regexp: bosh-init-([0-9.]+)-linux-amd64
       bucket: {{s3_bosh_init_bucket}}
       region_name: {{aws_region__primary}}
+
+  - name: bosh-release-that-doesnt-delete-vms-on-failure
+    type: s3
+    source:
+      regexp: bosh-([0-9.]+)-dev.1.tgz
+      bucket: {{dk_shared_assets_bucket}}
+      region_name: us-east-1
 
   - name: bats
     type: git
