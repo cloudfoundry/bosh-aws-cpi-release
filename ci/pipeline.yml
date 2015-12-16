@@ -381,7 +381,7 @@ resources:
     type: s3
     source:
       regexp: bosh-([0-9.]+)-dev.1.tgz
-      bucket: {{dk_shared_assets_bucket}}
+      bucket: {{modified_bosh_release_bucket}}
       region_name: us-east-1
 
   - name: bats
