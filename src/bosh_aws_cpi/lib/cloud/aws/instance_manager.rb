@@ -180,12 +180,12 @@ module Bosh::AwsCloud
       ephemeral_volume_size_in_mb = ephemeral_disk_options.fetch('size', 0)
       ephemeral_volume_size_in_gb = (ephemeral_volume_size_in_mb / 1024.0).ceil
       ephemeral_volume_type = ephemeral_disk_options.fetch('type', 'standard')
-      instance_type = resource_pool.fetch('instance_type', '')
+      instance_type = resource_pool.fetch('instance_type', 'unspecified')
       raw_instance_storage = resource_pool.fetch('raw_instance_storage', false)
 
       local_disk_info = InstanceManager::InstanceStorageMap[instance_type]
       if raw_instance_storage && local_disk_info.nil?
-        raise Bosh::Clouds::CloudError, "raw_instance_storage requested for instance type #{instance_type} that does not have instance storage"
+        raise Bosh::Clouds::CloudError, "raw_instance_storage requested for instance type '#{instance_type}' that does not have instance storage"
       end
 
       if raw_instance_storage || local_disk_info.nil? || local_disk_info.size < ephemeral_volume_size_in_gb
