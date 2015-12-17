@@ -17,8 +17,8 @@ jobs:
           params:
             aws_access_key_id:     {{aws_access_key__light_stemcell_china}}
             aws_secret_access_key: {{aws_secret_key__light_stemcell_china}}
-            region_name:           cn-north-1
             public_key_data:       {{light-stemcell-builder-public_key_data}}
+            region_name:           cn-north-1
             stack_name:            light-stemcell
 
       - task: teardown-infrastructure
@@ -43,13 +43,13 @@ jobs:
           params:
             aws_access_key_id:     {{aws_access_key__light_stemcell_china}}
             aws_secret_access_key: {{aws_secret_key__light_stemcell_china}}
-            region_name:           cn-north-1
-            vm_ami:                {{light-stemcell-builder-ami}}
-            vm_user:               {{light-stemcell-builder-user}}
             private_key_data:      {{light-stemcell-builder-private_key_data}}
             public_key_name:       {{light-stemcell-builder-public_key_name}}
-            vm_name:               light-stemcell-builder.cn-north-1
+            region_name:           cn-north-1
             stack_name:            light-stemcell
+            vm_ami:                {{light-stemcell-builder-ami}}
+            vm_name:               light-stemcell-builder.cn-north-1
+            vm_user:               {{light-stemcell-builder-user}}
 
       - put: aws-china-light-stemcell
         params: { from: 'china-light-stemcell/light-china-bosh-stemcell-(.*)-aws-xen-hvm-ubuntu-trusty-go_agent\.tgz' }

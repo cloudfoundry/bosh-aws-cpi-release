@@ -9,11 +9,11 @@ inputs:
 run:
   path: bosh-cpi-src/ci/tasks/run-bats.sh
 params:
-  base_os:                      replace-me
   aws_access_key_id:            replace-me
   aws_secret_access_key:        replace-me
+  base_os:                      replace-me
+  BAT_STEMCELL_NAME:            replace-me
+  BAT_VCAP_PASSWORD:            replace-me
+  public_key_name:              replace-me
   region_name:                  replace-me
   stack_name:                   replace-me
-  BAT_VCAP_PASSWORD:            replace-me
-  BAT_STEMCELL_NAME:            replace-me
-  public_key_name:              replace-me

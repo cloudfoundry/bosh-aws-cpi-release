@@ -4,14 +4,14 @@ set -e
 
 source bosh-cpi-src/ci/tasks/utils.sh
 
-check_param base_os
 check_param aws_access_key_id
 check_param aws_secret_access_key
-check_param region_name
-check_param stemcell_name
-check_param stack_name
-check_param director_username
+check_param base_os
 check_param director_password
+check_param director_username
+check_param region_name
+check_param stack_name
+check_param stemcell_name
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2

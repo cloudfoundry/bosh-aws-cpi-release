@@ -12,10 +12,10 @@ run:
 params:
   aws_access_key_id:     replace-me
   aws_secret_access_key: replace-me
-  region_name:           replace-me
-  vm_ami:                replace-me
-  vm_user:               replace-me
   private_key_data:      replace-me
   public_key_name:       replace-me
-  vm_name:               replace-me
+  region_name:           replace-me
   stack_name:            replace-me
+  vm_ami:                replace-me
+  vm_name:               replace-me
+  vm_user:               replace-me

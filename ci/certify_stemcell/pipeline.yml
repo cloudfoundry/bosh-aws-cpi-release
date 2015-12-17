@@ -86,17 +86,17 @@ jobs:
         file: bosh-cpi-src/ci/tasks/setup-director.yml
         config:
           params:
-            stack_prefix:          End2End
-            stack_name:            end2end
-            use_iam:               true
             aws_access_key_id:     {{aws_access_key__e2e_us}}
             aws_secret_access_key: {{aws_secret_key__e2e_us}}
-            region_name:           {{aws_region__e2e_us}}
+            director_password:     {{bosh_director_password}}
+            director_username:     {{bosh_director_username}}
             private_key_data:      {{e2e_private_key}}
             public_key_name:       {{e2e_public_key_name}}
+            region_name:           {{aws_region__e2e_us}}
+            stack_name:            end2end
+            stack_prefix:          End2End
+            use_iam:               true
             use_s3_blobstore:      true
-            director_username:     {{bosh_director_username}}
-            director_password:     {{bosh_director_password}}
 
       - task: test
         file: bosh-cpi-src/ci/tasks/run-e2e.yml
@@ -104,11 +104,11 @@ jobs:
           params:
             aws_access_key_id:          {{aws_access_key__e2e_us}}
             aws_secret_access_key:      {{aws_secret_key__e2e_us}}
-            region_name:                {{aws_region__e2e_us}}
-            stemcell_name:              bosh-aws-xen-hvm-ubuntu-trusty-go_agent
-            stack_name:                 end2end
-            director_username:          {{bosh_director_username}}
             director_password:          {{bosh_director_password}}
+            director_username:          {{bosh_director_username}}
+            region_name:                {{aws_region__e2e_us}}
+            stack_name:                 end2end
+            stemcell_name:              bosh-aws-xen-hvm-ubuntu-trusty-go_agent
 
       - task: teardown-director
         file: bosh-cpi-src/ci/tasks/teardown-director.yml
@@ -127,17 +127,17 @@ jobs:
         file: bosh-cpi-src/ci/tasks/setup-director.yml
         config:
           params:
-            stack_prefix:          End2End
-            stack_name:            end2end
-            use_iam:               true
             aws_access_key_id:     {{aws_access_key__e2e_china}}
             aws_secret_access_key: {{aws_secret_key__e2e_china}}
-            region_name:           {{aws_region__e2e_china}}
+            director_password:     {{bosh_director_password}}
+            director_username:     {{bosh_director_username}}
             private_key_data:      {{e2e_private_key}}
             public_key_name:       {{e2e_public_key_name}}
+            region_name:           {{aws_region__e2e_china}}
+            stack_name:            end2end
+            stack_prefix:          End2End
+            use_iam:               true
             use_s3_blobstore:      true
-            director_username:     {{bosh_director_username}}
-            director_password:     {{bosh_director_password}}
 
       - task: test
         file: bosh-cpi-src/ci/tasks/run-e2e.yml
@@ -145,11 +145,11 @@ jobs:
           params:
             aws_access_key_id:          {{aws_access_key__e2e_china}}
             aws_secret_access_key:      {{aws_secret_key__e2e_china}}
-            region_name:                {{aws_region__e2e_china}}
-            stemcell_name:              bosh-aws-xen-hvm-ubuntu-trusty-go_agent
-            stack_name:                 end2end
-            director_username:          {{bosh_director_username}}
             director_password:          {{bosh_director_password}}
+            director_username:          {{bosh_director_username}}
+            region_name:                {{aws_region__e2e_china}}
+            stack_name:                 end2end
+            stemcell_name:              bosh-aws-xen-hvm-ubuntu-trusty-go_agent
 
       - task: teardown-director
         file: bosh-cpi-src/ci/tasks/teardown-director.yml

@@ -127,29 +127,29 @@ jobs:
         file: bosh-cpi-src/ci/tasks/setup-director.yml
         config:
           params:
-            stack_prefix:          Ubuntu
-            stack_name:            primary
-            use_iam:               false
             aws_access_key_id:     {{aws_access_key__primary}}
             aws_secret_access_key: {{aws_secret_key__primary}}
-            region_name:           {{aws_region__primary}}
+            director_password:     {{bosh_director_password}}
+            director_username:     {{bosh_director_username}}
             private_key_data:      {{bosh_private_key}}
             public_key_name:       {{bosh_public_key_name}}
+            region_name:           {{aws_region__primary}}
+            stack_name:            primary
+            stack_prefix:          Ubuntu
+            use_iam:               false
             use_s3_blobstore:      false
-            director_username:     {{bosh_director_username}}
-            director_password:     {{bosh_director_password}}
 
       - task: run-bats
         file: bosh-cpi-src/ci/tasks/run-bats.yml
         config:
           params:
-            base_os:               Ubuntu
             aws_access_key_id:     {{aws_access_key__primary}}
             aws_secret_access_key: {{aws_secret_key__primary}}
-            region_name:           {{aws_region__primary}}
-            BAT_VCAP_PASSWORD:     {{BAT_VCAP_PASSWORD}}
+            base_os:               Ubuntu
             BAT_STEMCELL_NAME:     {{BAT_STEMCELL_NAME_hvm_ubuntu}}
+            BAT_VCAP_PASSWORD:     {{BAT_VCAP_PASSWORD}}
             public_key_name:       {{bosh_public_key_name}}
+            region_name:           {{aws_region__primary}}
             stack_name:            primary
 
       - task: teardown-director
@@ -170,29 +170,29 @@ jobs:
         file: bosh-cpi-src/ci/tasks/setup-director.yml
         config:
           params:
-            stack_prefix:          Centos
-            stack_name:            primary
-            use_iam:               false
             aws_access_key_id:     {{aws_access_key__primary}}
             aws_secret_access_key: {{aws_secret_key__primary}}
-            region_name:           {{aws_region__primary}}
+            director_password:     {{bosh_director_password}}
+            director_username:     {{bosh_director_username}}
             private_key_data:      {{bosh_private_key}}
             public_key_name:       {{bosh_public_key_name}}
+            region_name:           {{aws_region__primary}}
+            stack_name:            primary
+            stack_prefix:          Centos
+            use_iam:               false
             use_s3_blobstore:      false
-            director_username:     {{bosh_director_username}}
-            director_password:     {{bosh_director_password}}
 
       - task: run-bats
         file: bosh-cpi-src/ci/tasks/run-bats.yml
         config:
           params:
-            base_os:               Centos
             aws_access_key_id:     {{aws_access_key__primary}}
             aws_secret_access_key: {{aws_secret_key__primary}}
-            region_name:           {{aws_region__primary}}
-            BAT_VCAP_PASSWORD:     {{BAT_VCAP_PASSWORD}}
+            base_os:               Centos
             BAT_STEMCELL_NAME:     {{BAT_STEMCELL_NAME_hvm_centos}}
+            BAT_VCAP_PASSWORD:     {{BAT_VCAP_PASSWORD}}
             public_key_name:       {{bosh_public_key_name}}
+            region_name:           {{aws_region__primary}}
             stack_name:            primary
 
       - task: teardown-director
@@ -213,17 +213,17 @@ jobs:
         file: bosh-cpi-src/ci/tasks/setup-director.yml
         config:
           params:
-            stack_prefix:          UbuntuPV
-            stack_name:            primary
-            use_iam:               false
             aws_access_key_id:     {{aws_access_key__primary}}
             aws_secret_access_key: {{aws_secret_key__primary}}
-            region_name:           {{aws_region__primary}}
+            director_password:     {{bosh_director_password}}
+            director_username:     {{bosh_director_username}}
             private_key_data:      {{radiator_private_key}}
             public_key_name:       {{radiator_public_key_name}}
+            region_name:           {{aws_region__primary}}
+            stack_name:            primary
+            stack_prefix:          UbuntuPV
+            use_iam:               false
             use_s3_blobstore:      false
-            director_username:     {{bosh_director_username}}
-            director_password:     {{bosh_director_password}}
         on_failure:
           task: teardown-director
           file: bosh-cpi-src/ci/tasks/teardown-director.yml
@@ -232,14 +232,14 @@ jobs:
         file: bosh-cpi-src/ci/tasks/deploy-dummy.yml
         config:
           params:
-            base_os:                    UbuntuPV
             aws_access_key_id:          {{aws_access_key__primary}}
             aws_secret_access_key:      {{aws_secret_key__primary}}
-            region_name:                {{aws_region__primary}}
-            stemcell_name:              {{BAT_STEMCELL_NAME_ubuntu}}
-            stack_name:                 primary
-            director_username:          {{bosh_director_username}}
+            base_os:                    UbuntuPV
             director_password:          {{bosh_director_password}}
+            director_username:          {{bosh_director_username}}
+            region_name:                {{aws_region__primary}}
+            stack_name:                 primary
+            stemcell_name:              {{BAT_STEMCELL_NAME_ubuntu}}
         ensure:
           task: teardown-director
           file: bosh-cpi-src/ci/tasks/teardown-director.yml
@@ -259,17 +259,17 @@ jobs:
         file: bosh-cpi-src/ci/tasks/setup-director.yml
         config:
           params:
-            stack_prefix:          CentosPV
-            stack_name:            primary
-            use_iam:               false
             aws_access_key_id:     {{aws_access_key__primary}}
             aws_secret_access_key: {{aws_secret_key__primary}}
-            region_name:           {{aws_region__primary}}
+            director_password:     {{bosh_director_password}}
+            director_username:     {{bosh_director_username}}
             private_key_data:      {{radiator_private_key}}
             public_key_name:       {{radiator_public_key_name}}
+            region_name:           {{aws_region__primary}}
+            stack_name:            primary
+            stack_prefix:          CentosPV
+            use_iam:               false
             use_s3_blobstore:      false
-            director_username:     {{bosh_director_username}}
-            director_password:     {{bosh_director_password}}
         on_failure:
           task: teardown-director
           file: bosh-cpi-src/ci/tasks/teardown-director.yml
@@ -278,14 +278,14 @@ jobs:
         file: bosh-cpi-src/ci/tasks/deploy-dummy.yml
         config:
           params:
-            base_os:                    CentosPV
             aws_access_key_id:          {{aws_access_key__primary}}
             aws_secret_access_key:      {{aws_secret_key__primary}}
-            region_name:                {{aws_region__primary}}
-            stemcell_name:              {{BAT_STEMCELL_NAME_centos}}
-            stack_name:                 primary
-            director_username:          {{bosh_director_username}}
+            base_os:                    CentosPV
             director_password:          {{bosh_director_password}}
+            director_username:          {{bosh_director_username}}
+            region_name:                {{aws_region__primary}}
+            stack_name:                 primary
+            stemcell_name:              {{BAT_STEMCELL_NAME_centos}}
         ensure:
           task: teardown-director
           file: bosh-cpi-src/ci/tasks/teardown-director.yml
@@ -323,9 +323,9 @@ jobs:
           params:
             aws_access_key_id:     {{aws_access_key__downloader}}
             aws_secret_access_key: {{aws_secret_key__downloader}}
+            private_key_data:      {{bosh_private_key}}
             region_name:           {{aws_region__downloader}}
             stack_name:            downloader-cn
-            private_key_data:      {{bosh_private_key}}
 
 resources:
   - name: bosh-cpi-dev-artifacts

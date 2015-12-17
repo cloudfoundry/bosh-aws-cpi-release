@@ -6,9 +6,9 @@ source bosh-cpi-src/ci/tasks/utils.sh
 
 check_param aws_access_key_id
 check_param aws_secret_access_key
+check_param private_key_data
 check_param region_name
 check_param stack_name
-check_param private_key_data
 
 export AWS_ACCESS_KEY_ID=${aws_access_key_id}
 export AWS_SECRET_ACCESS_KEY=${aws_secret_access_key}

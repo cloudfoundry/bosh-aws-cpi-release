@@ -4,6 +4,9 @@ set -e -x
 
 source bosh-cpi-src/ci/tasks/utils.sh
 
+check_param aws_access_key_id
+check_param aws_secret_access_key
+
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
 

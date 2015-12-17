@@ -4,15 +4,15 @@ set -e
 
 source bosh-cpi-src/ci/tasks/utils.sh
 
-check_param stack_prefix
-check_param stack_name
 check_param aws_access_key_id
 check_param aws_secret_access_key
-check_param region_name
+check_param director_password
+check_param director_username
 check_param private_key_data
 check_param public_key_name
-check_param director_username
-check_param director_password
+check_param region_name
+check_param stack_name
+check_param stack_prefix
 check_param use_iam
 check_param use_s3_blobstore
 

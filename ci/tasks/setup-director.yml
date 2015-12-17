@@ -12,15 +12,15 @@ outputs:
 run:
   path: bosh-cpi-src/ci/tasks/setup-director.sh
 params:
-  stack_prefix:          replace-me
-  stack_name:            replace-me
+  BOSH_INIT_LOG_LEVEL:   warn
   aws_access_key_id:     replace-me
   aws_secret_access_key: replace-me
+  director_password:     replace-me
+  director_username:     replace-me
   private_key_data:      replace-me
   public_key_name:       replace-me
   region_name:           replace-me
-  director_username:     replace-me
-  director_password:     replace-me
+  stack_name:            replace-me
+  stack_prefix:          replace-me
   use_iam:               replace-me
   use_s3_blobstore:      replace-me
-  BOSH_INIT_LOG_LEVEL:   warn

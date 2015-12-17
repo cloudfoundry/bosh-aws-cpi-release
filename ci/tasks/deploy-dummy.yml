@@ -7,11 +7,11 @@ inputs:
 run:
   path: bosh-cpi-src/ci/tasks/deploy-dummy.sh
 params:
-  base_os:                      replace-me
   aws_access_key_id:            replace-me
   aws_secret_access_key:        replace-me
-  region_name:                  replace-me
-  stemcell_name:                replace-me
-  stack_name:                   replace-me
-  director_username:            replace-me
+  base_os:                      replace-me
   director_password:            replace-me
+  director_username:            replace-me
+  region_name:                  replace-me
+  stack_name:                   replace-me
+  stemcell_name:                replace-me
