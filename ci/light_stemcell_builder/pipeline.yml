@@ -39,6 +39,7 @@ jobs:
 
       - task: build
         file: bosh-cpi-src/ci/tasks/build_light_stemcell.yml
+        timeout: 6h
         config:
           params:
             aws_access_key_id:     {{aws_access_key__light_stemcell_china}}
