@@ -36,6 +36,9 @@ require "cloud/aws/spot_manager"
 require "cloud/aws/tag_manager"
 require "cloud/aws/availability_zone_selector"
 require "cloud/aws/resource_wait"
+require "cloud/aws/volume_properties"
+require "cloud/aws/volumes_create_presenter"
+require "cloud/aws/instances_create_presenter"
 
 module Bosh
   module Clouds

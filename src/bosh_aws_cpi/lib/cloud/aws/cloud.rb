@@ -2,7 +2,6 @@
 require 'cloud/aws/stemcell_finder'
 
 module Bosh::AwsCloud
-
   class Cloud < Bosh::Cloud
     include Helpers
 
@@ -196,41 +195,26 @@ module Bosh::AwsCloud
     #        of the VM that this disk will be attached to
     # @return [String] created EBS volume id
     def create_disk(size, cloud_properties, instance_id = nil)
+      raise ArgumentError, 'disk size needs to be an integer' unless size.kind_of?(Integer)
       with_thread_name("create_disk(#{size}, #{instance_id})") do
-        type = validate_disk_type(cloud_properties.fetch('type', 'standard'))
-        validate_disk_size(type, size)
+        volume_properties = VolumeProperties.new(
+          size: size,
+          type: cloud_properties['type'],
+          iops: cloud_properties['iops'],
+          az: @az_selector.select_availability_zone(instance_id),
+          encrypted: cloud_properties['encrypted']
+        )
+        volume_properties.validate!
 
         # if the disk is created for an instance, use the same availability zone as they must match
-        volume = @ec2.volumes.create(
-          size: (size / 1024.0).ceil,
-          availability_zone: @az_selector.select_availability_zone(instance_id),
-          volume_type: type,
-          encrypted: cloud_properties.fetch('encrypted', false)
-        )
+        with_volume_options = VolumesCreatePresenter.new(volume_properties).present
+        volume = @ec2.volumes.create(with_volume_options)
 
         logger.info("Creating volume '#{volume.id}'")
         ResourceWait.for_volume(volume: volume, state: :available)
 
         volume.id
       end
-    end
-
-    def validate_disk_size(type, size)
-      raise ArgumentError, 'disk size needs to be an integer' unless size.kind_of?(Integer)
-
-      cloud_error('AWS CPI minimum disk size is 1 GiB') if size < 1024
-      if type == 'standard'
-        cloud_error('AWS CPI maximum disk size is 1 TiB') if size > 1024 * 1000
-      else
-        cloud_error('AWS CPI maximum disk size is 16 TiB') if size > 1024 * 16000
-      end
-    end
-
-    def validate_disk_type(type)
-      unless %w[gp2 standard io1].include?(type)
-        cloud_error('AWS CPI supports only gp2, io1, or standard disk type')
-      end
-      type
     end
 
     ##

@@ -607,8 +607,8 @@ describe Bosh::AwsCloud::InstanceManager do
           end
 
           context 'when specifying the ephemeral disk type' do
-            it 'uses it blindly' do
-              set_ephemeral_disk_type('some_disk_type')
+            it 'uses the specified type' do
+              set_ephemeral_disk_type('gp2')
 
               allow(aws_instances).to receive(:create) { aws_instance }
 
@@ -619,7 +619,7 @@ describe Bosh::AwsCloud::InstanceManager do
                   device_name: '/dev/sdb',
                   ebs: {
                     volume_size: 10,
-                    volume_type: 'some_disk_type',
+                    volume_type: 'gp2',
                     delete_on_termination: true,
                   }
                 }])
@@ -663,13 +663,13 @@ describe Bosh::AwsCloud::InstanceManager do
 
             context 'when type is not io1' do
               it 'raises an error if iops are specified' do
-                set_ephemeral_disk_type('bar', 123)
+                set_ephemeral_disk_type('gp2', 123)
 
                 allow(aws_instances).to receive(:create) { aws_instance }
 
                 expect { create_instance }.to raise_error(
                   Bosh::Clouds::CloudError,
-                  "Cannot specify an 'iops' value when disk type is 'bar'. 'iops' is only allowed for 'io1' volume types."
+                  "Cannot specify an 'iops' value when disk type is 'gp2'. 'iops' is only allowed for 'io1' volume types."
                 )
               end
             end

@@ -248,9 +248,20 @@ describe Bosh::AwsCloud::Cloud do
               ).and_return(volume)
               cloud.create_disk(disk_size, cloud_properties, 42)
             end
+
+            it 'raises an error when iops is provided' do
+              cloud_properties = { 'type' => disk_type, 'iops' => 1 }
+              expect {
+                cloud.create_disk(disk_size, cloud_properties, 42)
+              }.to raise_error(
+                Bosh::Clouds::CloudError,
+                "Cannot specify an 'iops' value when disk type is '#{disk_type}'. 'iops' is only allowed for 'io1' volume types."
+              )
+            end
           end
 
           context 'when disk type is io1' do
+            let(:cloud_properties) { { 'type' => disk_type, 'iops' => 123 } }
             let(:disk_type) { 'io1' }
 
             it 'creates disk with io1 type' do
@@ -258,9 +269,20 @@ describe Bosh::AwsCloud::Cloud do
                 size: 10000,
                 availability_zone: 'fake-availability-zone',
                 volume_type: 'io1',
+                iops: 123,
                 encrypted: false
               ).and_return(volume)
               cloud.create_disk(disk_size, cloud_properties, 42)
+            end
+
+            it 'raises an error when iops is omitted' do
+              cloud_properties = { 'type' => disk_type }
+              expect {
+                cloud.create_disk(disk_size, cloud_properties, 42)
+              }.to raise_error(
+                Bosh::Clouds::CloudError,
+                "Must specify an 'iops' value when the volume type is '#{disk_type}'"
+              )
             end
           end
         end
@@ -280,10 +302,19 @@ describe Bosh::AwsCloud::Cloud do
               ).and_return(volume)
               cloud.create_disk(disk_size, cloud_properties, 42)
             end
+
+            it 'raises an error when iops is provided' do
+              cloud_properties = { 'type' => disk_type, 'iops' => 1 }
+              expect {
+                cloud.create_disk(disk_size, cloud_properties, 42)
+              }.to raise_error(
+                Bosh::Clouds::CloudError,
+                "Cannot specify an 'iops' value when disk type is '#{disk_type}'. 'iops' is only allowed for 'io1' volume types."
+              )
+            end
           end
         end
       end
-
 
       context 'when disk type is not provided' do
         let(:cloud_properties) { {} }

@@ -177,10 +177,17 @@ module Bosh::AwsCloud
     def block_device_mapping(virtualization_type, resource_pool)
       ephemeral_disk_options = resource_pool.fetch("ephemeral_disk", {})
 
-      ephemeral_volume_size_in_mb = ephemeral_disk_options.fetch('size', 0)
-      ephemeral_volume_size_in_gb = (ephemeral_volume_size_in_mb / 1024.0).ceil
-      ephemeral_volume_type = ephemeral_disk_options.fetch('type', 'standard')
-      ephemeral_volume_iops = ephemeral_disk_options['iops']
+      requested_size = ephemeral_disk_options['size'] || 0
+      actual_size = ephemeral_disk_options['size'] || 10 * 1024
+
+      ephemeral_volume_properties = VolumeProperties.new(
+        size: actual_size,
+        type: ephemeral_disk_options['type'],
+        iops: ephemeral_disk_options['iops'],
+      )
+
+      ephemeral_volume_properties.validate!
+
       instance_type = resource_pool.fetch('instance_type', 'unspecified')
       raw_instance_storage = resource_pool.fetch('raw_instance_storage', false)
 
@@ -189,20 +196,9 @@ module Bosh::AwsCloud
         raise Bosh::Clouds::CloudError, "raw_instance_storage requested for instance type '#{instance_type}' that does not have instance storage"
       end
 
-      case ephemeral_volume_type
-      when 'io1'
-        error = "Must specify an 'iops' value when the volume type is 'io1'"
-        raise Bosh::Clouds::CloudError, error if ephemeral_volume_iops.nil?
-      else
-        error = "Cannot specify an 'iops' value when disk type is '#{ephemeral_volume_type}'. 'iops' is only allowed for 'io1' volume types."
-        raise Bosh::Clouds::CloudError, error unless ephemeral_volume_iops.nil?
-      end
-
-      if raw_instance_storage || local_disk_info.nil? || local_disk_info.size < ephemeral_volume_size_in_gb
+      if raw_instance_storage || local_disk_info.nil? || local_disk_info.size < (requested_size / 1024.0).ceil
         @logger.debug('Use EBS storage to create the virtual machine')
-
-        ephemeral_volume_size_in_gb = 10 if ephemeral_volume_size_in_gb == 0
-        block_device_mapping_param = ebs_ephemeral_disk_mapping(ephemeral_volume_size_in_gb, ephemeral_volume_type, ephemeral_volume_iops)
+        block_device_mapping_param = InstancesCreatePresenter.new(ephemeral_volume_properties).present
       else
         @logger.debug('Use instance storage to create the virtual machine')
         block_device_mapping_param = default_ephemeral_disk_mapping
