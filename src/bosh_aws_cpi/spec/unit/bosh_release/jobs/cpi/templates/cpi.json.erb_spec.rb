@@ -137,6 +137,7 @@ describe 'cpi.json.erb' do
             'credentials_source' => 'static',
             'access_key_id' => 'blobstore-access-key-id',
             'secret_access_key' => 'blobstore-secret-access-key',
+            'region' => 'us-east-1',
             'use_ssl' => false,
             'host' => 'blobstore-host',
             'port' => 21,
