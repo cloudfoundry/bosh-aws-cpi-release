@@ -24,3 +24,4 @@ params:
   stack_prefix:          replace-me
   use_iam:               replace-me
   use_s3_blobstore:      replace-me
+  s3_signature_version:  replace-me

@@ -90,6 +90,8 @@ jobs:
             aws_secret_access_key: {{aws_secret_key__e2e_us}}
             director_password:     {{bosh_director_password}}
             director_username:     {{bosh_director_username}}
+            s3_signature_version:  4
+            region_name:           {{aws_region__e2e_us}}
             private_key_data:      {{e2e_private_key}}
             public_key_name:       {{e2e_public_key_name}}
             region_name:           {{aws_region__e2e_us}}
@@ -131,6 +133,8 @@ jobs:
             aws_secret_access_key: {{aws_secret_key__e2e_china}}
             director_password:     {{bosh_director_password}}
             director_username:     {{bosh_director_username}}
+            s3_signature_version:  4
+            region_name:           {{aws_region__e2e_china}}
             private_key_data:      {{e2e_private_key}}
             public_key_name:       {{e2e_public_key_name}}
             region_name:           {{aws_region__e2e_china}}
