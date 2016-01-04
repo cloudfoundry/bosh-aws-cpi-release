@@ -15,7 +15,6 @@ check_param stack_name
 check_param stack_prefix
 check_param use_iam
 check_param use_s3_blobstore
-check_param s3_signature_version
 
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
@@ -69,7 +68,6 @@ if [ "${use_s3_blobstore}" = true ]; then
       secret_access_key: ${aws_secret_access_key}
       director: {user: director, password: director-password}
       agent: {user: agent, password: agent-password}
-      signature_version: ${s3_signature_version}
 EO_BLOBSTORE_CFG_S3
 else
   read -r -d '' BLOBSTORE_CONFIGURATION <<EO_BLOBSTORE_CFG_DAV || true
