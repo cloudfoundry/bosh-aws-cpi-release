@@ -205,7 +205,7 @@ describe Bosh::AwsCloud::Cloud do
       end
 
       context 'when disk type is io1' do
-        let(:cloud_properties) { { 'type' => 'io1' } }
+        let(:cloud_properties) { { 'type' => 'io1', 'iops' => 10 } }
 
         it 'raises an error' do
           expect {

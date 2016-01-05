@@ -800,7 +800,7 @@ describe Bosh::AwsCloud::InstanceManager do
 
             expect { create_instance }.to raise_error(
               Bosh::Clouds::CloudError,
-              'root_disk block provided without size'
+              'AWS CPI minimum disk size is 1 GiB'
             )
           end
 
@@ -825,6 +825,79 @@ describe Bosh::AwsCloud::InstanceManager do
                   delete_on_termination: true
                 }
               }])
+            end
+          end
+
+          context 'when root disk type is io1' do
+            it 'should throw error if iops is not specified' do
+              resource_pool['root_disk'] = {
+                'type' => 'io1',
+                'size' => 42 * 1024.0
+              }
+
+              allow(aws_instances).to receive(:create) {aws_instance}
+
+              expect { create_instance }.to raise_error(
+                  Bosh::Clouds::CloudError,
+                  "Must specify an 'iops' value when the volume type is 'io1'"
+                )
+            end
+
+            it 'raises an error if iops is greater than 20,000' do
+              resource_pool['root_disk'] = {
+                'type' => 'io1',
+                'size' => 42 * 1024.0,
+                'iops' => 30000
+              }
+
+              allow(aws_instances).to receive(:create) {aws_instance}
+
+              expect { create_instance }.to raise_error(
+                  Bosh::Clouds::CloudError,
+                 'AWS CPI maximum iops is 20000'
+                )
+            end
+
+            it 'raises an error if the ratio of iops/size_in_gb > 30' do
+              resource_pool['root_disk'] = {
+                'type' => 'io1',
+                'size' => 4 * 1024.0,
+                'iops' => 10000
+              }
+
+              allow(aws_instances).to receive(:create) {aws_instance}
+
+              expect { create_instance }.to raise_error(
+                  Bosh::Clouds::CloudError,
+                  'AWS CPI maximum ratio iops/size is 30'
+                )
+            end
+
+            it 'should create disk type of io1 with iops' do
+              resource_pool['root_disk'] = {
+                'type' => 'io1',
+                'size' => 42 * 1024.0,
+                'iops' => 1000
+              }
+
+              allow(aws_instances).to receive(:create) {aws_instance}
+
+              create_instance
+
+              expect(aws_instances).to have_received(:create) do |instance_params|
+                expect(instance_params[:block_device_mappings]).to eq([{
+                  device_name: '/dev/sdb',
+                  virtual_name: 'ephemeral0',
+                }, {
+                  device_name: '/dev/xvda',
+                  ebs: {
+                    volume_size: 42,
+                    volume_type: 'io1',
+                    iops: 1000,
+                    delete_on_termination: true
+                  }
+                }])
+              end
             end
           end
 

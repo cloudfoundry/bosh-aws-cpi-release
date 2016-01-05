@@ -7,6 +7,7 @@ module Bosh::AwsCloud
 
     class DiskInfo
       attr_reader :size, :count
+
       def initialize(size, count)
         @size = size
         @count = count
@@ -14,59 +15,59 @@ module Bosh::AwsCloud
     end
 
     InstanceStorageMap = {
-        # previous generation
-        'm1.small' => DiskInfo.new(160, 1),
-        'm1.medium' => DiskInfo.new(410, 1),
-        'm1.large' => DiskInfo.new(420, 2),
-        'm1.xlarge' => DiskInfo.new(420, 4),
+      # previous generation
+      'm1.small' => DiskInfo.new(160, 1),
+      'm1.medium' => DiskInfo.new(410, 1),
+      'm1.large' => DiskInfo.new(420, 2),
+      'm1.xlarge' => DiskInfo.new(420, 4),
 
-        'c1.medium' => DiskInfo.new(350, 1),
-        'c1.xlarge' => DiskInfo.new(420, 4),
+      'c1.medium' => DiskInfo.new(350, 1),
+      'c1.xlarge' => DiskInfo.new(420, 4),
 
-        'cc2.8xlarge' => DiskInfo.new(840, 4),
+      'cc2.8xlarge' => DiskInfo.new(840, 4),
 
-        'cg1.4xlarge' => DiskInfo.new(840, 2),
+      'cg1.4xlarge' => DiskInfo.new(840, 2),
 
-        'm2.xlarge' => DiskInfo.new(420, 1),
-        'm2.2xlarge' => DiskInfo.new(850, 1),
-        'm2.4xlarge' => DiskInfo.new(840, 2),
+      'm2.xlarge' => DiskInfo.new(420, 1),
+      'm2.2xlarge' => DiskInfo.new(850, 1),
+      'm2.4xlarge' => DiskInfo.new(840, 2),
 
-        'cr1.8xlarge' => DiskInfo.new(120, 2),
+      'cr1.8xlarge' => DiskInfo.new(120, 2),
 
-        'hi1.4xlarge' => DiskInfo.new(1024, 2),
+      'hi1.4xlarge' => DiskInfo.new(1024, 2),
 
-        'hs1.8xlarge' => DiskInfo.new(2000, 24),
+      'hs1.8xlarge' => DiskInfo.new(2000, 24),
 
-        # current generation
-        'm3.medium' => DiskInfo.new(4, 1),
-        'm3.large' => DiskInfo.new(32, 1),
-        'm3.xlarge' => DiskInfo.new(40, 2),
-        'm3.2xlarge' => DiskInfo.new(80, 2),
+      # current generation
+      'm3.medium' => DiskInfo.new(4, 1),
+      'm3.large' => DiskInfo.new(32, 1),
+      'm3.xlarge' => DiskInfo.new(40, 2),
+      'm3.2xlarge' => DiskInfo.new(80, 2),
 
-        'c3.large' => DiskInfo.new(16, 2),
-        'c3.xlarge' => DiskInfo.new(40, 2),
-        'c3.2xlarge' => DiskInfo.new(80, 2),
-        'c3.4xlarge' => DiskInfo.new(160, 2),
-        'c3.8xlarge' => DiskInfo.new(320, 2),
+      'c3.large' => DiskInfo.new(16, 2),
+      'c3.xlarge' => DiskInfo.new(40, 2),
+      'c3.2xlarge' => DiskInfo.new(80, 2),
+      'c3.4xlarge' => DiskInfo.new(160, 2),
+      'c3.8xlarge' => DiskInfo.new(320, 2),
 
-        'r3.large' => DiskInfo.new(32, 1),
-        'r3.xlarge' => DiskInfo.new(80, 1),
-        'r3.2xlarge' => DiskInfo.new(160, 1),
-        'r3.4xlarge' => DiskInfo.new(320, 1),
-        'r3.8xlarge' => DiskInfo.new(320, 2),
+      'r3.large' => DiskInfo.new(32, 1),
+      'r3.xlarge' => DiskInfo.new(80, 1),
+      'r3.2xlarge' => DiskInfo.new(160, 1),
+      'r3.4xlarge' => DiskInfo.new(320, 1),
+      'r3.8xlarge' => DiskInfo.new(320, 2),
 
-        'g2.2xlarge' => DiskInfo.new(60, 1),
-        'g2.8xlarge' => DiskInfo.new(120, 2),
+      'g2.2xlarge' => DiskInfo.new(60, 1),
+      'g2.8xlarge' => DiskInfo.new(120, 2),
 
-        'i2.xlarge' => DiskInfo.new(800, 1),
-        'i2.2xlarge' => DiskInfo.new(800, 2),
-        'i2.4xlarge' => DiskInfo.new(800, 4),
-        'i2.8xlarge' => DiskInfo.new(800, 8),
+      'i2.xlarge' => DiskInfo.new(800, 1),
+      'i2.2xlarge' => DiskInfo.new(800, 2),
+      'i2.4xlarge' => DiskInfo.new(800, 4),
+      'i2.8xlarge' => DiskInfo.new(800, 8),
 
-        'd2.xlarge' => DiskInfo.new(2000, 3),
-        'd2.2xlarge' => DiskInfo.new(2000, 6),
-        'd2.4xlarge' => DiskInfo.new(2000, 12),
-        'd2.8xlarge' => DiskInfo.new(2000, 24)
+      'd2.xlarge' => DiskInfo.new(2000, 3),
+      'd2.2xlarge' => DiskInfo.new(2000, 6),
+      'd2.4xlarge' => DiskInfo.new(2000, 12),
+      'd2.8xlarge' => DiskInfo.new(2000, 24)
     }
 
     def initialize(region, registry, elb, az_selector, logger)
@@ -102,9 +103,9 @@ module Bosh::AwsCloud
       end
 
       block_device_agent_info = block_device_info
-                                    .group_by { |v| v[:bosh_type] }
-                                    .map { |type, devices| {type => devices.map { |device| {"path" => device[:device_name] }}}}
-                                    .inject({}) { |a, b| a.merge(b) }
+                                  .group_by { |v| v[:bosh_type] }
+                                  .map { |type, devices| {type => devices.map { |device| {"path" => device[:device_name]} }} }
+                                  .inject({}) { |a, b| a.merge(b) }
 
       return instance, block_device_agent_info
     end
@@ -123,7 +124,7 @@ module Bosh::AwsCloud
       instance_params = {count: 1}
       instance_params[:image_id] = stemcell_id
       instance_params[:instance_type] = resource_pool["instance_type"]
-      instance_params[:block_device_mappings] = block_device_info.map { |entry| entry.reject{ |k| k == :bosh_type } }
+      instance_params[:block_device_mappings] = block_device_info.map { |entry| entry.reject { |k| k == :bosh_type } }
       instance_params[:placement_group] = resource_pool["placement_group"] if resource_pool["placement_group"]
       instance_params[:dedicated_tenancy] = true if resource_pool["tenancy"] == "dedicated"
 
@@ -172,7 +173,9 @@ module Bosh::AwsCloud
       end
     end
 
-    def instance_create_wait_time; 30; end
+    def instance_create_wait_time
+      30
+    end
 
     def block_device_mapping(virtualization_type, resource_pool)
       ephemeral_disk_options = resource_pool.fetch("ephemeral_disk", {})
@@ -210,38 +213,44 @@ module Bosh::AwsCloud
         next_device = first_raw_ephemeral_device(virtualization_type)
         for i in 0..local_disk_info.count - 1 do
           block_device_mapping_param << {
-              virtual_name: "ephemeral#{i}",
-              device_name: next_device,
-              bosh_type: "raw_ephemeral",
+            virtual_name: "ephemeral#{i}",
+            device_name: next_device,
+            bosh_type: "raw_ephemeral",
           }
           next_device = next_device.next
         end
       end
 
-      if(resource_pool.has_key?("root_disk"))
+      if (resource_pool.has_key?('root_disk'))
+        root_disk_size_in_mb = resource_pool['root_disk']['size']
+        root_disk_type = resource_pool['root_disk'].fetch('type', 'standard')
+        root_disk_iops = resource_pool['root_disk']['iops']
+        root_disk_volume_properties = VolumeProperties.new(
+          size: root_disk_size_in_mb,
+          type: root_disk_type,
+          iops: root_disk_iops
+        )
+        root_disk_volume_properties.validate!
 
-        if resource_pool["root_disk"]["size"].nil?
-          raise Bosh::Clouds::CloudError, "root_disk block provided without size"
-        end
-
-        root_disk_size_in_mb = resource_pool["root_disk"]['size']
-        root_disk_type = resource_pool["root_disk"].fetch('type', 'standard')
-
-        root_device  =  {
-            :volume_size => (root_disk_size_in_mb / 1024.0).ceil,
-            :volume_type => root_disk_type,
-            :delete_on_termination => true
+        root_device = {
+          :volume_size => (root_disk_size_in_mb / 1024.0).ceil,
+          :volume_type => root_disk_type,
+          :delete_on_termination => true,
         }
+
+        if root_disk_type == 'io1' && root_disk_iops > 0
+          root_device[:iops] = root_disk_iops
+        end
 
         if virtualization_type == :hvm
           block_device_mapping_param << {
-              device_name: "/dev/xvda",
-              ebs: root_device
+            device_name: "/dev/xvda",
+            ebs: root_device
           }
         else
           block_device_mapping_param << {
-              device_name: "/dev/sda",
-              ebs: root_device
+            device_name: "/dev/sda",
+            ebs: root_device
           }
         end
       end
