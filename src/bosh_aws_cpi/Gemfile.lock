@@ -1,12 +1,12 @@
 PATH
   remote: .
   specs:
-    bosh_aws_cpi (2.1.0)
+    bosh_aws_cpi (2.1.1)
       aws-sdk (= 1.60.2)
       bosh-registry
       bosh_common
       bosh_cpi
-      httpclient (= 2.4.0)
+      httpclient (= 2.7.1)
       yajl-ruby (>= 0.8.2)
 
 GEM
@@ -139,7 +139,7 @@ GEM
       fog-core
       nokogiri (~> 1.5, >= 1.5.11)
     formatador (0.2.5)
-    httpclient (2.4.0)
+    httpclient (2.7.1)
     inflecto (0.0.2)
     ipaddress (0.8.0)
     json (1.8.3)
@@ -199,4 +199,4 @@ DEPENDENCIES
   webmock
 
 BUNDLED WITH
-   1.10.6
+   1.11.2
