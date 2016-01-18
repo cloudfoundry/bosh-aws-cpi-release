@@ -176,7 +176,6 @@ module Bosh::AwsCloud
         "Waiting for #{desc} to be #{target_state}",
         { interval: 2, total: tries, max: 32, exponential: true }
       )
-      errors << AWS::EC2::Errors::RequestLimitExceeded
       ensure_cb = Proc.new do |retries|
         cloud_error("Timed out waiting for #{desc} to be #{target_state}, took #{time_passed}s") if retries == tries
       end
