@@ -32,8 +32,6 @@ module Bosh::AwsCloud
       @aws_params = {
         credentials_source: aws_properties['credentials_source'] || 'static',
         region:            aws_properties['region'],
-        ec2_endpoint:      aws_properties['ec2_endpoint'] || default_ec2_endpoint,
-        elb_endpoint:      aws_properties['elb_endpoint'] || default_elb_endpoint,
         max_retries:       aws_properties['max_retries']  || DEFAULT_MAX_RETRIES,
         logger:            aws_logger
       }
@@ -153,10 +151,6 @@ module Bosh::AwsCloud
           raise e
         end
       end
-    end
-
-    def default_elb_endpoint
-      ['elasticloadbalancing', aws_region, 'amazonaws.com'].compact.join('.')
     end
 
     ##
@@ -551,11 +545,6 @@ module Bosh::AwsCloud
 
     attr_reader :az_selector
     attr_reader :region
-
-    def default_ec2_endpoint
-      region_suffix = (aws_region && aws_region.start_with?('cn')) ? 'cn' : nil
-      ['ec2', aws_region, 'amazonaws.com', region_suffix].compact.join('.')
-    end
 
     def agent_properties
       @agent_properties ||= options.fetch('agent', {})

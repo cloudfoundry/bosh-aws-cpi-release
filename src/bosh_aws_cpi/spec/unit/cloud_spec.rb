@@ -56,11 +56,6 @@ describe Bosh::AwsCloud::Cloud do
       end
 
       context 'when optional properties are not provided' do
-        it 'default values are used for endpoints' do
-          expect(cloud.ec2.config.ec2_endpoint).to eq('ec2.fake-region.amazonaws.com')
-          expect(cloud.ec2.config.elb_endpoint).to eq('elasticloadbalancing.fake-region.amazonaws.com')
-        end
-
         it 'default value is used for max retries' do
           expect(cloud.ec2.config.max_retries).to be 2
         end
@@ -118,38 +113,6 @@ describe Bosh::AwsCloud::Cloud do
 
       it 'raises an exception with a user friendly message' do
         expect { cloud }.to raise_error(Bosh::Clouds::CloudError, 'Please make sure the CPI has proper network access to AWS. #<Net::OpenTimeout: execution expired>')
-      end
-    end
-
-    describe 'the default ec2 endpoint' do
-      let(:aws_region) { 'fake-region' }
-      let(:aws_options) do
-        {
-          'access_key_id' => 'keys to my heart',
-          'secret_access_key' => 'open sesame',
-          'region' => aws_region,
-          'default_key_name' => 'sesame',
-        }
-      end
-
-      it 'correctly produces the endpoint' do
-        expect(cloud.ec2.config.ec2_endpoint).to eq('ec2.fake-region.amazonaws.com')
-      end
-
-      context 'when running in china' do
-        let(:aws_region) { 'cn-fake-china-region' }
-
-        it 'correctly produces the endpoint' do
-          expect(cloud.ec2.config.ec2_endpoint).to eq('ec2.cn-fake-china-region.amazonaws.com.cn')
-        end
-      end
-
-      context 'region is nil' do
-        let(:aws_region) { nil }
-
-        it 'correctly produces the endpoint' do
-          expect(cloud.ec2.config.ec2_endpoint).to eq('ec2.amazonaws.com')
-        end
       end
     end
   end
