@@ -3,7 +3,7 @@ set -e
 
 export PATH=$(readlink -nf /var/vcap/packages/jq):${PATH}
 
-elb_id=<%= p(load_balancer_name) %>
+elb_id=<%= p('load_balancer_name') %>
 
 echo "Installing pip"
 python /var/vcap/jobs/elb-registration-test/packages/python-pip/get-pip.py
