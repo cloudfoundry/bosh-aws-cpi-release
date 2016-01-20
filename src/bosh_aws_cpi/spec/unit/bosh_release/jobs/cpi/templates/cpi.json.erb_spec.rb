@@ -190,7 +190,7 @@ describe 'cpi.json.erb' do
           's3_force_path_style' => true,
           'ssl_verify_peer' => true,
           's3_multipart_threshold' => 123,
-          'signature_version' => '11'
+          's3_signature_version' => '11'
         })
       end
 
@@ -229,7 +229,7 @@ describe 'cpi.json.erb' do
             's3_force_path_style' => true,
             'ssl_verify_peer' => true,
             's3_multipart_threshold' => 33,
-            'signature_version' => '99',
+            's3_signature_version' => '99',
           }
         }
 
@@ -244,7 +244,7 @@ describe 'cpi.json.erb' do
           's3_force_path_style' => false,
           'ssl_verify_peer' => false,
           's3_multipart_threshold' => 22,
-          'signature_version' => '11',
+          's3_signature_version' => '11',
         })
 
         expect(rendered_blobstore['options']['access_key_id']).to eq('agent_access_key_id')
