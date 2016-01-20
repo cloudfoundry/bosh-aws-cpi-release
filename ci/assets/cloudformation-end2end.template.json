@@ -359,6 +359,39 @@
         ]
       }
     },
+    "End2EndELB": {
+      "DependsOn": [
+        "End2EndPrivateSubnet",
+        "CISecurityGroup"
+      ],
+      "Type": "AWS::ElasticLoadBalancing::LoadBalancer",
+      "Properties": {
+        "Listeners": [
+          {
+            "InstancePort": 80,
+            "LoadBalancerPort": 80,
+            "Protocol": "HTTP"
+          }
+        ],
+        "LoadBalancerName": "bosh-aws-cpi-e2e-elb",
+        "SecurityGroups": [
+          {
+            "Ref": "CISecurityGroup"
+          }
+        ],
+        "Subnets": [
+          {
+            "Ref": "End2EndPrivateSubnet"
+          }
+        ],
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "bosh-aws-cpi-e2e-elb"
+          }
+        ]
+      }
+    },
     "End2EndIPAddress1": {
       "DependsOn": [
         "AttachGateway"
@@ -555,6 +588,7 @@
   "Outputs": {
     "VPCID": { "Value": { "Ref": "VPC"}},
     "End2EndSecurityGroupID": { "Value": { "Ref": "CISecurityGroup"}},
+    "End2EndELB": { "Value": { "Fn::GetAtt": [ "End2EndELB", "DNSName"]}},
     "End2EndDirectorEIP": { "Value": { "Ref": "End2EndIPAddress1"}},
     "End2EndSubnetID": { "Value": { "Ref": "End2EndPublicSubnet"}},
     "End2EndDynamicSubnetID": { "Value": { "Ref": "End2EndPrivateSubnet"}},

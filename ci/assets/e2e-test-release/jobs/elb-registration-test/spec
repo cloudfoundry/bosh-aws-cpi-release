@@ -1,0 +1,13 @@
+---
+name: elb-registration-test
+
+packages:
+- jq
+- python-pip
+
+templates:
+  run.erb: bin/run
+
+properties:
+  load_balancer_name:
+    description: The name of the ELB with which the errand should be registered

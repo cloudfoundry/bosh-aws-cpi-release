@@ -3,3 +3,7 @@ jq/jq-linux64:
   object_id: 5cfeea4f-a4be-4b24-8cb4-6d172498b3e8
   sha: d8e36831c3c94bb58be34dd544f44a6c6cb88568
   size: 3027945
+python-pip/get-pip.py:
+  object_id: 82febf0e-21ff-4de2-8200-e8959869c36f
+  sha: 4645795f303c2a8a02d9957514af8a28fd8770c2
+  size: 1412744

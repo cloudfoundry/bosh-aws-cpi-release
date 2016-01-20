@@ -27,6 +27,7 @@ SUBNET_ID=$(get_stack_info_of "${stack_info}" "${stack_prefix}DynamicSubnetID")
 AVAILABILITY_ZONE=$(get_stack_info_of "${stack_info}" "${stack_prefix}AvailabilityZone")
 DIRECTOR_IP=$(get_stack_info_of "${stack_info}" "${stack_prefix}DirectorEIP")
 IAM_INSTANCE_PROFILE=$(get_stack_info_of "${stack_info}" "End2EndIAMInstanceProfile")
+ELB_NAME=$(get_stack_info_of "${stack_info}" "End2EndELB")
 
 e2e_deployment_name=e2e-test
 e2e_release_name=${e2e_deployment_name}-release
@@ -83,6 +84,11 @@ resource_pools:
     cloud_properties:
       <<: *default_cloud_properties
       raw_instance_storage: true
+  - <<: *default_resource_pool
+    name: elb_registration_pool
+    cloud_properties:
+      <<: *default_cloud_properties
+      elbs: [${ELB_NAME}]
 
 networks:
   - name: private
@@ -106,9 +112,18 @@ jobs:
     networks:
       - name: private
         default: [dns, gateway]
+  - name: elb-registration-test
+    template: elb-registration-test
+    lifecycle: errand
+    instances: 1
+    resource_pool: elb_registration_pool
+    networks:
+      - name: private
+        default: [dns, gateway]
 
 properties:
   iam_instance_profile: ${IAM_INSTANCE_PROFILE}
+  load_balancer_name: ${ELB_NAME}
 EOF
 
 cat >> bosh-cpi-src/src/bosh_aws_cpi/spec/integration/Gemfile << EOF
