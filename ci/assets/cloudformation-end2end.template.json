@@ -588,7 +588,7 @@
   "Outputs": {
     "VPCID": { "Value": { "Ref": "VPC"}},
     "End2EndSecurityGroupID": { "Value": { "Ref": "CISecurityGroup"}},
-    "End2EndELB": { "Value": { "Fn::GetAtt": [ "End2EndELB", "DNSName"]}},
+    "End2EndELB": { "Value": { "Ref": "End2EndELB" }},
     "End2EndDirectorEIP": { "Value": { "Ref": "End2EndIPAddress1"}},
     "End2EndSubnetID": { "Value": { "Ref": "End2EndPublicSubnet"}},
     "End2EndDynamicSubnetID": { "Value": { "Ref": "End2EndPrivateSubnet"}},
