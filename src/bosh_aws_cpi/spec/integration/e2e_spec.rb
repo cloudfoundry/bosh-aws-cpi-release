@@ -39,6 +39,12 @@ describe 'Bosh - AWS CPI End 2 End tests' do
         bosh('run errand raw-ephemeral-disk-test')
       end
     end
+
+    context 'with elb' do
+      it 'properly adds the errand instance to the elb' do
+        bosh('run errand elb-registration-test')
+      end
+    end
   end
 
   def run_command(command)
