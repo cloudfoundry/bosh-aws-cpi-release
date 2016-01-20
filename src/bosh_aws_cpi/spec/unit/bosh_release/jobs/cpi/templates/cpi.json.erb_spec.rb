@@ -143,7 +143,8 @@ describe 'cpi.json.erb' do
             'port' => 21,
             's3_force_path_style' => true,
             'ssl_verify_peer' => true,
-            's3_multipart_threshold' => 123
+            's3_multipart_threshold' => 123,
+            'signature_version' => '2',
           }
         }
       )
@@ -168,6 +169,28 @@ describe 'cpi.json.erb' do
         manifest['properties']['blobstore']['credentials_source'] = 'blobstore_overridden'
         manifest['properties']['agent'] = {'blobstore' => {'credentials_source' => 'agent_overridden'}}
         expect(rendered_blobstore['options']['credentials_source']).to eq('agent_overridden')
+      end
+    end
+
+    context 'and an alternate signature_version is provided in the blobstore properties' do
+      it 'uses the overridden property' do
+        manifest['properties']['blobstore']['signature_version'] = 'blobstore_overridden'
+        expect(rendered_blobstore['options']['signature_version']).to eq('blobstore_overridden')
+      end
+    end
+
+    context 'and an alternate signature_version is provided in the agent blobstore properties' do
+      it 'uses the overridden property' do
+        manifest['properties']['agent'] = {'blobstore' => {'signature_version' => 'agent_overridden'}}
+        expect(rendered_blobstore['options']['signature_version']).to eq('agent_overridden')
+      end
+    end
+
+    context 'and an alternate signature_version is provided in both the blobstore and agent blobstore properties' do
+      it 'uses the overridden property' do
+        manifest['properties']['blobstore']['signature_version'] = 'blobstore_overridden'
+        manifest['properties']['agent'] = {'blobstore' => {'signature_version' => 'agent_overridden'}}
+        expect(rendered_blobstore['options']['signature_version']).to eq('agent_overridden')
       end
     end
 

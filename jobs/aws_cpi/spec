@@ -72,6 +72,8 @@ properties:
     description: Whether the agent blobstore plugin should verify its peer when using SSL
   agent.blobstore.s3_multipart_threshold:
     description: Agent blobstore threshold for multipart uploads
+  agent.blobstore.signature_version:
+    description: Signature version used to connect to an s3 blobstore
   blobstore.provider:
     description: Provider of the blobstore used by director and agent (dav|simple|s3)
     default: 'dav'
@@ -104,6 +106,9 @@ properties:
     description: Whether the simple blobstore plugin should verify its peer when using SSL
   blobstore.s3_multipart_threshold:
     description: Simple blobstore threshold for multipart uploads
+  blobstore.signature_version:
+    description: Signature version used to connect to an s3 blobstore
+    default: '2'
   blobstore.path:
     description: local blobstore path
   blobstore.address:
