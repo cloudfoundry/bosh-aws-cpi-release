@@ -11,3 +11,5 @@ templates:
 properties:
   load_balancer_name:
     description: The name of the ELB with which the errand should be registered
+  aws_region:
+    description: The AWS region in which the errand is run

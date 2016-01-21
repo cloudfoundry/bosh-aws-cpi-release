@@ -4,6 +4,7 @@ set -e
 export PATH=$(readlink -nf /var/vcap/packages/jq):${PATH}
 
 elb_id=<%= p('load_balancer_name') %>
+region=<%= p('aws_region') %>
 
 echo "Installing pip"
 python /var/vcap/jobs/elb-registration-test/packages/python-pip/get-pip.py
@@ -16,4 +17,4 @@ instance_id=$(curl http://169.254.169.254/latest/meta-data/instance-id)
 echo "instance id: $instance_id"
 
 echo "checking if our instance is registered with $elb_id"
-aws elb describe-load-balancers --load-balancer-names $elb_id | ./jq --arg instance_id $instance_id -e '.LoadBalancerDescriptions[0].Instances[] | select(.InstanceId == $instance_id)'
+aws --region $region elb describe-load-balancers --load-balancer-names $elb_id | jq --arg instance_id $instance_id -e '.LoadBalancerDescriptions[0].Instances[] | select(.InstanceId == $instance_id)'

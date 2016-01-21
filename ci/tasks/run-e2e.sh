@@ -124,6 +124,7 @@ jobs:
 properties:
   iam_instance_profile: ${IAM_INSTANCE_PROFILE}
   load_balancer_name: ${ELB_NAME}
+  aws_region: ${region_name}
 EOF
 
 cat >> bosh-cpi-src/src/bosh_aws_cpi/spec/integration/Gemfile << EOF
