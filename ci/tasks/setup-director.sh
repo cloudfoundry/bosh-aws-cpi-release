@@ -68,6 +68,7 @@ if [ "${use_s3_blobstore}" = true ]; then
       secret_access_key: ${aws_secret_access_key}
       director: {user: director, password: director-password}
       agent: {user: agent, password: agent-password}
+      s3_signature_version: '4'
 EO_BLOBSTORE_CFG_S3
 else
   read -r -d '' BLOBSTORE_CONFIGURATION <<EO_BLOBSTORE_CFG_DAV || true
