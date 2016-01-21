@@ -108,7 +108,6 @@ properties:
     description: Simple blobstore threshold for multipart uploads
   blobstore.s3_signature_version:
     description: Signature version used to connect to an s3 blobstore
-    default: '2'
   blobstore.path:
     description: local blobstore path
   blobstore.address:
