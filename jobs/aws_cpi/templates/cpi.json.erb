@@ -48,7 +48,6 @@ if_p('blobstore') do
       "credentials_source" => p(['agent.blobstore.credentials_source', 'blobstore.credentials_source']),
       "access_key_id" => p(['agent.blobstore.access_key_id', 'blobstore.access_key_id'], nil),
       "secret_access_key" => p(['agent.blobstore.secret_access_key', 'blobstore.secret_access_key'], nil),
-      "region" => p(['agent.blobstore.s3_region', 'blobstore.s3_region'], nil),
     }
 
     def update_blobstore_options(blobstore, manifest_key, rendered_key=manifest_key)
@@ -63,6 +62,7 @@ if_p('blobstore') do
     update_blobstore_options(blobstore, 'ssl_verify_peer')
     update_blobstore_options(blobstore, 's3_multipart_threshold')
     update_blobstore_options(blobstore, 's3_signature_version', 'signature_version')
+    update_blobstore_options(blobstore, 's3_region', 'region')
 
   elsif p('blobstore.provider') == 'local'
     blobstore["options"] = {

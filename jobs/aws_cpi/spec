@@ -90,7 +90,6 @@ properties:
     default: null
   blobstore.s3_region:
     description: AWS region used by s3 blobstore plugin (Required when blobstore.credentials_source is set to `static`)
-    default: 'us-east-1'
   blobstore.use_ssl:
     description: Whether the simple blobstore plugin should use SSL to connect to the blobstore server
     default: true
