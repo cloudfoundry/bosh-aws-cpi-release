@@ -183,7 +183,7 @@ resources:
   - name: aws-china-ubuntu-stemcell
     type: s3
     source:
-      regexp: light-china-bosh-stemcell-([0-9]+)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
+      regexp: light-china-bosh-stemcell-([0-9.]+)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
       bucket: {{s3_aws_china_ubuntu_stemcell_bucket}}
       region_name: {{aws_region__primary}}
 
