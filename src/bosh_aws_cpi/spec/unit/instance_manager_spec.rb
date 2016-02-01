@@ -843,36 +843,6 @@ describe Bosh::AwsCloud::InstanceManager do
                 )
             end
 
-            it 'raises an error if iops is greater than 20,000' do
-              resource_pool['root_disk'] = {
-                'type' => 'io1',
-                'size' => 42 * 1024.0,
-                'iops' => 30000
-              }
-
-              allow(aws_instances).to receive(:create) {aws_instance}
-
-              expect { create_instance }.to raise_error(
-                  Bosh::Clouds::CloudError,
-                 'AWS CPI maximum iops is 20000'
-                )
-            end
-
-            it 'raises an error if the ratio of iops/size_in_gb > 30' do
-              resource_pool['root_disk'] = {
-                'type' => 'io1',
-                'size' => 4 * 1024.0,
-                'iops' => 10000
-              }
-
-              allow(aws_instances).to receive(:create) {aws_instance}
-
-              expect { create_instance }.to raise_error(
-                  Bosh::Clouds::CloudError,
-                  'AWS CPI maximum ratio iops/size is 30'
-                )
-            end
-
             it 'should create disk type of io1 with iops' do
               resource_pool['root_disk'] = {
                 'type' => 'io1',
