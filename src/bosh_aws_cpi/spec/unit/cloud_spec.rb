@@ -130,54 +130,6 @@ describe Bosh::AwsCloud::Cloud do
       allow(Bosh::AwsCloud::ResourceWait).to receive(:for_volume).with(volume: volume, state: :available)
     end
 
-    context 'when disk size us smaller than 1 GiB' do
-      let(:disk_size) { 100 }
-
-      it 'raises an error' do
-        expect {
-          cloud.create_disk(disk_size, cloud_properties, 42)
-        }.to raise_error /AWS CPI minimum disk size is 1 GiB/
-      end
-    end
-
-    context 'when disk type is standard' do
-      let(:cloud_properties) { { 'type' => 'standard' } }
-
-      context 'when disk size is greater than 1 TiB' do
-        let(:disk_size) { 1024001 }
-
-        it 'raises an error' do
-          expect {
-            cloud.create_disk(disk_size, cloud_properties, 42)
-          }.to raise_error /AWS CPI maximum disk size is 1 TiB/
-        end
-      end
-    end
-
-    context 'when disk size is greater than 16 TiB' do
-      let(:disk_size) { 1025 * 17 * 1000 }
-
-      context 'when disk type is gp2' do
-        let(:cloud_properties) { { 'type' => 'gp2' } }
-
-        it 'raises an error' do
-          expect {
-            cloud.create_disk(disk_size, cloud_properties, 42)
-          }.to raise_error /AWS CPI maximum disk size is 16 TiB/
-        end
-      end
-
-      context 'when disk type is io1' do
-        let(:cloud_properties) { { 'type' => 'io1', 'iops' => 10 } }
-
-        it 'raises an error' do
-          expect {
-            cloud.create_disk(disk_size, cloud_properties, 42)
-          }.to raise_error /AWS CPI maximum disk size is 16 TiB/
-        end
-      end
-    end
-
     context 'when volumes are set' do
       let(:ec2) { instance_double('AWS::EC2', volumes: volumes) }
       let(:volumes) { instance_double('AWS::EC2::VolumeCollection') }

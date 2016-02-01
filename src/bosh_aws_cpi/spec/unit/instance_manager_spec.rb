@@ -800,7 +800,7 @@ describe Bosh::AwsCloud::InstanceManager do
 
             expect { create_instance }.to raise_error(
               Bosh::Clouds::CloudError,
-              'AWS CPI minimum disk size is 1 GiB'
+              'AWS CPI disk size must be greater than 0'
             )
           end
 

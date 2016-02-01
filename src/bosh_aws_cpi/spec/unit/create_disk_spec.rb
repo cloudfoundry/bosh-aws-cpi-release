@@ -32,14 +32,10 @@ describe Bosh::AwsCloud::Cloud do
     end
   end
 
-  it 'check min and max disk size' do
+  it 'checks that the disk size is greater than 0' do
     expect {
-      @cloud.create_disk(100, {})
-    }.to raise_error(Bosh::Clouds::CloudError, /minimum disk size is 1 GiB/)
-
-    expect {
-      @cloud.create_disk(2000 * 1024, {})
-    }.to raise_error(Bosh::Clouds::CloudError, /maximum disk size is 1 TiB/)
+      @cloud.create_disk(0, {})
+    }.to raise_error(Bosh::Clouds::CloudError, /disk size must be greater than 0/)
   end
 
   it 'puts disk in the same AZ as an instance' do
