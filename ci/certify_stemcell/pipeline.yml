@@ -76,7 +76,7 @@ jobs:
     serial_groups: [us]
     plan:
       - aggregate:
-        - {trigger: true,  get: stemcell,         resource: aws-ubuntu-hvm-stemcell }
+        - {trigger: true,  get: stemcell,         resource: ubuntu-stemcell }
         - {trigger: false, get: bosh-cpi-release, resource: bosh-aws-cpi-release}
         - {trigger: false, get: bosh-cpi-src}
         - {trigger: false, get: bosh-init}
@@ -117,7 +117,7 @@ jobs:
     serial_groups: [china]
     plan:
       - aggregate:
-        - {trigger: true,  get: stemcell,         resource: aws-china-ubuntu-stemcell }
+        - {trigger: true,  get: stemcell,         resource: ubuntu-stemcell }
         - {trigger: false, get: bosh-cpi-release, resource: bosh-aws-cpi-release}
         - {trigger: false, get: bosh-cpi-src}
         - {trigger: false, get: bosh-init}
@@ -174,17 +174,12 @@ resources:
     source:
       repository: cloudfoundry-incubator/bosh-aws-cpi-release
 
-  - name: aws-ubuntu-hvm-stemcell
-    type: bosh-io-stemcell
-    source:
-      name: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
-
-  - name: aws-china-ubuntu-stemcell
+  - name: ubuntu-stemcell
     type: s3
     source:
-      regexp: light-china-bosh-stemcell-([0-9.]+)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
-      bucket: {{s3_aws_china_ubuntu_stemcell_bucket}}
-      region_name: {{aws_region__primary}}
+      regexp: light-bosh-stemcell-([0-9.]+)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
+      bucket: bosh-aws-light-stemcells
+      region_name: us-east-1
 
   - name: bosh-init
     type: s3
