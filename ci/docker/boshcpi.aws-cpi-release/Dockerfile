@@ -53,3 +53,8 @@ RUN /bin/bash -l -c "               \
   popd ;                            \
   rm -rf /tmp/bosh_aws_cpi ;    \
 "
+
+RUN cd /tmp && \
+    curl -O -L https://storage.googleapis.com/calebamiles-sharing/certify-artifacts && \
+    chmod +x certify-artifacts && \
+    mv certify-artifacts /bin/certify-artifacts
