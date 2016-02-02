@@ -191,5 +191,5 @@ resources:
     type: s3
     source:
       regexp: bosh-init-([0-9.]+)-linux-amd64
-      bucket: {{s3_bosh_init_bucket}}
-      region_name: {{aws_region__primary}}
+      bucket: bosh-init-artifacts
+      region_name: us-east-1
