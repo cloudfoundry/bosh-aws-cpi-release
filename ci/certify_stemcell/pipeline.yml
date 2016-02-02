@@ -158,9 +158,8 @@ resources:
   - name: bosh-cpi-src
     type: git
     source:
-      uri: git@github.com:cloudfoundry-incubator/bosh-aws-cpi-release.git
+      uri: https://github.com/cloudfoundry-incubator/bosh-aws-cpi-release
       branch: master
-      private_key: {{github_deployment_key__bosh-aws-cpi-release}}
       ignore_paths:
         - .final_builds/**/*.yml
         - releases/**/*.yml
