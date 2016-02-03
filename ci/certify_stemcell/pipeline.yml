@@ -1,28 +1,4 @@
 ---
-groups:
-  - name: end2end
-    jobs:
-      - end2end-us
-      - end2end-china
-
-  - name: us
-    jobs:
-      - recreate-infrastructure-end2end-us
-      - end2end-us
-
-
-  - name: china
-    jobs:
-      - recreate-infrastructure-end2end-china
-      - end2end-china
-
-  - name: all
-    jobs:
-      - recreate-infrastructure-end2end-us
-      - recreate-infrastructure-end2end-china
-      - end2end-us
-      - end2end-china
-
 jobs:
   - name: recreate-infrastructure-end2end-us
     serial_groups: [us]
@@ -157,7 +133,7 @@ jobs:
   - name: bless
     plan:
       - aggregate:
-        - {trigger: false, get: bosh-cpi-src,     passed: [end2end-us, end2end-china]}
+        - {trigger: false, get: bosh-cpi-src}
         - {trigger: true,  get: bosh-cpi-release, passed: [end2end-us, end2end-china], resource: bosh-aws-cpi-release}
         - {trigger: true,  get: bosh-release,     passed: [end2end-us, end2end-china]}
         - {trigger: true,  get: stemcell,         passed: [end2end-us, end2end-china], resource: ubuntu-stemcell}
