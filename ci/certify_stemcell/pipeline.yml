@@ -158,9 +158,9 @@ jobs:
     plan:
       - aggregate:
         - {trigger: false, get: bosh-cpi-src,     passed: [end2end-us, end2end-china]}
-        - {trigger: true,  get: bosh-cpi-release, passed: [end2end-us, end2end-china, resource: bosh-aws-cpi-release}
+        - {trigger: true,  get: bosh-cpi-release, passed: [end2end-us, end2end-china], resource: bosh-aws-cpi-release}
         - {trigger: true,  get: bosh-release,     passed: [end2end-us, end2end-china]}
-        - {trigger: true,  get: stemcell,         passed: [end2end-us, end2end-china, resource: ubuntu-stemcell}
+        - {trigger: true,  get: stemcell,         passed: [end2end-us, end2end-china], resource: ubuntu-stemcell}
 
       - task: generate-certification
         file: bosh-cpi-src/ci/tasks/generate-certification.yml
