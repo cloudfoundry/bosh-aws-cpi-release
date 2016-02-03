@@ -6,7 +6,7 @@ set -e
 : ${cpi_release_name:?must be set}
 : ${stemcell_name:?must be set}
 
-timestamp=`date -u +"%Y-%m-%dT%H-%M-%SZ"`
+timestamp=`date -u +"%Y-%m-%dT%H:%M:%SZ"`
 bosh_release_version=$(cat bosh-release/version)
 cpi_release_version=$(cat bosh-cpi-release/version)
 stemcell_version=$(cat stemcell/version)
