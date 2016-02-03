@@ -117,7 +117,7 @@ jobs:
     serial_groups: [china]
     plan:
       - aggregate:
-        - {trigger: true,  get: stemcell,         resource: ubuntu-stemcell }
+        - {trigger: true,  get: stemcell,         resource: ubuntu-stemcell}
         - {trigger: false, get: bosh-cpi-release, resource: bosh-aws-cpi-release}
         - {trigger: false, get: bosh-cpi-src}
         - {trigger: false, get: bosh-init}
@@ -154,6 +154,26 @@ jobs:
       - task: teardown-director
         file: bosh-cpi-src/ci/tasks/teardown-director.yml
 
+  - name: bless
+    plan:
+      - aggregate:
+        - {trigger: false, get: bosh-cpi-src,     passed: [end2end-us, end2end-china]}
+        - {trigger: true,  get: bosh-cpi-release, passed: [end2end-us, end2end-china, resource: bosh-aws-cpi-release}
+        - {trigger: true,  get: bosh-release,     passed: [end2end-us, end2end-china]}
+        - {trigger: true,  get: stemcell,         passed: [end2end-us, end2end-china, resource: ubuntu-stemcell}
+
+      - task: generate-certification
+        file: bosh-cpi-src/ci/tasks/generate-certification.yml
+        config:
+          params:
+            bosh_release_name: bosh
+            cpi_release_name: bosh-aws-cpi
+            stemcell_name: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+
+      - put: certification
+        params:
+          file: certification-receipt/*.json
+
 resources:
   - name: bosh-cpi-src
     type: git
@@ -186,4 +206,13 @@ resources:
     source:
       regexp: bosh-init-([0-9.]+)-linux-amd64
       bucket: bosh-init-artifacts
+      region_name: us-east-1
+
+  - name: certification
+    type: s3
+    source:
+      access_key_id: {{certification__bucket_access_key}}
+      secret_access_key: {{certification__bucket_secret_key}}
+      bucket: {{certification__bucket}}
+      regexp: receipt-.*\.json
       region_name: us-east-1
