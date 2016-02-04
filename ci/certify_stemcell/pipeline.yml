@@ -6,23 +6,45 @@ jobs:
       - aggregate:
         - {trigger: false, get: bosh-cpi-src}
 
-      - task: check-for-running-instances
-        file: bosh-cpi-src/ci/tasks/check-for-running-instances.yml
-        config: &recreate-us-config
-          params:
-            aws_access_key_id:        {{aws_access_key__e2e_us}}
-            aws_secret_access_key:    {{aws_secret_key__e2e_us}}
-            region_name:              {{aws_region__e2e_us}}
-            stack_name:               end2end
-            stack_prefix:             End2End
+      - aggregate:
+        - do:
+          - task: check-for-ubuntu
+            file: bosh-cpi-src/ci/tasks/check-for-running-instances.yml
+            config: &ubuntu-us-config
+              params:
+                aws_access_key_id:        {{aws_access_key__e2e_us}}
+                aws_secret_access_key:    {{aws_secret_key__e2e_us}}
+                region_name:              {{aws_region__e2e_us}}
+                stack_name:               end2end-ubuntu
+                stack_template:           end2end
+                stack_prefix:             End2End
 
-      - task: teardown-infrastructure
-        file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
-        config: *recreate-us-config
+          - task: teardown-ubuntu
+            file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
+            config: *ubuntu-us-config
 
-      - task: setup-infrastructure
-        file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
-        config: *recreate-us-config
+          - task: setup-ubuntu
+            file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
+            config: *ubuntu-us-config
+        - do:
+          - task: check-for-centos
+            file: bosh-cpi-src/ci/tasks/check-for-running-instances.yml
+            config: &centos-us-config
+              params:
+                aws_access_key_id:        {{aws_access_key__e2e_us}}
+                aws_secret_access_key:    {{aws_secret_key__e2e_us}}
+                region_name:              {{aws_region__e2e_us}}
+                stack_name:               end2end-centos
+                stack_template:           end2end
+                stack_prefix:             End2End
+
+          - task: teardown-centos
+            file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
+            config: *centos-us-config
+
+          - task: setup-centos
+            file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
+            config: *centos-us-config
 
   - name: recreate-infrastructure-china
     serial_groups: [china]
@@ -30,23 +52,45 @@ jobs:
       - aggregate:
         - {trigger: false, get: bosh-cpi-src}
 
-      - task: check-for-running-instances
-        file: bosh-cpi-src/ci/tasks/check-for-running-instances.yml
-        config: &recreate-cn-config
-          params:
-            aws_access_key_id:        {{aws_access_key__e2e_china}}
-            aws_secret_access_key:    {{aws_secret_key__e2e_china}}
-            region_name:              {{aws_region__e2e_china}}
-            stack_name:               end2end
-            stack_prefix:             End2End
+      - aggregate:
+        - do:
+          - task: check-for-ubuntu
+            file: bosh-cpi-src/ci/tasks/check-for-running-instances.yml
+            config: &ubuntu-china-config
+              params:
+                aws_access_key_id:        {{aws_access_key__e2e_china}}
+                aws_secret_access_key:    {{aws_secret_key__e2e_china}}
+                region_name:              {{aws_region__e2e_china}}
+                stack_name:               end2end-ubuntu
+                stack_template:           end2end
+                stack_prefix:             End2End
 
-      - task: teardown-infrastructure
-        file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
-        config: *recreate-cn-config
+          - task: teardown-ubuntu
+            file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
+            config: *ubuntu-china-config
 
-      - task: setup-infrastructure
-        file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
-        config: *recreate-cn-config
+          - task: setup-ubuntu
+            file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
+            config: *ubuntu-china-config
+        - do:
+          - task: check-for-centos
+            file: bosh-cpi-src/ci/tasks/check-for-running-instances.yml
+            config: &centos-china-config
+              params:
+                aws_access_key_id:        {{aws_access_key__e2e_china}}
+                aws_secret_access_key:    {{aws_secret_key__e2e_china}}
+                region_name:              {{aws_region__e2e_china}}
+                stack_name:               end2end-centos
+                stack_template:           end2end
+                stack_prefix:             End2End
+
+          - task: teardown-centos
+            file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
+            config: *centos-china-config
+
+          - task: setup-centos
+            file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
+            config: *centos-china-config
 
   - name: end2end-us-ubuntu
     serial_groups: [us]
@@ -58,20 +102,19 @@ jobs:
         - {trigger: false, get: bosh-init}
         - {trigger: false, get: bosh-release}
 
-      - &setup-director
-        task: setup-director
+      - task: setup-director
         file: bosh-cpi-src/ci/tasks/setup-director.yml
         config:
-          params:
+          params: &setup-director-params
             aws_access_key_id:     {{aws_access_key__e2e_us}}
             aws_secret_access_key: {{aws_secret_key__e2e_us}}
+            region_name:           {{aws_region__e2e_us}}
+            stack_name:            end2end-ubuntu
+            stack_prefix:          End2End
             director_password:     {{bosh_director_password}}
             director_username:     {{bosh_director_username}}
             private_key_data:      {{e2e_private_key}}
             public_key_name:       {{e2e_public_key_name}}
-            region_name:           {{aws_region__e2e_us}}
-            stack_name:            end2end
-            stack_prefix:          End2End
             use_iam:               true
             use_s3_blobstore:      true
 
@@ -84,7 +127,7 @@ jobs:
             director_password:          {{bosh_director_password}}
             director_username:          {{bosh_director_username}}
             region_name:                {{aws_region__e2e_us}}
-            stack_name:                 end2end
+            stack_name:                 end2end-ubuntu
             stemcell_name:              bosh-aws-xen-hvm-ubuntu-trusty-go_agent
 
       - &teardown-director
@@ -101,13 +144,19 @@ jobs:
         - {trigger: false, get: bosh-init}
         - {trigger: false, get: bosh-release}
 
-      - *setup-director
+      - task: setup-director
+        file: bosh-cpi-src/ci/tasks/setup-director.yml
+        config:
+          params:
+            <<: *setup-director-params
+            stack_name: end2end-centos
 
       - task: test
         file: bosh-cpi-src/ci/tasks/run-e2e.yml
         config:
           params:
             <<: *test-params
+            stack_name:    end2end-centos
             stemcell_name: bosh-aws-xen-hvm-centos-7-go_agent
 
       - *teardown-director
@@ -122,11 +171,10 @@ jobs:
         - {trigger: false, get: bosh-init}
         - {trigger: false, get: bosh-release}
 
-      - &setup-director-china
-        task: setup-director
+      - task: setup-director
         file: bosh-cpi-src/ci/tasks/setup-director.yml
         config:
-          params:
+          params: &setup-director-china-params
             aws_access_key_id:     {{aws_access_key__e2e_china}}
             aws_secret_access_key: {{aws_secret_key__e2e_china}}
             director_password:     {{bosh_director_password}}
@@ -134,7 +182,7 @@ jobs:
             private_key_data:      {{e2e_private_key}}
             public_key_name:       {{e2e_public_key_name}}
             region_name:           {{aws_region__e2e_china}}
-            stack_name:            end2end
+            stack_name:            end2end-ubuntu
             stack_prefix:          End2End
             use_iam:               true
             use_s3_blobstore:      true
@@ -148,7 +196,7 @@ jobs:
             director_password:          {{bosh_director_password}}
             director_username:          {{bosh_director_username}}
             region_name:                {{aws_region__e2e_china}}
-            stack_name:                 end2end
+            stack_name:                 end2end-ubuntu
             stemcell_name:              bosh-aws-xen-hvm-ubuntu-trusty-go_agent
 
       - *teardown-director
@@ -163,13 +211,19 @@ jobs:
         - {trigger: false, get: bosh-init}
         - {trigger: false, get: bosh-release}
 
-      - *setup-director-china
+      - task: setup-director
+        file: bosh-cpi-src/ci/tasks/setup-director.yml
+        config:
+          params:
+            <<: *setup-director-china-params
+            stack_name: end2end-centos
 
       - task: test
         file: bosh-cpi-src/ci/tasks/run-e2e.yml
         config:
           params:
             <<: *test-params-china
+            stack_name:    end2end-centos
             stemcell_name: bosh-aws-xen-hvm-centos-7-go_agent
 
       - *teardown-director
