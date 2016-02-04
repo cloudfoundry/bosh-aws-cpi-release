@@ -55,6 +55,6 @@ RUN /bin/bash -l -c "               \
 "
 
 RUN cd /tmp && \
-    curl -O -L https://storage.googleapis.com/calebamiles-sharing/certify-artifacts && \
+    curl -o certify-artifacts -L https://s3.amazonaws.com/bosh-certification-generator-releases/certify-artifacts-linux-amd64 && \
     chmod +x certify-artifacts && \
     mv certify-artifacts /bin/certify-artifacts
