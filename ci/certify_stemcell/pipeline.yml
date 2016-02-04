@@ -1,6 +1,6 @@
 ---
 jobs:
-  - name: recreate-infrastructure-end2end-us
+  - name: recreate-infrastructure-us
     serial_groups: [us]
     plan:
       - aggregate:
@@ -8,7 +8,7 @@ jobs:
 
       - task: check-for-running-instances
         file: bosh-cpi-src/ci/tasks/check-for-running-instances.yml
-        config: &recreate-end2end-us-config
+        config: &recreate-us-config
           params:
             aws_access_key_id:        {{aws_access_key__e2e_us}}
             aws_secret_access_key:    {{aws_secret_key__e2e_us}}
@@ -18,13 +18,13 @@ jobs:
 
       - task: teardown-infrastructure
         file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
-        config: *recreate-end2end-us-config
+        config: *recreate-us-config
 
       - task: setup-infrastructure
         file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
-        config: *recreate-end2end-us-config
+        config: *recreate-us-config
 
-  - name: recreate-infrastructure-end2end-china
+  - name: recreate-infrastructure-china
     serial_groups: [china]
     plan:
       - aggregate:
@@ -32,7 +32,7 @@ jobs:
 
       - task: check-for-running-instances
         file: bosh-cpi-src/ci/tasks/check-for-running-instances.yml
-        config: &recreate-end2end-cn-config
+        config: &recreate-cn-config
           params:
             aws_access_key_id:        {{aws_access_key__e2e_china}}
             aws_secret_access_key:    {{aws_secret_key__e2e_china}}
@@ -42,13 +42,13 @@ jobs:
 
       - task: teardown-infrastructure
         file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
-        config: *recreate-end2end-cn-config
+        config: *recreate-cn-config
 
       - task: setup-infrastructure
         file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
-        config: *recreate-end2end-cn-config
+        config: *recreate-cn-config
 
-  - name: end2end-us
+  - name: end2end-us-ubuntu
     serial_groups: [us]
     plan:
       - aggregate:
@@ -58,7 +58,8 @@ jobs:
         - {trigger: false, get: bosh-init}
         - {trigger: false, get: bosh-release}
 
-      - task: setup-director
+      - &setup-director
+        task: setup-director
         file: bosh-cpi-src/ci/tasks/setup-director.yml
         config:
           params:
@@ -77,7 +78,7 @@ jobs:
       - task: test
         file: bosh-cpi-src/ci/tasks/run-e2e.yml
         config:
-          params:
+          params: &test-params
             aws_access_key_id:          {{aws_access_key__e2e_us}}
             aws_secret_access_key:      {{aws_secret_key__e2e_us}}
             director_password:          {{bosh_director_password}}
@@ -86,10 +87,32 @@ jobs:
             stack_name:                 end2end
             stemcell_name:              bosh-aws-xen-hvm-ubuntu-trusty-go_agent
 
-      - task: teardown-director
+      - &teardown-director
+        task: teardown-director
         file: bosh-cpi-src/ci/tasks/teardown-director.yml
 
-  - name: end2end-china
+  - name: end2end-us-centos
+    serial_groups: [us]
+    plan:
+      - aggregate:
+        - {trigger: true,  get: stemcell,         resource: centos-stemcell }
+        - {trigger: false, get: bosh-cpi-release, resource: bosh-aws-cpi-release}
+        - {trigger: false, get: bosh-cpi-src}
+        - {trigger: false, get: bosh-init}
+        - {trigger: false, get: bosh-release}
+
+      - *setup-director
+
+      - task: test
+        file: bosh-cpi-src/ci/tasks/run-e2e.yml
+        config:
+          params:
+            <<: *test-params
+            stemcell_name: bosh-aws-xen-hvm-centos-7-go_agent
+
+      - *teardown-director
+
+  - name: end2end-china-ubuntu
     serial_groups: [china]
     plan:
       - aggregate:
@@ -99,7 +122,8 @@ jobs:
         - {trigger: false, get: bosh-init}
         - {trigger: false, get: bosh-release}
 
-      - task: setup-director
+      - &setup-director-china
+        task: setup-director
         file: bosh-cpi-src/ci/tasks/setup-director.yml
         config:
           params:
@@ -118,7 +142,7 @@ jobs:
       - task: test
         file: bosh-cpi-src/ci/tasks/run-e2e.yml
         config:
-          params:
+          params: &test-params-china
             aws_access_key_id:          {{aws_access_key__e2e_china}}
             aws_secret_access_key:      {{aws_secret_key__e2e_china}}
             director_password:          {{bosh_director_password}}
@@ -127,16 +151,36 @@ jobs:
             stack_name:                 end2end
             stemcell_name:              bosh-aws-xen-hvm-ubuntu-trusty-go_agent
 
-      - task: teardown-director
-        file: bosh-cpi-src/ci/tasks/teardown-director.yml
+      - *teardown-director
 
-  - name: bless
+  - name: end2end-china-centos
+    serial_groups: [china]
+    plan:
+      - aggregate:
+        - {trigger: true,  get: stemcell,         resource: centos-stemcell}
+        - {trigger: false, get: bosh-cpi-release, resource: bosh-aws-cpi-release}
+        - {trigger: false, get: bosh-cpi-src}
+        - {trigger: false, get: bosh-init}
+        - {trigger: false, get: bosh-release}
+
+      - *setup-director-china
+
+      - task: test
+        file: bosh-cpi-src/ci/tasks/run-e2e.yml
+        config:
+          params:
+            <<: *test-params-china
+            stemcell_name: bosh-aws-xen-hvm-centos-7-go_agent
+
+      - *teardown-director
+
+  - name: certify-ubuntu
     plan:
       - aggregate:
         - {trigger: false, get: bosh-cpi-src}
-        - {trigger: true,  get: bosh-cpi-release, passed: [end2end-us, end2end-china], resource: bosh-aws-cpi-release}
-        - {trigger: true,  get: bosh-release,     passed: [end2end-us, end2end-china]}
-        - {trigger: true,  get: stemcell,         passed: [end2end-us, end2end-china], resource: ubuntu-stemcell}
+        - {trigger: true,  get: bosh-cpi-release, passed: [end2end-us-ubuntu, end2end-china-ubuntu], resource: bosh-aws-cpi-release}
+        - {trigger: true,  get: bosh-release,     passed: [end2end-us-ubuntu, end2end-china-ubuntu]}
+        - {trigger: true,  get: stemcell,         passed: [end2end-us-ubuntu, end2end-china-ubuntu], resource: ubuntu-stemcell}
 
       - task: generate-certification
         file: bosh-cpi-src/ci/tasks/generate-certification.yml
@@ -145,6 +189,26 @@ jobs:
             bosh_release_name: bosh
             cpi_release_name: bosh-aws-cpi
             stemcell_name: bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+
+      - put: certification
+        params:
+          file: certification-receipt/*.json
+
+  - name: certify-centos
+    plan:
+      - aggregate:
+        - {trigger: false, get: bosh-cpi-src}
+        - {trigger: true,  get: bosh-cpi-release, passed: [end2end-us-centos, end2end-china-centos], resource: bosh-aws-cpi-release}
+        - {trigger: true,  get: bosh-release,     passed: [end2end-us-centos, end2end-china-centos]}
+        - {trigger: true,  get: stemcell,         passed: [end2end-us-centos, end2end-china-centos], resource: centos-stemcell}
+
+      - task: generate-certification
+        file: bosh-cpi-src/ci/tasks/generate-certification.yml
+        config:
+          params:
+            bosh_release_name: bosh
+            cpi_release_name: bosh-aws-cpi
+            stemcell_name: bosh-aws-xen-hvm-centos-7-go_agent
 
       - put: certification
         params:
@@ -174,6 +238,13 @@ resources:
     type: s3
     source:
       regexp: light-bosh-stemcell-([0-9.]+)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
+      bucket: bosh-aws-light-stemcells
+      region_name: us-east-1
+
+  - name: centos-stemcell
+    type: s3
+    source:
+      regexp: light-bosh-stemcell-([0-9.]+)-aws-xen-hvm-centos-7-go_agent.tgz
       bucket: bosh-aws-light-stemcells
       region_name: us-east-1
 
