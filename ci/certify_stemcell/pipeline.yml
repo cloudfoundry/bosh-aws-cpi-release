@@ -1,7 +1,6 @@
 ---
 jobs:
   - name: recreate-infrastructure-us
-    serial_groups: [us]
     plan:
       - aggregate:
         - {trigger: false, get: bosh-cpi-src}
@@ -47,7 +46,6 @@ jobs:
             config: *centos-us-config
 
   - name: recreate-infrastructure-china
-    serial_groups: [china]
     plan:
       - aggregate:
         - {trigger: false, get: bosh-cpi-src}
@@ -93,7 +91,6 @@ jobs:
             config: *centos-china-config
 
   - name: end2end-us-ubuntu
-    serial_groups: [us]
     plan:
       - aggregate:
         - {trigger: true,  get: stemcell,         resource: ubuntu-stemcell }
@@ -135,7 +132,6 @@ jobs:
         file: bosh-cpi-src/ci/tasks/teardown-director.yml
 
   - name: end2end-us-centos
-    serial_groups: [us]
     plan:
       - aggregate:
         - {trigger: true,  get: stemcell,         resource: centos-stemcell }
@@ -162,7 +158,6 @@ jobs:
       - *teardown-director
 
   - name: end2end-china-ubuntu
-    serial_groups: [china]
     plan:
       - aggregate:
         - {trigger: true,  get: stemcell,         resource: ubuntu-stemcell}
@@ -202,7 +197,6 @@ jobs:
       - *teardown-director
 
   - name: end2end-china-centos
-    serial_groups: [china]
     plan:
       - aggregate:
         - {trigger: true,  get: stemcell,         resource: centos-stemcell}
