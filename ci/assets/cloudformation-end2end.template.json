@@ -373,7 +373,6 @@
             "Protocol": "HTTP"
           }
         ],
-        "LoadBalancerName": "bosh-aws-cpi-e2e-elb",
         "SecurityGroups": [
           {
             "Ref": "CISecurityGroup"
