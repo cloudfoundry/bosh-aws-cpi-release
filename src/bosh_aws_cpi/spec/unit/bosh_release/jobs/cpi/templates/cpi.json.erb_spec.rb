@@ -54,7 +54,8 @@ describe 'cpi.json.erb' do
             'default_iam_instance_profile' => nil,
             'default_key_name'=>'the_default_key_name',
             'default_security_groups'=>['security_group_1'],
-            'region'=>'moon'
+            'region'=>'moon',
+            'max_retries'=>2
           },
           'registry'=>{
             'endpoint'=>'http://admin:admin@registry_host.example.com:25777',

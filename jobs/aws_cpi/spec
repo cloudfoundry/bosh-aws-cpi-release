@@ -31,6 +31,9 @@ properties:
   aws.region:
     description: AWS region name
     example: us-east-1
+  aws.max_retries:
+    description: The maximum number of times AWS service errors and throttling errors should be retried. There is an exponential backoff in between retries, so the more retries the longer it can take to fail.
+    default: 2
 
   registry.username:
     description: User to access the Registry
