@@ -49,9 +49,20 @@ module Bosh::AwsCloud
       @aws_instance.reboot
     end
 
+    def retry_wait_time
+      30
+    end
+
     def terminate(fast=false)
       begin
-        @aws_instance.terminate
+        Bosh::Common.retryable(
+          on: AWS::EC2::Errors::RequestLimitExceeded,
+          sleep: retry_wait_time,
+          tries: 20
+        ) do |retries, error|
+          @aws_instance.terminate
+          true
+        end
       rescue AWS::EC2::Errors::InvalidInstanceID::NotFound => e
         @logger.warn("Failed to terminate instance '#{@aws_instance.id}' because it was not found: #{e.inspect}")
         raise Bosh::Clouds::VMNotFound, "VM `#{@aws_instance.id}' not found"
