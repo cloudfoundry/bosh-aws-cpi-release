@@ -28,10 +28,6 @@ def mock_cloud_options
   }
 end
 
-def make_cloud(options = nil)
-  Bosh::AwsCloud::Cloud.new(options || mock_cloud_options['properties'])
-end
-
 def mock_registry(endpoint = 'http://registry:3333')
   registry = double('registry', :endpoint => endpoint)
   allow(Bosh::Registry::Client).to receive(:new).and_return(registry)
