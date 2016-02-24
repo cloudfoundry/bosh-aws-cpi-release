@@ -15,7 +15,7 @@ params = {
         "max_retries" => p('aws.max_retries')
       },
       "registry" => {
-        "endpoint" => "http://#{p('registry.username')}:#{p('registry.password')}@#{p('registry.host')}:#{p('registry.port')}",
+        "endpoint" => "http://#{p('registry.username')}:#{URI.escape(p('registry.password'), Regexp.new("[^#{URI::PATTERN::UNRESERVED}]"))}@#{p('registry.host')}:#{p('registry.port')}",
         "user" => p('registry.username'),
         "password" => p('registry.password')
       },
