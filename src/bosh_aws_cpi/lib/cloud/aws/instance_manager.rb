@@ -130,7 +130,7 @@ module Bosh::AwsCloud
 
       set_user_data_parameter(instance_params, networks_spec)
       set_key_name_parameter(instance_params, resource_pool["key_name"], options["aws"]["default_key_name"])
-      set_security_groups_parameter(instance_params, networks_spec, options["aws"]["default_security_groups"])
+      set_security_groups_parameter(instance_params, resource_pool, networks_spec, options["aws"]["default_security_groups"])
       set_vpc_parameters(instance_params, networks_spec)
       set_iam_instance_profile_parameter(instance_params, resource_pool["iam_instance_profile"], options["aws"]["default_iam_instance_profile"])
       set_availability_zone_parameter(
@@ -275,8 +275,8 @@ module Bosh::AwsCloud
       instance_params[:key_name] = key_name unless key_name.nil?
     end
 
-    def set_security_groups_parameter(instance_params, networks_spec, default_security_groups)
-      security_groups = extract_security_groups(networks_spec)
+    def set_security_groups_parameter(instance_params, resource_pool, networks_spec, default_security_groups)
+      security_groups = resource_pool["security_groups"] || extract_security_groups(networks_spec)
       if security_groups.empty?
         validate_and_prepare_security_groups_parameter(instance_params, default_security_groups)
       else
