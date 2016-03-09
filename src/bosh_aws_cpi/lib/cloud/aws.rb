@@ -1,5 +1,3 @@
-# Copyright (c) 2009-2012 VMware, Inc.
-
 module Bosh
   module AwsCloud; end
 end
@@ -39,6 +37,7 @@ require "cloud/aws/resource_wait"
 require "cloud/aws/volume_properties"
 require "cloud/aws/volumes_create_presenter"
 require "cloud/aws/instances_create_presenter"
+require "cloud/aws/credentials_provider"
 
 module Bosh
   module Clouds
