@@ -29,10 +29,10 @@ module Bosh::AwsCloud
       aws_logger = @logger
 
       @aws_params = {
-        credentials_source: aws_properties['credentials_source'] || 'static',
-        region:            aws_properties['region'],
-        max_retries:       aws_properties['max_retries']  || DEFAULT_MAX_RETRIES,
-        logger:            aws_logger
+        credential_provider: Bosh::AwsCloud::CredentialsProvider.new,
+        region:              aws_properties['region'],
+        max_retries:         aws_properties['max_retries']  || DEFAULT_MAX_RETRIES,
+        logger:              aws_logger
       }
 
       %w(
@@ -47,11 +47,11 @@ module Bosh::AwsCloud
       end
 
       # credentials_source could be static (default) or env_or_profile
-      # static credentials must be included in aws_properties
-      # env_or_profile credentials will use the AWS DefaultCredentialsProvider
-      # to find AWS credentials in environment variables or EC2 instance profiles
+      # - if "static", credentials must be provided
+      # - if "env_or_profile", credentials are read from instance metadata
+      credentials_source = aws_properties['credentials_source'] || 'static'
 
-      if @aws_params[:credentials_source] == 'static'
+      if credentials_source == 'static'
         @aws_params[:access_key_id] = aws_properties['access_key_id']
         @aws_params[:secret_access_key] = aws_properties['secret_access_key']
       end
