@@ -25,7 +25,7 @@ describe Bosh::AwsCloud::Cloud do
 
   before do
     allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
-    reg = AWS::EC2::Region.new('some-region', endpoint: 'http://some.endpoint')
+    reg = AWS::EC2::Region.new('fake-region', endpoint: 'http://some.endpoint')
     allow_any_instance_of(AWS::EC2).to receive(:regions).and_return([reg])
   end
 
@@ -91,8 +91,6 @@ describe Bosh::AwsCloud::Cloud do
 
         it 'passes required properties to AWS SDK' do
           config = cloud.ec2.config
-          expect(config.access_key_id).to eq('keys to my heart')
-          expect(config.secret_access_key).to eq('open sesame')
           expect(config.region).to eq('fake-region')
         end
         it 'passes optional properties to AWS SDK' do

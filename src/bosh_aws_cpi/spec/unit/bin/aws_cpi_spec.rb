@@ -15,7 +15,8 @@ describe "the aws_cpi executable" do
             'fast_path_delete' => 'yes',
             'access_key_id' => 'access_key_id',
             'secret_access_key' => 'secret_access_key',
-            'default_availability_zone' => 'subnet_zone'
+            'default_availability_zone' => 'subnet_zone',
+            'max_retries' => 0
           },
             'registry' => {
             'endpoint' => 'fake',
@@ -42,11 +43,9 @@ describe "the aws_cpi executable" do
 
     expect(result['result']).to be_nil
 
-    expect(result['error']).to eq({
-      'type' => 'Unknown',
-      'message' => 'AWS was not able to validate the provided access credentials',
-      'ok_to_retry' => false
-    })
+    expect(result['error']['message']).to match(/AWS was not able to validate the provided access credentials/)
+    expect(result['error']['ok_to_retry']).to be(false)
+    expect(result['error']['type']).to eq('Unknown')
 
     expect(result['log']).to include('backtrace')
   end

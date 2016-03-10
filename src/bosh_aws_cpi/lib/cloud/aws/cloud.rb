@@ -29,9 +29,8 @@ module Bosh::AwsCloud
       aws_logger = @logger
 
       @aws_params = {
-        credential_provider: Bosh::AwsCloud::CredentialsProvider.new,
         region:              aws_properties['region'],
-        max_retries:         aws_properties['max_retries']  || DEFAULT_MAX_RETRIES,
+        max_retries:         aws_properties['max_retries'] || DEFAULT_MAX_RETRIES,
         logger:              aws_logger
       }
 
@@ -50,11 +49,14 @@ module Bosh::AwsCloud
       # - if "static", credentials must be provided
       # - if "env_or_profile", credentials are read from instance metadata
       credentials_source = aws_properties['credentials_source'] || 'static'
+      static_credentials = {}
 
       if credentials_source == 'static'
-        @aws_params[:access_key_id] = aws_properties['access_key_id']
-        @aws_params[:secret_access_key] = aws_properties['secret_access_key']
+        static_credentials[:access_key_id] = aws_properties['access_key_id']
+        static_credentials[:secret_access_key] = aws_properties['secret_access_key']
       end
+
+      @aws_params[:credential_provider] = Bosh::AwsCloud::CredentialsProvider.new(static_credentials)
 
       # AWS Ruby SDK is threadsafe but Ruby autoload isn't,
       # so we need to trigger eager autoload while constructing CPI
@@ -567,7 +569,11 @@ module Bosh::AwsCloud
       # It just returns a Region object with nothing set but the name.
       # As a workaround use the 'each' method, which is implemented correctly
       begin
-        @region = @ec2.regions.select {|r| r.name == aws_region}.first
+        @region = @ec2.regions.select {|r| r.name == aws_region }.first
+        if @region.nil?
+          region_names = @ec2.regions.map {|r| r.name }
+          cloud_error("Could not find region '#{aws_region}' in known regions: #{region_names}")
+        end
         @az_selector = AvailabilityZoneSelector.new(@region, aws_properties['default_availability_zone'])
       rescue Net::OpenTimeout => e
         cloud_error("Please make sure the CPI has proper network access to AWS. #{e.inspect}")
