@@ -60,4 +60,6 @@ builds:
     version: '43'
   a2c5d75d-76c7-40c1-9908-f4872ba3393f:
     version: '44'
+  44bc37cf-1245-45dc-9605-1ddfbb4a8b4a:
+    version: '45'
 format-version: '2'
