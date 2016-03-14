@@ -82,4 +82,4 @@ EOF
 cd bats
 ./write_gemfile
 bundle install
-bundle exec rspec spec
+bundle exec rspec spec --tag ~multiple_manual_networks
