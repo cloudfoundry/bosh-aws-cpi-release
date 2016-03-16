@@ -17,6 +17,7 @@ module Bosh::AwsCloud
       @logger.debug("Requesting spot instance with: #{spot_request_spec.inspect}")
 
       begin
+        # the top-level ec2 class does not support spot instance methods
         @spot_instance_requests = @region.client.request_spot_instances(spot_request_spec)
         @logger.debug("Got spot instance requests: #{@spot_instance_requests.inspect}")
       rescue => e

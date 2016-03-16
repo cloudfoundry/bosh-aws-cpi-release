@@ -21,6 +21,7 @@ module Bosh::AwsCloud
       snapshot = volume.create_snapshot
       ResourceWait.for_snapshot(snapshot: snapshot, state: :completed)
 
+      # the top-level ec2 class' ImageCollection.create does not support the full set of params
       params = image_params(snapshot.id)
       image = region.images[region.client.register_image(params).image_id]
       ResourceWait.for_image(image: image, state: :available)

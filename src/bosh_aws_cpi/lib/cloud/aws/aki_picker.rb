@@ -21,17 +21,10 @@ module Bosh::AwsCloud
     private
 
     def fetch_akis(architecture)
-      filter = aki_filter(architecture)
-      @region.client.describe_images(filters: filter).images_set
-    end
-
-    # @return [Hash] search filter
-    def aki_filter(architecture)
-      [
-          {name: "architecture", values: [architecture]},
-          {name: "image-type", values: %w[kernel]},
-          {name: "owner-alias", values: %w[amazon]}
-      ]
+      @region.images
+        .filter('architecture', architecture)
+        .filter('image-type', 'kernel')
+        .filter('owner-alias', 'amazon')
     end
 
     def regexp(root_device_name)
@@ -50,7 +43,7 @@ module Bosh::AwsCloud
       major = 0
       minor = 0
       akis.each do |image|
-        match = image.image_location.match(regexp(root_device_name))
+        match = image.location.match(regexp(root_device_name))
         if match && match[1].to_i > major && match[2].to_i > minor
           candidate = image
           major = match[1].to_i
