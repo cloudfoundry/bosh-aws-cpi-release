@@ -992,9 +992,11 @@ describe Bosh::AwsCloud::InstanceManager do
         let(:sg_name_1) { 'yay' }
         let(:sg_name_2) { 'aya' }
         let(:sg_name_3) { 'default' }
+        let(:sg_name_4) { 'instance' }
         let(:sg_id_1) { 'sg-12345678' }
         let(:sg_id_2) { 'sg-23456789' }
         let(:sg_id_3) { 'sg-01234567' }
+        let(:sg_id_4) { 'sg-34567890' }
 
         let(:networks_spec) do
           {
@@ -1088,6 +1090,45 @@ describe Bosh::AwsCloud::InstanceManager do
             networks_spec['artwork']['cloud_properties']['security_groups'] = [sg_id_1, sg_id_2]
             instance_options['aws']['default_security_groups'] = [sg_id_3]
 
+            verify_error
+          end
+        end
+
+        context 'when resource_pool have security_groups configured' do
+          it "overrides network spec security groups names with instance security group names" do
+            networks_spec['network']['cloud_properties']['security_groups'] = sg_name_1
+            networks_spec['artwork']['cloud_properties']['security_groups'] = [sg_name_1, sg_name_2]
+            instance_options['aws']['default_security_groups'] = [sg_name_3]
+            resource_pool['security_groups'] = [sg_name_4]
+
+            verify_security_group_parameter(:security_groups, [sg_name_4])
+          end
+          it "overrides network spec security groups ids with instance security group names" do
+            networks_spec['network']['cloud_properties']['security_groups'] = sg_id_1
+            networks_spec['artwork']['cloud_properties']['security_groups'] = [sg_id_1, sg_id_2]
+            instance_options['aws']['default_security_groups'] = [sg_id_3]
+            resource_pool['security_groups'] = [sg_name_4]
+
+            verify_security_group_parameter(:security_groups, [sg_name_4])
+          end
+          it "overrides network spec security groups names with instance security group ids" do
+            networks_spec['network']['cloud_properties']['security_groups'] = sg_name_1
+            networks_spec['artwork']['cloud_properties']['security_groups'] = [sg_name_1, sg_name_2]
+            instance_options['aws']['default_security_groups'] = [sg_name_3]
+            resource_pool['security_groups'] = [sg_id_4]
+
+            verify_security_group_parameter(:security_group_ids, [sg_id_4])
+          end
+          it "overrides network spec security groups ids with instance security group ids" do
+            networks_spec['network']['cloud_properties']['security_groups'] = sg_id_1
+            networks_spec['artwork']['cloud_properties']['security_groups'] = [sg_id_1, sg_id_2]
+            instance_options['aws']['default_security_groups'] = [sg_id_3]
+            resource_pool['security_groups'] = [sg_id_4]
+
+            verify_security_group_parameter(:security_group_ids, [sg_id_4])
+          end
+          it 'raises an error when both ids and names are specified in security_groups' do
+            resource_pool['security_groups'] = [sg_id_4, sg_name_4]
             verify_error
           end
         end
