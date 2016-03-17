@@ -15,13 +15,6 @@ fi
 IMAGE="$1"
 OUTPUT="$2"
 
-# workaround for issue on 12.04 LTS, use LANG=C
-echo ${IMAGE} | LANG=C egrep '^/[A-Za-z0-9_/-]+/image$' > /dev/null 2>&1
-if [ $? -ne 0 ]; then
-  echo "ERROR: illegal image file: ${IMAGE}"
-  exit 1
-fi
-
 echo ${OUTPUT} | egrep '^/dev/[svx]+d[a-z0-9]+$' > /dev/null 2>&1
 if [ $? -ne 0 ]; then
   echo "ERROR: illegal device: ${OUTPUT}"
