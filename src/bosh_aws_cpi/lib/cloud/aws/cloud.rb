@@ -388,65 +388,12 @@ module Bosh::AwsCloud
       end
     end
 
-    # Configure network for an EC2 instance
+    # Configure network for an EC2 instance. No longer supported.
     # @param [String] instance_id EC2 instance id
     # @param [Hash] network_spec network properties
-    # @raise [Bosh::Clouds:NotSupported] if there's a network change that requires the recreation of the VM
+    # @raise [Bosh::Clouds:NotSupported] configure_networks is no longer supported
     def configure_networks(instance_id, network_spec)
-      with_thread_name("configure_networks(#{instance_id}, ...)") do
-        logger.info("Configuring '#{instance_id}' to use new network settings: #{network_spec.pretty_inspect}")
-
-        instance = @ec2_client.instances[instance_id]
-
-        network_configurator = NetworkConfigurator.new(network_spec)
-
-        compare_security_groups(instance, network_spec)
-
-        compare_private_ip_addresses(instance, network_configurator.private_ip)
-
-        network_configurator.configure(@ec2_client, instance)
-
-        update_agent_settings(instance) do |settings|
-          settings["networks"] = agent_network_spec(network_spec)
-        end
-      end
-    end
-
-    # If the security groups change, we need to recreate the VM
-    # as you can't change the security group of a running instance,
-    # we need to send the InstanceUpdater a request to do it for us
-    def compare_security_groups(instance, network_spec)
-      actual_group_names = instance.security_groups.collect { |sg| sg.name }
-      specified_group_names = extract_security_groups(network_spec)
-      if specified_group_names.empty?
-        new_group_names = Array(aws_properties["default_security_groups"])
-      else
-        new_group_names = specified_group_names
-      end
-
-      unless actual_group_names.sort == new_group_names.sort
-        raise Bosh::Clouds::NotSupported,
-          "security groups change requires VM recreation: %s to %s" %
-            [actual_group_names.join(", "), new_group_names.join(", ")]
-      end
-    end
-
-    ##
-    # Compares actual instance private IP addresses with the IP address specified at the network spec
-    #
-    # @param [AWS::EC2::Instance] instance EC2 instance
-    # @param [String] specified_ip_address IP address specified at the network spec (if Manual Network)
-    # @return [void]
-    # @raise [Bosh::Clouds:NotSupported] If the IP address change, we need to recreate the VM as you can't
-    # change the IP address of a running server, so we need to send the InstanceUpdater a request to do it for us
-    def compare_private_ip_addresses(instance, specified_ip_address)
-      actual_ip_address = instance.private_ip_address
-
-      unless specified_ip_address.nil? || actual_ip_address == specified_ip_address
-        raise Bosh::Clouds::NotSupported,
-          "IP address change requires VM recreation: %s to %s" %
-            [actual_ip_address, specified_ip_address]
-      end
+      raise Bosh::Clouds::NotSupported, "configure_networks is no longer supported"
     end
 
     ##

@@ -339,4 +339,12 @@ describe Bosh::AwsCloud::Cloud do
       end
     end
   end
+
+  describe '#configure_networks' do
+    it 'raises a NotSupported exception' do
+      expect {
+        cloud.configure_networks("i-foobar", {})
+      }.to raise_error Bosh::Clouds::NotSupported
+    end
+  end
 end
