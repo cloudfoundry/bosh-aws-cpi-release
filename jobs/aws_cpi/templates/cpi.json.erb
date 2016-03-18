@@ -11,7 +11,6 @@ params = {
         "default_iam_instance_profile" => p('aws.default_iam_instance_profile', nil),
         "default_key_name" => p('aws.default_key_name'),
         "default_security_groups" => p('aws.default_security_groups'),
-        "region" => p('aws.region'),
         "max_retries" => p('aws.max_retries')
       },
       "registry" => {
@@ -31,6 +30,16 @@ if_p('aws.stemcell.kernel_id') do |kernel_id|
   params["cloud"]["properties"]["stemcell"] = {
     "kernel_id" => kernel_id
   }
+end
+
+if_p('aws.ec2_endpoint') do |endpoint|
+  params["cloud"]["properties"]["aws"]["ec2_endpoint"] = endpoint
+end
+if_p('aws.elb_endpoint') do |endpoint|
+  params["cloud"]["properties"]["aws"]["elb_endpoint"] = endpoint
+end
+if_p('aws.region') do |region|
+  params["cloud"]["properties"]["aws"]["region"] = region
 end
 
 agent_params = params["cloud"]["properties"]["agent"]

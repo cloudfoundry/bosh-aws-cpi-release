@@ -10,11 +10,11 @@ describe Bosh::AwsCloud::Cloud do
 
   before do
     allow(Bosh::AwsCloud::ResourceWait).to receive(:for_volume).with(volume: volume, state: :available)
-    @cloud = mock_cloud do |_ec2, region|
+    @cloud = mock_cloud do |_ec2|
       @ec2 = _ec2
       allow(@ec2.volumes).to receive(:create) { volume }
-      allow(region).to receive_messages(:availability_zones => zones)
-      allow(region).to receive_messages(instances: double('instances', :[] => instance))
+      allow(@ec2).to receive_messages(:availability_zones => zones)
+      allow(@ec2).to receive_messages(instances: double('instances', :[] => instance))
     end
   end
 

@@ -1,12 +1,12 @@
 module Bosh::AwsCloud
   class AKIPicker
 
-    # @param [AWS::Core::ServiceInterface] region
-    def initialize(region)
-      @region = region
+    # @param [AWS::Core::ServiceInterface] client
+    def initialize(client)
+      @client = client
     end
 
-    # finds the correct aki for the current region
+    # finds the correct aki based on architecture and root device
     # @param [String] architecture instruction architecture to find
     # @param [String] root_device_name
     # @return [String] EC2 image id
@@ -21,7 +21,7 @@ module Bosh::AwsCloud
     private
 
     def fetch_akis(architecture)
-      @region.images
+      @client.images
         .filter('architecture', architecture)
         .filter('image-type', 'kernel')
         .filter('owner-alias', 'amazon')

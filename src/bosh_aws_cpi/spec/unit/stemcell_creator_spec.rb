@@ -20,52 +20,27 @@ describe Bosh::AwsCloud::StemcellCreator do
     allow(Bosh::AwsCloud::AKIPicker).to receive(:new).and_return(double("aki", :pick => "aki-xxxxxxxx"))
   end
 
-  context "real" do
-    let(:volume) { double("volume") }
-    let(:snapshot) { double("snapshot", :id => "snap-xxxxxxxx") }
-    let(:image_id) { "ami-a1b2c3d4" }
-    let(:image) { double("image", :id => image_id) }
-    let(:ebs_volume) { double("ebs_volume") }
+  let(:volume) { double("volume") }
+  let(:snapshot) { double("snapshot", :id => "snap-xxxxxxxx") }
+  let(:image_id) { "ami-a1b2c3d4" }
+  let(:image) { double("image", :id => image_id) }
+  let(:ebs_volume) { double("ebs_volume") }
 
-    it "should create a real stemcell" do
-      creator = described_class.new(region, stemcell_properties)
-      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(snapshot: snapshot, state: :completed)
-      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(image: image, state: :available)
-      allow(SecureRandom).to receive(:uuid).and_return("fake-uuid")
-      allow(region).to receive(:images).and_return({
-        image_id => image,
-      })
-      allow(region).to receive_message_chain(:client, :register_image).and_return(double("object", :image_id => image_id))
+  it "should create a real stemcell" do
+    creator = described_class.new(region, stemcell_properties)
+    allow(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(snapshot: snapshot, state: :completed)
+    allow(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(image: image, state: :available)
+    allow(SecureRandom).to receive(:uuid).and_return("fake-uuid")
+    allow(region).to receive(:images).and_return({
+      image_id => image,
+    })
+    allow(region).to receive_message_chain(:client, :register_image).and_return(double("object", :image_id => image_id))
 
-      expect(creator).to receive(:copy_root_image)
-      expect(volume).to receive(:create_snapshot).and_return(snapshot)
-      expect(Bosh::AwsCloud::TagManager).to receive(:tag).with(image, "Name", "stemcell-name 0.7.0")
+    expect(creator).to receive(:copy_root_image)
+    expect(volume).to receive(:create_snapshot).and_return(snapshot)
+    expect(Bosh::AwsCloud::TagManager).to receive(:tag).with(image, "Name", "stemcell-name 0.7.0")
 
-      creator.create(volume, ebs_volume, "/path/to/image")
-    end
-  end
-
-  context "fake" do
-    let(:stemcell_properties) do
-      { "ami" => { "us-east-1" => "ami-xxxxxxxx" } }
-    end
-
-    it "should create a fake stemcell" do
-      creator = described_class.new(region, stemcell_properties)
-
-      expect(Bosh::AwsCloud::StemcellFinder).to receive(:find_by_region_and_id).with(region, "ami-xxxxxxxx light")
-      creator.fake
-    end
-
-    it "should raise an error if there is no ami for the current region" do
-      region = double("region", :name => "us-west-1")
-      creator = described_class.new(region, stemcell_properties)
-
-      expect {
-        creator.fake
-      }.to raise_error Bosh::Clouds::CloudError, "Stemcell does not contain an AMI for this region (us-west-1)"
-
-    end
+    creator.create(volume, ebs_volume, "/path/to/image")
   end
 
   describe "#image_params" do

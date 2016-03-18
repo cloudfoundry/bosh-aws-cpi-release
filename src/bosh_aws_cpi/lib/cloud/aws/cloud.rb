@@ -6,12 +6,12 @@ module Bosh::AwsCloud
 
     # default maximum number of times to retry an AWS API call
     DEFAULT_MAX_RETRIES = 2
-    METADATA_TIMEOUT    = 5 # in seconds
+    METADATA_TIMEOUT = 5 # in seconds
     DEVICE_POLL_TIMEOUT = 60 # in seconds
 
-    attr_reader   :ec2
-    attr_reader   :registry
-    attr_reader   :options
+    attr_reader :ec2_client
+    attr_reader :registry
+    attr_reader :options
     attr_accessor :logger
 
     ##
@@ -29,10 +29,19 @@ module Bosh::AwsCloud
       aws_logger = @logger
 
       @aws_params = {
-        region:              aws_properties['region'],
-        max_retries:         aws_properties['max_retries'] || DEFAULT_MAX_RETRIES,
-        logger:              aws_logger
+        max_retries: aws_properties['max_retries'] || DEFAULT_MAX_RETRIES,
+        logger: aws_logger
       }
+
+      if aws_properties['region']
+        @aws_params[:region] = aws_properties['region']
+      end
+      if aws_properties['ec2_endpoint']
+        @aws_params[:ec2_endpoint] = strip_protocol(aws_properties['ec2_endpoint'])
+      end
+      if aws_properties['elb_endpoint']
+        @aws_params[:elb_endpoint] = strip_protocol(aws_properties['elb_endpoint'])
+      end
 
       %w(
         http_read_timeout
@@ -62,12 +71,17 @@ module Bosh::AwsCloud
       # so we need to trigger eager autoload while constructing CPI
       AWS.eager_autoload!
 
-      initialize_aws
+      @ec2_client = AWS::EC2.new(@aws_params)
+
+      cloud_error("Please make sure the CPI has proper network access to AWS.") unless aws_accessible?
+
+      @az_selector = AvailabilityZoneSelector.new(@ec2_client, aws_properties['default_availability_zone'])
+
       initialize_registry
 
       elb = AWS::ELB.new(@aws_params)
 
-      @instance_manager = InstanceManager.new(region, registry, elb, az_selector, @logger)
+      @instance_manager = InstanceManager.new(@ec2_client, registry, elb, az_selector, @logger)
 
       @metadata_lock = Mutex.new
     end
@@ -80,13 +94,13 @@ module Bosh::AwsCloud
       @metadata_lock.synchronize do
         return @current_vm_id if @current_vm_id
 
-        client = HTTPClient.new
-        client.connect_timeout = METADATA_TIMEOUT
+        http_client = HTTPClient.new
+        http_client.connect_timeout = METADATA_TIMEOUT
         # Using 169.254.169.254 is an EC2 convention for getting
         # instance metadata
         uri = "http://169.254.169.254/latest/meta-data/instance-id/"
 
-        response = client.get(uri)
+        response = http_client.get(uri)
         unless response.status == 200
           cloud_error("Instance metadata endpoint returned " \
                       "HTTP #{response.status}")
@@ -119,7 +133,7 @@ module Bosh::AwsCloud
     def create_vm(agent_id, stemcell_id, resource_pool, network_spec, disk_locality = nil, environment = nil)
       with_thread_name("create_vm(#{agent_id}, ...)") do
         # do this early to fail fast
-        stemcell = StemcellFinder.find_by_region_and_id(region, stemcell_id)
+        stemcell = StemcellFinder.find_by_id(@ec2_client, stemcell_id)
 
         begin
           instance, block_device_agent_info = @instance_manager.create(
@@ -134,7 +148,7 @@ module Bosh::AwsCloud
 
           logger.info("Creating new instance '#{instance.id}'")
 
-          NetworkConfigurator.new(network_spec).configure(region, instance)
+          NetworkConfigurator.new(network_spec).configure(@ec2_client, instance)
 
           registry_settings = initial_agent_settings(
             agent_id,
@@ -203,7 +217,7 @@ module Bosh::AwsCloud
 
         # if the disk is created for an instance, use the same availability zone as they must match
         with_volume_options = VolumesCreatePresenter.new(volume_properties).present
-        volume = @ec2.volumes.create(with_volume_options)
+        volume = @ec2_client.volumes.create(with_volume_options)
 
         logger.info("Creating volume '#{volume.id}'")
         ResourceWait.for_volume(volume: volume, state: :available)
@@ -220,7 +234,7 @@ module Bosh::AwsCloud
     def has_disk?(disk_id)
       with_thread_name("has_disk?(#{disk_id})") do
         @logger.info("Check the presence of disk with id `#{disk_id}'...")
-        @ec2.volumes[disk_id].exists?
+        @ec2_client.volumes[disk_id].exists?
       end
     end
 
@@ -230,7 +244,7 @@ module Bosh::AwsCloud
     # @raise [Bosh::Clouds::CloudError] if disk is not in available state
     def delete_disk(disk_id)
       with_thread_name("delete_disk(#{disk_id})") do
-        volume = @ec2.volumes[disk_id]
+        volume = @ec2_client.volumes[disk_id]
 
         logger.info("Deleting volume `#{volume.id}'")
 
@@ -240,7 +254,7 @@ module Bosh::AwsCloud
         tries = ResourceWait::DEFAULT_WAIT_ATTEMPTS
         sleep_cb = ResourceWait.sleep_callback(
           "Waiting for volume `#{volume.id}' to be deleted",
-          { interval: 5, total: tries }
+          {interval: 5, total: tries}
         )
         ensure_cb = Proc.new do |retries|
           cloud_error("Timed out waiting to delete volume `#{volume.id}'") if retries == tries
@@ -280,8 +294,8 @@ module Bosh::AwsCloud
     # @param [String] disk_id EBS volume id of the disk to attach
     def attach_disk(instance_id, disk_id)
       with_thread_name("attach_disk(#{instance_id}, #{disk_id})") do
-        instance = @ec2.instances[instance_id]
-        volume = @ec2.volumes[disk_id]
+        instance = @ec2_client.instances[instance_id]
+        volume = @ec2_client.volumes[disk_id]
 
         device_name = attach_ebs_volume(instance, volume)
 
@@ -302,8 +316,8 @@ module Bosh::AwsCloud
     # @param [String] disk_id EBS volume id of the disk to detach
     def detach_disk(instance_id, disk_id)
       with_thread_name("detach_disk(#{instance_id}, #{disk_id})") do
-        instance = @ec2.instances[instance_id]
-        volume = @ec2.volumes[disk_id]
+        instance = @ec2_client.instances[instance_id]
+        volume = @ec2_client.volumes[disk_id]
 
         if volume.exists?
           detach_ebs_volume(instance, volume)
@@ -323,7 +337,7 @@ module Bosh::AwsCloud
 
     def get_disks(vm_id)
       disks = []
-      @ec2.instances[vm_id].block_devices.each do |block_device|
+      @ec2_client.instances[vm_id].block_devices.each do |block_device|
         if block_device[:ebs]
           disks << block_device[:ebs][:volume_id]
         end
@@ -335,12 +349,12 @@ module Bosh::AwsCloud
     # @param [String] disk_id disk id of the disk to take the snapshot of
     # @return [String] snapshot id
     def snapshot_disk(disk_id, metadata)
-      metadata = Hash[metadata.map{|key,value| [key.to_s, value] }]
+      metadata = Hash[metadata.map { |key, value| [key.to_s, value] }]
 
       with_thread_name("snapshot_disk(#{disk_id})") do
-        volume = @ec2.volumes[disk_id]
+        volume = @ec2_client.volumes[disk_id]
         devices = []
-        volume.attachments.each {|attachment| devices << attachment.device}
+        volume.attachments.each { |attachment| devices << attachment.device }
 
         name = ['deployment', 'job', 'index'].collect { |key| metadata[key] }
         name << devices.first.split('/').last unless devices.empty?
@@ -363,7 +377,7 @@ module Bosh::AwsCloud
     # @param [String] snapshot_id snapshot id to delete
     def delete_snapshot(snapshot_id)
       with_thread_name("delete_snapshot(#{snapshot_id})") do
-        snapshot = @ec2.snapshots[snapshot_id]
+        snapshot = @ec2_client.snapshots[snapshot_id]
 
         if snapshot.status == :in_use
           raise Bosh::Clouds::CloudError, "snapshot '#{snapshot.id}' can not be deleted as it is in use"
@@ -382,7 +396,7 @@ module Bosh::AwsCloud
       with_thread_name("configure_networks(#{instance_id}, ...)") do
         logger.info("Configuring '#{instance_id}' to use new network settings: #{network_spec.pretty_inspect}")
 
-        instance = @ec2.instances[instance_id]
+        instance = @ec2_client.instances[instance_id]
 
         network_configurator = NetworkConfigurator.new(network_spec)
 
@@ -390,7 +404,7 @@ module Bosh::AwsCloud
 
         compare_private_ip_addresses(instance, network_configurator.private_ip)
 
-        network_configurator.configure(@ec2, instance)
+        network_configurator.configure(@ec2_client, instance)
 
         update_agent_settings(instance) do |settings|
           settings["networks"] = agent_network_spec(network_spec)
@@ -412,8 +426,8 @@ module Bosh::AwsCloud
 
       unless actual_group_names.sort == new_group_names.sort
         raise Bosh::Clouds::NotSupported,
-              "security groups change requires VM recreation: %s to %s" %
-                  [actual_group_names.join(", "), new_group_names.join(", ")]
+          "security groups change requires VM recreation: %s to %s" %
+            [actual_group_names.join(", "), new_group_names.join(", ")]
       end
     end
 
@@ -430,8 +444,8 @@ module Bosh::AwsCloud
 
       unless specified_ip_address.nil? || actual_ip_address == specified_ip_address
         raise Bosh::Clouds::NotSupported,
-              "IP address change requires VM recreation: %s to %s" %
-              [actual_ip_address, specified_ip_address]
+          "IP address change requires VM recreation: %s to %s" %
+            [actual_ip_address, specified_ip_address]
       end
     end
 
@@ -442,7 +456,7 @@ module Bosh::AwsCloud
     # @param [String] image_path local filesystem path to a stemcell image
     # @param [Hash] cloud_properties AWS-specific stemcell properties
     # @option cloud_properties [String] kernel_id
-    #   AKI, auto-selected based on the region, unless specified
+    #   AKI, auto-selected based on the architecture and root device, unless specified
     # @option cloud_properties [String] root_device_name
     #   block device path (e.g. /dev/sda1), provided by the stemcell manifest, unless specified
     # @option cloud_properties [String] architecture
@@ -453,34 +467,16 @@ module Bosh::AwsCloud
     # @return [String] EC2 AMI name of the stemcell
     def create_stemcell(image_path, stemcell_properties)
       with_thread_name("create_stemcell(#{image_path}...)") do
-        creator = StemcellCreator.new(region, stemcell_properties)
 
-        return creator.fake.id if creator.fake?
+        if stemcell_properties.has_key?('ami')
+          raise Bosh::Clouds::CloudError, "Must provide 'region' when using a light stemcell" unless aws_region
 
-        begin
-          # These variables are used in 'ensure' clause
-          instance = nil
-          volume = nil
+          id = stemcell_properties['ami'][aws_region]
+          raise Bosh::Clouds::CloudError, "Stemcell does not contain an AMI for this region (#{aws_region})" unless id
 
-          # 1. Create and mount new EBS volume (2GB default)
-          disk_size = stemcell_properties["disk"] || 2048
-          volume_id = create_disk(disk_size, {}, current_vm_id)
-          volume = @ec2.volumes[volume_id]
-          instance = @ec2.instances[current_vm_id]
-
-          sd_name = attach_ebs_volume(instance, volume)
-          ebs_volume = find_ebs_device(sd_name)
-
-          logger.info("Creating stemcell with: '#{volume.id}' and '#{stemcell_properties.inspect}'")
-          creator.create(volume, ebs_volume, image_path).id
-        rescue => e
-          logger.error(e)
-          raise e
-        ensure
-          if instance && volume
-            detach_ebs_volume(instance, volume, true)
-            delete_disk(volume.id)
-          end
+          StemcellFinder.find_by_id(@ec2_client, "#{id} light").id
+        else
+          create_ami_for_stemcell(image_path, stemcell_properties)
         end
       end
     end
@@ -489,7 +485,7 @@ module Bosh::AwsCloud
     # @param [String] stemcell_id EC2 AMI name of the stemcell to be deleted
     def delete_stemcell(stemcell_id)
       with_thread_name("delete_stemcell(#{stemcell_id})") do
-        stemcell = StemcellFinder.find_by_region_and_id(region, stemcell_id)
+        stemcell = StemcellFinder.find_by_id(@ec2_client, stemcell_id)
         stemcell.delete
       end
     end
@@ -500,9 +496,9 @@ module Bosh::AwsCloud
     # @param [Hash] metadata metadata key/value pairs
     # @return [void]
     def set_vm_metadata(vm, metadata)
-      metadata = Hash[metadata.map{|key,value| [key.to_s, value] }]
+      metadata = Hash[metadata.map { |key, value| [key.to_s, value] }]
 
-      instance = @ec2.instances[vm]
+      instance = @ec2_client.instances[vm]
 
       metadata.each_pair do |key, value|
         TagManager.tag(instance, key, value) unless key == 'name'
@@ -545,7 +541,6 @@ module Bosh::AwsCloud
     private
 
     attr_reader :az_selector
-    attr_reader :region
 
     def agent_properties
       @agent_properties ||= options.fetch('agent', {})
@@ -556,42 +551,25 @@ module Bosh::AwsCloud
     end
 
     def aws_region
-      @aws_region ||= aws_properties.fetch('region')
+      @aws_region ||= aws_properties.fetch('region', nil)
     end
 
     def fast_path_delete?
       aws_properties.fetch('fast_path_delete', false)
     end
 
-    def initialize_aws
-      @ec2 = AWS::EC2.new(@aws_params)
-      # @ec2.regions[] does not properly set the endpoint on the region (bug in /aws/ec2/region_collection.rb)
-      # It just returns a Region object with nothing set but the name.
-      # As a workaround use the 'each' method, which is implemented correctly
-      begin
-        @region = @ec2.regions.select {|r| r.name == aws_region }.first
-        if @region.nil?
-          region_names = @ec2.regions.map {|r| r.name }
-          cloud_error("Could not find region '#{aws_region}' in known regions: #{region_names}")
-        end
-        @az_selector = AvailabilityZoneSelector.new(@region, aws_properties['default_availability_zone'])
-      rescue Net::OpenTimeout => e
-        cloud_error("Please make sure the CPI has proper network access to AWS. #{e.inspect}")
-      end
-    end
-
     def initialize_registry
       registry_properties = options.fetch('registry')
-      registry_endpoint   = registry_properties.fetch('endpoint')
-      registry_user       = registry_properties.fetch('user')
-      registry_password   = registry_properties.fetch('password')
+      registry_endpoint = registry_properties.fetch('endpoint')
+      registry_user = registry_properties.fetch('user')
+      registry_password = registry_properties.fetch('password')
 
       # Registry updates are not really atomic in relation to
       # EC2 API calls, so they might get out of sync. Cloudcheck
       # is supposed to fix that.
       @registry = Bosh::Registry::Client.new(registry_endpoint,
-                                             registry_user,
-                                             registry_password)
+        registry_user,
+        registry_password)
     end
 
     def update_agent_settings(instance)
@@ -602,6 +580,41 @@ module Bosh::AwsCloud
       settings = registry.read_settings(instance.id)
       yield settings
       registry.update_settings(instance.id, settings)
+    end
+
+    def create_ami_for_stemcell(image_path, stemcell_properties)
+      creator = StemcellCreator.new(@ec2_client, stemcell_properties)
+
+      begin
+        instance = nil
+        volume = nil
+
+        instance = @ec2_client.instances[current_vm_id]
+        unless instance.exist?
+          cloud_error(
+            "Could not locate the current VM with id '#{current_vm_id}'." +
+            "Ensure that the current VM is located in the same region as configured in the manifest."
+          )
+        end
+
+        disk_size = stemcell_properties["disk"] || 2048
+        volume_id = create_disk(disk_size, {}, current_vm_id)
+        volume = @ec2_client.volumes[volume_id]
+
+        sd_name = attach_ebs_volume(instance, volume)
+        ebs_volume = find_ebs_device(sd_name)
+
+        logger.info("Creating stemcell with: '#{volume.id}' and '#{stemcell_properties.inspect}'")
+        creator.create(volume, ebs_volume, image_path).id
+      rescue => e
+        logger.error(e)
+        raise e
+      ensure
+        if instance && volume
+          detach_ebs_volume(instance, volume, true)
+          delete_disk(volume.id)
+        end
+      end
     end
 
     def attach_ebs_volume(instance, volume)
@@ -622,7 +635,7 @@ module Bosh::AwsCloud
       tries = ResourceWait::DEFAULT_WAIT_ATTEMPTS
       sleep_cb = ResourceWait.sleep_callback(
         "Attaching volume `#{volume.id}' to #{instance.id}",
-        { interval: 0, tries_before_max: 15, total: tries }
+        {interval: 0, tries_before_max: 15, total: tries}
       )
 
       Bosh::Common.retryable(
@@ -654,8 +667,8 @@ module Bosh::AwsCloud
       device_names = Set.new(instance.block_device_mappings.to_hash.keys)
 
       ('f'..'p').each do |char| # f..p is what console suggests
-                                # Some kernels will remap sdX to xvdX, so agent needs
-                                # to lookup both (sd, then xvd)
+        # Some kernels will remap sdX to xvdX, so agent needs
+        # to lookup both (sd, then xvd)
         device_name = "/dev/sd#{char}"
         return device_name unless device_names.include?(device_name)
         logger.warn("'#{device_name}' on '#{instance.id}' is taken")
@@ -673,7 +686,7 @@ module Bosh::AwsCloud
       end
       if device_map[volume.id].nil?
         raise Bosh::Clouds::DiskNotAttached.new(true),
-              "Disk `#{volume.id}' is not attached to instance `#{instance.id}'"
+          "Disk `#{volume.id}' is not attached to instance `#{instance.id}'"
       end
 
       attachment = volume.detach_from(instance, device_map[volume.id], force: force)
@@ -688,8 +701,8 @@ module Bosh::AwsCloud
     #
     def validate_options
       required_keys = {
-          "aws" => ["region", "default_key_name"],
-          "registry" => ["endpoint", "user", "password"],
+        "aws" => ["default_key_name"],
+        "registry" => ["endpoint", "user", "password"],
       }
 
       missing_keys = []
@@ -703,6 +716,10 @@ module Bosh::AwsCloud
       end
 
       raise ArgumentError, "missing configuration parameters > #{missing_keys.join(', ')}" unless missing_keys.empty?
+
+      if !options['aws'].has_key?('region') && ! (options['aws'].has_key?('ec2_endpoint') && options['aws'].has_key?('elb_endpoint'))
+        raise ArgumentError, "missing configuration parameters > aws:region, or aws:ec2_endpoint and aws:elb_endpoint"
+      end
     end
 
     ##
@@ -718,13 +735,13 @@ module Bosh::AwsCloud
 
       if credentials_source == 'static'
         if options['aws']['access_key_id'].nil? || options['aws']['secret_access_key'].nil?
-            raise ArgumentError, "Must use access_key_id and secret_access_key with static credentials_source"
+          raise ArgumentError, "Must use access_key_id and secret_access_key with static credentials_source"
         end
       end
 
       if credentials_source == 'env_or_profile'
         if !options['aws']['access_key_id'].nil? || !options['aws']['secret_access_key'].nil?
-            raise ArgumentError, "Can't use access_key_id and secret_access_key with env_or_profile credentials_source"
+          raise ArgumentError, "Can't use access_key_id and secret_access_key with env_or_profile credentials_source"
         end
       end
     end
@@ -748,15 +765,15 @@ module Bosh::AwsCloud
     # @return [Hash]
     def initial_agent_settings(agent_id, network_spec, environment, root_device_name, block_device_agent_info)
       settings = {
-          "vm" => {
-              "name" => "vm-#{SecureRandom.uuid}"
-          },
-          "agent_id" => agent_id,
-          "networks" => agent_network_spec(network_spec),
-          "disks" => {
-              "system" => root_device_name,
-              "persistent" => {}
-          }
+        "vm" => {
+          "name" => "vm-#{SecureRandom.uuid}"
+        },
+        "agent_id" => agent_id,
+        "networks" => agent_network_spec(network_spec),
+        "disks" => {
+          "system" => root_device_name,
+          "persistent" => {}
+        }
       }
 
       settings["disks"].merge!(block_device_agent_info)
@@ -767,10 +784,23 @@ module Bosh::AwsCloud
     end
 
     def agent_network_spec(network_spec)
-      Hash[*network_spec.map do |name, settings|
+      spec = network_spec.map do |name, settings|
         settings["use_dhcp"] = true
         [name, settings]
-      end.flatten]
+      end
+      Hash[spec]
+    end
+
+    def strip_protocol(url)
+      url.sub(/^https?\:\/\//, '')
+    end
+
+    def aws_accessible?
+      # make an arbitrary HTTP request to ensure we can connect and creds are valid
+      @ec2_client.regions.first
+      true
+    rescue Net::OpenTimeout => e
+      false
     end
   end
 end

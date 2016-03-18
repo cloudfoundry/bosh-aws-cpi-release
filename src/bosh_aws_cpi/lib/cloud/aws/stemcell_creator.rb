@@ -3,11 +3,11 @@ module Bosh::AwsCloud
     include Bosh::Exec
     include Helpers
 
-    attr_reader :region, :stemcell_properties
+    attr_reader :client, :stemcell_properties
     attr_reader :volume, :ebs_volume, :image_path
 
-    def initialize(region, stemcell_properties)
-      @region = region
+    def initialize(client, stemcell_properties)
+      @client = client
       @stemcell_properties = stemcell_properties
     end
 
@@ -23,24 +23,12 @@ module Bosh::AwsCloud
 
       # the top-level ec2 class' ImageCollection.create does not support the full set of params
       params = image_params(snapshot.id)
-      image = region.images[region.client.register_image(params).image_id]
+      image = client.images[client.client.register_image(params).image_id]
       ResourceWait.for_image(image: image, state: :available)
 
       TagManager.tag(image, 'Name', params[:description]) if params[:description]
 
-      Stemcell.new(region, image)
-    end
-
-    def fake?
-      stemcell_properties.has_key?('ami')
-    end
-
-    def fake
-      id = stemcell_properties['ami'][region.name]
-
-      raise Bosh::Clouds::CloudError, "Stemcell does not contain an AMI for this region (#{region.name})" unless id
-
-      StemcellFinder.find_by_region_and_id(region, "#{id} light")
+      Stemcell.new(client, image)
     end
 
     # This method tries to execute the helper script stemcell-copy
@@ -102,7 +90,7 @@ module Bosh::AwsCloud
                  }
                else
                  root_device_name = stemcell_properties["root_device_name"]
-                 aki = AKIPicker.new(region).pick(architecture, root_device_name)
+                 aki = AKIPicker.new(client).pick(architecture, root_device_name)
 
                  {
                    :kernel_id => aki,

@@ -31,20 +31,24 @@ describe Bosh::AwsCloud::Cloud do
 
   describe '#initialize' do
     describe 'validating initialization options' do
-      context 'when options are invalid' do
-        let(:options) do
-          {
-            'aws' => {
-              'access_key_id' => 'keys to my heart',
-              'secret_access_key' => 'open sesame'
-            }
-          }
-        end
-
+      context 'when required options are missing' do
         it 'raises an error' do
+          options.delete('registry')
+          aws_options.delete('default_key_name')
+
           expect { cloud }.to raise_error(
               ArgumentError,
-              'missing configuration parameters > aws:region, aws:default_key_name, registry:endpoint, registry:user, registry:password'
+              'missing configuration parameters > aws:default_key_name, registry:endpoint, registry:user, registry:password'
+            )
+        end
+      end
+
+      context 'when both region or endpoints are missing' do
+        it 'raises an error' do
+          aws_options.delete('region')
+          expect { cloud }.to raise_error(
+              ArgumentError,
+              'missing configuration parameters > aws:region, or aws:ec2_endpoint and aws:elb_endpoint'
             )
         end
       end
@@ -57,13 +61,13 @@ describe Bosh::AwsCloud::Cloud do
 
       context 'when optional properties are not provided' do
         it 'default value is used for max retries' do
-          expect(cloud.ec2.config.max_retries).to be 2
+          expect(cloud.ec2_client.config.max_retries).to be 2
         end
 
         it 'default value is used for http properties' do
-          expect(cloud.ec2.config.http_read_timeout).to eq(60)
-          expect(cloud.ec2.config.http_wire_trace).to be false
-          expect(cloud.ec2.config.ssl_verify_peer).to be true
+          expect(cloud.ec2_client.config.http_read_timeout).to eq(60)
+          expect(cloud.ec2_client.config.http_wire_trace).to be false
+          expect(cloud.ec2_client.config.ssl_verify_peer).to be true
         end
       end
 
@@ -90,27 +94,17 @@ describe Bosh::AwsCloud::Cloud do
         end
 
         it 'passes required properties to AWS SDK' do
-          config = cloud.ec2.config
+          config = cloud.ec2_client.config
           expect(config.region).to eq('fake-region')
         end
         it 'passes optional properties to AWS SDK' do
-          config = cloud.ec2.config
+          config = cloud.ec2_client.config
           expect(config.http_read_timeout).to eq(300)
           expect(config.http_wire_trace).to be true
           expect(config.ssl_verify_peer).to be false
           expect(config.ssl_ca_file).to eq('/custom/cert/ca-certificates')
           expect(config.ssl_ca_path).to eq('/custom/cert/')
         end
-      end
-    end
-
-    context 'when there is no proper network access to AWS' do
-      before do
-        allow_any_instance_of(AWS::EC2).to receive(:regions).and_raise(Net::OpenTimeout, 'execution expired')
-      end
-
-      it 'raises an exception with a user friendly message' do
-        expect { cloud }.to raise_error(Bosh::Clouds::CloudError, 'Please make sure the CPI has proper network access to AWS. #<Net::OpenTimeout: execution expired>')
       end
     end
   end
@@ -129,9 +123,9 @@ describe Bosh::AwsCloud::Cloud do
     end
 
     context 'when volumes are set' do
-      let(:ec2) { instance_double('AWS::EC2', volumes: volumes) }
+      let(:ec2_client) { instance_double('AWS::EC2', volumes: volumes) }
       let(:volumes) { instance_double('AWS::EC2::VolumeCollection') }
-      before { cloud.instance_variable_set(:'@ec2', ec2) }
+      before { cloud.instance_variable_set(:'@ec2_client', ec2_client) }
 
       context 'when disk type is provided' do
         let(:cloud_properties) { { 'type' => disk_type } }

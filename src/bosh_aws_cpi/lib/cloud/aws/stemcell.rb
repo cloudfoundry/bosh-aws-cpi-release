@@ -4,14 +4,14 @@ module Bosh::AwsCloud
 
     attr_reader :ami, :snapshots
 
-    def self.find(region, id)
-      image = region.images[id]
+    def self.find(client, id)
+      image = client.images[id]
       raise Bosh::Clouds::CloudError, "could not find AMI '#{id}'" unless image.exists?
-      new(region, image)
+      new(client, image)
     end
 
-    def initialize(region, image)
-      @region = region
+    def initialize(client, image)
+      @client = client
       @ami = image
       @snapshots = []
     end
@@ -63,7 +63,7 @@ module Bosh::AwsCloud
     def delete_snapshots
       snapshots.each do |id|
         logger.info("cleaning up snapshot '#{id}'")
-        snapshot = @region.snapshots[id]
+        snapshot = @client.snapshots[id]
         snapshot.delete
       end
     end

@@ -2,7 +2,7 @@ require "spec_helper"
 
 describe Bosh::AwsCloud::Cloud, "create_vm" do
   let(:registry) { double("registry") }
-  let(:region) { double("region", name: 'bar') }
+  let(:ec2) { double("ec2", regions: [ double("region") ]) }
   let(:availability_zone_selector) { double("availability zone selector") }
   let(:stemcell) { double("stemcell", root_device_name: "root name", image_id: stemcell_id) }
   let(:instance_manager) { instance_double("Bosh::AwsCloud::InstanceManager") }
@@ -59,16 +59,16 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
   before do
     allow(Bosh::Registry::Client).to receive(:new).and_return(registry)
 
-    allow(AWS::EC2).to receive(:new).and_return(double("ec2", regions: [ region ]))
+    allow(AWS::EC2).to receive(:new).and_return(ec2)
 
     allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).
-        with(region, "foo").
+        with(ec2, "foo").
         and_return(availability_zone_selector)
 
-    allow(Bosh::AwsCloud::Stemcell).to receive(:find).with(region, stemcell_id).and_return(stemcell)
+    allow(Bosh::AwsCloud::Stemcell).to receive(:find).with(ec2, stemcell_id).and_return(stemcell)
 
     allow(Bosh::AwsCloud::InstanceManager).to receive(:new).
-        with(region, registry, be_an_instance_of(AWS::ELB), availability_zone_selector, be_an_instance_of(Logger)).
+        with(ec2, registry, be_an_instance_of(AWS::ELB), availability_zone_selector, be_an_instance_of(Logger)).
         and_return(instance_manager)
 
     allow(instance_manager).to receive(:create).
@@ -105,7 +105,7 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
 
   it "should configure the IP for the created instance according to the network specifications" do
     allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: instance, state: :running)
-    expect(network_configurator).to receive(:configure).with(region, instance)
+    expect(network_configurator).to receive(:configure).with(ec2, instance)
     cloud.create_vm(agent_id, stemcell_id, resource_pool, networks_spec, disk_locality, environment)
   end
 

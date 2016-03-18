@@ -2,10 +2,9 @@ require 'spec_helper'
 require 'bosh/registry/client'
 
 describe Bosh::AwsCloud::InstanceManager do
-  subject(:instance_manager) { described_class.new(region, registry, elb, az_selector, logger) }
-  let(:region) do
-    _, region = mock_ec2
-    region
+  subject(:instance_manager) { described_class.new(ec2, registry, elb, az_selector, logger) }
+  let(:ec2) do
+    mock_ec2
   end
   let(:registry) { double('Bosh::Registry::Client', :endpoint => 'http://...', :update_settings => nil) }
   let(:elb) { double('AWS::ELB', load_balancers: nil) }
@@ -25,7 +24,7 @@ describe Bosh::AwsCloud::InstanceManager do
       )
     end
 
-    before { allow(region).to receive(:subnets).and_return('sub-123456' => fake_aws_subnet) }
+    before { allow(ec2).to receive(:subnets).and_return('sub-123456' => fake_aws_subnet) }
     let(:fake_aws_subnet) { instance_double('AWS::EC2::Subnet').as_null_object }
 
     let(:aws_instance_params) do
@@ -47,7 +46,7 @@ describe Bosh::AwsCloud::InstanceManager do
       }
     end
 
-    before { allow(region).to receive(:instances).and_return(aws_instances) }
+    before { allow(ec2).to receive(:instances).and_return(aws_instances) }
     let(:aws_instances) { instance_double('AWS::EC2::InstanceCollection') }
 
     let(:aws_instance) { instance_double('AWS::EC2::Instance', id: 'i-12345678') }
@@ -86,7 +85,7 @@ describe Bosh::AwsCloud::InstanceManager do
 
     before do
       allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
-      allow(region).to receive(:images).and_return({
+      allow(ec2).to receive(:images).and_return({
         stemcell_id => instance_double('AWS::EC2::Image',
           block_devices: block_devices,
           root_device_name: 'fake-image-root-device',
@@ -144,14 +143,14 @@ describe Bosh::AwsCloud::InstanceManager do
       end
 
       it 'should ask AWS to create a SPOT instance in the given region, when resource_pool includes spot_bid_price' do
-        allow(region).to receive(:client).and_return(aws_client)
-        allow(region).to receive(:subnets).and_return('sub-123456' => fake_aws_subnet)
-        allow(region).to receive(:instances).and_return('i-12345678' => aws_instance)
+        allow(ec2).to receive(:client).and_return(aws_client)
+        allow(ec2).to receive(:subnets).and_return('sub-123456' => fake_aws_subnet)
+        allow(ec2).to receive(:instances).and_return('i-12345678' => aws_instance)
 
         # need to translate security group names to security group ids
         sg1 = instance_double('AWS::EC2::SecurityGroup', security_group_id:'sg-baz-1234')
         allow(sg1).to receive(:name).and_return('baz')
-        allow(region).to receive(:security_groups).and_return([sg1])
+        allow(ec2).to receive(:security_groups).and_return([sg1])
 
 
         # Should not recieve an ondemand instance create call
@@ -229,7 +228,7 @@ describe Bosh::AwsCloud::InstanceManager do
     end
 
     it 'should retry creating the VM when AWS::EC2::Errors::InvalidIPAddress::InUse raised' do
-      allow(region).to receive(:subnets).and_return('sub-123456' => fake_aws_subnet)
+      allow(ec2).to receive(:subnets).and_return('sub-123456' => fake_aws_subnet)
 
       expect(aws_instances).to receive(:create).with(aws_instance_params).and_raise(AWS::EC2::Errors::InvalidIPAddress::InUse)
       expect(aws_instances).to receive(:create).with(aws_instance_params).and_return(aws_instance)
@@ -242,7 +241,7 @@ describe Bosh::AwsCloud::InstanceManager do
     end
 
     it 'retries creating the VM when the request limit is exceeded' do
-      allow(region).to receive(:subnets).and_return('sub-123456' => fake_aws_subnet)
+      allow(ec2).to receive(:subnets).and_return('sub-123456' => fake_aws_subnet)
 
       expect(aws_instances).to receive(:create).with(aws_instance_params).and_raise(AWS::EC2::Errors::RequestLimitExceeded)
       expect(aws_instances).to receive(:create).with(aws_instance_params).and_return(aws_instance)
@@ -433,7 +432,7 @@ describe Bosh::AwsCloud::InstanceManager do
 
                 context 'when the instance is paravirtual' do
                   before do
-                    allow(region).to receive(:images).and_return({
+                    allow(ec2).to receive(:images).and_return({
                       stemcell_id => instance_double('AWS::EC2::Image',
                         block_devices: block_devices,
                         root_device_name: 'fake-image-root-device',
@@ -554,7 +553,7 @@ describe Bosh::AwsCloud::InstanceManager do
 
                 context 'when the instance is paravirtual' do
                   before do
-                    allow(region).to receive(:images).and_return({
+                    allow(ec2).to receive(:images).and_return({
                       stemcell_id => instance_double(
                         'AWS::EC2::Image',
                         block_devices: block_devices,
@@ -897,7 +896,7 @@ describe Bosh::AwsCloud::InstanceManager do
           end
 
           it 'should set device name if virtualization type is not hvm' do
-            allow(region).to receive(:images).and_return(
+            allow(ec2).to receive(:images).and_return(
               {
                 stemcell_id => instance_double(
                   'AWS::EC2::Image',
@@ -1459,7 +1458,7 @@ describe Bosh::AwsCloud::InstanceManager do
   end
 
   describe '#find' do
-    before { allow(region).to receive(:instances).and_return(instance_id => aws_instance) }
+    before { allow(ec2).to receive(:instances).and_return(instance_id => aws_instance) }
     let(:aws_instance) { instance_double('AWS::EC2::Instance', id: instance_id) }
     let(:instance_id) { 'fake-id' }
 

@@ -29,8 +29,14 @@ properties:
     description: Default security groups for new VMs (required)
     example: [bosh-grp]
   aws.region:
-    description: AWS region name
+    description: AWS region name (Required unless both ec2_endpoint and elb_endpoint are specified)
     example: us-east-1
+  aws.ec2_endpoint:
+    description: "AWS EC2 service endpoint, without protocol/scheme (Optional: default endpoint will be constructed from region if not specified)"
+    example: ec2.us-east-1.amazonaws.com
+  aws.elb_endpoint:
+    description: "AWS ELB service endpoint, without protocol/scheme (Optional: default endpoint will be constructed from region if not specified)"
+    example: elasticloadbalancing.us-east-1.amazonaws.com
   aws.max_retries:
     description: The maximum number of times AWS service errors and throttling errors should be retried. There is an exponential backoff in between retries, so the more retries the longer it can take to fail.
     default: 2

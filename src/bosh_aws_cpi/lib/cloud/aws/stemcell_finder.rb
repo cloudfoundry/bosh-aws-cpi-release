@@ -3,11 +3,13 @@ require 'cloud/aws/stemcell'
 
 module Bosh::AwsCloud
   class StemcellFinder
-    def self.find_by_region_and_id(region, id)
-      if id =~ / light$/
-        LightStemcell.new(Stemcell.find(region, id[0...-6]), Bosh::Clouds::Config.logger)
+    def self.find_by_id(client, id)
+      regex = / light$/
+
+      if id =~ regex
+        LightStemcell.new(Stemcell.find(client, id.sub(regex, '')), Bosh::Clouds::Config.logger)
       else
-        Stemcell.find(region, id)
+        Stemcell.find(client, id)
       end
     end
   end

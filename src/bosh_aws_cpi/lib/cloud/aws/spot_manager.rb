@@ -6,8 +6,8 @@ module Bosh::AwsCloud
     TOTAL_WAIT_TIME_IN_SECONDS = 300
     RETRY_COUNT = 10
 
-    def initialize(region)
-      @region = region
+    def initialize(client)
+      @client = client
       @logger = Bosh::Clouds::Config.logger
     end
 
@@ -18,7 +18,7 @@ module Bosh::AwsCloud
 
       begin
         # the top-level ec2 class does not support spot instance methods
-        @spot_instance_requests = @region.client.request_spot_instances(spot_request_spec)
+        @spot_instance_requests = @client.client.request_spot_instances(spot_request_spec)
         @logger.debug("Got spot instance requests: #{@spot_instance_requests.inspect}")
       rescue => e
         raise Bosh::Clouds::VMCreationFailed.new(false), e.inspect
@@ -49,7 +49,7 @@ module Bosh::AwsCloud
             end
           when 'active'
             @logger.info("Spot request instances fulfilled: #{status.inspect}")
-            instance = @region.instances[status[:instance_id]]
+            instance = @client.instances[status[:instance_id]]
         end
       end
 
@@ -93,7 +93,7 @@ module Bosh::AwsCloud
 
     def spot_instance_request_status
       @logger.debug('Checking state of spot instance requests...')
-      response = @region.client.describe_spot_instance_requests(
+      response = @client.client.describe_spot_instance_requests(
         spot_instance_request_ids: spot_instance_request_ids
       )
       status = response[:spot_instance_request_set][0] # There is only ever 1
@@ -113,7 +113,7 @@ module Bosh::AwsCloud
 
     def cancel_pending_spot_requests
       @logger.warn("Failed to create spot instance: #{@spot_instance_requests.inspect}. Cancelling request...")
-      cancel_response = @region.client.cancel_spot_instance_requests(
+      cancel_response = @client.client.cancel_spot_instance_requests(
         spot_instance_request_ids: spot_instance_request_ids
       )
       @logger.warn("Spot cancel request returned: #{cancel_response.inspect}")
@@ -121,7 +121,7 @@ module Bosh::AwsCloud
 
     def resolve_security_group_ids(security_group_names)
       return [] unless security_group_names
-      @region.security_groups.inject([]) do |security_group_ids, group|
+      @client.security_groups.inject([]) do |security_group_ids, group|
         security_group_ids << group.security_group_id if security_group_names.include?(group.name)
         security_group_ids
       end

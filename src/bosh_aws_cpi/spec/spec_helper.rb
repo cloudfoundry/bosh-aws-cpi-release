@@ -35,25 +35,24 @@ def mock_registry(endpoint = 'http://registry:3333')
 end
 
 def mock_cloud(options = nil)
-  ec2, region = mock_ec2
+  ec2 = mock_ec2
   allow(AWS::EC2).to receive(:new).and_return(ec2)
 
-  yield ec2, region if block_given?
+  yield ec2 if block_given?
 
   Bosh::AwsCloud::Cloud.new(options || mock_cloud_options['properties'])
 end
 
 def mock_ec2
-  region = double(AWS::EC2::Region)
   ec2 = double(AWS::EC2,
                :instances => double(AWS::EC2::InstanceCollection),
                :volumes => double(AWS::EC2::VolumeCollection),
                :images => double(AWS::EC2::ImageCollection),
-               :regions => double(AWS::EC2::RegionCollection, :select => [ region ]))
+               :regions => [ double(AWS::EC2::Region) ])
 
-  yield ec2, region if block_given?
+  yield ec2 if block_given?
 
-  return ec2, region
+  return ec2
 end
 
 def dynamic_network_spec

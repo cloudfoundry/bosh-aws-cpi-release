@@ -8,7 +8,6 @@ describe Bosh::AwsCloud::Cloud do
 
   describe "EBS-volume based flow" do
     let(:creator) { double(Bosh::AwsCloud::StemcellCreator) }
-
     before { allow(Bosh::AwsCloud::StemcellCreator).to receive(:new).and_return(creator) }
 
     context "fake stemcell" do
@@ -26,8 +25,7 @@ describe Bosh::AwsCloud::Cloud do
 
       it "should return a fake stemcell" do
         cloud = mock_cloud
-        expect(creator).to receive(:fake?).and_return(true)
-        expect(creator).to receive(:fake).and_return(double("ami", :id => "ami-xxxxxxxx"))
+        expect(Bosh::AwsCloud::StemcellFinder).to receive(:find_by_id).and_return(double("ami", :id => "ami-xxxxxxxx"))
         expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
       end
     end
@@ -53,10 +51,8 @@ describe Bosh::AwsCloud::Cloud do
           allow(ec2.instances).to receive(:[]).with("i-xxxxxxxx").and_return(instance)
         end
 
-        expect(creator).to receive(:fake?).and_return(false)
-        expect(creator).not_to receive(:fake)
-
-        expect(cloud).to receive(:current_vm_id).twice.and_return("i-xxxxxxxx")
+        allow(instance).to receive(:exist?).and_return(true)
+        allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
 
         expect(cloud).to receive(:create_disk).with(2048, {}, "i-xxxxxxxx").and_return("vol-xxxxxxxx")
         expect(cloud).to receive(:attach_ebs_volume).with(instance, volume).and_return("/dev/sdh")

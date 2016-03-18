@@ -27,17 +27,17 @@ describe Bosh::AwsCloud::Cloud, "delete_vm" do
     registry = double("registry")
     allow(Bosh::Registry::Client).to receive(:new).and_return(registry)
 
-    region = double("region", name: 'bar')
-    allow(AWS::EC2).to receive(:new).and_return(double("ec2", regions: [ region ]))
+    ec2 = double("ec2", :regions => [])
+    allow(AWS::EC2).to receive(:new).and_return(ec2)
 
     az_selector = double("availability zone selector")
     allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).
-      with(region, "foo").
+      with(ec2, "foo").
       and_return(az_selector)
 
     instance_manager = instance_double('Bosh::AwsCloud::InstanceManager')
     allow(Bosh::AwsCloud::InstanceManager).to receive(:new).
-      with(region, registry, be_an_instance_of(AWS::ELB), az_selector, be_an_instance_of(Logger)).
+      with(ec2, registry, be_an_instance_of(AWS::ELB), az_selector, be_an_instance_of(Logger)).
       and_return(instance_manager)
 
     instance = instance_double('Bosh::AwsCloud::Instance')

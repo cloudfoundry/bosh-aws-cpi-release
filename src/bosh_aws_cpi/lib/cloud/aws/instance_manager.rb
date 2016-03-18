@@ -70,8 +70,8 @@ module Bosh::AwsCloud
       'd2.8xlarge' => DiskInfo.new(2000, 24)
     }
 
-    def initialize(region, registry, elb, az_selector, logger)
-      @region = region
+    def initialize(client, registry, elb, az_selector, logger)
+      @client = client
       @registry = registry
       @elb = elb
       @az_selector = az_selector
@@ -112,13 +112,13 @@ module Bosh::AwsCloud
 
     # @param [String] instance_id EC2 instance id
     def find(instance_id)
-      Instance.new(@region.instances[instance_id], @registry, @elb, @logger)
+      Instance.new(@client.instances[instance_id], @registry, @elb, @logger)
     end
 
     private
 
     def build_instance_params(stemcell_id, resource_pool, networks_spec, disk_locality, options)
-      virtualization_type = @region.images[stemcell_id].virtualization_type
+      virtualization_type = @client.images[stemcell_id].virtualization_type
       block_device_info = block_device_mapping(virtualization_type, resource_pool)
 
       instance_params = {count: 1}
@@ -135,7 +135,7 @@ module Bosh::AwsCloud
       set_iam_instance_profile_parameter(instance_params, resource_pool["iam_instance_profile"], options["aws"]["default_iam_instance_profile"])
       set_availability_zone_parameter(
         instance_params,
-        (disk_locality || []).map { |volume_id| @region.volumes[volume_id].availability_zone.to_s },
+        (disk_locality || []).map { |volume_id| @client.volumes[volume_id].availability_zone.to_s },
         resource_pool["availability_zone"],
         (instance_params[:subnet].availability_zone_name if instance_params[:subnet])
       )
@@ -145,7 +145,7 @@ module Bosh::AwsCloud
 
     def create_aws_spot_instance(instance_params, spot_bid_price)
       @logger.info("Launching spot instance...")
-      spot_manager = Bosh::AwsCloud::SpotManager.new(@region)
+      spot_manager = Bosh::AwsCloud::SpotManager.new(@client)
 
       spot_manager.create(instance_params, spot_bid_price)
     end
@@ -169,7 +169,7 @@ module Bosh::AwsCloud
         if error.class == AWS::EC2::Errors::InvalidIPAddress::InUse
           @logger.warn("IP address was in use: #{error}")
         end
-        @region.instances.create(instance_params)
+        @client.instances.create(instance_params)
       end
     end
 
@@ -295,7 +295,7 @@ module Bosh::AwsCloud
           spec.fetch("cloud_properties", {}).has_key?("subnet")
       }.first
       if subnet_network_spec
-        instance_params[:subnet] = @region.subnets[subnet_network_spec["cloud_properties"]["subnet"]]
+        instance_params[:subnet] = @client.subnets[subnet_network_spec["cloud_properties"]["subnet"]]
       end
     end
 
