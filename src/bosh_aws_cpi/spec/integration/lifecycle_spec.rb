@@ -159,7 +159,7 @@ describe Bosh::AwsCloud::Cloud do
             snapshot_id = cpi.snapshot_disk(volume_id, snapshot_metadata)
             expect(snapshot_id).not_to be_nil
 
-            snapshot = cpi.ec2.snapshots[snapshot_id]
+            snapshot = cpi.ec2_client.snapshots[snapshot_id]
             expect(snapshot.tags.device).to eq '/dev/sdf'
             expect(snapshot.tags.agent_id).to eq 'agent'
             expect(snapshot.tags.instance_id).to eq 'instance'
@@ -212,7 +212,7 @@ describe Bosh::AwsCloud::Cloud do
           expect(volume_id).not_to be_nil
           expect(cpi.has_disk?(volume_id)).to be(true)
 
-          encrypted_volume = cpi.ec2.volumes[volume_id]
+          encrypted_volume = cpi.ec2_client_client.volumes[volume_id]
           expect(encrypted_volume.encrypted?).to be(true)
         ensure
           cpi.delete_disk(volume_id)
@@ -238,7 +238,7 @@ describe Bosh::AwsCloud::Cloud do
           disks = cpi.get_disks(instance_id)
           expect(disks.size).to eq(2)
 
-          ephemeral_volume = cpi.ec2.volumes[disks[1]]
+          ephemeral_volume = cpi.ec2_client.volumes[disks[1]]
           expect(ephemeral_volume.size).to eq(4)
           expect(ephemeral_volume.type).to eq('io1')
           expect(ephemeral_volume.iops).to eq(100)
@@ -289,7 +289,7 @@ describe Bosh::AwsCloud::Cloud do
             disks = cpi.get_disks(instance_id)
             expect(disks.size).to eq(2)
 
-            root_disk = cpi.ec2.volumes[disks[0]]
+            root_disk = cpi.ec2_client.volumes[disks[0]]
             expect(root_disk.size).to eq(11)
             expect(root_disk.type).to eq('gp2')
           end
@@ -354,7 +354,7 @@ describe Bosh::AwsCloud::Cloud do
     context '#set_vm_metadata' do
       it 'correctly sets the tags set by #set_vm_metadata' do
         vm_lifecycle do |instance_id|
-          tags = cpi.ec2.instances[instance_id].tags
+          tags = cpi.ec2_client.instances[instance_id].tags
           expect(tags['deployment']).to eq('deployment')
           expect(tags['job']).to eq('cpi_spec')
           expect(tags['index']).to eq('0')

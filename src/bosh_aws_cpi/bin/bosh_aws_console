@@ -33,7 +33,7 @@ module ConsoleHelpers
   end
 
   def ec2
-    cpi.ec2
+    cpi.ec2_client
   end
 
   def registry
