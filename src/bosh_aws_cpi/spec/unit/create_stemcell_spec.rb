@@ -51,7 +51,7 @@ describe Bosh::AwsCloud::Cloud do
           allow(ec2.instances).to receive(:[]).with("i-xxxxxxxx").and_return(instance)
         end
 
-        allow(instance).to receive(:exist?).and_return(true)
+        allow(instance).to receive(:exists?).and_return(true)
         allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
 
         expect(cloud).to receive(:create_disk).with(2048, {}, "i-xxxxxxxx").and_return("vol-xxxxxxxx")

@@ -590,7 +590,7 @@ module Bosh::AwsCloud
         volume = nil
 
         instance = @ec2_client.instances[current_vm_id]
-        unless instance.exist?
+        unless instance.exists?
           cloud_error(
             "Could not locate the current VM with id '#{current_vm_id}'." +
             "Ensure that the current VM is located in the same region as configured in the manifest."
