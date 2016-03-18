@@ -212,7 +212,7 @@ describe Bosh::AwsCloud::Cloud do
           expect(volume_id).not_to be_nil
           expect(cpi.has_disk?(volume_id)).to be(true)
 
-          encrypted_volume = cpi.ec2_client_client.volumes[volume_id]
+          encrypted_volume = cpi.ec2_client.volumes[volume_id]
           expect(encrypted_volume.encrypted?).to be(true)
         ensure
           cpi.delete_disk(volume_id)
