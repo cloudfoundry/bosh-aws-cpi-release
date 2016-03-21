@@ -17,15 +17,9 @@ groups:
       - lifecycle
       - promote-candidate
 
-  - name: china
-    jobs:
-      - recreate-infrastructure-cn-downloader
-      - download-from-cn
-
   - name: all
     jobs:
       - recreate-infrastructure-primary
-      - recreate-infrastructure-cn-downloader
       - build-candidate
       - bats-ubuntu
       - bats-centos
@@ -33,7 +27,6 @@ groups:
       - centos-pv-radiator
       - lifecycle
       - promote-candidate
-      - download-from-cn
 
 jobs:
   - name: recreate-infrastructure-primary
@@ -59,26 +52,6 @@ jobs:
       - task: setup-infrastructure
         file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
         config: *recreate-primary-config
-
-  - name: recreate-infrastructure-cn-downloader
-    serial_groups: [china]
-    plan:
-      - aggregate:
-        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
-
-      - task: teardown-infrastructure
-        file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
-        config: &recreate-downloader-config
-          params:
-            aws_access_key_id:     {{aws_access_key__downloader}}
-            aws_secret_access_key: {{aws_secret_key__downloader}}
-            region_name:           {{aws_region__downloader}}
-            stack_name:            downloader-cn
-            stack_prefix:          not-applicable
-
-      - task: setup-infrastructure
-        file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
-        config: *recreate-downloader-config
 
   - name: build-candidate
     serial: true
@@ -309,23 +282,6 @@ jobs:
 
       - put: release-version-semver
         params: {file: release-version-semver/number}
-
-  - name: download-from-cn
-    serial_groups: [china]
-    plan:
-      - aggregate:
-        - {trigger: true,  get: one-hour-timer}
-        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
-
-      - task: download
-        file: bosh-cpi-src/ci/tasks/download-bits.yml
-        config:
-          params:
-            aws_access_key_id:     {{aws_access_key__downloader}}
-            aws_secret_access_key: {{aws_secret_key__downloader}}
-            private_key_data:      {{bosh_private_key}}
-            region_name:           {{aws_region__downloader}}
-            stack_name:            downloader-cn
 
 resources:
   - name: bosh-cpi-dev-artifacts
