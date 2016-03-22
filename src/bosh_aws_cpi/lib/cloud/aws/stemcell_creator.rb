@@ -74,37 +74,38 @@ module Bosh::AwsCloud
       architecture = stemcell_properties["architecture"]
       virtualization_type = stemcell_properties["virtualization_type"]
 
-      params = if virtualization_type == 'hvm'
-                 {
-                   :virtualization_type => virtualization_type,
-                   :root_device_name => "/dev/xvda",
-                   :sriov_net_support => "simple",
-                   :block_device_mappings => [
-                     {
-                       :device_name => "/dev/xvda",
-                       :ebs => {
-                         :snapshot_id => snapshot_id,
-                       },
-                     },
-                   ],
-                 }
-               else
-                 root_device_name = stemcell_properties["root_device_name"]
-                 aki = AKIPicker.new(client).pick(architecture, root_device_name)
-
-                 {
-                   :kernel_id => aki,
-                   :root_device_name => root_device_name,
-                   :block_device_mappings => [
-                     {
-                       :device_name => "/dev/sda",
-                       :ebs => {
-                         :snapshot_id => snapshot_id,
-                       },
-                     },
-                   ],
-                 }
-               end
+      params = begin
+        if virtualization_type == 'paravirtual'
+          root_device_name = stemcell_properties["root_device_name"]
+          aki = AKIPicker.new(client).pick(architecture, root_device_name)
+          {
+            :kernel_id => aki,
+            :root_device_name => root_device_name,
+            :block_device_mappings => [
+              {
+                :device_name => "/dev/sda",
+                :ebs => {
+                  :snapshot_id => snapshot_id,
+                },
+              },
+            ],
+          }
+        else
+          {
+            :virtualization_type => virtualization_type,
+            :root_device_name => "/dev/xvda",
+            :sriov_net_support => "simple",
+            :block_device_mappings => [
+              {
+                :device_name => "/dev/xvda",
+                :ebs => {
+                  :snapshot_id => snapshot_id,
+                },
+              },
+            ],
+          }
+        end
+      end
 
       # old stemcells doesn't have name & version
       if stemcell_properties["name"] && stemcell_properties["version"]
