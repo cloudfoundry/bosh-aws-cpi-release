@@ -82,6 +82,18 @@ describe 'cpi.json.erb' do
     })
   end
 
+  context 'when the registry password includes special characters' do
+    special_chars_password = '=!@#$%^&*/-+?='
+    before do
+      manifest['properties']['registry']['password'] = special_chars_password
+    end
+
+    it 'encodes the password with special characters in the registry URL' do
+      registry_uri = URI(subject['cloud']['properties']['registry']['endpoint'])
+      expect(URI.decode(registry_uri.password)).to eq(special_chars_password)
+    end
+  end
+
   context 'when credentials are provided in aws properties' do
     before do
       manifest['properties']['aws'].merge!({
