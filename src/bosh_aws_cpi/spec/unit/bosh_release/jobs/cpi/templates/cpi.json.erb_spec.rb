@@ -23,19 +23,19 @@ describe 'cpi.json.erb' do
           'region' => 'moon'
         },
         'registry' => {
-          'host' => 'registry_host.example.com',
+          'host' => 'registry-host.example.com',
           'username' => 'admin',
           'password' => 'admin',
         },
         'blobstore' => {
-          'address' => 'blobstore_address.example.com',
+          'address' => 'blobstore-address.example.com',
           'agent' => {
             'user' => 'agent',
             'password' => 'agent-password'
           }
         },
         'nats' => {
-          'address' => 'nats_address.example.com',
+          'address' => 'nats-address.example.com',
           'password' => 'nats-password'
         }
       }
@@ -58,7 +58,7 @@ describe 'cpi.json.erb' do
             'max_retries'=>2
           },
           'registry'=>{
-            'endpoint'=>'http://admin:admin@registry_host.example.com:25777',
+            'endpoint'=>'http://admin:admin@registry-host.example.com:25777',
             'user'=>'admin',
             'password'=>'admin'
           },
@@ -70,12 +70,12 @@ describe 'cpi.json.erb' do
             'blobstore'=>{
               'provider'=>'dav',
               'options'=>{
-                'endpoint'=>'http://blobstore_address.example.com:25250',
+                'endpoint'=>'http://blobstore-address.example.com:25250',
                 'user'=>'agent',
                 'password'=>'agent-password'
               }
             },
-            'mbus'=>'nats://nats:nats-password@nats_address.example.com:4222'
+            'mbus'=>'nats://nats:nats-password@nats-address.example.com:4222'
           }
         }
       }
