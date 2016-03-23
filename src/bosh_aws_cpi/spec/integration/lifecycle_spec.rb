@@ -52,10 +52,14 @@ describe Bosh::AwsCloud::Cloud do
   end
 
   before do
-    AWS::EC2.new(
-      access_key_id:     @access_key_id,
-      secret_access_key: @secret_access_key,
-    ).instances.tagged('delete_me').each(&:terminate)
+    begin
+      AWS::EC2.new(
+        access_key_id:     @access_key_id,
+        secret_access_key: @secret_access_key,
+      ).instances.tagged('delete_me').each(&:terminate)
+    rescue AWS::EC2::Errors::InvalidInstanceID::NotFound
+      # don't blow up tests if instance that we're trying to delete was not found
+    end
   end
 
   before { allow(Bosh::Clouds::Config).to receive_messages(logger: logger) }
