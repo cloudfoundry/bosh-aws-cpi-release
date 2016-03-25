@@ -3,12 +3,12 @@ module Bosh::AwsCloud
     include Bosh::Exec
     include Helpers
 
-    attr_reader :client, :stemcell_properties
+    attr_reader :client, :properties
     attr_reader :volume, :ebs_volume, :image_path
 
-    def initialize(client, stemcell_properties)
+    def initialize(client, properties)
       @client = client
-      @stemcell_properties = stemcell_properties
+      @properties = properties
     end
 
     def create(volume, ebs_volume, image_path)
@@ -71,13 +71,13 @@ module Bosh::AwsCloud
     end
 
     def image_params(snapshot_id)
-      architecture = stemcell_properties["architecture"]
-      virtualization_type = stemcell_properties["virtualization_type"]
+      architecture = properties["architecture"]
+      virtualization_type = properties["virtualization_type"]
 
       params = begin
         if virtualization_type == 'paravirtual'
-          root_device_name = stemcell_properties["root_device_name"]
-          aki = AKIPicker.new(client).pick(architecture, root_device_name)
+          root_device_name = properties["root_device_name"]
+          aki = properties['kernel_id'] || AKIPicker.new(client).pick(architecture, root_device_name)
           {
             :kernel_id => aki,
             :root_device_name => root_device_name,
@@ -108,8 +108,8 @@ module Bosh::AwsCloud
       end
 
       # old stemcells doesn't have name & version
-      if stemcell_properties["name"] && stemcell_properties["version"]
-        name = "#{stemcell_properties['name']} #{stemcell_properties['version']}"
+      if properties["name"] && properties["version"]
+        name = "#{properties['name']} #{properties['version']}"
         params[:description] = name
       end
 
@@ -122,6 +122,8 @@ module Bosh::AwsCloud
 
       params
     end
+
+    private
 
     def logger
       Bosh::Clouds::Config.logger

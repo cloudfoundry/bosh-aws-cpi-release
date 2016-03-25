@@ -8,7 +8,6 @@ describe Bosh::AwsCloud::Cloud do
 
   describe "EBS-volume based flow" do
     let(:creator) { double(Bosh::AwsCloud::StemcellCreator) }
-    before { allow(Bosh::AwsCloud::StemcellCreator).to receive(:new).and_return(creator) }
 
     context "fake stemcell" do
       let(:stemcell_properties) do
@@ -49,6 +48,10 @@ describe Bosh::AwsCloud::Cloud do
         cloud = mock_cloud do |ec2|
           allow(ec2.volumes).to receive(:[]).with("vol-xxxxxxxx").and_return(volume)
           allow(ec2.instances).to receive(:[]).with("i-xxxxxxxx").and_return(instance)
+
+          expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
+            .with(ec2, stemcell_properties)
+            .and_return(creator)
         end
 
         allow(instance).to receive(:exists?).and_return(true)
@@ -64,6 +67,36 @@ describe Bosh::AwsCloud::Cloud do
         expect(cloud).to receive(:delete_disk).with("vol-xxxxxxxx")
 
         expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
+      end
+
+      context 'when the CPI configuration includes a kernel_id for stemcell' do
+        it "creates a stemcell" do
+          options = mock_cloud_options['properties']
+          options['aws']['stemcell'] = {'kernel_id' => 'fake-kernel-id'}
+          cloud = mock_cloud(options) do |ec2|
+            allow(ec2.volumes).to receive(:[]).with("vol-xxxxxxxx").and_return(volume)
+            allow(ec2.instances).to receive(:[]).with("i-xxxxxxxx").and_return(instance)
+
+            expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
+              .with(ec2, stemcell_properties.merge('kernel_id' => 'fake-kernel-id'))
+              .and_return(creator)
+          end
+
+          allow(instance).to receive(:exists?).and_return(true)
+          allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
+
+          expect(cloud).to receive(:create_disk).with(2048, {}, "i-xxxxxxxx").and_return("vol-xxxxxxxx")
+          expect(cloud).to receive(:attach_ebs_volume).with(instance, volume).and_return("/dev/sdh")
+          expect(cloud).to receive(:find_ebs_device).with("/dev/sdh").and_return("ebs")
+
+          allow(creator).to receive(:create)
+          expect(creator).to receive(:create).with(volume, "ebs", "/tmp/foo").and_return(stemcell)
+
+          expect(cloud).to receive(:detach_ebs_volume).with(instance, volume, true)
+          expect(cloud).to receive(:delete_disk).with("vol-xxxxxxxx")
+
+          expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
+        end
       end
     end
 

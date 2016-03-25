@@ -414,6 +414,7 @@ module Bosh::AwsCloud
     # @return [String] EC2 AMI name of the stemcell
     def create_stemcell(image_path, stemcell_properties)
       with_thread_name("create_stemcell(#{image_path}...)") do
+        stemcell_properties.merge!(aws_properties['stemcell'] || {})
 
         if stemcell_properties.has_key?('ami')
           raise Bosh::Clouds::CloudError, "Must provide 'region' when using a light stemcell" unless aws_region
