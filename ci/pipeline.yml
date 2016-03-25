@@ -29,21 +29,20 @@ jobs:
 
       - task: check-for-running-instances
         file: bosh-cpi-src/ci/tasks/check-for-running-instances.yml
-        config: &recreate-primary-config
-          params:
-            aws_access_key_id:        {{aws_access_key__primary}}
-            aws_secret_access_key:    {{aws_secret_key__primary}}
-            region_name:              {{aws_region__primary}}
-            stack_name:               primary
-            stack_prefix:             not-applicable
+        params: &recreate-primary-params
+          aws_access_key_id:        {{aws_access_key__primary}}
+          aws_secret_access_key:    {{aws_secret_key__primary}}
+          region_name:              {{aws_region__primary}}
+          stack_name:               primary
+          stack_prefix:             not-applicable
 
       - task: teardown-infrastructure
         file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
-        config: *recreate-primary-config
+        params: *recreate-primary-params
 
       - task: setup-infrastructure
         file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
-        config: *recreate-primary-config
+        params: *recreate-primary-params
 
   - name: build-candidate
     serial: true
@@ -70,12 +69,11 @@ jobs:
 
       - task: test
         file: bosh-cpi-src/ci/tasks/run-lifecycle.yml
-        config:
-          params:
-            aws_access_key_id:            {{aws_access_key__primary}}
-            aws_secret_access_key:        {{aws_secret_key__primary}}
-            region_name:                  {{aws_region__primary}}
-            stack_name:                   primary
+        params:
+          aws_access_key_id:            {{aws_access_key__primary}}
+          aws_secret_access_key:        {{aws_secret_key__primary}}
+          region_name:                  {{aws_region__primary}}
+          stack_name:                   primary
 
   - name: promote-candidate
     plan:
@@ -86,10 +84,9 @@ jobs:
 
       - task: promote
         file: bosh-cpi-src/ci/tasks/promote-candidate.yml
-        config:
-          params:
-            aws_access_key_id: {{aws_access_key__primary}}
-            aws_secret_access_key: {{aws_secret_key__primary}}
+        params:
+          aws_access_key_id: {{aws_access_key__primary}}
+          aws_secret_access_key: {{aws_secret_key__primary}}
 
       - put: bosh-cpi-src-out
         params: {repository: promoted/repo, rebase: true, tag_prefix: "v", tag: promoted/integer_version}
