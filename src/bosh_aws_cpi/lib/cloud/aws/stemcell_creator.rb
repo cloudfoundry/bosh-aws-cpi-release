@@ -72,7 +72,7 @@ module Bosh::AwsCloud
 
     def image_params(snapshot_id)
       architecture = properties["architecture"]
-      virtualization_type = properties["virtualization_type"]
+      virtualization_type = properties["virtualization_type"] || "hvm"
 
       params = begin
         if virtualization_type == 'paravirtual'
