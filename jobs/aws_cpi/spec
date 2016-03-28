@@ -11,7 +11,7 @@ packages:
 
 properties:
   aws.credentials_source:
-    description: Where to get AWS credentials for the aws cpi. This can be set to `static` for to use an `access_key_id` and `secret_access_key` or `env_or_profile` to get the credentials from environment variables or an EC2 instance profile.
+    description: Where to get AWS credentials for the aws cpi. This can be set to `static` to use an `access_key_id` and `secret_access_key` or `env_or_profile` to get the credentials from environment variables or an EC2 instance profile.
     default: static
   aws.access_key_id:
     description: AWS access_key_id for the aws cpi (Required when aws.credentials_source is set to `static`)
