@@ -3,6 +3,7 @@ name: aws_cpi
 templates:
   cpi.erb: bin/cpi
   cpi.json.erb: config/cpi.json
+  cacert.pem.erb: config/cacert.pem
   cpi_ctl.erb: bin/cpi_ctl
 
 packages:
@@ -40,6 +41,13 @@ properties:
   aws.max_retries:
     description: The maximum number of times AWS service errors and throttling errors should be retried. There is an exponential backoff in between retries, so the more retries the longer it can take to fail.
     default: 2
+  aws.connection_options.ca_cert:
+    description: All required custom CA certificates
+    example:
+      ca_cert: |
+        -----BEGIN CERTIFICATE-----
+        MII...
+        -----END CERTIFICATE-----
 
   registry.username:
     description: User to access the Registry

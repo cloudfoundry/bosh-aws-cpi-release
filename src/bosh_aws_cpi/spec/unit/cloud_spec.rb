@@ -78,12 +78,7 @@ describe Bosh::AwsCloud::Cloud do
               'access_key_id' => 'keys to my heart',
               'secret_access_key' => 'open sesame',
               'region' => 'fake-region',
-              'default_key_name' => 'sesame',
-              'http_read_timeout' => 300,
-              'http_wire_trace' => true,
-              'ssl_verify_peer' => false,
-              'ssl_ca_file' => '/custom/cert/ca-certificates',
-              'ssl_ca_path' => '/custom/cert/'
+              'default_key_name' => 'sesame'
             },
             'registry' => {
               'user' => 'abuser',
@@ -96,14 +91,6 @@ describe Bosh::AwsCloud::Cloud do
         it 'passes required properties to AWS SDK' do
           config = cloud.ec2_client.config
           expect(config.region).to eq('fake-region')
-        end
-        it 'passes optional properties to AWS SDK' do
-          config = cloud.ec2_client.config
-          expect(config.http_read_timeout).to eq(300)
-          expect(config.http_wire_trace).to be true
-          expect(config.ssl_verify_peer).to be false
-          expect(config.ssl_ca_file).to eq('/custom/cert/ca-certificates')
-          expect(config.ssl_ca_path).to eq('/custom/cert/')
         end
       end
     end
