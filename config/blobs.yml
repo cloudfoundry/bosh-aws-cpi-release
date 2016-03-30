@@ -15,3 +15,7 @@ ruby_aws_cpi/ruby-2.1.7.tar.gz:
   object_id: c8797290-423f-4523-85da-1962f01c4f60
   sha: e2e195a4a58133e3ad33b955c829bb536fa3c075
   size: 15151458
+ruby_aws_cpi/ruby-2.2.4.tar.gz:
+  object_id: d8bcddc9-c396-44a3-a0d5-1257c4eb1d54
+  sha: 818e5e157f76d4912ba3a7c7b4fc5156105e83c3
+  size: 16638151

@@ -21,10 +21,10 @@ if [[ $? != 0 ]] ; then
   exit 1
 fi
 
-tar xzf ruby_aws_cpi/ruby-2.1.7.tar.gz
+tar xzf ruby_aws_cpi/ruby-2.2.4.tar.gz
 (
   set -e
-  cd ruby-2.1.7
+  cd ruby-2.2.4
   LDFLAGS="-Wl,-rpath -Wl,${BOSH_INSTALL_TARGET}" CFLAGS='-fPIC' ./configure --prefix=${BOSH_INSTALL_TARGET} --disable-install-doc --with-opt-dir=/usr/local/opt/openssl:${BOSH_INSTALL_TARGET}
   make
   make install
