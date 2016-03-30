@@ -43,8 +43,8 @@ module Bosh::AwsCloud
         @aws_params[:elb_endpoint] = strip_protocol(aws_properties['elb_endpoint'])
       end
 
-      if certificate_file = ENV['BOSH_CA_CERT_FILE']
-        @aws_params[:ssl_ca_file] = certificate_file
+      if ENV.has_key?('BOSH_CA_CERT_FILE')
+        @aws_params[:ssl_ca_file] = ENV['BOSH_CA_CERT_FILE']
       end
 
       # credentials_source could be static (default) or env_or_profile
