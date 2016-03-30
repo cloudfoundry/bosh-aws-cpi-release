@@ -48,7 +48,7 @@ jobs:
     serial: true
     plan:
       - aggregate:
-        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
+        - {trigger: true, get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {trigger: false, get: version-semver, params: {bump: patch}}
 
       - put: version-semver
@@ -135,4 +135,3 @@ resources:
       bucket:            {{s3_aws_cpi_pipeline_bucket}}
       access_key_id:     {{aws_access_key__primary}}
       secret_access_key: {{aws_secret_key__primary}}
-
