@@ -42,10 +42,6 @@ if_p('aws.region') do |region|
   params["cloud"]["properties"]["aws"]["region"] = region
 end
 
-if_p('aws.connection_options.ca_cert') do
-  params["cloud"]["properties"]["aws"]["connection_options"]["use_rendered_ca_cert"] = true
-end
-
 agent_params = params["cloud"]["properties"]["agent"]
 
 if_p('blobstore') do

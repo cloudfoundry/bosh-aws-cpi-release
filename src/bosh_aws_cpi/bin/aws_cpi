@@ -20,11 +20,6 @@ cpi_lambda = lambda do
     raise "Could not find cloud properties in the configuration"
   end
   cloud_properties = cpi_config['cloud']['properties']
-  connection_options = cloud_properties['aws']['connection_options']
-  # If 'ca_cert' is set we render non-empty `config/cacert.pem`
-  if connection_options && connection_options['use_rendered_ca_cert']
-      connection_options['ssl_ca_file'] = ENV['CA_CERT_PATH']
-  end
   Bosh::Clouds::Aws.new(cloud_properties)
 end
 

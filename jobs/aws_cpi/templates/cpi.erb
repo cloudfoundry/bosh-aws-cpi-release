@@ -19,7 +19,7 @@ export no_proxy=<%= no_proxy %>
 <% end %>
 
 <% if_p('aws.connection_options.ca_cert') do %>
-export CA_CERT_PATH=$BOSH_JOBS_DIR/aws_cpi/config/cacert.pem
+export BOSH_CA_CERT_FILE=$BOSH_JOBS_DIR/aws_cpi/config/cacert.pem
 <% end %>
 
 PATH=$BOSH_PACKAGES_DIR/ruby_aws_cpi/bin:$PATH
