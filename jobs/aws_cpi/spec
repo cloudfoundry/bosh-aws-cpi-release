@@ -44,10 +44,9 @@ properties:
   aws.connection_options.ca_cert:
     description: All required custom CA certificates
     example:
-      ca_cert: |
-        -----BEGIN CERTIFICATE-----
-        MII...
-        -----END CERTIFICATE-----
+      -----BEGIN CERTIFICATE-----
+      MII...
+      -----END CERTIFICATE-----
 
   registry.username:
     description: User to access the Registry
