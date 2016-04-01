@@ -17,7 +17,7 @@ describe Bosh::AwsCloud::Cloud do
       Bosh::AwsCloud::Cloud.new(
         'aws' => {
           'ec2_endpoint' => 'https://ec2.sa-east-1.amazonaws.com',
-          'elb_endpoint' => 'https://elb.sa-east-1.amazonaws.com',
+          'elb_endpoint' => 'https://elasticloadbalancing.sa-east-1.amazonaws.com',
           'access_key_id' => @access_key_id,
           'default_key_name' => 'fake-key',
           'secret_access_key' => @secret_access_key

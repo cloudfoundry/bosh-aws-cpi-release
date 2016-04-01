@@ -410,12 +410,13 @@ module Bosh::AwsCloud
         stemcell_properties.merge!(aws_properties['stemcell'] || {})
 
         if stemcell_properties.has_key?('ami')
-          raise Bosh::Clouds::CloudError, "Must provide 'region' when using a light stemcell" unless aws_region
+          all_ami_ids = stemcell_properties['ami'].values
 
-          id = stemcell_properties['ami'][aws_region]
-          raise Bosh::Clouds::CloudError, "Stemcell does not contain an AMI for this region (#{aws_region})" unless id
+          # select the correct image for the configured ec2 client
+          available_image = @ec2_client.images.filter('image-id', all_ami_ids).first
+          raise Bosh::Clouds::CloudError, "Stemcell does not contain an AMI at endpoint (#{@ec2_client.client.endpoint})" unless available_image
 
-          StemcellFinder.find_by_id(@ec2_client, "#{id} light").id
+          available_image.id
         else
           create_ami_for_stemcell(image_path, stemcell_properties)
         end

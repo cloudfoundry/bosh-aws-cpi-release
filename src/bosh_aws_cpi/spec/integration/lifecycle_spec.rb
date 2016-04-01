@@ -99,7 +99,7 @@ describe Bosh::AwsCloud::Cloud do
         Bosh::AwsCloud::Cloud.new(
           'aws' => {
             'ec2_endpoint' => 'https://ec2.us-east-1.amazonaws.com',
-            'elb_endpoint' => 'https://elb.us-east-1.amazonaws.com',
+            'elb_endpoint' => 'https://elasticloadbalancing.us-east-1.amazonaws.com',
             'default_key_name' => default_key_name,
             'fast_path_delete' => 'yes',
             'access_key_id' => @access_key_id,
