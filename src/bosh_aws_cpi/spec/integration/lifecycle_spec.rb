@@ -95,11 +95,29 @@ describe Bosh::AwsCloud::Cloud do
 
     context 'resource_pool specifies elb for instance' do
       let(:resource_pool) { { 'instance_type' => instance_type, 'elbs' => [@elb_id] } }
+      let(:endpoint_configured_cpi) do
+        Bosh::AwsCloud::Cloud.new(
+          'aws' => {
+            'ec2_endpoint' => 'https://ec2.us-east-1.amazonaws.com',
+            'elb_endpoint' => 'https://elb.us-east-1.amazonaws.com',
+            'default_key_name' => default_key_name,
+            'fast_path_delete' => 'yes',
+            'access_key_id' => @access_key_id,
+            'secret_access_key' => @secret_access_key,
+            'default_availability_zone' => @subnet_zone,
+          },
+          'registry' => {
+            'endpoint' => 'fake',
+            'user' => 'fake',
+            'password' => 'fake'
+          }
+        )
+      end
 
       it 'registers new instance with elb' do
         begin
-          stemcell_id = cpi.create_stemcell('/not/a/real/path', {'ami' => {'us-east-1' => ami}})
-          vm_id = cpi.create_vm(
+          stemcell_id = endpoint_configured_cpi.create_stemcell('/not/a/real/path', {'ami' => {'us-east-1' => ami}})
+          vm_id = endpoint_configured_cpi.create_vm(
             nil,
             stemcell_id,
             resource_pool,
@@ -118,7 +136,7 @@ describe Bosh::AwsCloud::Cloud do
 
           expect(instances).to include(vm_id)
 
-          cpi.delete_vm(vm_id)
+          endpoint_configured_cpi.delete_vm(vm_id)
 
           vm_id=nil
 
@@ -136,8 +154,8 @@ describe Bosh::AwsCloud::Cloud do
 
           expect(instances).to be_empty
         ensure
-          cpi.delete_stemcell(stemcell_id) if stemcell_id
-          cpi.delete_vm(vm_id) if vm_id
+          endpoint_configured_cpi.delete_stemcell(stemcell_id) if stemcell_id
+          endpoint_configured_cpi.delete_vm(vm_id) if vm_id
         end
       end
     end
