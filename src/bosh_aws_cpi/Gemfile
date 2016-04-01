@@ -1,6 +1,11 @@
 source 'https://rubygems.org'
 
-gemspec
+gem 'aws-sdk',       '1.60.2'
+gem 'bosh_common'
+gem 'bosh_cpi'
+gem 'bosh-registry'
+gem 'httpclient',    '=2.7.1'
+gem 'yajl-ruby',     '>=0.8.2'
 
 group :development, :test do
   gem 'rspec', '~> 3.0.0'
