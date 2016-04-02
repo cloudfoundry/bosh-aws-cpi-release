@@ -23,8 +23,9 @@ describe Bosh::AwsCloud::Cloud do
       end
 
       it "should return a fake stemcell" do
-        cloud = mock_cloud
-        expect(Bosh::AwsCloud::StemcellFinder).to receive(:find_by_id).and_return(double("ami", :id => "ami-xxxxxxxx"))
+        cloud = mock_cloud do |ec2|
+          ec2.stub_chain(:images, :filter).and_return([double('image', :id => "ami-xxxxxxxx")])
+        end
         expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
       end
     end
