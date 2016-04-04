@@ -1,20 +1,8 @@
 ---
-ruby_aws_cpi/rubygems-2.1.11.tgz:
-  object_id: 56e6250e-0499-4658-9d1c-e9acd59cc668
-  sha: ca3033432cae28deb7ced79cda271cb292b70e59
-  size: 367166
 ruby_aws_cpi/yaml-0.1.5.tar.gz:
   object_id: e20cff65-e1a1-4dda-9e7d-620839339f57
   sha: 8b78cb9f759c7d80db8a7328c0ebecfe34fde737
   size: 504897
-ruby_aws_cpi/bundler-1.8.2.gem:
-  object_id: a07674b4-f6bf-4abb-a9f7-eab472021479
-  sha: e9b810268eea94ac5e825b5ae8a2d5fd19fb5905
-  size: 235008
-ruby_aws_cpi/ruby-2.1.7.tar.gz:
-  object_id: c8797290-423f-4523-85da-1962f01c4f60
-  sha: e2e195a4a58133e3ad33b955c829bb536fa3c075
-  size: 15151458
 ruby_aws_cpi/ruby-2.2.4.tar.gz:
   object_id: d8bcddc9-c396-44a3-a0d5-1257c4eb1d54
   sha: 818e5e157f76d4912ba3a7c7b4fc5156105e83c3
