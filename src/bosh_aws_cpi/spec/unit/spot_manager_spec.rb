@@ -75,6 +75,27 @@ describe Bosh::AwsCloud::SpotManager do
     expect(spot_manager.create(instance_params, spot_bid_price)).to be(instance)
   end
 
+  context 'when instance does not have a private IP address' do
+    before do
+      instance_params.delete(:private_ip_address)
+    end
+
+    it 'does not set a private IP on the request' do
+      spot_params = {}
+      allow(aws_client).to receive(:request_spot_instances) do |params|
+        spot_params = params
+        spot_instance_requests
+      end
+
+      expect(spot_manager.create(instance_params, spot_bid_price)).to be(instance)
+
+      nics = spot_params[:launch_specification][:network_interfaces]
+      expect(nics.length).to eq(1)
+
+      expect(nics.first).to_not have_key(:private_ip_address)
+    end
+  end
+
   context 'when instance does not have security groups' do
     let(:instance_security_groups) { nil }
 

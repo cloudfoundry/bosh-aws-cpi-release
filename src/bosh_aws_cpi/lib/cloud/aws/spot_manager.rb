@@ -69,26 +69,36 @@ module Bosh::AwsCloud
           user_data: Base64.encode64(instance_params[:user_data]),
           placement: {
             availability_zone: instance_params[:availability_zone]
-          },
-          network_interfaces: [
-            {
-              subnet_id: instance_params[:subnet].subnet_id,
-              device_index: 0,
-              private_ip_address: instance_params[:private_ip_address]
-            }
-          ]
+          }
         }
       }
-      security_groups = resolve_security_group_ids(instance_params[:security_groups])
-      unless security_groups.empty?
-        spec[:launch_specification][:network_interfaces][0][:groups] = security_groups
-      end
+      spec[:launch_specification][:network_interfaces] = [
+        network_interface_spec(instance_params)
+      ]
 
       if instance_params[:block_device_mappings]
         spec[:launch_specification][:block_device_mappings] = instance_params[:block_device_mappings]
       end
 
       spec
+    end
+
+    def network_interface_spec(instance_params)
+      nic = {
+        subnet_id: instance_params[:subnet].subnet_id,
+        device_index: 0
+      }
+
+      if instance_params.has_key?(:private_ip_address)
+        nic[:private_ip_address] = instance_params[:private_ip_address]
+      end
+
+      security_groups = resolve_security_group_ids(instance_params[:security_groups])
+      unless security_groups.empty?
+        nic[:groups] = security_groups
+      end
+
+      nic
     end
 
     def spot_instance_request_status
