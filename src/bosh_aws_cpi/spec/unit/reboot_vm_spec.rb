@@ -36,8 +36,14 @@ describe Bosh::AwsCloud::Cloud, "reboot_vm" do
 
     instance_manager = instance_double('Bosh::AwsCloud::InstanceManager')
     allow(Bosh::AwsCloud::InstanceManager).to receive(:new).
-      with(ec2, registry, be_an_instance_of(AWS::ELB), az_selector, be_an_instance_of(Logger)).
-      and_return(instance_manager)
+      with(
+        ec2,
+        registry,
+        be_an_instance_of(AWS::ELB),
+        be_an_instance_of(Bosh::AwsCloud::InstanceParamMapper),
+        be_an_instance_of(Bosh::AwsCloud::BlockDeviceManager),
+        be_an_instance_of(Logger)
+      ).and_return(instance_manager)
 
     instance = instance_double('Bosh::AwsCloud::Instance')
     allow(instance_manager).to receive(:find).with('fake-id').and_return(instance)

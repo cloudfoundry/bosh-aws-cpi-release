@@ -1,1474 +1,374 @@
 require 'spec_helper'
 
-describe Bosh::AwsCloud::InstanceManager do
-  subject(:instance_manager) { described_class.new(ec2, registry, elb, az_selector, logger) }
-  let(:ec2) do
-    mock_ec2
-  end
-  let(:registry) { double('Bosh::Cpi::RegistryClient', :endpoint => 'http://...', :update_settings => nil) }
-  let(:elb) { double('AWS::ELB', load_balancers: nil) }
-  let(:az_selector) { instance_double('Bosh::AwsCloud::AvailabilityZoneSelector', common_availability_zone: 'us-east-1a') }
-  let(:logger) { Logger.new('/dev/null') }
+module Bosh::AwsCloud
+  describe InstanceManager do
+    let(:ec2) { instance_double(AWS::EC2) }
+    let(:aws_client) { instance_double("#{AWS::EC2::Client.new.class}") }
+    before { allow(ec2).to receive(:client).and_return(aws_client) }
 
-  describe '#create' do
-    subject(:create_instance) do
-      instance_manager.create(
-        agent_id,
-        stemcell_id,
-        resource_pool,
-        networks_spec,
-        disk_locality,
-        environment,
-        instance_options
-      )
-    end
+    let(:registry) { double('Bosh::Registry::Client', :endpoint => 'http://...', :update_settings => nil) }
+    let(:elb) { double('AWS::ELB', load_balancers: nil) }
+    let(:param_mapper) { instance_double(InstanceParamMapper) }
+    let(:block_device_manager) { instance_double(BlockDeviceManager) }
+    let(:logger) { Logger.new('/dev/null') }
 
-    before { allow(ec2).to receive(:subnets).and_return('sub-123456' => fake_aws_subnet) }
-    let(:fake_aws_subnet) { instance_double('AWS::EC2::Subnet').as_null_object }
+    describe '#create' do
+      let(:fake_subnet_collection) { instance_double('AWS::EC2::SubnetCollection')}
+      let(:fake_availability_zone) { instance_double('AWS::EC2::AvailabilityZone', name: 'us-east-1a')}
+      let(:fake_aws_subnet) { instance_double('AWS::EC2::Subnet', id: 'sub-123456', availability_zone: fake_availability_zone) }
 
-    let(:aws_instance_params) do
-      {
-        count: 1,
-        image_id: 'stemcell-id',
-        instance_type: 'm1.small',
-        user_data: '{"registry":{"endpoint":"http://..."},"dns":{"nameserver":"foo"}}',
-        subnet: fake_aws_subnet,
-        security_groups: ['baz'],
-        private_ip_address: '1.2.3.4',
-        availability_zone: 'us-east-1a',
-        block_device_mappings: [
-          {
-            :device_name => '/dev/sdb',
-            :virtual_name => 'ephemeral0',
-          },
-        ]
-      }
-    end
+      let(:aws_instances) { instance_double('AWS::EC2::InstanceCollection') }
+      let(:aws_instance) { instance_double('AWS::EC2::Instance', id: 'i-12345678') }
 
-    before { allow(ec2).to receive(:instances).and_return(aws_instances) }
-    let(:aws_instances) { instance_double('AWS::EC2::InstanceCollection') }
-
-    let(:aws_instance) { instance_double('AWS::EC2::Instance', id: 'i-12345678') }
-    let(:aws_client) { double(AWS::EC2::Client) }
-
-    let(:agent_id) { 'agent-id' }
-    let(:stemcell_id) { 'stemcell-id' }
-    let(:resource_pool) { {'instance_type' => 'm1.small'} }
-    let(:networks_spec) do
-      {
-        'default' => {
-          'type' => 'dynamic',
-          'dns' => 'foo',
-          'cloud_properties' => {'security_groups' => 'baz'}
-        },
-        'other' => {
-          'type' => 'manual',
-          'cloud_properties' => {'subnet' => 'sub-123456'},
-          'ip' => '1.2.3.4'
-        }
-      }
-    end
-    let(:disk_locality) { nil }
-    let(:environment) { nil }
-    let(:instance_options) { {'aws' => {'region' => 'us-east-1'}} }
-    let(:block_devices) do
-      [
+      let(:agent_id) { 'agent-id' }
+      let(:stemcell_id) { 'stemcell-id' }
+      let(:resource_pool) { {
+        'instance_type' => 'm1.small',
+        'availability_zone' => 'us-east-1a'
+      } }
+      let(:networks_spec) do
         {
-          device_name: 'fake-image-root-device',
-          ebs: {
-            volume_size: 17
+          'default' => {
+            'type' => 'dynamic',
+            'dns' => 'foo',
+            'cloud_properties' => {'subnet' => 'sub-default', 'security_groups' => 'baz'}
+          },
+          'other' => {
+            'type' => 'manual',
+            'cloud_properties' => {'subnet' => 'sub-123456'},
+            'ip' => '1.2.3.4'
           }
         }
-      ]
-    end
+      end
+      let(:disk_locality) { nil }
+      let(:environment) { nil }
+      let(:default_options) do
+        {
+          'aws' => {
+            'region' => 'us-east-1',
+            'default_key_name' => 'some-key',
+            'default_security_groups' => ['baz']
+          }
+        }
+      end
+      let(:block_devices) do
+        [
+          {
+            device_name: 'fake-image-root-device',
+            ebs: {
+              volume_size: 17
+            }
+          }
+        ]
+      end
 
-    before do
-      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
-      allow(ec2).to receive(:images).and_return({
-        stemcell_id => instance_double('AWS::EC2::Image',
-          block_devices: block_devices,
-          root_device_name: 'fake-image-root-device',
-          virtualization_type: :hvm
+      before do
+        allow(fake_subnet_collection).to receive(:filter).and_return([fake_aws_subnet])
+        allow(param_mapper).to receive(:instance_params).and_return("fake-instance-params")
+        allow(param_mapper).to receive(:manifest_params=)
+        allow(param_mapper).to receive(:validate)
+        allow(block_device_manager).to receive(:resource_pool=)
+        allow(block_device_manager).to receive(:virtualization_type=)
+        allow(block_device_manager).to receive(:mappings).and_return("fake-block-device-mappings")
+        allow(block_device_manager).to receive(:agent_info).and_return("fake-block-device-agent-info")
+
+        allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
+
+        allow(ec2).to receive(:subnets).and_return(fake_subnet_collection)
+        allow(ec2).to receive(:instances).and_return(aws_instances)
+        allow(ec2).to receive(:images).and_return({
+          stemcell_id => instance_double('AWS::EC2::Image',
+            block_devices: block_devices,
+            root_device_name: 'fake-image-root-device',
+            virtualization_type: :hvm
+          )
+        })
+
+        allow(aws_instances).to receive(:[]).with('i-12345678').and_return(aws_instance)
+      end
+
+      it 'should ask AWS to create an instance in the given region, with parameters built up from the given arguments' do
+        instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+        allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
+
+        expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_return("run-instances-response")
+        instance_manager.create(
+          agent_id,
+          stemcell_id,
+          resource_pool,
+          networks_spec,
+          disk_locality,
+          environment,
+          default_options
         )
-      })
-    end
-
-    it 'should ask AWS to create an instance in the given region, with parameters built up from the given arguments' do
-      expect(aws_instances).to receive(:create).with(aws_instance_params).and_return(aws_instance)
-
-      create_instance
-    end
-
-    context 'when iam instance options are passed in' do
-      context 'via the resource pool' do
-        let(:resource_pool) { {'instance_type' => 'm1.small', 'iam_instance_profile' => 'some_iam_profile'} }
-
-        it 'sends creates the instance with the passed in profile' do
-          augmented_aws_instance_params = aws_instance_params.merge(iam_instance_profile: 'some_iam_profile')
-          expect(aws_instances).to receive(:create).with(augmented_aws_instance_params).and_return(aws_instance)
-
-          create_instance
-        end
       end
 
-      context 'via the instance options' do
-        let(:instance_options) { {'aws' => {'region' => 'us-east-1', 'default_iam_instance_profile' => 'some_default_iam_profile'} } }
-
-        it 'sends creates the instance with the passed in profile' do
-          augmented_aws_instance_params = aws_instance_params.merge(iam_instance_profile: 'some_default_iam_profile')
-          expect(aws_instances).to receive(:create).with(augmented_aws_instance_params).and_return(aws_instance)
-
-          create_instance
-        end
-      end
-
-      context 'via the resource pool and instance options' do
-        let(:instance_options) { {'aws' => {'region' => 'us-east-1', 'default_iam_instance_profile' => 'some_default_iam_profile'} } }
-        let(:resource_pool) { {'instance_type' => 'm1.small', 'iam_instance_profile' => 'some_iam_profile'} }
-
-        it 'sends creates the instance with the passed in profile' do
-          augmented_aws_instance_params = aws_instance_params.merge(iam_instance_profile: 'some_iam_profile')
-          expect(aws_instances).to receive(:create).with(augmented_aws_instance_params).and_return(aws_instance)
-
-          create_instance
-        end
-      end
-    end
-
-    context 'when spot_bid_price is specified' do
-      let(:resource_pool) do
-        # NB: The spot_bid_price param should trigger spot instance creation
-        {'spot_bid_price'=>0.15, 'instance_type' => 'm1.small', 'key_name' => 'bar'}
-      end
-
-      it 'should ask AWS to create a SPOT instance in the given region, when resource_pool includes spot_bid_price' do
-        allow(ec2).to receive(:client).and_return(aws_client)
-        allow(ec2).to receive(:subnets).and_return('sub-123456' => fake_aws_subnet)
-        allow(ec2).to receive(:instances).and_return('i-12345678' => aws_instance)
-
-        # need to translate security group names to security group ids
-        sg1 = instance_double('AWS::EC2::SecurityGroup', security_group_id:'sg-baz-1234')
-        allow(sg1).to receive(:name).and_return('baz')
-        allow(ec2).to receive(:security_groups).and_return([sg1])
-
-
-        # Should not recieve an ondemand instance create call
-        expect(aws_instances).to_not receive(:create).with(aws_instance_params)
-
-        #Should rather recieve a spot instance request
-        expect(aws_client).to receive(:request_spot_instances) do |spot_request|
-          expect(spot_request[:spot_price]).to eq('0.15')
-          expect(spot_request[:instance_count]).to eq(1)
-          expect(spot_request[:launch_specification]).to eq({
-            :image_id=>'stemcell-id',
-            :key_name=>'bar',
-            :instance_type=>'m1.small',
-            :user_data=>Base64.encode64('{"registry":{"endpoint":"http://..."},"dns":{"nameserver":"foo"}}'),
-            :placement=> { :availability_zone=>'us-east-1a' },
-            :network_interfaces=>[ {
-              :subnet_id=>fake_aws_subnet,
-              :groups=>['sg-baz-1234'],
-              :device_index=>0,
-              :private_ip_address=>'1.2.3.4'
-            }],
-            :block_device_mappings => [
-              {
-                :device_name => '/dev/sdb',
-                :virtual_name => 'ephemeral0',
-              },
-            ],
-          })
-
-          # return
-          {
-            :spot_instance_request_set => [ { :spot_instance_request_id=>'sir-12345c', :other_params_here => 'which are not used' }],
-            :request_id => 'request-id-12345'
-          }
-        end
-
-        # Should poll the spot instance request until state is active
-        expect(aws_client).to receive(:describe_spot_instance_requests).
-          with(:spot_instance_request_ids=>['sir-12345c']).
-          and_return(:spot_instance_request_set => [{:state => 'active', :instance_id=>'i-12345678'}])
-
-        # Should then wait for instance to be running, just like in the case of on deman
-        expect(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
-
-        # Trigger spot instance request
-        create_instance
-      end
-
-      it 'should raise an exception when spot creation fails' do
-        expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false))
-
-        expect {
-          create_instance
-        }.to raise_error(Bosh::Clouds::VMCreationFailed)
-      end
-
-      context 'when spot_ondemand_fallback is configured' do
+      context 'when spot_bid_price is specified' do
         let(:resource_pool) do
-          {
-            'spot_bid_price' => 0.15,
-            'spot_ondemand_fallback' => true,
-            'instance_type' => 'm1.small',
-            'key_name' => 'bar',
-          }
+          # NB: The spot_bid_price param should trigger spot instance creation
+          {'spot_bid_price'=>0.15, 'instance_type' => 'm1.small', 'key_name' => 'bar', 'availability_zone' => 'us-east-1a'}
         end
 
-        it 'should create an on demand instance when spot creation fails AND we have enabled spot_ondemand_fallback' do
+        it 'should ask AWS to create a SPOT instance in the given region, when resource_pool includes spot_bid_price' do
+          allow(ec2).to receive(:client).and_return(aws_client)
+
+          # need to translate security group names to security group ids
+          sg1 = instance_double('AWS::EC2::SecurityGroup', security_group_id:'sg-baz-1234')
+          allow(sg1).to receive(:name).and_return('baz')
+          allow(ec2).to receive(:security_groups).and_return([sg1])
+
+          # Should not recieve an ondemand instance create call
+          expect(aws_client).to_not receive(:run_instances).with("fake-instance-params")
+
+          #Should rather recieve a spot instance request
+          expect(aws_client).to receive(:request_spot_instances) do |spot_request|
+            expect(spot_request[:spot_price]).to eq('0.15')
+            expect(spot_request[:instance_count]).to eq(1)
+            expect(spot_request[:launch_specification]).to eq("fake-instance-params")
+
+            # return
+            {
+              :spot_instance_request_set => [ { :spot_instance_request_id=>'sir-12345c', :other_params_here => 'which are not used' }],
+              :request_id => 'request-id-12345'
+            }
+          end
+
+          # Should poll the spot instance request until state is active
+          expect(aws_client).to receive(:describe_spot_instance_requests).
+            with(:spot_instance_request_ids=>['sir-12345c']).
+            and_return(:spot_instance_request_set => [{:state => 'active', :instance_id=>'i-12345678'}])
+
+          # Should then wait for instance to be running, just like in the case of on deman
+          expect(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
+
+          # Trigger spot instance request
+          instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+          instance_manager.create(
+            agent_id,
+            stemcell_id,
+            resource_pool,
+            networks_spec,
+            disk_locality,
+            environment,
+            default_options
+          )
+        end
+
+        it 'should raise an exception when spot creation fails' do
+          instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
           expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false))
 
-          expect(aws_instances).to receive(:create).and_return(aws_instance)
+          expect {
+            instance_manager.create(
+              agent_id,
+              stemcell_id,
+              resource_pool,
+              networks_spec,
+              disk_locality,
+              environment,
+              default_options
+            )
+          }.to raise_error(Bosh::Clouds::VMCreationFailed)
+        end
 
-          create_instance
+        context 'when spot_ondemand_fallback is configured' do
+          let(:resource_pool) do
+            {
+              'spot_bid_price' => 0.15,
+              'spot_ondemand_fallback' => true,
+              'instance_type' => 'm1.small',
+              'key_name' => 'bar',
+              'availability_zone' => 'us-east-1a'
+            }
+          end
+
+          it 'should create an on demand instance when spot creation fails AND we have enabled spot_ondemand_fallback' do
+            instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+            allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
+
+            expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false))
+
+            expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_return("run-instances-response")
+
+            instance_manager.create(
+              agent_id,
+              stemcell_id,
+              resource_pool,
+              networks_spec,
+              disk_locality,
+              environment,
+              default_options
+            )
+          end
         end
       end
-    end
 
-    it 'should retry creating the VM when AWS::EC2::Errors::InvalidIPAddress::InUse raised' do
-      allow(ec2).to receive(:subnets).and_return('sub-123456' => fake_aws_subnet)
+      it 'should retry creating the VM when AWS::EC2::Errors::InvalidIPAddress::InUse raised' do
+        instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+        allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
+        allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
-      expect(aws_instances).to receive(:create).with(aws_instance_params).and_raise(AWS::EC2::Errors::InvalidIPAddress::InUse)
-      expect(aws_instances).to receive(:create).with(aws_instance_params).and_return(aws_instance)
-      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
-      expect(logger).to receive(:warn).with(/IP address was in use/).once
+        expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_raise(AWS::EC2::Errors::InvalidIPAddress::InUse)
+        expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_return("run-instances-response")
 
-      allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
+        allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
+        expect(logger).to receive(:warn).with(/IP address was in use/).once
 
-      create_instance
-    end
-
-    it 'retries creating the VM when the request limit is exceeded' do
-      allow(ec2).to receive(:subnets).and_return('sub-123456' => fake_aws_subnet)
-
-      expect(aws_instances).to receive(:create).with(aws_instance_params).and_raise(AWS::EC2::Errors::RequestLimitExceeded)
-      expect(aws_instances).to receive(:create).with(aws_instance_params).and_return(aws_instance)
-      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
-      expect(logger).not_to receive(:warn).with(/IP address was in use/)
-
-      allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
-
-      create_instance
-    end
-
-    context 'when waiting it to become running fails' do
-      before { expect(instance).to receive(:wait_for_running).and_raise(create_err) }
-      let(:create_err) { StandardError.new('fake-err') }
-
-      before { allow(Bosh::AwsCloud::Instance).to receive(:new).and_return(instance) }
-      let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-instance-id') }
-
-      before { expect(aws_instances).to receive(:create).and_return(aws_instance) }
-
-      it 'terminates created instance and re-raises the error if ' do
-        expect(instance).to receive(:terminate).with(no_args)
-
-        expect {
-          create_instance
-        }.to raise_error(create_err)
+        instance_manager.create(
+          agent_id,
+          stemcell_id,
+          resource_pool,
+          networks_spec,
+          disk_locality,
+          environment,
+          default_options
+        )
       end
 
-      context 'when termination of created instance fails' do
-        before { allow(instance).to receive(:terminate).and_raise(StandardError.new('fake-terminate-err')) }
+      it 'retries creating the VM when the request limit is exceeded' do
+        instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+        allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
+        allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
-        it 're-raises creation error' do
+        expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_raise(AWS::EC2::Errors::RequestLimitExceeded)
+        expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_return("run-instances-response")
+
+        allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
+        expect(logger).not_to receive(:warn).with(/IP address was in use/)
+
+        instance_manager.create(
+          agent_id,
+          stemcell_id,
+          resource_pool,
+          networks_spec,
+          disk_locality,
+          environment,
+          default_options
+        )
+      end
+
+      context 'when waiting it to become running fails' do
+        let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-instance-id') }
+        let(:create_err) { StandardError.new('fake-err') }
+
+        before { allow(Instance).to receive(:new).and_return(instance) }
+
+        it 'terminates created instance and re-raises the error' do
+          instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+          allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
+
+          expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_return("run-instances-response")
+          expect(instance).to receive(:wait_for_running).and_raise(create_err)
+
+          expect(instance).to receive(:terminate).with(no_args)
+
           expect {
-            create_instance
+            instance_manager.create(
+              agent_id,
+              stemcell_id,
+              resource_pool,
+              networks_spec,
+              disk_locality,
+              environment,
+              default_options
+            )
           }.to raise_error(create_err)
         end
+
+        context 'when termination of created instance fails' do
+          before { allow(instance).to receive(:terminate).and_raise(StandardError.new('fake-terminate-err')) }
+
+          it 're-raises creation error' do
+            instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+            allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
+
+            expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_return("run-instances-response")
+            expect(instance).to receive(:wait_for_running).and_raise(create_err)
+
+            expect {
+              instance_manager.create(
+                agent_id,
+                stemcell_id,
+                resource_pool,
+                networks_spec,
+                disk_locality,
+                environment,
+                default_options
+              )
+            }.to raise_error(create_err)
+          end
+        end
       end
-    end
 
-    context 'when attaching instance to load balancers fails' do
-      before { expect(instance).to receive(:attach_to_load_balancers).and_raise(lb_err) }
-      let(:lb_err) { StandardError.new('fake-err') }
+      context 'when attaching instance to load balancers fails' do
+        let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-instance-id', wait_for_running: nil) }
+        let(:lb_err) { StandardError.new('fake-err') }
 
-      before { allow(Bosh::AwsCloud::Instance).to receive(:new).and_return(instance) }
-      let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-instance-id', wait_for_running: nil) }
+        before { allow(Instance).to receive(:new).and_return(instance) }
 
-      before { expect(aws_instances).to receive(:create).and_return(aws_instance) }
+        it 'terminates created instance and re-raises the error' do
+          instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+          allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
-      it 'terminates created instance and re-raises the error' do
-        expect(instance).to receive(:terminate).with(no_args)
+          expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_return("run-instances-response")
+          expect(instance).to receive(:attach_to_load_balancers).and_raise(lb_err)
 
-        expect {
-          create_instance
-        }.to raise_error(lb_err)
-      end
+          expect(instance).to receive(:terminate).with(no_args)
 
-      context 'when termination of created instance fails' do
-        before { allow(instance).to receive(:terminate).and_raise(StandardError.new('fake-terminate-err')) }
-
-        it 're-raises creation error' do
           expect {
-            create_instance
+            instance_manager.create(
+              agent_id,
+              stemcell_id,
+              resource_pool,
+              networks_spec,
+              disk_locality,
+              environment,
+              default_options
+            )
           }.to raise_error(lb_err)
         end
-      end
-    end
 
-    describe 'instance parameters' do
-      describe 'block_device_mappings' do
-        let(:resource_pool) { {'key_name' => 'bar'} }
-
-        def set_instance_type(type)
-          resource_pool['instance_type'] = type
-        end
-
-        def set_raw_instance_storage
-          resource_pool['raw_instance_storage'] = true
-        end
-
-        context 'when ephemeral disk is specified' do
-          def set_ephemeral_disk_type(type, iops = nil)
-            if iops
-              resource_pool['ephemeral_disk']['iops'] = iops
-            else
-              resource_pool['ephemeral_disk'].delete('iops')
-            end
-            resource_pool['ephemeral_disk']['type'] = type
-          end
-
-          before do
-            resource_pool['ephemeral_disk'] = {}
-          end
-
-          context 'when specifying the ephemeral disk size' do
-            def set_ephemeral_disk_size(size)
-              resource_pool['ephemeral_disk']['size'] = size
-            end
-
-            context 'when instance type has instance storage' do
-              before { set_instance_type 'm3.xlarge' }
-
-              context 'when raw_instance_storage is false' do
-                it 'uses ebs storage when specified ephemeral disk size is bigger than instance storage' do
-                  set_ephemeral_disk_size 51200
-
-                  allow(aws_instances).to receive(:create) { aws_instance }
-
-                  expect(logger).to receive(:debug).with('Use EBS storage to create the virtual machine')
-
-                  create_instance
-
-                  expect(aws_instances).to have_received(:create) do |instance_params|
-                    expect(instance_params[:block_device_mappings]).to eq([{
-                      device_name: '/dev/sdb',
-                      ebs: {
-                        volume_size: 50,
-                        volume_type: 'standard',
-                        delete_on_termination: true,
-                      }
-                    }])
-                  end
-                end
-
-                it 'uses instance storage when specified ephemeral disk size is not bigger than instance storage' do
-                  set_ephemeral_disk_size 4000
-
-                  allow(aws_instances).to receive(:create) { aws_instance }
-
-                  expect(logger).to receive(:debug).with('Use instance storage to create the virtual machine')
-
-                  create_instance
-
-                  expect(aws_instances).to have_received(:create) do |instance_params|
-                    expect(instance_params[:block_device_mappings]).to eq([{
-                      device_name: '/dev/sdb',
-                      virtual_name: 'ephemeral0',
-                    }])
-                  end
-                end
-              end
-
-              context 'when raw_instance_storage is true' do
-                before do
-                  set_raw_instance_storage
-                  set_ephemeral_disk_size 4000
-                  allow(aws_instances).to receive(:create) { aws_instance }
-                end
-
-                it 'creates an ebs volume for the ephemeral disk' do
-                  expect(logger).to receive(:debug).with('Use EBS storage to create the virtual machine')
-
-                  create_instance
-
-                  expect(aws_instances).to have_received(:create) do |instance_params|
-                    expect(instance_params[:block_device_mappings]).to include({
-                      device_name: '/dev/sdb',
-                      ebs: {
-                        volume_size: 4,
-                        volume_type: 'standard',
-                        delete_on_termination: true,
-                      }
-                    })
-                  end
-                end
-
-                it 'requests all available instance storage disks to be attached to the instance' do
-                  create_instance
-
-                  expect(aws_instances).to have_received(:create) do |instance_params|
-                    expect(instance_params[:block_device_mappings]).to include({
-                      virtual_name: 'ephemeral0',
-                      device_name: '/dev/xvdba',
-                    })
-                    expect(instance_params[:block_device_mappings]).to include({
-                      virtual_name: 'ephemeral1',
-                      device_name: '/dev/xvdbb',
-                    })
-                  end
-                end
-
-                it 'returns information about the raw ephemeral disks for agent settings' do
-                  _, disk_info = create_instance
-                  expect(disk_info).to eq({
-                    'ephemeral' => [{'path' => '/dev/sdb'}],
-                    'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}],
-                  })
-                end
-
-                context 'when the instance is paravirtual' do
-                  before do
-                    allow(ec2).to receive(:images).and_return({
-                      stemcell_id => instance_double('AWS::EC2::Image',
-                        block_devices: block_devices,
-                        root_device_name: 'fake-image-root-device',
-                        virtualization_type: :paravirtual
-                      )
-                    })
-                  end
-
-                  it 'attaches instance disks under /dev/sd[c-z]' do
-                    create_instance
-
-                    expect(aws_instances).to have_received(:create) do |instance_params|
-                      expect(instance_params[:block_device_mappings]).to include({
-                        virtual_name: 'ephemeral0',
-                        device_name: '/dev/sdc',
-                      })
-                      expect(instance_params[:block_device_mappings]).to include({
-                        virtual_name: 'ephemeral1',
-                        device_name: '/dev/sdd',
-                      })
-                    end
-                  end
-                end
-              end
-            end
-
-            context 'when instance type does not have instance storage' do
-              before do
-                set_instance_type 't2.small'
-                set_ephemeral_disk_size 6000
-              end
-
-              it 'uses ebs storage for ephemeral disk' do
-                allow(aws_instances).to receive(:create) { aws_instance }
-
-                create_instance
-
-                expect(aws_instances).to have_received(:create) do |instance_params|
-                  expect(instance_params[:block_device_mappings]).to eq([{
-                    device_name: '/dev/sdb',
-                    ebs: {
-                      volume_size: 6,
-                      volume_type: 'standard',
-                      delete_on_termination: true,
-                    }
-                  }])
-                end
-              end
-            end
-          end
-
-          context 'when omitting the ephemeral disk size' do
-            context 'when instance type has instance storage' do
-              before { set_instance_type 'm3.xlarge' }
-
-              context 'when raw_instance_storage is false' do
-                it 'uses instance storage' do
-                  allow(aws_instances).to receive(:create) { aws_instance }
-
-                  expect(logger).to receive(:debug).with('Use instance storage to create the virtual machine')
-
-                  create_instance
-
-                  expect(aws_instances).to have_received(:create) do |instance_params|
-                    expect(instance_params[:block_device_mappings]).to eq([{
-                      device_name: '/dev/sdb',
-                      virtual_name: 'ephemeral0',
-                    }])
-                  end
-                end
-              end
-
-              context 'when raw_instance_storage is true' do
-                before do
-                  set_raw_instance_storage
-                  allow(aws_instances).to receive(:create) { aws_instance }
-                end
-
-                it 'creates an ebs volume for the ephemeral disk' do
-                  expect(logger).to receive(:debug).with('Use EBS storage to create the virtual machine')
-
-                  create_instance
-
-                  expect(aws_instances).to have_received(:create) do |instance_params|
-                    expect(instance_params[:block_device_mappings]).to include({
-                      device_name: '/dev/sdb',
-                      ebs: {
-                        volume_size: 10,
-                        volume_type: 'standard',
-                        delete_on_termination: true,
-                      }
-                    })
-                  end
-                end
-
-                it 'requests all available instance storage disks to be attached to the instance' do
-                  create_instance
-
-                  expect(aws_instances).to have_received(:create) do |instance_params|
-                    expect(instance_params[:block_device_mappings]).to include({
-                      virtual_name: 'ephemeral0',
-                      device_name: '/dev/xvdba',
-                    })
-                    expect(instance_params[:block_device_mappings]).to include({
-                      virtual_name: 'ephemeral1',
-                      device_name: '/dev/xvdbb',
-                    })
-                  end
-                end
-
-                it 'returns information about the raw ephemeral disks for agent settings' do
-                  _, disk_info = create_instance
-                  expect(disk_info).to eq({
-                    'ephemeral' => [{'path' => '/dev/sdb'}],
-                    'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}],
-                  })
-                end
-
-                context 'when the instance is paravirtual' do
-                  before do
-                    allow(ec2).to receive(:images).and_return({
-                      stemcell_id => instance_double(
-                        'AWS::EC2::Image',
-                        block_devices: block_devices,
-                        root_device_name: 'fake-image-root-device',
-                        virtualization_type: :paravirtual
-                      )
-                    })
-                  end
-
-                  it 'attaches instance disks under /dev/sd[c-z]' do
-                    create_instance
-
-                    expect(aws_instances).to have_received(:create) do |instance_params|
-                      expect(instance_params[:block_device_mappings]).to include({
-                        virtual_name: 'ephemeral0',
-                        device_name: '/dev/sdc',
-                      })
-                      expect(instance_params[:block_device_mappings]).to include({
-                        virtual_name: 'ephemeral1',
-                        device_name: '/dev/sdd',
-                      })
-                    end
-                  end
-                end
-              end
-            end
-
-            context 'when instance type does not have instance storage' do
-              before do
-                set_instance_type 't2.small'
-              end
-
-              it 'uses ebs storage for ephemeral disk' do
-                allow(aws_instances).to receive(:create) { aws_instance }
-
-                create_instance
-
-                expect(aws_instances).to have_received(:create) do |instance_params|
-                  expect(instance_params[:block_device_mappings]).to eq([{
-                    device_name: '/dev/sdb',
-                    ebs: {
-                      volume_size: 10,
-                      volume_type: 'standard',
-                      delete_on_termination: true,
-                    }
-                  }])
-                end
-              end
-            end
-          end
-
-          context 'when specifying the ephemeral disk type' do
-            it 'uses the specified type' do
-              set_ephemeral_disk_type('gp2')
-
-              allow(aws_instances).to receive(:create) { aws_instance }
-
-              create_instance
-
-              expect(aws_instances).to have_received(:create) do |instance_params|
-                expect(instance_params[:block_device_mappings]).to eq([{
-                  device_name: '/dev/sdb',
-                  ebs: {
-                    volume_size: 10,
-                    volume_type: 'gp2',
-                    delete_on_termination: true,
-                  }
-                }])
-              end
-            end
-
-            context 'when type is io1' do
-              it 'configures the io1 disk' do
-                set_ephemeral_disk_type('io1', 123)
-
-                allow(aws_instances).to receive(:create) { aws_instance }
-
-                create_instance
-
-                expect(aws_instances).to have_received(:create) do |instance_params|
-                  expect(instance_params[:block_device_mappings]).to eq([{
-                    device_name: '/dev/sdb',
-                    ebs: {
-                      volume_size: 10,
-                      volume_type: 'io1',
-                      iops: 123,
-                      delete_on_termination: true,
-                    }
-                  }])
-                end
-              end
-
-              context 'when omitting iops' do
-                it 'raises an error' do
-                  set_ephemeral_disk_type('io1')
-
-                  allow(aws_instances).to receive(:create) { aws_instance }
-
-                  expect { create_instance }.to raise_error(
-                    Bosh::Clouds::CloudError,
-                    "Must specify an 'iops' value when the volume type is 'io1'"
-                  )
-                end
-              end
-            end
-
-            context 'when type is not io1' do
-              it 'raises an error if iops are specified' do
-                set_ephemeral_disk_type('gp2', 123)
-
-                allow(aws_instances).to receive(:create) { aws_instance }
-
-                expect { create_instance }.to raise_error(
-                  Bosh::Clouds::CloudError,
-                  "Cannot specify an 'iops' value when disk type is 'gp2'. 'iops' is only allowed for 'io1' volume types."
-                )
-              end
-            end
-          end
-        end
-
-        context 'when instance type has instance storage' do
-          before { set_instance_type 'm3.medium' }
-
-          context 'when raw_instance_storage is false' do
-            it 'uses the instance storage for ephemeral disk' do
-              allow(aws_instances).to receive(:create) { aws_instance }
-
-              create_instance
-
-              expect(aws_instances).to have_received(:create) do |instance_params|
-                expect(instance_params[:block_device_mappings]).to eq([{
-                  device_name: '/dev/sdb',
-                  virtual_name: 'ephemeral0',
-                }])
-              end
-            end
-          end
-
-          context 'when raw_instance_storage is true' do
-            before do
-              set_raw_instance_storage
-              allow(aws_instances).to receive(:create) { aws_instance }
-            end
-
-            it 'creates a 10GB ebs disk for ephemeral storage' do
-              create_instance
-
-              expect(aws_instances).to have_received(:create) do |instance_params|
-                expect(instance_params[:block_device_mappings]).to include({
-                  device_name: '/dev/sdb',
-                  ebs: {
-                    volume_size: 10,
-                    volume_type: 'standard',
-                    delete_on_termination: true,
-                  }
-                })
-              end
-            end
-
-            it 'requests all available instance storage disks to be attached to the instance' do
-              create_instance
-
-              expect(aws_instances).to have_received(:create) do |instance_params|
-                expect(instance_params[:block_device_mappings]).to include({
-                  virtual_name: 'ephemeral0',
-                  device_name: '/dev/xvdba',
-                })
-              end
-            end
-          end
-        end
-
-        context 'when instance type does not have instance storage' do
-          before { set_instance_type 't2.small' }
-
-          it 'uses a default 10GB ebs storage for ephemeral disk' do
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:block_device_mappings]).to eq([{
-                device_name: '/dev/sdb',
-                ebs: {
-                  volume_size: 10,
-                  volume_type: 'standard',
-                  delete_on_termination: true,
-                }
-              }])
-            end
-          end
-
-          it 'raises an error when asked for raw instance storage' do
-            set_raw_instance_storage
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            expect { create_instance }.to raise_error(
-              Bosh::Clouds::CloudError,
-              "raw_instance_storage requested for instance type 't2.small' that does not have instance storage"
-            )
-          end
-        end
-
-        context 'when instance_type is not specified' do
-          it 'raises an error when asked for raw instance storage' do
-            set_raw_instance_storage
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            expect { create_instance }.to raise_error(
-              Bosh::Clouds::CloudError,
-              "raw_instance_storage requested for instance type 'unspecified' that does not have instance storage"
-            )
-          end
-        end
-
-        context 'when root disk is not specified'do
-          before { set_instance_type 'm3.medium' }
-
-          it 'should not set root device in block device mapping params' do
-            allow(aws_instances).to receive(:create) {aws_instance}
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:block_device_mappings]).to eq([{
-                device_name: '/dev/sdb',
-                virtual_name: 'ephemeral0',
-              }])
-            end
-          end
-        end
-
-        context 'when root disk is specified' do
-          before { set_instance_type 'm3.medium' }
-
-          it 'should throw error if root disk size not specified' do
-            resource_pool['root_disk'] = {
-              :type => 'standard'
-            }
-
-            allow(aws_instances).to receive(:create) {aws_instance}
-
-            expect { create_instance }.to raise_error(
-              Bosh::Clouds::CloudError,
-              'AWS CPI disk size must be greater than 0'
-            )
-          end
-
-          it 'should default root disk type to standard if type is not specified' do
-            resource_pool['root_disk'] = {
-              'size'=> 42 * 1024.0
-            }
-
-            allow(aws_instances).to receive(:create) {aws_instance}
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:block_device_mappings]).to eq([{
-                device_name: '/dev/sdb',
-                virtual_name: 'ephemeral0',
-              }, {
-                device_name: '/dev/xvda',
-                ebs: {
-                  volume_size: 42,
-                  volume_type: 'standard',
-                  delete_on_termination: true
-                }
-              }])
-            end
-          end
-
-          context 'when root disk type is io1' do
-            it 'should throw error if iops is not specified' do
-              resource_pool['root_disk'] = {
-                'type' => 'io1',
-                'size' => 42 * 1024.0
-              }
-
-              allow(aws_instances).to receive(:create) {aws_instance}
-
-              expect { create_instance }.to raise_error(
-                  Bosh::Clouds::CloudError,
-                  "Must specify an 'iops' value when the volume type is 'io1'"
-                )
-            end
-
-            it 'should create disk type of io1 with iops' do
-              resource_pool['root_disk'] = {
-                'type' => 'io1',
-                'size' => 42 * 1024.0,
-                'iops' => 1000
-              }
-
-              allow(aws_instances).to receive(:create) {aws_instance}
-
-              create_instance
-
-              expect(aws_instances).to have_received(:create) do |instance_params|
-                expect(instance_params[:block_device_mappings]).to eq([{
-                  device_name: '/dev/sdb',
-                  virtual_name: 'ephemeral0',
-                }, {
-                  device_name: '/dev/xvda',
-                  ebs: {
-                    volume_size: 42,
-                    volume_type: 'io1',
-                    iops: 1000,
-                    delete_on_termination: true
-                  }
-                }])
-              end
-            end
-          end
-
-          it 'should set device name if virtualization type is hvm' do
-            resource_pool['root_disk'] = {
-              'type' => 'standard',
-              'size' => 42 * 1024.0
-            }
-
-            allow(aws_instances).to receive(:create) {aws_instance}
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:block_device_mappings]).to eq([{
-                device_name: '/dev/sdb',
-                virtual_name: 'ephemeral0',
-              }, {
-                device_name: '/dev/xvda',
-                ebs: {
-                  volume_size: 42,
-                  volume_type: 'standard',
-                  delete_on_termination: true
-                }
-              }])
-            end
-          end
-
-          it 'should set device name if virtualization type is not hvm' do
-            allow(ec2).to receive(:images).and_return(
-              {
-                stemcell_id => instance_double(
-                  'AWS::EC2::Image',
-                  block_devices: block_devices,
-                  root_device_name: 'fake-image-root-device',
-                  virtualization_type: 'bobz'
-                )
-              }
-            )
-
-            resource_pool['root_disk'] = {
-              'type' => 'standard',
-              'size' => 42 * 1024.0
-            }
-
-            allow(aws_instances).to receive(:create) {aws_instance}
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:block_device_mappings]).to eq([{
-                device_name: '/dev/sdb',
-                virtual_name: 'ephemeral0',
-              }, {
-                device_name: '/dev/sda',
-                ebs: {
-                  volume_size: 42,
-                  volume_type: 'standard',
-                  delete_on_termination: true
-                }
-              }])
-            end
-          end
-        end
-      end
-
-      describe 'key_name' do
-        context 'when resource pool has key name' do
-          let(:resource_pool) { {'key_name' => 'foo'} }
-
-          let(:instance_options) do
-            {
-              'aws' => {
-                'default_key_name' => 'bar',
-              }
-            }
-          end
-
-          it 'should set the key name' do
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:key_name]).to eq('foo')
-            end
-          end
-        end
-
-        context 'when aws options have default key name' do
-          let(:instance_options) do
-            {
-              'aws' => {
-                'default_key_name' => 'bar',
-              }
-            }
-          end
-
-          it 'should set the key name' do
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:key_name]).to eq('bar')
-            end
-          end
-        end
-
-        it 'should not have a key name instance parameter by default' do
-          allow(aws_instances).to receive(:create) { aws_instance }
-
-          create_instance
-
-          expect(aws_instances).to have_received(:create) do |instance_params|
-            expect(instance_params[:key_name]).to be_nil
-          end
-        end
-      end
-
-      describe 'security_groups_parameter' do
-        let(:sg_name_1) { 'yay' }
-        let(:sg_name_2) { 'aya' }
-        let(:sg_name_3) { 'default' }
-        let(:sg_name_4) { 'instance' }
-        let(:sg_id_1) { 'sg-12345678' }
-        let(:sg_id_2) { 'sg-23456789' }
-        let(:sg_id_3) { 'sg-01234567' }
-        let(:sg_id_4) { 'sg-34567890' }
-
-        let(:networks_spec) do
-          {
-            'network' => {'cloud_properties' => {}},
-            'artwork' => {'cloud_properties' => {}}
-          }
-        end
-
-        let(:instance_options) { {'aws' => {}} }
-
-        before do
-          allow(aws_instances).to receive(:create) { aws_instance }
-        end
-
-        def verify_security_group_parameter(parameter_name, parameter_value)
-          create_instance
-
-          expect(aws_instances).to have_received(:create) do |instance_params|
-            expect(instance_params[parameter_name]).to match_array(parameter_value)
-          end
-        end
-
-        def verify_error
-          expect{
-            create_instance
-          }.to raise_error Bosh::Clouds::CloudError, /security group names and ids can not be used together in security groups/
-        end
-
-        context 'when the networks specs have security groups' do
-          it 'returns a unique list of the specified group names' do
-            networks_spec['network']['cloud_properties']['security_groups'] = sg_name_1
-            networks_spec['artwork']['cloud_properties']['security_groups'] = [sg_name_1, sg_name_2]
-
-            verify_security_group_parameter(:security_groups, [sg_name_1, sg_name_2])
-          end
-
-          it 'returns a unique list of the specified group ids' do
-            networks_spec['network']['cloud_properties']['security_groups'] = sg_id_1
-            networks_spec['artwork']['cloud_properties']['security_groups'] = [sg_id_1, sg_id_2]
-
-            verify_security_group_parameter(:security_group_ids, [sg_id_1, sg_id_2])
-          end
-
-          it 'raises an error when both ids and names are specified in security_groups' do
-            networks_spec['network']['cloud_properties']['security_groups'] = sg_name_1
-            networks_spec['artwork']['cloud_properties']['security_groups'] = [sg_id_1, sg_id_2]
-
-            verify_error
-          end
-        end
-
-        context 'when aws options have default_security_groups' do
-          it 'returns the list of default AWS group names' do
-            instance_options['aws']['default_security_groups'] = [sg_name_1, sg_name_3]
-
-            verify_security_group_parameter(:security_groups, [sg_name_1, sg_name_3])
-          end
-
-          it 'returns the list of default AWS group ids' do
-            instance_options['aws']['default_security_groups'] = [sg_id_1, sg_id_3]
-
-            verify_security_group_parameter(:security_group_ids, [sg_id_1, sg_id_3])
-          end
-
-          it 'raises an error when default_security_groups contains both ids and names' do
-            instance_options['aws']['default_security_groups'] = [sg_name_3, sg_id_3]
-
-            verify_error
-          end
-        end
-
-        context 'when aws options have both security_groups and default_security_groups configured' do
-          it 'returns a unique list of the specified group names' do
-            networks_spec['network']['cloud_properties']['security_groups'] = sg_name_1
-            networks_spec['artwork']['cloud_properties']['security_groups'] = [sg_name_1, sg_name_2]
-            instance_options['aws']['default_security_groups'] = [sg_name_3]
-
-            verify_security_group_parameter(:security_groups, [sg_name_1, sg_name_2])
-          end
-
-          it 'returns a unique list of the specified group ids' do
-            networks_spec['network']['cloud_properties']['security_groups'] = sg_id_1
-            networks_spec['artwork']['cloud_properties']['security_groups'] = [sg_id_1, sg_id_2]
-            instance_options['aws']['default_security_groups'] = [sg_id_3]
-
-            verify_security_group_parameter(:security_group_ids, [sg_id_1, sg_id_2])
-          end
-
-          it 'raises an error when both ids and names are specified in security_groups' do
-            networks_spec['network']['cloud_properties']['security_groups'] = sg_name_1
-            networks_spec['artwork']['cloud_properties']['security_groups'] = [sg_id_1, sg_id_2]
-            instance_options['aws']['default_security_groups'] = [sg_id_3]
-
-            verify_error
-          end
-        end
-
-        context 'when resource_pool have security_groups configured' do
-          it "overrides network spec security groups names with instance security group names" do
-            networks_spec['network']['cloud_properties']['security_groups'] = sg_name_1
-            networks_spec['artwork']['cloud_properties']['security_groups'] = [sg_name_1, sg_name_2]
-            instance_options['aws']['default_security_groups'] = [sg_name_3]
-            resource_pool['security_groups'] = [sg_name_4]
-
-            verify_security_group_parameter(:security_groups, [sg_name_4])
-          end
-          it "overrides network spec security groups ids with instance security group names" do
-            networks_spec['network']['cloud_properties']['security_groups'] = sg_id_1
-            networks_spec['artwork']['cloud_properties']['security_groups'] = [sg_id_1, sg_id_2]
-            instance_options['aws']['default_security_groups'] = [sg_id_3]
-            resource_pool['security_groups'] = [sg_name_4]
-
-            verify_security_group_parameter(:security_groups, [sg_name_4])
-          end
-          it "overrides network spec security groups names with instance security group ids" do
-            networks_spec['network']['cloud_properties']['security_groups'] = sg_name_1
-            networks_spec['artwork']['cloud_properties']['security_groups'] = [sg_name_1, sg_name_2]
-            instance_options['aws']['default_security_groups'] = [sg_name_3]
-            resource_pool['security_groups'] = [sg_id_4]
-
-            verify_security_group_parameter(:security_group_ids, [sg_id_4])
-          end
-          it "overrides network spec security groups ids with instance security group ids" do
-            networks_spec['network']['cloud_properties']['security_groups'] = sg_id_1
-            networks_spec['artwork']['cloud_properties']['security_groups'] = [sg_id_1, sg_id_2]
-            instance_options['aws']['default_security_groups'] = [sg_id_3]
-            resource_pool['security_groups'] = [sg_id_4]
-
-            verify_security_group_parameter(:security_group_ids, [sg_id_4])
-          end
-          it 'raises an error when both ids and names are specified in security_groups' do
-            resource_pool['security_groups'] = [sg_id_4, sg_name_4]
-            verify_error
-          end
-        end
-      end
-
-      describe 'vpc_parameters' do
-        context 'when there is not a manual network in the specs' do
-          let(:networks_spec) do
-            {
-              'network' => {
-                'type' => 'designed by robots',
-                'ip' => '1.2.3.4',
-              }
-            }
-          end
-
-          it 'should not set the private IP address parameters' do
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:private_ip_address]).to be_nil
-            end
-          end
-        end
-
-        context 'when there is a manual network in the specs' do
-          let(:networks_spec) do
-            {
-              'network' => {
-                'type' => 'manual',
-                'ip' => '1.2.3.4',
-              }
-            }
-          end
-
-          it 'should set the private IP address parameters' do
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:private_ip_address]).to eq('1.2.3.4')
-            end
-          end
-        end
-
-        context 'when there is a network in the specs with unspecified type' do
-          let(:networks_spec) do
-            {
-              'network' => {
-                'ip' => '1.2.3.4',
-                'cloud_properties' => {'subnet' => 'sub-123456'},
-              }
-            }
-          end
-
-          it 'should set the private IP address parameters for that network (treat it as manual)' do
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:private_ip_address]).to eq('1.2.3.4')
-            end
-          end
-        end
-
-        context 'when there is a subnet in the cloud_properties in the specs' do
-          let(:networks_spec) do
-            {
-              'network' => {
-                'ip' => '1.2.3.4',
-                'cloud_properties' => {'subnet' => 'sub-123456'},
-              }
-            }
-          end
-
-          it 'should set the subnet parameter' do
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:subnet]).to eq(fake_aws_subnet)
-            end
-          end
-
-          context 'and network type is dynamic' do
-            let(:networks_spec) do
-              {
-                'network' => {
-                  'type' => 'dynamic',
-                  'cloud_properties' => {'subnet' => 'sub-123456'},
-                }
-              }
-            end
-
-            it 'should set the subnet parameter' do
-              allow(aws_instances).to receive(:create) { aws_instance }
-
-              create_instance
-
-              expect(aws_instances).to have_received(:create) do |instance_params|
-                expect(instance_params[:subnet]).to eq(fake_aws_subnet)
-              end
-            end
-          end
-
-          context 'and network type is manual' do
-            let(:networks_spec) do
-              {
-                'network' => {
-                  'type' => 'manual',
-                  'cloud_properties' => {'subnet' => 'sub-123456'},
-                }
-              }
-            end
-
-            it 'should set the subnet parameter' do
-              allow(aws_instances).to receive(:create) { aws_instance }
-
-              create_instance
-
-              expect(aws_instances).to have_received(:create) do |instance_params|
-                expect(instance_params[:subnet]).to eq(fake_aws_subnet)
-              end
-            end
-          end
-
-          context 'and network type is not set' do
-            let(:networks_spec) do
-              {
-                'network' => {
-                  'cloud_properties' => {'subnet' => 'sub-123456'},
-                }
-              }
-            end
-
-            it 'should set the subnet parameter' do
-              allow(aws_instances).to receive(:create) { aws_instance }
-
-              create_instance
-
-              expect(aws_instances).to have_received(:create) do |instance_params|
-                expect(instance_params[:subnet]).to eq(fake_aws_subnet)
-              end
-            end
-          end
-
-          context 'and network type is vip' do
-            let(:networks_spec) do
-              {
-                'network' => {
-                  'type' => 'vip',
-                  'cloud_properties' => {'subnet' => 'sub-123456'},
-                }
-              }
-            end
-
-            it 'should not set the subnet parameter' do
-              allow(aws_instances).to receive(:create) { aws_instance }
-
-              create_instance
-
-              expect(aws_instances).to have_received(:create) do |instance_params|
-                expect(instance_params[:subnet]).to be_nil
-              end
-            end
-          end
-        end
-
-        context 'when there is no subnet in the cloud_properties in the specs' do
-          let(:networks_spec) do
-            {
-              'network' => { 'type' => 'dynamic' }
-            }
-          end
-
-          it 'should not set the subnet parameter' do
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:subnet]).to be_nil
-            end
-          end
-        end
-      end
-
-      describe 'availability_zone_parameter' do
-        let(:az_selector) { instance_double('Bosh::AwsCloud::AvailabilityZoneSelector') }
-
-        context 'if there is a common availability zone specified' do
-          before { allow(az_selector).to receive(:common_availability_zone).and_return('fake-zone') }
-
-          it 'sets the availability zone parameter appropriately' do
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:availability_zone]).to eq('fake-zone')
-            end
-          end
-        end
-
-        context 'if there is no common availability zone' do
-          before { allow(az_selector).to receive(:common_availability_zone).and_return(nil) }
-
-          it 'does not set the availability zone parameter' do
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:availability_zone]).to be_nil
-            end
-          end
-        end
-      end
-
-      describe 'user_data_parameter' do
-        context 'when a dns configuration is provided' do
-          let(:networks_spec) do
-            {
-              'foo' => {'dns' => 'bar'}
-            }
-          end
-
-          it 'populates the user data parameter with registry and dns data' do
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:user_data]).
-                to eq('{"registry":{"endpoint":"http://..."},"dns":{"nameserver":"bar"}}')
-            end
-          end
-        end
-
-        context 'when a dns configuration is not provided' do
-          let(:networks_spec) do
-            {
-              'foo' => {'no-dns' => true}
-            }
-          end
-
-          it 'populates the user data parameter with only the registry data' do
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:user_data]).
-                to eq('{"registry":{"endpoint":"http://..."}}')
-            end
-          end
-        end
-      end
-
-      describe 'placement_group' do
-        context 'when resource pool has placement group' do
-          let(:resource_pool) do
-            {
-              'placement_group' => 'foo',
-            }
-          end
-
-          it 'should set the placement group' do
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:placement_group]).to eq('foo')
-            end
-          end
-        end
-      end
-
-      describe 'tenancy_parameter' do
-        context 'when resource pool has tenancy parameter' do
-          let(:resource_pool) do
-            {
-              'tenancy' => 'dedicated',
-            }
-          end
-
-          it 'should set the dedicated_tenancy when tenancy is dedicated' do
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:dedicated_tenancy]).to be_truthy
-            end
-          end
-
-          it 'should not set the dedicated_tenancy when tenancy is not dedicated' do
-            resource_pool['tenancy'] = 'default'
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:dedicated_tenancy]).to be_nil
-            end
-          end
-        end
-
-        context 'when resource pool does not have tenancy parameter' do
-          it 'should not set the dedicated_tenancy' do
-            allow(aws_instances).to receive(:create) { aws_instance }
-
-            create_instance
-
-            expect(aws_instances).to have_received(:create) do |instance_params|
-              expect(instance_params[:dedicated_tenancy]).to be_nil
-            end
+        context 'when termination of created instance fails' do
+          before { allow(instance).to receive(:terminate).and_raise(StandardError.new('fake-terminate-err')) }
+
+          it 're-raises creation error' do
+            instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+            allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
+
+            expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_return("run-instances-response")
+            expect(instance).to receive(:attach_to_load_balancers).and_raise(lb_err)
+
+            expect {
+              instance_manager.create(
+                agent_id,
+                stemcell_id,
+                resource_pool,
+                networks_spec,
+                disk_locality,
+                environment,
+                default_options
+              )
+            }.to raise_error(lb_err)
           end
         end
       end
     end
-  end
 
-  describe '#find' do
-    before { allow(ec2).to receive(:instances).and_return(instance_id => aws_instance) }
-    let(:aws_instance) { instance_double('AWS::EC2::Instance', id: instance_id) }
-    let(:instance_id) { 'fake-id' }
+    describe '#find' do
+      before { allow(ec2).to receive(:instances).and_return(instance_id => aws_instance) }
+      let(:aws_instance) { instance_double('AWS::EC2::Instance', id: instance_id) }
+      let(:instance_id) { 'fake-id' }
 
-    it 'returns found instance (even though it might not exist)' do
-      instance = instance_double('Bosh::AwsCloud::Instance')
+      it 'returns found instance (even though it might not exist)' do
+        instance = instance_double('Bosh::AwsCloud::Instance')
 
-      allow(Bosh::AwsCloud::Instance).to receive(:new).
-        with(aws_instance, registry, elb, logger).
-        and_return(instance)
+        allow(Instance).to receive(:new).
+          with(aws_instance, registry, elb, logger).
+          and_return(instance)
 
-      expect(instance_manager.find(instance_id)).to eq(instance)
+        instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+        expect(instance_manager.find(instance_id)).to eq(instance)
+      end
     end
   end
 end

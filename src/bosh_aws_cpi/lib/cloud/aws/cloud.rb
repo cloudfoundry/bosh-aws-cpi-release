@@ -74,7 +74,9 @@ module Bosh::AwsCloud
 
       elb = AWS::ELB.new(@aws_params)
 
-      @instance_manager = InstanceManager.new(@ec2_client, registry, elb, az_selector, @logger)
+      instance_param_mapper = InstanceParamMapper.new
+      block_device_manager = BlockDeviceManager.new(@logger)
+      @instance_manager = InstanceManager.new(@ec2_client, registry, elb, instance_param_mapper, block_device_manager, @logger)
 
       @metadata_lock = Mutex.new
     end

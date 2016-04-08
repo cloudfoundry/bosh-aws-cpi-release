@@ -38,6 +38,8 @@ require "cloud/aws/volume_properties"
 require "cloud/aws/volumes_create_presenter"
 require "cloud/aws/instances_create_presenter"
 require "cloud/aws/credentials_provider"
+require "cloud/aws/instance_param_mapper"
+require "cloud/aws/block_device_manager"
 
 module Bosh
   module Clouds

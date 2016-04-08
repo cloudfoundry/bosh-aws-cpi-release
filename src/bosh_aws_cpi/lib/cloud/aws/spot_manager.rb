@@ -6,19 +6,23 @@ module Bosh::AwsCloud
     TOTAL_WAIT_TIME_IN_SECONDS = 300
     RETRY_COUNT = 10
 
-    def initialize(client)
-      @client = client
+    def initialize(ec2)
+      @ec2 = ec2
       @logger = Bosh::Clouds::Config.logger
     end
 
     def create(instance_params, spot_bid_price)
       @instance_params = instance_params
-      spot_request_spec = create_spot_request_spec(instance_params, spot_bid_price)
+      spot_request_spec = {
+        spot_price: "#{spot_bid_price}",
+        instance_count: 1,
+        launch_specification: instance_params
+      }
       @logger.debug("Requesting spot instance with: #{spot_request_spec.inspect}")
 
       begin
         # the top-level ec2 class does not support spot instance methods
-        @spot_instance_requests = @client.client.request_spot_instances(spot_request_spec)
+        @spot_instance_requests = @ec2.client.request_spot_instances(spot_request_spec)
         @logger.debug("Got spot instance requests: #{@spot_instance_requests.inspect}")
       rescue => e
         raise Bosh::Clouds::VMCreationFailed.new(false), e.inspect
@@ -49,7 +53,7 @@ module Bosh::AwsCloud
             end
           when 'active'
             @logger.info("Spot request instances fulfilled: #{status.inspect}")
-            instance = @client.instances[status[:instance_id]]
+            instance = @ec2.instances[status[:instance_id]]
         end
       end
 
@@ -58,52 +62,9 @@ module Bosh::AwsCloud
       fail_spot_creation("Timed out waiting for spot request #{@spot_instance_requests.inspect} to be fulfilled. Reverting to creating ondemand instance")
     end
 
-    def create_spot_request_spec(instance_params, spot_price)
-      spec = {
-        spot_price: "#{spot_price}",
-        instance_count: 1,
-        launch_specification: {
-          image_id: instance_params[:image_id],
-          key_name: instance_params[:key_name],
-          instance_type: instance_params[:instance_type],
-          user_data: Base64.encode64(instance_params[:user_data]),
-          placement: {
-            availability_zone: instance_params[:availability_zone]
-          }
-        }
-      }
-      spec[:launch_specification][:network_interfaces] = [
-        network_interface_spec(instance_params)
-      ]
-
-      if instance_params[:block_device_mappings]
-        spec[:launch_specification][:block_device_mappings] = instance_params[:block_device_mappings]
-      end
-
-      spec
-    end
-
-    def network_interface_spec(instance_params)
-      nic = {
-        subnet_id: instance_params[:subnet].subnet_id,
-        device_index: 0
-      }
-
-      if instance_params.has_key?(:private_ip_address)
-        nic[:private_ip_address] = instance_params[:private_ip_address]
-      end
-
-      security_groups = resolve_security_group_ids(instance_params[:security_groups])
-      unless security_groups.empty?
-        nic[:groups] = security_groups
-      end
-
-      nic
-    end
-
     def spot_instance_request_status
       @logger.debug('Checking state of spot instance requests...')
-      response = @client.client.describe_spot_instance_requests(
+      response = @ec2.client.describe_spot_instance_requests(
         spot_instance_request_ids: spot_instance_request_ids
       )
       status = response[:spot_instance_request_set][0] # There is only ever 1
@@ -123,18 +84,10 @@ module Bosh::AwsCloud
 
     def cancel_pending_spot_requests
       @logger.warn("Failed to create spot instance: #{@spot_instance_requests.inspect}. Cancelling request...")
-      cancel_response = @client.client.cancel_spot_instance_requests(
+      cancel_response = @ec2.client.cancel_spot_instance_requests(
         spot_instance_request_ids: spot_instance_request_ids
       )
       @logger.warn("Spot cancel request returned: #{cancel_response.inspect}")
-    end
-
-    def resolve_security_group_ids(security_group_names)
-      return [] unless security_group_names
-      @client.security_groups.inject([]) do |security_group_ids, group|
-        security_group_ids << group.security_group_id if security_group_names.include?(group.name)
-        security_group_ids
-      end
     end
   end
 end

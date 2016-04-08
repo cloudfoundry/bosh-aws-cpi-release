@@ -68,16 +68,22 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
     allow(Bosh::AwsCloud::Stemcell).to receive(:find).with(ec2, stemcell_id).and_return(stemcell)
 
     allow(Bosh::AwsCloud::InstanceManager).to receive(:new).
-        with(ec2, registry, be_an_instance_of(AWS::ELB), availability_zone_selector, be_an_instance_of(Logger)).
-        and_return(instance_manager)
+      with(
+        ec2,
+        registry,
+        be_an_instance_of(AWS::ELB),
+        be_an_instance_of(Bosh::AwsCloud::InstanceParamMapper),
+        be_an_instance_of(Bosh::AwsCloud::BlockDeviceManager),
+        be_an_instance_of(Logger)
+      ).and_return(instance_manager)
 
     allow(instance_manager).to receive(:create).
-        with(agent_id, stemcell_id, resource_pool, networks_spec, disk_locality, environment, options).
-        and_return([instance, block_device_agent_info])
+      with(agent_id, stemcell_id, resource_pool, networks_spec, disk_locality, environment, options).
+      and_return([instance, block_device_agent_info])
 
     allow(Bosh::AwsCloud::NetworkConfigurator).to receive(:new).
-        with(networks_spec).
-        and_return(network_configurator)
+      with(networks_spec).
+      and_return(network_configurator)
 
     allow(resource_pool).to receive(:[]).and_return(false)
     allow(network_configurator).to receive(:configure)
