@@ -2,6 +2,7 @@
 .dev_builds
 .final_builds/jobs/**/*.tgz
 .final_builds/packages/**/*.tgz
+src/bosh_aws_cpi/vendor/cache/
 .idea
 blobs
 **/config/dev.yml
