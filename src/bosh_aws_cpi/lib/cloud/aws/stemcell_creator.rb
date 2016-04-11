@@ -49,7 +49,7 @@ module Bosh::AwsCloud
         command = "sudo -n #{stemcell_copy} #{image_path} #{ebs_volume} 2>&1"
       else
         logger.info("falling back to using included copy stemcell")
-        included_stemcell_copy = File.expand_path("../../../../scripts/stemcell-copy.sh", __FILE__)
+        included_stemcell_copy = File.expand_path("../../../../bin/stemcell-copy", __FILE__)
         command = "sudo -n #{included_stemcell_copy} #{image_path} #{ebs_volume} 2>&1"
       end
 

@@ -51,7 +51,7 @@ full_stemcell_url=$(cat bosh-aws-full-stemcell/url | awk '{ gsub(/light-/, ""); 
 full_stemcell_name=china-$(echo ${full_stemcell_url} | grep -o "[^/]*$")
 
 pushd ${workspace}
-  cp ../../src/bosh_aws_cpi/scripts/stemcell-copy.sh ./${stemcell_copy_file}
+  cp ../../src/bosh_aws_cpi/bin/stemcell-copy ./${stemcell_copy_file}
   vagrant box add dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
   add_on_exit "vagrant destroy -f"
   vagrant up --provider=aws

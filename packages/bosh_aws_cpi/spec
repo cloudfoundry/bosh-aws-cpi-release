@@ -3,4 +3,8 @@ name: bosh_aws_cpi
 dependencies:
 - ruby_aws_cpi
 files:
-- bosh_aws_cpi/**/*
+- bosh_aws_cpi/Gemfile
+- bosh_aws_cpi/Gemfile.lock
+- bosh_aws_cpi/bin/**/*
+- bosh_aws_cpi/lib/**/*
+- bosh_aws_cpi/vendor/package/**/*

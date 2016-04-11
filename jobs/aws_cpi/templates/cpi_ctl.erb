@@ -2,7 +2,7 @@
 
 set -e
 
-CPI_SCRIPTS_DIR=/var/vcap/packages/bosh_aws_cpi/scripts/
+CPI_BIN_DIR=/var/vcap/packages/bosh_aws_cpi/bin/
 RUN_DIR=/var/vcap/sys/run/aws_cpi
 PID_FILE=${RUN_DIR}/cpi.pid
 SUDOERS_FILE=/etc/sudoers.d/cpi
@@ -12,7 +12,7 @@ case $1 in
   start)
     mkdir -p $RUN_DIR
 
-    sc_path=$(find ${CPI_SCRIPTS_DIR} -iname stemcell-copy.sh)
+    sc_path=$(find ${CPI_BIN_DIR} -iname stemcell-copy)
     cat > $SUDOERS_FILE << EOF
 vcap ALL= NOPASSWD: ${sc_path}
 EOF
@@ -28,4 +28,3 @@ EOF
 
 esac
 exit 0
-
