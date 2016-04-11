@@ -310,7 +310,7 @@ module Bosh::AwsCloud
       spec_with_dns = networks_spec.values.select { |spec| spec.has_key? "dns" }.first
       user_data[:dns] = {nameserver: spec_with_dns["dns"]} if spec_with_dns
 
-      instance_params[:user_data] = Yajl::Encoder.encode(user_data)
+      instance_params[:user_data] = JSON.dump(user_data)
     end
 
     def set_iam_instance_profile_parameter(instance_params, resource_pool_iam_instance_profile, default_aws_iam_instance_profile)
