@@ -38,6 +38,7 @@ describe Bosh::AwsCloud::Cloud do
       'aws' => {
         'region' => 'us-east-1',
         'default_key_name' => default_key_name,
+        'default_security_groups' => get_security_group_ids(@subnet_id),
         'fast_path_delete' => 'yes',
         'access_key_id' => @access_key_id,
         'secret_access_key' => @secret_access_key
@@ -420,6 +421,15 @@ describe Bosh::AwsCloud::Cloud do
   ensure
     cpi.delete_vm(instance_id) if instance_id
     cpi.delete_stemcell(stemcell_id) if stemcell_id
+  end
+
+  def get_security_group_ids(subnet_id)
+    ec2 = AWS::EC2.new(
+      access_key_id:     @access_key_id,
+      secret_access_key: @secret_access_key,
+    )
+    security_groups = ec2.subnets[subnet_id].vpc.security_groups
+    security_groups.map { |sg| sg.id }
   end
 end
 
