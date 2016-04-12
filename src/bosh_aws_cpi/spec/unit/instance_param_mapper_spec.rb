@@ -25,148 +25,156 @@ module Bosh::AwsCloud
         it 'maps to placement.group_name' do expect(mapping(input)).to eq(output) end
       end
 
-      context 'when tenancy is provided by resource_pool, as "dedicated"' do
-        let(:input) { { resource_pool: { 'tenancy' => 'dedicated' } } }
-        let(:output) { { placement: { tenancy: 'dedicated' }, min_count: 1, max_count: 1 } }
+      describe 'Tenancy options' do
+        context 'when tenancy is provided by resource_pool, as "dedicated"' do
+          let(:input) { { resource_pool: { 'tenancy' => 'dedicated' } } }
+          let(:output) { { placement: { tenancy: 'dedicated' }, min_count: 1, max_count: 1 } }
 
-        it 'maps to placement.tenancy' do expect(mapping(input)).to eq(output) end
-      end
-
-      context 'when tenancy is provided by resource_pool, as other than "dedicated"' do
-        let(:input) { { resource_pool: { 'tenancy' => 'ignored' } } }
-        let(:output) { { min_count: 1, max_count: 1 } }
-
-        it 'is ignored' do expect(mapping(input)).to eq(output) end
-      end
-
-      context 'when key_name is provided by defaults (only)' do
-        let(:input) do
-          {
-            defaults: { 'default_key_name' => 'default-fake-key-name' }
-          }
+          it 'maps to placement.tenancy' do expect(mapping(input)).to eq(output) end
         end
-        let(:output) { { key_name: 'default-fake-key-name', min_count: 1, max_count: 1 } }
 
-        it 'maps key_name from defaults' do expect(mapping(input)).to eq(output) end
+        context 'when tenancy is provided by resource_pool, as other than "dedicated"' do
+          let(:input) { { resource_pool: { 'tenancy' => 'ignored' } } }
+          let(:output) { { min_count: 1, max_count: 1 } }
+
+          it 'is ignored' do expect(mapping(input)).to eq(output) end
+        end
       end
 
-      context 'when key_name is provided by defaults and resource_pool' do
-        let(:input) do
-          {
-            resource_pool: { 'key_name' => 'fake-key-name' },
-            defaults: { 'default_key_name' => 'default-fake-key-name' }
-          }
-        end
-        let(:output) { { key_name: 'fake-key-name', min_count: 1, max_count: 1 } }
+      describe 'Key Name options' do
+        context 'when key_name is provided by defaults (only)' do
+          let(:input) do
+            {
+              defaults: { 'default_key_name' => 'default-fake-key-name' }
+            }
+          end
+          let(:output) { { key_name: 'default-fake-key-name', min_count: 1, max_count: 1 } }
 
-        it 'maps key_name from resource_pool' do expect(mapping(input)).to eq(output) end
+          it 'maps key_name from defaults' do expect(mapping(input)).to eq(output) end
+        end
+
+        context 'when key_name is provided by defaults and resource_pool' do
+          let(:input) do
+            {
+              resource_pool: { 'key_name' => 'fake-key-name' },
+              defaults: { 'default_key_name' => 'default-fake-key-name' }
+            }
+          end
+          let(:output) { { key_name: 'fake-key-name', min_count: 1, max_count: 1 } }
+
+          it 'maps key_name from resource_pool' do expect(mapping(input)).to eq(output) end
+        end
       end
 
-      context 'when iam_instance_profile is provided by defaults (only)' do
-        let(:input) do
-          {
-            defaults: { 'default_iam_instance_profile' => 'default-fake-iam-profile' }
-          }
-        end
-        let(:output) { { iam_instance_profile: { name: 'default-fake-iam-profile' }, min_count: 1, max_count: 1 } }
+      describe 'IAM instance profile options' do
+        context 'when iam_instance_profile is provided by defaults (only)' do
+          let(:input) do
+            {
+              defaults: { 'default_iam_instance_profile' => 'default-fake-iam-profile' }
+            }
+          end
+          let(:output) { { iam_instance_profile: { name: 'default-fake-iam-profile' }, min_count: 1, max_count: 1 } }
 
-        it 'maps iam_instance_profile from defaults' do expect(mapping(input)).to eq(output) end
+          it 'maps iam_instance_profile from defaults' do expect(mapping(input)).to eq(output) end
+        end
+
+        context 'when iam_instance_profile is provided by defaults and resource_pool' do
+          let(:input) do
+            {
+              resource_pool: { 'iam_instance_profile' => 'fake-iam-profile' },
+              defaults: { 'default_iam_instance_profile' => 'default-fake-iam-profile' }
+            }
+          end
+          let(:output) { { iam_instance_profile: { name: 'fake-iam-profile' }, min_count: 1, max_count: 1 } }
+
+          it 'maps iam_instance_profile from resource_pool' do expect(mapping(input)).to eq(output) end
+        end
       end
 
-      context 'when iam_instance_profile is provided by defaults and resource_pool' do
-        let(:input) do
-          {
-            resource_pool: { 'iam_instance_profile' => 'fake-iam-profile' },
-            defaults: { 'default_iam_instance_profile' => 'default-fake-iam-profile' }
-          }
+      describe 'Security Group options' do
+        context 'when security_groups is provided by defaults (only) as ids' do
+          let(:input) do
+            {
+              defaults: { 'default_security_groups' => ["sg-67890123", "sg-78901234"] }
+            }
+          end
+          let(:output) { { security_group_ids: ["sg-67890123", "sg-78901234"], min_count: 1, max_count: 1 } }
+
+          it 'maps security_group_ids from defaults' do expect(mapping(input)).to eq(output) end
         end
-        let(:output) { { iam_instance_profile: { name: 'fake-iam-profile' }, min_count: 1, max_count: 1 } }
 
-        it 'maps iam_instance_profile from resource_pool' do expect(mapping(input)).to eq(output) end
-      end
+        context 'when security_groups is provided by defaults and networks_spec as ids' do
+          let(:input) do
+            {
+              networks_spec: {
+                "net1" => {"cloud_properties" => {"security_groups" => ["sg-34567890", "sg-45678901"]}},
+                "net2" => {"cloud_properties" => {"security_groups" => "sg-56789012"}}
+              },
+              defaults: { 'default_security_groups' => ["sg-67890123", "sg-78901234"] }
+            }
+          end
+          let(:output) { { security_group_ids: ["sg-34567890", "sg-45678901", "sg-56789012"], min_count: 1, max_count: 1 } }
 
-      context 'when security_groups is provided by defaults (only) as ids' do
-        let(:input) do
-          {
-            defaults: { 'default_security_groups' => ["sg-67890123", "sg-78901234"] }
-          }
+          it 'maps security_group_ids from networks_spec' do expect(mapping(input)).to eq(output) end
         end
-        let(:output) { { security_group_ids: ["sg-67890123", "sg-78901234"], min_count: 1, max_count: 1 } }
 
-        it 'maps security_group_ids from defaults' do expect(mapping(input)).to eq(output) end
-      end
+        context 'when security_groups is provided by defaults, networks_spec, and resource_pool as ids' do
+          let(:input) do
+            {
+              resource_pool: { 'security_groups' => ["sg-12345678", "sg-23456789"] },
+              networks_spec: {
+                "net1" => {"cloud_properties" => {"security_groups" => ["sg-34567890", "sg-45678901"]}},
+                "net2" => {"cloud_properties" => {"security_groups" => "sg-56789012"}}
+              },
+              defaults: { 'default_security_groups' => ["sg-67890123", "sg-78901234"] }
+            }
+          end
+          let(:output) { { security_group_ids: ["sg-12345678", "sg-23456789"], min_count: 1, max_count: 1 } }
 
-      context 'when security_groups is provided by defaults and networks_spec as ids' do
-        let(:input) do
-          {
-            networks_spec: {
-              "net1" => {"cloud_properties" => {"security_groups" => ["sg-34567890", "sg-45678901"]}},
-              "net2" => {"cloud_properties" => {"security_groups" => "sg-56789012"}}
-            },
-            defaults: { 'default_security_groups' => ["sg-67890123", "sg-78901234"] }
-          }
+          it 'maps security_group_ids from resource_pool' do expect(mapping(input)).to eq(output) end
         end
-        let(:output) { { security_group_ids: ["sg-34567890", "sg-45678901", "sg-56789012"], min_count: 1, max_count: 1 } }
 
-        it 'maps security_group_ids from networks_spec' do expect(mapping(input)).to eq(output) end
-      end
+        context 'when security_groups is provided by defaults (only) as names' do
+          let(:input) do
+            {
+              defaults: { 'default_security_groups' => ["sg-6-name", "sg-7-name"] }
+            }
+          end
+          let(:output) { { security_groups: ["sg-6-name", "sg-7-name"], min_count: 1, max_count: 1 } }
 
-      context 'when security_groups is provided by defaults, networks_spec, and resource_pool as ids' do
-        let(:input) do
-          {
-            resource_pool: { 'security_groups' => ["sg-12345678", "sg-23456789"] },
-            networks_spec: {
-              "net1" => {"cloud_properties" => {"security_groups" => ["sg-34567890", "sg-45678901"]}},
-              "net2" => {"cloud_properties" => {"security_groups" => "sg-56789012"}}
-            },
-            defaults: { 'default_security_groups' => ["sg-67890123", "sg-78901234"] }
-          }
+          it 'maps security_groups from defaults' do expect(mapping(input)).to eq(output) end
         end
-        let(:output) { { security_group_ids: ["sg-12345678", "sg-23456789"], min_count: 1, max_count: 1 } }
 
-        it 'maps security_group_ids from resource_pool' do expect(mapping(input)).to eq(output) end
-      end
+        context 'when security_groups is provided by defaults and networks_spec as names' do
+          let(:input) do
+            {
+              networks_spec: {
+                "net1" => {"cloud_properties" => {"security_groups" => ["sg-3-name", "sg-4-name"]}},
+                "net2" => {"cloud_properties" => {"security_groups" => "sg-5-name"}}
+              },
+              defaults: { 'default_security_groups' => ["sg-6-name", "sg-7-name"] }
+            }
+          end
+          let(:output) { { security_groups: ["sg-3-name", "sg-4-name", "sg-5-name"], min_count: 1, max_count: 1 } }
 
-      context 'when security_groups is provided by defaults (only) as names' do
-        let(:input) do
-          {
-            defaults: { 'default_security_groups' => ["sg-6-name", "sg-7-name"] }
-          }
+          it 'maps security_groups from networks_spec' do expect(mapping(input)).to eq(output) end
         end
-        let(:output) { { security_groups: ["sg-6-name", "sg-7-name"], min_count: 1, max_count: 1 } }
 
-        it 'maps security_groups from defaults' do expect(mapping(input)).to eq(output) end
-      end
+        context 'when security_groups is provided by defaults, networks_spec, and resource_pool as names' do
+          let(:input) do
+            {
+              resource_pool: { 'security_groups' => ["sg-1-name", "sg-2-name"] },
+              networks_spec: {
+                "net1" => {"cloud_properties" => {"security_groups" => ["sg-3-name", "sg-4-name"]}},
+                "net2" => {"cloud_properties" => {"security_groups" => "sg-5-name"}}
+              },
+              defaults: { 'default_security_groups' => ["sg-6-name", "sg-7-name"] }
+            }
+          end
+          let(:output) { { security_groups: ["sg-1-name", "sg-2-name"], min_count: 1, max_count: 1 } }
 
-      context 'when security_groups is provided by defaults and networks_spec as names' do
-        let(:input) do
-          {
-            networks_spec: {
-              "net1" => {"cloud_properties" => {"security_groups" => ["sg-3-name", "sg-4-name"]}},
-              "net2" => {"cloud_properties" => {"security_groups" => "sg-5-name"}}
-            },
-            defaults: { 'default_security_groups' => ["sg-6-name", "sg-7-name"] }
-          }
+          it 'maps security_groups from resource_pool' do expect(mapping(input)).to eq(output) end
         end
-        let(:output) { { security_groups: ["sg-3-name", "sg-4-name", "sg-5-name"], min_count: 1, max_count: 1 } }
-
-        it 'maps security_groups from networks_spec' do expect(mapping(input)).to eq(output) end
-      end
-
-      context 'when security_groups is provided by defaults, networks_spec, and resource_pool as names' do
-        let(:input) do
-          {
-            resource_pool: { 'security_groups' => ["sg-1-name", "sg-2-name"] },
-            networks_spec: {
-              "net1" => {"cloud_properties" => {"security_groups" => ["sg-3-name", "sg-4-name"]}},
-              "net2" => {"cloud_properties" => {"security_groups" => "sg-5-name"}}
-            },
-            defaults: { 'default_security_groups' => ["sg-6-name", "sg-7-name"] }
-          }
-        end
-        let(:output) { { security_groups: ["sg-1-name", "sg-2-name"], min_count: 1, max_count: 1 } }
-
-        it 'maps security_groups from resource_pool' do expect(mapping(input)).to eq(output) end
       end
 
       context 'when registry_endpoint is provided' do
@@ -338,88 +346,90 @@ module Bosh::AwsCloud
         end
       end
 
-      context 'when (only) resource pool AZ is provided' do
-        let(:input) { { resource_pool: { "availability_zone" => "region-1a" } } }
-        let(:output) { { placement: { availability_zone: "region-1a" }, min_count: 1, max_count: 1 } }
-        it 'maps placement.availability_zone from resource_pool' do
-          expect(mapping(input)).to eq(output)
+      describe 'Availability Zone options' do
+        context 'when (only) resource pool AZ is provided' do
+          let(:input) { { resource_pool: { "availability_zone" => "region-1a" } } }
+          let(:output) { { placement: { availability_zone: "region-1a" }, min_count: 1, max_count: 1 } }
+          it 'maps placement.availability_zone from resource_pool' do
+            expect(mapping(input)).to eq(output)
+          end
         end
-      end
 
-      context 'when resource pool AZ, and networks AZs are provided' do
-        let(:input) do
-          {
-            resource_pool: {
-              "availability_zone" => "region-1a"
-            },
-            networks_spec: {
-              "net1" => {
-                "type" => "dynamic",
-                "cloud_properties" => { "subnet" => "dynamic-subnet" }
+        context 'when resource pool AZ, and networks AZs are provided' do
+          let(:input) do
+            {
+              resource_pool: {
+                "availability_zone" => "region-1a"
               },
-            },
-            subnet_az_mapping: {
-              "dynamic-subnet" => "region-1a"
+              networks_spec: {
+                "net1" => {
+                  "type" => "dynamic",
+                  "cloud_properties" => { "subnet" => "dynamic-subnet" }
+                },
+              },
+              subnet_az_mapping: {
+                "dynamic-subnet" => "region-1a"
+              }
             }
-          }
-        end
-        let(:output) do
-          {
-            placement: {
-              availability_zone: 'region-1a'
-            },
-            network_interfaces: [
-              {
-                subnet_id: 'dynamic-subnet',
-                device_index: 0
-              }
-            ],
-            min_count: 1,
-            max_count: 1
-          }
-        end
-
-        it 'maps placement.availability_zone from the common availability zone' do
-          expect(mapping(input)).to eq(output)
-        end
-      end
-
-      context 'when volume AZs, resource pool AZ, and networks AZs are provided' do
-        let(:input) do
-          {
-            volume_zones: ["region-1a", "region-1a"],
-            resource_pool: {
-              "availability_zone" => "region-1a"
-            },
-            networks_spec: {
-              "net1" => {
-                "type" => "dynamic",
-                "cloud_properties" => { "subnet" => "dynamic-subnet" }
-              }
-            },
-            subnet_az_mapping: {
-              "dynamic-subnet" => "region-1a"
+          end
+          let(:output) do
+            {
+              placement: {
+                availability_zone: 'region-1a'
+              },
+              network_interfaces: [
+                {
+                  subnet_id: 'dynamic-subnet',
+                  device_index: 0
+                }
+              ],
+              min_count: 1,
+              max_count: 1
             }
-          }
-        end
-        let(:output) do
-          {
-            placement: {
-              availability_zone: 'region-1a'
-            },
-            network_interfaces: [
-              {
-                subnet_id: 'dynamic-subnet',
-                device_index: 0
-              }
-            ],
-            min_count: 1,
-            max_count: 1
-          }
+          end
+
+          it 'maps placement.availability_zone from the common availability zone' do
+            expect(mapping(input)).to eq(output)
+          end
         end
 
-        it 'maps placement.availability_zone from the common availability zone' do
-          expect(mapping(input)).to eq(output)
+        context 'when volume AZs, resource pool AZ, and networks AZs are provided' do
+          let(:input) do
+            {
+              volume_zones: ["region-1a", "region-1a"],
+              resource_pool: {
+                "availability_zone" => "region-1a"
+              },
+              networks_spec: {
+                "net1" => {
+                  "type" => "dynamic",
+                  "cloud_properties" => { "subnet" => "dynamic-subnet" }
+                }
+              },
+              subnet_az_mapping: {
+                "dynamic-subnet" => "region-1a"
+              }
+            }
+          end
+          let(:output) do
+            {
+              placement: {
+                availability_zone: 'region-1a'
+              },
+              network_interfaces: [
+                {
+                  subnet_id: 'dynamic-subnet',
+                  device_index: 0
+                }
+              ],
+              min_count: 1,
+              max_count: 1
+            }
+          end
+
+          it 'maps placement.availability_zone from the common availability zone' do
+            expect(mapping(input)).to eq(output)
+          end
         end
       end
 
