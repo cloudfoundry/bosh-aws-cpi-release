@@ -6,7 +6,6 @@ describe Bosh::AwsCloud::Cloud, "delete_vm" do
   let(:options) do
     {
       "aws" => {
-        "default_availability_zone" => "foo",
         "region" => "bar",
         "access_key_id" => "access",
         "secret_access_key" => "secret",

@@ -22,7 +22,7 @@ describe Bosh::AwsCloud::Cloud do
   let(:vm_metadata) { { deployment: 'deployment', job: 'cpi_spec', index: '0', delete_me: 'please' } }
   let(:disks) { [] }
   let(:network_spec) { {} }
-  let(:resource_pool) { { 'instance_type' => instance_type } }
+  let(:resource_pool) { { 'instance_type' => instance_type, 'availability_zone' => @subnet_zone } }
   let(:registry) { instance_double(Bosh::Cpi::RegistryClient).as_null_object }
 
   before {
@@ -40,8 +40,7 @@ describe Bosh::AwsCloud::Cloud do
         'default_key_name' => default_key_name,
         'fast_path_delete' => 'yes',
         'access_key_id' => @access_key_id,
-        'secret_access_key' => @secret_access_key,
-        'default_availability_zone' => @subnet_zone,
+        'secret_access_key' => @secret_access_key
       },
       'registry' => {
         'endpoint' => 'fake',
@@ -94,7 +93,7 @@ describe Bosh::AwsCloud::Cloud do
     end
 
     context 'resource_pool specifies elb for instance' do
-      let(:resource_pool) { { 'instance_type' => instance_type, 'elbs' => [@elb_id] } }
+      let(:resource_pool) { { 'instance_type' => instance_type, 'availability_zone' => @subnet_zone, 'elbs' => [@elb_id] } }
       let(:endpoint_configured_cpi) do
         Bosh::AwsCloud::Cloud.new(
           'aws' => {
@@ -103,8 +102,7 @@ describe Bosh::AwsCloud::Cloud do
             'default_key_name' => default_key_name,
             'fast_path_delete' => 'yes',
             'access_key_id' => @access_key_id,
-            'secret_access_key' => @secret_access_key,
-            'default_availability_zone' => @subnet_zone,
+            'secret_access_key' => @secret_access_key
           },
           'registry' => {
             'endpoint' => 'fake',

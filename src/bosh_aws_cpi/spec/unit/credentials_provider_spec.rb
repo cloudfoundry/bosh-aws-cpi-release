@@ -32,7 +32,6 @@ module Bosh::AwsCloud
       let(:options) {
         {
           "aws" => {
-              "default_availability_zone" => "foo",
               "region" => "bar",
               "default_key_name" => "sesame"
           },

@@ -9,7 +9,6 @@ describe Bosh::AwsCloud::Cloud do
     let(:options) {
       {
           "aws" => {
-              "default_availability_zone" => "foo",
               "region" => "bar",
               "access_key_id" => "access",
               "secret_access_key" => "secret",

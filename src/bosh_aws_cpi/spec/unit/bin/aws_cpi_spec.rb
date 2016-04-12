@@ -15,7 +15,6 @@ describe "the aws_cpi executable" do
             'fast_path_delete' => 'yes',
             'access_key_id' => 'access_key_id',
             'secret_access_key' => 'secret_access_key',
-            'default_availability_zone' => 'subnet_zone',
             'max_retries' => 0
           },
             'registry' => {
