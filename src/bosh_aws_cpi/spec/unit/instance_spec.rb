@@ -1,11 +1,10 @@
 require 'spec_helper'
 require 'logger'
-require 'bosh/registry/client'
 
 describe Bosh::AwsCloud::Instance do
   subject(:instance) { described_class.new(aws_instance, registry, elb, logger) }
   let(:aws_instance) { instance_double('AWS::EC2::Instance', id: instance_id) }
-  let(:registry) { instance_double('Bosh::Registry::Client', :update_settings => nil) }
+  let(:registry) { instance_double('Bosh::Cpi::RegistryClient', :update_settings => nil) }
   let(:elb) { double('AWS::ELB') }
   let(:logger) { Logger.new('/dev/null') }
 

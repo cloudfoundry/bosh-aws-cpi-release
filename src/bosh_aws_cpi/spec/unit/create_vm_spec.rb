@@ -57,7 +57,7 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
   end
 
   before do
-    allow(Bosh::Registry::Client).to receive(:new).and_return(registry)
+    allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
 
     allow(AWS::EC2).to receive(:new).and_return(ec2)
 

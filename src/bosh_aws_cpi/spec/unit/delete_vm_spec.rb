@@ -25,7 +25,7 @@ describe Bosh::AwsCloud::Cloud, "delete_vm" do
 
   it 'deletes an EC2 instance' do
     registry = double("registry")
-    allow(Bosh::Registry::Client).to receive(:new).and_return(registry)
+    allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
 
     ec2 = double("ec2", :regions => [])
     allow(AWS::EC2).to receive(:new).and_return(ec2)

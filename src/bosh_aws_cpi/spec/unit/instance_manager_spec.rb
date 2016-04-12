@@ -1,12 +1,11 @@
 require 'spec_helper'
-require 'bosh/registry/client'
 
 describe Bosh::AwsCloud::InstanceManager do
   subject(:instance_manager) { described_class.new(ec2, registry, elb, az_selector, logger) }
   let(:ec2) do
     mock_ec2
   end
-  let(:registry) { double('Bosh::Registry::Client', :endpoint => 'http://...', :update_settings => nil) }
+  let(:registry) { double('Bosh::Cpi::RegistryClient', :endpoint => 'http://...', :update_settings => nil) }
   let(:elb) { double('AWS::ELB', load_balancers: nil) }
   let(:az_selector) { instance_double('Bosh::AwsCloud::AvailabilityZoneSelector', common_availability_zone: 'us-east-1a') }
   let(:logger) { Logger.new('/dev/null') }

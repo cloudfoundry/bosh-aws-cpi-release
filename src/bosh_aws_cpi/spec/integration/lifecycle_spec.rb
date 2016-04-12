@@ -23,10 +23,10 @@ describe Bosh::AwsCloud::Cloud do
   let(:disks) { [] }
   let(:network_spec) { {} }
   let(:resource_pool) { { 'instance_type' => instance_type } }
-  let(:registry) { instance_double(Bosh::Registry::Client).as_null_object }
+  let(:registry) { instance_double(Bosh::Cpi::RegistryClient).as_null_object }
 
   before {
-    allow(Bosh::Registry::Client).to receive(:new).and_return(registry)
+    allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
     allow(registry).to receive(:read_settings).and_return({})
   }
 
