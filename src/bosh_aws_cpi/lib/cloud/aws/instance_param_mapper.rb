@@ -173,7 +173,7 @@ module Bosh::AwsCloud
     end
 
     def availability_zone
-      az_selector = AvailabilityZoneSelector.new(nil, nil)
+      az_selector = AvailabilityZoneSelector.new(nil)
       az_selector.common_availability_zone(
         volume_zones,
         resource_pool["availability_zone"],

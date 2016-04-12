@@ -68,7 +68,7 @@ module Bosh::AwsCloud
 
       cloud_error("Please make sure the CPI has proper network access to AWS.") unless aws_accessible?
 
-      @az_selector = AvailabilityZoneSelector.new(@ec2_client, aws_properties['default_availability_zone'])
+      @az_selector = AvailabilityZoneSelector.new(@ec2_client)
 
       initialize_registry
 

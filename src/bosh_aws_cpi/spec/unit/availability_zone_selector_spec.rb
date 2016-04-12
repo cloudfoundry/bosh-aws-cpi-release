@@ -8,7 +8,7 @@ describe Bosh::AwsCloud::AvailabilityZoneSelector do
   let(:us_east_1b) { double(AWS::EC2::AvailabilityZone, name: 'us-east-1b') }
   let(:zones) { [us_east_1a, us_east_1b] }
   let(:region) { double(AWS::EC2::Region, :instances => instances, :availability_zones => zones) }
-  let(:subject) { described_class.new(region, 'default_zone') }
+  let(:subject) { described_class.new(region) }
 
   describe '#common_availability_zone' do
     it 'should raise an error when multiple availability zones are present and volume information is passed in' do
@@ -26,32 +26,11 @@ describe Bosh::AwsCloud::AvailabilityZoneSelector do
     it 'should select the common availability zone' do
       expect(subject.common_availability_zone(%w(this_zone), 'this_zone', nil)).to eq('this_zone')
     end
-
-    it 'should return the default when no availability zone is passed' do
-      expect(subject.common_availability_zone([], nil, nil)).to eq('default_zone')
-    end
-
   end
 
   describe '#select_availability_zone' do
-    context 'with a default' do
-      context 'with a instance id' do
-        it 'should return the az of the instance' do
-          allow(instances).to receive(:[]).and_return(instance)
-
-          expect(subject.select_availability_zone(instance)).to eq('this_zone')
-        end
-      end
-
-      context 'without a instance id' do
-        it 'should return the default az' do
-          expect(subject.select_availability_zone(nil)).to eq('default_zone')
-        end
-      end
-    end
-
     context 'without a default' do
-      let(:subject) { described_class.new(region, nil) }
+      let(:subject) { described_class.new(region) }
 
       context 'with a instance id' do
         it 'should return the az of the instance' do

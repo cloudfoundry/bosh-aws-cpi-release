@@ -62,7 +62,7 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
     allow(AWS::EC2).to receive(:new).and_return(ec2)
 
     allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).
-        with(ec2, "foo").
+        with(ec2).
         and_return(availability_zone_selector)
 
     allow(Bosh::AwsCloud::Stemcell).to receive(:find).with(ec2, stemcell_id).and_return(stemcell)

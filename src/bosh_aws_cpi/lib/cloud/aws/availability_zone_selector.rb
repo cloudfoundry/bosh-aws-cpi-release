@@ -2,9 +2,8 @@ module Bosh::AwsCloud
   class AvailabilityZoneSelector
     attr_accessor :client
 
-    def initialize(client, default_name)
+    def initialize(client)
       @client = client
-      @default = default_name
     end
 
     def common_availability_zone(volume_az_names, resource_pool_az_name, vpc_subnet_az_name)
@@ -14,14 +13,12 @@ module Bosh::AwsCloud
         raise Bosh::Clouds::CloudError, "can't use multiple availability zones: subnet in #{vpc_subnet_az_name}, VM in #{resource_pool_az_name}#{volume_az_error_string}"
       end
 
-      zone_names.first || @default
+      zone_names.first
     end
 
     def select_availability_zone(instance_id)
       if instance_id
         client.instances[instance_id].availability_zone
-      elsif @default
-        @default
       else
         random_availability_zone
       end

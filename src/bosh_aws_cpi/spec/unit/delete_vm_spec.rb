@@ -32,7 +32,7 @@ describe Bosh::AwsCloud::Cloud, "delete_vm" do
 
     az_selector = double("availability zone selector")
     allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).
-      with(ec2, "foo").
+      with(ec2).
       and_return(az_selector)
 
     instance_manager = instance_double('Bosh::AwsCloud::InstanceManager')
