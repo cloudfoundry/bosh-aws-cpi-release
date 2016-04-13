@@ -94,7 +94,13 @@ describe Bosh::AwsCloud::Cloud do
     end
 
     context 'resource_pool specifies elb for instance' do
-      let(:resource_pool) { { 'instance_type' => instance_type, 'availability_zone' => @subnet_zone, 'elbs' => [@elb_id] } }
+      let(:resource_pool) do
+        {
+          'instance_type' => instance_type,
+          'availability_zone' => @subnet_zone,
+          'elbs' => [@elb_id]
+        }
+      end
       let(:endpoint_configured_cpi) do
         Bosh::AwsCloud::Cloud.new(
           'aws' => {
@@ -245,6 +251,7 @@ describe Bosh::AwsCloud::Cloud do
       let(:resource_pool) do
         {
           'instance_type' => instance_type,
+          'availability_zone' => @subnet_zone,
           'ephemeral_disk' => {
             'size' => 4 * 1024,
             'type' => 'io1',
@@ -270,12 +277,13 @@ describe Bosh::AwsCloud::Cloud do
     context 'when raw_instance_storage is true' do
       let(:resource_pool) do
         {
-            'instance_type' => instance_type,
-            'raw_instance_storage' => true,
-            'ephemeral_disk' => {
-                'size' => 4 * 1024,
-                'type' => 'gp2'
-            }
+          'instance_type' => instance_type,
+          'availability_zone' => @subnet_zone,
+          'raw_instance_storage' => true,
+          'ephemeral_disk' => {
+              'size' => 4 * 1024,
+              'type' => 'gp2'
+          }
         }
       end
       let(:instance_type) { instance_type_with_ephemeral }
@@ -296,11 +304,12 @@ describe Bosh::AwsCloud::Cloud do
       context 'when root_disk properties are specified' do
         let(:resource_pool) do
           {
-              'instance_type' => instance_type,
-              'root_disk' => {
-                  'size' => 11 * 1024,
-                  'type' => 'gp2'
-              }
+            'instance_type' => instance_type,
+            'availability_zone' => @subnet_zone,
+            'root_disk' => {
+                'size' => 11 * 1024,
+                'type' => 'gp2'
+            }
           }
         end
         let(:instance_type) { instance_type_without_ephemeral }

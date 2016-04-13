@@ -18,6 +18,10 @@ module Bosh::AwsCloud
         instance_count: 1,
         launch_specification: instance_params
       }
+      unless instance_params[:security_groups].nil?
+        raise Bosh::Clouds::VMCreationFailed.new(false), "Cannot use security group names when creating spot instances"
+      end
+
       @logger.debug("Requesting spot instance with: #{spot_request_spec.inspect}")
 
       begin

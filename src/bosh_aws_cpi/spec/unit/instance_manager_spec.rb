@@ -64,7 +64,7 @@ module Bosh::AwsCloud
 
       before do
         allow(fake_subnet_collection).to receive(:filter).and_return([fake_aws_subnet])
-        allow(param_mapper).to receive(:instance_params).and_return("fake-instance-params")
+        allow(param_mapper).to receive(:instance_params).and_return({ fake: 'instance-params' })
         allow(param_mapper).to receive(:manifest_params=)
         allow(param_mapper).to receive(:validate)
         allow(block_device_manager).to receive(:resource_pool=)
@@ -91,7 +91,7 @@ module Bosh::AwsCloud
         instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
         allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
-        expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_return("run-instances-response")
+        expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params' }).and_return("run-instances-response")
         instance_manager.create(
           agent_id,
           stemcell_id,
@@ -118,13 +118,13 @@ module Bosh::AwsCloud
           allow(ec2).to receive(:security_groups).and_return([sg1])
 
           # Should not recieve an ondemand instance create call
-          expect(aws_client).to_not receive(:run_instances).with("fake-instance-params")
+          expect(aws_client).to_not receive(:run_instances)
 
-          #Should rather recieve a spot instance request
+          # Should rather recieve a spot instance request
           expect(aws_client).to receive(:request_spot_instances) do |spot_request|
             expect(spot_request[:spot_price]).to eq('0.15')
             expect(spot_request[:instance_count]).to eq(1)
-            expect(spot_request[:launch_specification]).to eq("fake-instance-params")
+            expect(spot_request[:launch_specification]).to eq({ fake: 'instance-params' })
 
             # return
             {
@@ -188,7 +188,7 @@ module Bosh::AwsCloud
 
             expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false))
 
-            expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_return("run-instances-response")
+            expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params' }).and_return("run-instances-response")
 
             instance_manager.create(
               agent_id,
@@ -208,8 +208,8 @@ module Bosh::AwsCloud
         allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
         allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
-        expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_raise(AWS::EC2::Errors::InvalidIPAddress::InUse)
-        expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_return("run-instances-response")
+        expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params' }).and_raise(AWS::EC2::Errors::InvalidIPAddress::InUse)
+        expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params' }).and_return("run-instances-response")
 
         allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
         expect(logger).to receive(:warn).with(/IP address was in use/).once
@@ -230,8 +230,8 @@ module Bosh::AwsCloud
         allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
         allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
-        expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_raise(AWS::EC2::Errors::RequestLimitExceeded)
-        expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_return("run-instances-response")
+        expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params' }).and_raise(AWS::EC2::Errors::RequestLimitExceeded)
+        expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params' }).and_return("run-instances-response")
 
         allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
         expect(logger).not_to receive(:warn).with(/IP address was in use/)
@@ -257,7 +257,7 @@ module Bosh::AwsCloud
           instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
           allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
-          expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_return("run-instances-response")
+          expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params' }).and_return("run-instances-response")
           expect(instance).to receive(:wait_for_running).and_raise(create_err)
 
           expect(instance).to receive(:terminate).with(no_args)
@@ -282,7 +282,7 @@ module Bosh::AwsCloud
             instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
             allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
-            expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_return("run-instances-response")
+            expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params' }).and_return("run-instances-response")
             expect(instance).to receive(:wait_for_running).and_raise(create_err)
 
             expect {
@@ -310,7 +310,7 @@ module Bosh::AwsCloud
           instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
           allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
-          expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_return("run-instances-response")
+          expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params' }).and_return("run-instances-response")
           expect(instance).to receive(:attach_to_load_balancers).and_raise(lb_err)
 
           expect(instance).to receive(:terminate).with(no_args)
@@ -335,7 +335,7 @@ module Bosh::AwsCloud
             instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
             allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
-            expect(aws_client).to receive(:run_instances).with("fake-instance-params").and_return("run-instances-response")
+            expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params' }).and_return("run-instances-response")
             expect(instance).to receive(:attach_to_load_balancers).and_raise(lb_err)
 
             expect {

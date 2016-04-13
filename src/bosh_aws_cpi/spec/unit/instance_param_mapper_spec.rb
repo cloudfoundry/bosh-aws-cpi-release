@@ -98,9 +98,18 @@ module Bosh::AwsCloud
               defaults: { 'default_security_groups' => ["sg-67890123", "sg-78901234"] }
             }
           end
-          let(:output) { { security_group_ids: ["sg-67890123", "sg-78901234"], min_count: 1, max_count: 1 } }
+          let(:output) do
+            {
+              network_interfaces: [{
+                device_index: 0,
+                groups: ["sg-67890123", "sg-78901234"]
+              }],
+              min_count: 1,
+              max_count: 1
+            }
+          end
 
-          it 'maps security_group_ids from defaults' do expect(mapping(input)).to eq(output) end
+          it 'maps network_interfaces.first[:groups] from defaults' do expect(mapping(input)).to eq(output) end
         end
 
         context 'when security_groups is provided by defaults and networks_spec as ids' do
@@ -113,9 +122,18 @@ module Bosh::AwsCloud
               defaults: { 'default_security_groups' => ["sg-67890123", "sg-78901234"] }
             }
           end
-          let(:output) { { security_group_ids: ["sg-34567890", "sg-45678901", "sg-56789012"], min_count: 1, max_count: 1 } }
+          let(:output) do
+            {
+              network_interfaces: [{
+                device_index: 0,
+                groups: ["sg-34567890", "sg-45678901", "sg-56789012"]
+              }],
+              min_count: 1,
+              max_count: 1
+            }
+          end
 
-          it 'maps security_group_ids from networks_spec' do expect(mapping(input)).to eq(output) end
+          it 'maps network_interfaces.first[:groups] from networks_spec' do expect(mapping(input)).to eq(output) end
         end
 
         context 'when security_groups is provided by defaults, networks_spec, and resource_pool as ids' do
@@ -129,9 +147,18 @@ module Bosh::AwsCloud
               defaults: { 'default_security_groups' => ["sg-67890123", "sg-78901234"] }
             }
           end
-          let(:output) { { security_group_ids: ["sg-12345678", "sg-23456789"], min_count: 1, max_count: 1 } }
+          let(:output) do
+            {
+              network_interfaces: [{
+                device_index: 0,
+                groups: ["sg-12345678", "sg-23456789"]
+              }],
+              min_count: 1,
+              max_count: 1
+            }
+          end
 
-          it 'maps security_group_ids from resource_pool' do expect(mapping(input)).to eq(output) end
+          it 'maps network_interfaces.first[:groups] from resource_pool' do expect(mapping(input)).to eq(output) end
         end
 
         context 'when security_groups is provided by defaults (only) as names' do
@@ -199,150 +226,222 @@ module Bosh::AwsCloud
         it 'maps to Base64 encoded user_data.dns, from the first matching network' do expect(mapping(input)).to eq(output) end
       end
 
-      context 'when an IP address is explicitly provided for manual networks in networks_spec' do
-        let(:input) do
-          {
-            networks_spec: {
-              "net1" => {
-                "type" => "dynamic"
-              },
-              "net2" => {
-                "type" => "manual",
-                "ip" => "1.1.1.1"
-              },
-              "net3" => {
-                "type" => "manual",
-                "ip" => "2.2.2.2"
+      describe 'IP address options' do
+        context 'when an IP address is provided for explicitly specified manual networks in networks_spec' do
+          let(:input) do
+            {
+              networks_spec: {
+                "net1" => {
+                  "type" => "dynamic"
+                },
+                "net2" => {
+                  "type" => "manual",
+                  "ip" => "1.1.1.1"
+                },
+                "net3" => {
+                  "type" => "manual",
+                  "ip" => "2.2.2.2"
+                }
               }
             }
-          }
-        end
-        let(:output) do
-          {
-            network_interfaces: [
-              {
-                private_ip_address: '1.1.1.1',
-                device_index: 0
-              }
-            ],
-            min_count: 1,
-            max_count: 1
-          }
+          end
+          let(:output) do
+            {
+              network_interfaces: [
+                {
+                  private_ip_address: '1.1.1.1',
+                  device_index: 0
+                }
+              ],
+              min_count: 1,
+              max_count: 1
+            }
+          end
+
+          it 'maps the first (explicit) manual network IP address to private_ip_address' do
+            expect(mapping(input)).to eq(output)
+          end
         end
 
-        it 'maps the first (explicit) manual network IP address to private_ip_address' do
-          expect(mapping(input)).to eq(output)
+        context 'when an IP address is provided for implicitly specified manual networks in networks_spec' do
+          let(:input) do
+            {
+              networks_spec: {
+                "net1" => {
+                  "type" => "dynamic"
+                },
+                "net2" => {
+                  "ip" => "1.1.1.1"
+                },
+                "net3" => {
+                  "type" => "manual",
+                  "ip" => "2.2.2.2"
+                }
+              }
+            }
+          end
+          let(:output) do
+            {
+              network_interfaces: [
+                {
+                  private_ip_address: '1.1.1.1',
+                  device_index: 0
+                }
+              ],
+              min_count: 1,
+              max_count: 1
+            }
+          end
+
+          it 'maps the first (implicit) manual network IP address to private_ip_address' do
+            expect(mapping(input)).to eq(output)
+          end
+        end
+
+        context 'when security group names are provided' do
+          let(:input) do
+            {
+              networks_spec: {
+                "net1" => {
+                  "type" => "dynamic"
+                },
+                "net2" => {
+                  "type" => "manual",
+                  "ip" => "1.1.1.1"
+                },
+                "net3" => {
+                  "type" => "manual",
+                  "ip" => "2.2.2.2",
+                  "cloud_properties" => {"security_groups" => ["sg-3-name", "sg-4-name"]}
+                }
+              }
+            }
+          end
+          let(:output) do
+            {
+              private_ip_address: '1.1.1.1',
+              security_groups: ["sg-3-name", "sg-4-name"],
+              min_count: 1,
+              max_count: 1
+            }
+          end
+
+          it 'does not create network interfaces for the IP address' do
+            expect(mapping(input)).to eq(output)
+          end
         end
       end
 
-      context 'when manual networks are implicitly provided in networks_spec' do
-        let(:input) do
-          {
-            networks_spec: {
-              "net1" => {
-                "type" => "dynamic"
+      describe 'Subnet options' do
+        context 'when subnet is provided by manual (explicit or implicit)' do
+          let(:input) do
+            {
+              networks_spec: {
+                "net1" => {
+                  "type" => "vip",
+                  "cloud_properties" => { "subnet" => "vip-subnet" }
+                },
+                "net2" => {
+                  "cloud_properties" => { "subnet" => "manual-subnet" }
+                }
               },
-              "net2" => {
-                "ip" => "1.1.1.1"
-              },
-              "net3" => {
-                "type" => "manual",
-                "ip" => "2.2.2.2"
+              subnet_az_mapping: {
+                "manual-subnet" => "region-1b"
               }
             }
-          }
+          end
+          let(:output) do
+            {
+              network_interfaces: [
+                {
+                  subnet_id: "manual-subnet",
+                  device_index: 0
+                }
+              ],
+              placement: { availability_zone: "region-1b" },
+              min_count: 1,
+              max_count: 1
+            }
+          end
+
+          it 'maps subnet from the first matching network to subnet_id' do
+            expect(mapping(input)).to eq(output)
+          end
         end
-        let(:output) do
-          {
-            network_interfaces: [
+
+        context 'when subnet is provided by manual (explicit or implicit) or dynamic networks in networks_spec' do
+          let(:input) do
+            {
+              networks_spec: {
+                "net1" => {
+                  "type" => "dynamic",
+                  "cloud_properties" => { "subnet" => "dynamic-subnet" }
+                },
+                "net2" => {
+                  "type" => "manual",
+                  "cloud_properties" => { "subnet" => "manual-subnet" }
+                }
+              },
+              subnet_az_mapping: {
+                "dynamic-subnet" => "region-1a",
+                "manual-subnet" => "region-1b"
+              }
+            }
+          end
+          let(:output) do
+            {
+              placement: {
+                availability_zone: 'region-1a'
+              },
+              network_interfaces: [
+                {
+                  subnet_id: 'dynamic-subnet',
+                  device_index: 0
+                }
+              ],
+              min_count: 1,
+              max_count: 1
+            }
+          end
+
+          it 'maps subnet from the first matching network to subnet_id' do
+            expect(mapping(input)).to eq(output)
+          end
+        end
+
+        context 'when security group names are provided' do
+            let(:input) do
               {
-                private_ip_address: '1.1.1.1',
-                device_index: 0
+                networks_spec: {
+                  "net1" => {
+                    "type" => "vip",
+                    "cloud_properties" => { "subnet" => "vip-subnet" }
+                  },
+                  "net2" => {
+                    "cloud_properties" => {
+                      "subnet" => "manual-subnet",
+                      "security_groups" => ["sg-3-name", "sg-4-name"]
+                    }
+                  }
+                },
+                subnet_az_mapping: {
+                  "manual-subnet" => "region-1b"
+                }
               }
-            ],
-            min_count: 1,
-            max_count: 1
-          }
-        end
-
-        it 'maps the first (implicit) manual network IP address to private_ip_address' do
-          expect(mapping(input)).to eq(output)
-        end
-      end
-
-      context 'when subnet is provided by manual (explicit or implicit)' do
-        let(:input) do
-          {
-            networks_spec: {
-              "net1" => {
-                "type" => "vip",
-                "cloud_properties" => { "subnet" => "vip-subnet" }
-              },
-              "net2" => {
-                "cloud_properties" => { "subnet" => "manual-subnet"}
-              }
-            },
-            subnet_az_mapping: {
-              "manual-subnet" => "region-1b"
-            }
-          }
-        end
-        let(:output) do
-          {
-            network_interfaces: [
+            end
+            let(:output) do
               {
                 subnet_id: "manual-subnet",
-                device_index: 0
+                security_groups: ["sg-3-name", "sg-4-name"],
+                placement: { availability_zone: "region-1b" },
+                min_count: 1,
+                max_count: 1
               }
-            ],
-            placement: { availability_zone: "region-1b" },
-            min_count: 1,
-            max_count: 1
-          }
-        end
+            end
 
-        it 'maps subnet from the first matching network to subnet_id' do
-          expect(mapping(input)).to eq(output)
-        end
-      end
-
-      context 'when subnet is provided by manual (explicit or implicit) or dynamic networks in networks_spec' do
-        let(:input) do
-          {
-            networks_spec: {
-              "net1" => {
-                "type" => "dynamic",
-                "cloud_properties" => { "subnet" => "dynamic-subnet" }
-              },
-              "net2" => {
-                "type" => "manual",
-                "cloud_properties" => { "subnet" => "manual-subnet" }
-              }
-            },
-            subnet_az_mapping: {
-              "dynamic-subnet" => "region-1a",
-              "manual-subnet" => "region-1b"
-            }
-          }
-        end
-        let(:output) do
-          {
-            placement: {
-              availability_zone: 'region-1a'
-            },
-            network_interfaces: [
-              {
-                subnet_id: 'dynamic-subnet',
-                device_index: 0
-              }
-            ],
-            min_count: 1,
-            max_count: 1
-          }
-        end
-
-        it 'maps subnet from the first matching network to subnet_id' do
-          expect(mapping(input)).to eq(output)
+            it 'does not create network interfaces for the subnet' do
+              expect(mapping(input)).to eq(output)
+            end
         end
       end
 
@@ -442,63 +541,117 @@ module Bosh::AwsCloud
       end
 
       context 'when a full spec is provided' do
-        let(:input) do
-          {
-            stemcell_id: "ami-something",
-            resource_pool: {
-              "instance_type" => "fake-instance-type",
-              "availability_zone" => "region-1a",
-              "key_name" => "fake-key-name",
-              "iam_instance_profile" => "fake-iam-profile",
-              "security_groups" => ["sg-12345678", "sg-23456789"],
-              "tenancy" => "dedicated",
+        context 'with security group IDs' do
+          let(:input) do
+            {
+              stemcell_id: "ami-something",
+              resource_pool: {
+                "instance_type" => "fake-instance-type",
+                "availability_zone" => "region-1a",
+                "key_name" => "fake-key-name",
+                "iam_instance_profile" => "fake-iam-profile",
+                "security_groups" => ["sg-12345678", "sg-23456789"],
+                "tenancy" => "dedicated",
 
-            },
-            networks_spec: {
-              "net1" => {
-                "type" => "manual",
-                "ip" => "1.1.1.1",
-                "dns" => "8.8.8.8",
-                "cloud_properties" => { "subnet" => "manual-subnet" }
-              }
-            },
-            subnet_az_mapping: {
-              "dynamic-subnet" => "region-1a"
-            },
-            volume_zones: ["region-1a", "region-1a"],
-            registry_endpoint: "example.com",
-            block_device_mappings: ["fake-device"]
-          }
+              },
+              networks_spec: {
+                "net1" => {
+                  "type" => "manual",
+                  "ip" => "1.1.1.1",
+                  "dns" => "8.8.8.8",
+                  "cloud_properties" => { "subnet" => "manual-subnet" }
+                }
+              },
+              subnet_az_mapping: {
+                "dynamic-subnet" => "region-1a"
+              },
+              volume_zones: ["region-1a", "region-1a"],
+              registry_endpoint: "example.com",
+              block_device_mappings: ["fake-device"]
+            }
+          end
+          let(:output) do
+            {
+              min_count: 1,
+              max_count: 1,
+              image_id: "ami-something",
+              instance_type: "fake-instance-type",
+              placement: {
+                availability_zone: "region-1a",
+                tenancy: "dedicated"
+              },
+              key_name: "fake-key-name",
+              iam_instance_profile: { name: "fake-iam-profile" },
+              network_interfaces: [
+                {
+                  subnet_id: "manual-subnet",
+                  private_ip_address: "1.1.1.1",
+                  device_index: 0,
+                  groups: ["sg-12345678", "sg-23456789"],
+                }
+              ],
+              user_data: Base64.encode64('{"registry":{"endpoint":"example.com"},"dns":{"nameserver":"8.8.8.8"}}').strip,
+              block_device_mappings: ["fake-device"]
+            }
+          end
+          it 'correctly renders the instance params' do
+            expect(mapping(input)).to eq(output)
+          end
         end
-        let(:output) do
-          {
-            min_count: 1,
-            max_count: 1,
-            image_id: "ami-something",
-            instance_type: "fake-instance-type",
-            placement: {
-              availability_zone: "region-1a",
-              tenancy: "dedicated"
-            },
-            key_name: "fake-key-name",
-            iam_instance_profile: { name: "fake-iam-profile" },
-            network_interfaces: [
-              {
-                subnet_id: "manual-subnet",
-                private_ip_address: "1.1.1.1",
-                device_index: 0
-              }
-            ],
-            user_data: Base64.encode64('{"registry":{"endpoint":"example.com"},"dns":{"nameserver":"8.8.8.8"}}').strip,
-            security_group_ids: ["sg-12345678", "sg-23456789"],
-            block_device_mappings: ["fake-device"]
-          }
-        end
-        it 'correctly renders the instance params' do
-          expect(mapping(input)).to eq(output)
+
+        context 'with security group names' do
+          let(:input) do
+            {
+              stemcell_id: "ami-something",
+              resource_pool: {
+                "instance_type" => "fake-instance-type",
+                "availability_zone" => "region-1a",
+                "key_name" => "fake-key-name",
+                "iam_instance_profile" => "fake-iam-profile",
+                "security_groups" => ["sg-name-1", "sg-name-2"],
+                "tenancy" => "dedicated",
+
+              },
+              networks_spec: {
+                "net1" => {
+                  "type" => "manual",
+                  "ip" => "1.1.1.1",
+                  "dns" => "8.8.8.8",
+                  "cloud_properties" => { "subnet" => "manual-subnet" }
+                }
+              },
+              subnet_az_mapping: {
+                "dynamic-subnet" => "region-1a"
+              },
+              volume_zones: ["region-1a", "region-1a"],
+              registry_endpoint: "example.com",
+              block_device_mappings: ["fake-device"]
+            }
+          end
+          let(:output) do
+            {
+              min_count: 1,
+              max_count: 1,
+              image_id: "ami-something",
+              instance_type: "fake-instance-type",
+              placement: {
+                availability_zone: "region-1a",
+                tenancy: "dedicated"
+              },
+              key_name: "fake-key-name",
+              iam_instance_profile: { name: "fake-iam-profile" },
+              subnet_id: "manual-subnet",
+              private_ip_address: "1.1.1.1",
+              security_groups: ["sg-name-1", "sg-name-2"],
+              user_data: Base64.encode64('{"registry":{"endpoint":"example.com"},"dns":{"nameserver":"8.8.8.8"}}').strip,
+              block_device_mappings: ["fake-device"]
+            }
+          end
+          it 'correctly renders the instance params' do
+            expect(mapping(input)).to eq(output)
+          end
         end
       end
-
     end
 
     describe '#validate_required_inputs' do

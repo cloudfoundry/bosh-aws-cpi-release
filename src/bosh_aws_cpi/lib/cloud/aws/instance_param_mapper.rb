@@ -42,7 +42,7 @@ module Bosh::AwsCloud
       end
 
       if subnet_id.nil?
-        missing_inputs << "(networks_spec.[].cloud_properties.subnet_id"
+        missing_inputs << "networks_spec.[].cloud_properties.subnet_id"
       end
 
       unless missing_inputs.empty?
@@ -86,19 +86,18 @@ module Bosh::AwsCloud
       placement[:tenancy] = 'dedicated' if resource_pool['tenancy'] == 'dedicated'
       params[:placement] = placement unless placement.empty?
 
-      nic = {}
-      nic[:subnet_id] = subnet_id if subnet_id
-      nic[:private_ip_address] = private_ip_address if private_ip_address
-      nic[:device_index] = 0 unless nic.empty?
-      params[:network_interfaces] = [nic] unless nic.empty?
-
       sg = security_groups
-      unless sg.nil? || sg.empty?
-        if is_security_group_id?(sg.first)
-          params[:security_group_ids] = sg
-        else
-          params[:security_groups] = sg
-        end
+      unless using_security_group_names?(sg)
+        nic = {}
+        nic[:groups] = sg unless sg.nil? || sg.empty?
+        nic[:subnet_id] = subnet_id if subnet_id
+        nic[:private_ip_address] = private_ip_address if private_ip_address
+        nic[:device_index] = 0 unless nic.empty?
+        params[:network_interfaces] = [nic] unless nic.empty?
+      else
+        params[:security_groups] = sg
+        params[:subnet_id] = subnet_id if subnet_id
+        params[:private_ip_address] = private_ip_address if private_ip_address
       end
 
       params.delete_if { |k, v| v.nil? }
@@ -108,6 +107,12 @@ module Bosh::AwsCloud
 
     def is_security_group_id?(security_group)
       security_group.start_with?('sg-') && security_group.size == 11
+    end
+
+    def using_security_group_names?(security_groups)
+      return false if security_groups.nil? || security_groups.empty?
+      return false if is_security_group_id?(security_groups.first)
+      true
     end
 
     def resource_pool

@@ -4,7 +4,8 @@ describe Bosh::AwsCloud::SpotManager do
   let(:spot_manager) { described_class.new(ec2) }
   let(:ec2) { instance_double(AWS::EC2) }
   let(:aws_client) { instance_double("#{AWS::EC2::Client.new.class}") }
-  
+  let(:fake_instance_params) { { fake: 'params' } }
+
   before do
     allow(ec2).to receive(:client).and_return(aws_client)
     allow(aws_client).to receive(:request_spot_instances).and_return(spot_instance_requests)
@@ -35,10 +36,19 @@ describe Bosh::AwsCloud::SpotManager do
     expect(aws_client).to receive(:request_spot_instances).with({
       spot_price: '0.24',
       instance_count: 1,
-      launch_specification: 'fake-instance-params'
+      launch_specification: { fake: 'params' }
     }).and_return(spot_instance_requests)
 
-    expect(spot_manager.create('fake-instance-params', 0.24)).to be(instance)
+    expect(spot_manager.create(fake_instance_params, 0.24)).to be(instance)
+  end
+
+  it 'fails to create the spot instance if instance_params[:security_group] is set' do
+    invalid_instance_params = { fake: 'params', security_groups: ['sg-name'] }
+    expect{
+      spot_manager.create(invalid_instance_params, 0.24)
+    }.to raise_error(Bosh::Clouds::VMCreationFailed, /Cannot use security group names when creating spot instances/) { |error|
+      expect(error.ok_to_retry).to eq false
+    }
   end
 
   it 'should fail to return an instance when starting a spot instance times out' do
@@ -57,7 +67,7 @@ describe Bosh::AwsCloud::SpotManager do
     expect(aws_client).to receive(:cancel_spot_instance_requests)
 
     expect {
-      spot_manager.create('fake-instance-params', 0.24)
+      spot_manager.create(fake_instance_params, 0.24)
     }.to raise_error(Bosh::Clouds::VMCreationFailed) { |error|
       expect(error.ok_to_retry).to eq false
     }
@@ -76,7 +86,7 @@ describe Bosh::AwsCloud::SpotManager do
     expect(aws_client).to_not receive(:cancel_spot_instance_requests)
 
     expect {
-      spot_manager.create('fake-instance-params', 0.24)
+      spot_manager.create(fake_instance_params, 0.24)
     }.to_not raise_error
   end
 
@@ -98,7 +108,7 @@ describe Bosh::AwsCloud::SpotManager do
     expect(aws_client).to receive(:cancel_spot_instance_requests)
 
     expect {
-      spot_manager.create('fake-instance-params', 0.24)
+      spot_manager.create(fake_instance_params, 0.24)
     }.to raise_error(Bosh::Clouds::VMCreationFailed) { |error|
       expect(error.ok_to_retry).to eq false
     }
@@ -118,7 +128,7 @@ describe Bosh::AwsCloud::SpotManager do
     expect(aws_client).to receive(:cancel_spot_instance_requests)
 
     expect {
-      spot_manager.create('fake-instance-params', 0.24)
+      spot_manager.create(fake_instance_params, 0.24)
     }.to raise_error(Bosh::Clouds::VMCreationFailed) { |error|
       expect(error.ok_to_retry).to eq false
     }
@@ -128,7 +138,7 @@ describe Bosh::AwsCloud::SpotManager do
     aws_error = AWS::EC2::Errors::InvalidParameterValue.new(%q{price "0.3" exceeds your maximum Spot price limit of "0.24"})
     allow(aws_client).to receive(:request_spot_instances).and_raise(aws_error)
     expect {
-      spot_manager.create('fake-instance-params', 0.24)
+      spot_manager.create(fake_instance_params, 0.24)
     }.to raise_error(Bosh::Clouds::VMCreationFailed) { |error|
       expect(error.ok_to_retry).to eq false
       expect(error.message).to include(aws_error.inspect)
