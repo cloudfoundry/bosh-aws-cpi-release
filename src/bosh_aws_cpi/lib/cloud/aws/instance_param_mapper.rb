@@ -69,8 +69,6 @@ module Bosh::AwsCloud
 
     def instance_params
       params = {
-        min_count: 1,
-        max_count: 1,
         image_id: @manifest_params[:stemcell_id],
         instance_type: resource_pool['instance_type'],
         key_name: key_name,

@@ -6,21 +6,21 @@ module Bosh::AwsCloud
 
       context 'when stemcell_id is provided' do
         let(:input) { { stemcell_id: 'fake-stemcell' } }
-        let(:output) { { image_id: 'fake-stemcell', min_count: 1, max_count: 1 } }
+        let(:output) { { image_id: 'fake-stemcell' } }
 
         it 'maps to image_id' do expect(mapping(input)).to eq(output) end
       end
 
       context 'when instance_type is provided by resource_pool' do
         let(:input) { { resource_pool: { 'instance_type' => 'fake-instance' } } }
-        let(:output) { { instance_type: 'fake-instance', min_count: 1, max_count: 1 } }
+        let(:output) { { instance_type: 'fake-instance' } }
 
         it 'maps to instance_type' do expect(mapping(input)).to eq(output) end
       end
 
       context 'when placement_group is provided by resource_pool' do
         let(:input) { { resource_pool: { 'placement_group' => 'fake-group' } } }
-        let(:output) { { placement: { group_name: 'fake-group' }, min_count: 1, max_count: 1 } }
+        let(:output) { { placement: { group_name: 'fake-group' } } }
 
         it 'maps to placement.group_name' do expect(mapping(input)).to eq(output) end
       end
@@ -28,14 +28,14 @@ module Bosh::AwsCloud
       describe 'Tenancy options' do
         context 'when tenancy is provided by resource_pool, as "dedicated"' do
           let(:input) { { resource_pool: { 'tenancy' => 'dedicated' } } }
-          let(:output) { { placement: { tenancy: 'dedicated' }, min_count: 1, max_count: 1 } }
+          let(:output) { { placement: { tenancy: 'dedicated' } } }
 
           it 'maps to placement.tenancy' do expect(mapping(input)).to eq(output) end
         end
 
         context 'when tenancy is provided by resource_pool, as other than "dedicated"' do
           let(:input) { { resource_pool: { 'tenancy' => 'ignored' } } }
-          let(:output) { { min_count: 1, max_count: 1 } }
+          let(:output) { {} }
 
           it 'is ignored' do expect(mapping(input)).to eq(output) end
         end
@@ -48,7 +48,7 @@ module Bosh::AwsCloud
               defaults: { 'default_key_name' => 'default-fake-key-name' }
             }
           end
-          let(:output) { { key_name: 'default-fake-key-name', min_count: 1, max_count: 1 } }
+          let(:output) { { key_name: 'default-fake-key-name' } }
 
           it 'maps key_name from defaults' do expect(mapping(input)).to eq(output) end
         end
@@ -60,7 +60,7 @@ module Bosh::AwsCloud
               defaults: { 'default_key_name' => 'default-fake-key-name' }
             }
           end
-          let(:output) { { key_name: 'fake-key-name', min_count: 1, max_count: 1 } }
+          let(:output) { { key_name: 'fake-key-name' } }
 
           it 'maps key_name from resource_pool' do expect(mapping(input)).to eq(output) end
         end
@@ -73,7 +73,7 @@ module Bosh::AwsCloud
               defaults: { 'default_iam_instance_profile' => 'default-fake-iam-profile' }
             }
           end
-          let(:output) { { iam_instance_profile: { name: 'default-fake-iam-profile' }, min_count: 1, max_count: 1 } }
+          let(:output) { { iam_instance_profile: { name: 'default-fake-iam-profile' } } }
 
           it 'maps iam_instance_profile from defaults' do expect(mapping(input)).to eq(output) end
         end
@@ -85,7 +85,7 @@ module Bosh::AwsCloud
               defaults: { 'default_iam_instance_profile' => 'default-fake-iam-profile' }
             }
           end
-          let(:output) { { iam_instance_profile: { name: 'fake-iam-profile' }, min_count: 1, max_count: 1 } }
+          let(:output) { { iam_instance_profile: { name: 'fake-iam-profile' } } }
 
           it 'maps iam_instance_profile from resource_pool' do expect(mapping(input)).to eq(output) end
         end
@@ -103,9 +103,7 @@ module Bosh::AwsCloud
               network_interfaces: [{
                 device_index: 0,
                 groups: ["sg-67890123", "sg-78901234"]
-              }],
-              min_count: 1,
-              max_count: 1
+              }]
             }
           end
 
@@ -127,9 +125,7 @@ module Bosh::AwsCloud
               network_interfaces: [{
                 device_index: 0,
                 groups: ["sg-34567890", "sg-45678901", "sg-56789012"]
-              }],
-              min_count: 1,
-              max_count: 1
+              }]
             }
           end
 
@@ -152,9 +148,7 @@ module Bosh::AwsCloud
               network_interfaces: [{
                 device_index: 0,
                 groups: ["sg-12345678", "sg-23456789"]
-              }],
-              min_count: 1,
-              max_count: 1
+              }]
             }
           end
 
@@ -173,9 +167,7 @@ module Bosh::AwsCloud
               network_interfaces: [{
                 device_index: 0,
                 groups: ["sg-6-id", "sg-7-id"]
-              }],
-              min_count: 1,
-              max_count: 1
+              }]
             }
           end
 
@@ -199,9 +191,7 @@ module Bosh::AwsCloud
               network_interfaces: [{
                 device_index: 0,
                 groups: ["sg-3-id", "sg-4-id", "sg-5-id"]
-              }],
-              min_count: 1,
-              max_count: 1
+              }]
             }
           end
 
@@ -225,9 +215,7 @@ module Bosh::AwsCloud
               network_interfaces: [{
                 device_index: 0,
                 groups: ["sg-1-id", "sg-2-id"]
-              }],
-              min_count: 1,
-              max_count: 1
+              }]
             }
           end
 
@@ -237,7 +225,7 @@ module Bosh::AwsCloud
 
       context 'when registry_endpoint is provided' do
         let(:input) { { registry_endpoint: 'example.com' } }
-        let(:output) { { user_data: Base64.encode64('{"registry":{"endpoint":"example.com"}}').strip, min_count: 1, max_count: 1 } }
+        let(:output) { { user_data: Base64.encode64('{"registry":{"endpoint":"example.com"}}').strip } }
 
         it 'maps to Base64 encoded user_data.registry.endpoint' do expect(mapping(input)).to eq(output) end
       end
@@ -252,7 +240,7 @@ module Bosh::AwsCloud
             }
           }
         end
-        let(:output) { { user_data: Base64.encode64('{"dns":{"nameserver":"1.1.1.1"}}').strip, min_count: 1, max_count: 1 } }
+        let(:output) { { user_data: Base64.encode64('{"dns":{"nameserver":"1.1.1.1"}}').strip } }
 
         it 'maps to Base64 encoded user_data.dns, from the first matching network' do expect(mapping(input)).to eq(output) end
       end
@@ -283,9 +271,7 @@ module Bosh::AwsCloud
                   private_ip_address: '1.1.1.1',
                   device_index: 0
                 }
-              ],
-              min_count: 1,
-              max_count: 1
+              ]
             }
           end
 
@@ -318,9 +304,7 @@ module Bosh::AwsCloud
                   private_ip_address: '1.1.1.1',
                   device_index: 0
                 }
-              ],
-              min_count: 1,
-              max_count: 1
+              ]
             }
           end
 
@@ -356,9 +340,7 @@ module Bosh::AwsCloud
                   device_index: 0
                 }
               ],
-              placement: { availability_zone: "region-1b" },
-              min_count: 1,
-              max_count: 1
+              placement: { availability_zone: "region-1b" }
             }
           end
 
@@ -396,9 +378,7 @@ module Bosh::AwsCloud
                   subnet_id: 'dynamic-subnet',
                   device_index: 0
                 }
-              ],
-              min_count: 1,
-              max_count: 1
+              ]
             }
           end
 
@@ -411,7 +391,7 @@ module Bosh::AwsCloud
       describe 'Availability Zone options' do
         context 'when (only) resource pool AZ is provided' do
           let(:input) { { resource_pool: { "availability_zone" => "region-1a" } } }
-          let(:output) { { placement: { availability_zone: "region-1a" }, min_count: 1, max_count: 1 } }
+          let(:output) { { placement: { availability_zone: "region-1a" } } }
           it 'maps placement.availability_zone from resource_pool' do
             expect(mapping(input)).to eq(output)
           end
@@ -444,9 +424,7 @@ module Bosh::AwsCloud
                   subnet_id: 'dynamic-subnet',
                   device_index: 0
                 }
-              ],
-              min_count: 1,
-              max_count: 1
+              ]
             }
           end
 
@@ -483,9 +461,7 @@ module Bosh::AwsCloud
                   subnet_id: 'dynamic-subnet',
                   device_index: 0
                 }
-              ],
-              min_count: 1,
-              max_count: 1
+              ]
             }
           end
 
@@ -497,7 +473,7 @@ module Bosh::AwsCloud
 
       context 'when block_device_mappings are provided' do
         let(:input) { { block_device_mappings: ["fake-device"] } }
-        let(:output) { { block_device_mappings: ["fake-device"], min_count: 1, max_count: 1 } }
+        let(:output) { { block_device_mappings: ["fake-device"] } }
         it 'passes the mapping through to the output' do
           expect(mapping(input)).to eq(output)
         end
@@ -535,8 +511,6 @@ module Bosh::AwsCloud
           end
           let(:output) do
             {
-              min_count: 1,
-              max_count: 1,
               image_id: "ami-something",
               instance_type: "fake-instance-type",
               placement: {

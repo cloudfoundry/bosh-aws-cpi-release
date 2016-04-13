@@ -89,6 +89,9 @@ module Bosh::AwsCloud
         end
       end
 
+      instance_params[:min_count] = 1
+      instance_params[:max_count] = 1
+
       # Retry the create instance operation a couple of times if we are told that the IP
       # address is in use - it can happen when the director recreates a VM and AWS
       # is too slow to update its state when we have released the IP address and want to
@@ -125,7 +128,7 @@ module Bosh::AwsCloud
     def sg_name_mapper
       Proc.new do |sg_names|
         return [] unless sg_names
-        @client.security_groups.inject([]) do |security_group_ids, group|
+        @ec2.security_groups.inject([]) do |security_group_ids, group|
           security_group_ids << group.security_group_id if sg_names.include?(group.name)
           security_group_ids
         end
