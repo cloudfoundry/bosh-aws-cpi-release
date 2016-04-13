@@ -107,6 +107,7 @@ describe Bosh::AwsCloud::Cloud do
             'ec2_endpoint' => 'https://ec2.us-east-1.amazonaws.com',
             'elb_endpoint' => 'https://elasticloadbalancing.us-east-1.amazonaws.com',
             'default_key_name' => default_key_name,
+            'default_security_groups' => get_security_group_ids(@subnet_id),
             'fast_path_delete' => 'yes',
             'access_key_id' => @access_key_id,
             'secret_access_key' => @secret_access_key
