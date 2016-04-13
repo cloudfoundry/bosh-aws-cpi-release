@@ -208,26 +208,40 @@ describe Bosh::AwsCloud::Cloud do
     end
 
     context 'with existing disks' do
-      let!(:existing_volume_id) { cpi.create_disk(2048, {}) }
-      let(:disks) { [existing_volume_id] }
-      after  { cpi.delete_disk(existing_volume_id) if existing_volume_id }
-
       it 'can exercise the vm lifecycle and list the disks' do
-        vm_lifecycle do |instance_id|
-          begin
-            volume_id = cpi.create_disk(2048, {}, instance_id)
-            expect(volume_id).not_to be_nil
-            expect(cpi.has_disk?(volume_id)).to be(true)
+        begin
+          volume_id = nil
+          vm_lifecycle do |instance_id|
+            begin
+              volume_id = cpi.create_disk(2048, {}, instance_id)
+              expect(volume_id).not_to be_nil
+              expect(cpi.has_disk?(volume_id)).to be(true)
 
-            cpi.attach_disk(instance_id, volume_id)
-            expect(cpi.get_disks(instance_id)).to include(volume_id)
-          ensure
-            Bosh::Common.retryable(tries: 20, on: Bosh::Clouds::DiskNotAttached, sleep: lambda { |n, _| [2**(n-1), 30].min }) do
-              cpi.detach_disk(instance_id, volume_id)
-              true
+              cpi.attach_disk(instance_id, volume_id)
+              expect(cpi.get_disks(instance_id)).to include(volume_id)
+            ensure
+              Bosh::Common.retryable(tries: 20, on: Bosh::Clouds::DiskNotAttached, sleep: lambda { |n, _| [2**(n-1), 30].min }) do
+                cpi.detach_disk(instance_id, volume_id)
+                true
+              end
             end
-            cpi.delete_disk(volume_id)
           end
+          vm_options = {
+            :disks => [volume_id]
+          }
+          vm_lifecycle(vm_options) do |instance_id|
+            begin
+              cpi.attach_disk(instance_id, volume_id)
+              expect(cpi.get_disks(instance_id)).to include(volume_id)
+            ensure
+              Bosh::Common.retryable(tries: 20, on: Bosh::Clouds::DiskNotAttached, sleep: lambda { |n, _| [2**(n-1), 30].min }) do
+                cpi.detach_disk(instance_id, volume_id)
+                true
+              end
+            end
+          end
+        ensure
+          cpi.delete_disk(volume_id) if volume_id
         end
       end
     end
@@ -330,18 +344,18 @@ describe Bosh::AwsCloud::Cloud do
     context 'when vm with attached disk is removed' do
       it 'should wait for 10 mins to attach disk/delete disk ignoring VolumeInUse error' do
         begin
-          disk_id = cpi.create_disk(2048, {})
-          expect(cpi.has_disk?(disk_id)).to be(true)
-
           stemcell_id = cpi.create_stemcell('/not/a/real/path', {'ami' => {'us-east-1' => ami}})
           vm_id = cpi.create_vm(
             nil,
             stemcell_id,
             resource_pool,
             network_spec,
-            [disk_id],
+            [],
             nil,
           )
+
+          disk_id = cpi.create_disk(2048, {}, vm_id)
+          expect(cpi.has_disk?(disk_id)).to be(true)
 
           cpi.attach_disk(vm_id, disk_id)
           expect(cpi.get_disks(vm_id)).to include(disk_id)
@@ -410,14 +424,15 @@ describe Bosh::AwsCloud::Cloud do
   end
 
 
-  def vm_lifecycle
+  def vm_lifecycle(options = {})
+    vm_disks = options[:disks] || disks
     stemcell_id = cpi.create_stemcell('/not/a/real/path', { 'ami' => { 'us-east-1' => ami } })
     instance_id = cpi.create_vm(
       nil,
       stemcell_id,
       resource_pool,
       network_spec,
-      disks,
+      vm_disks,
       nil,
     )
     expect(instance_id).not_to be_nil
