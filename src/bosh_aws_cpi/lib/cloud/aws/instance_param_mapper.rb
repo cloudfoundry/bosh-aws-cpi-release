@@ -87,18 +87,17 @@ module Bosh::AwsCloud
       params[:placement] = placement unless placement.empty?
 
       sg = security_groups
-      unless using_security_group_names?(sg)
-        nic = {}
-        nic[:groups] = sg unless sg.nil? || sg.empty?
-        nic[:subnet_id] = subnet_id if subnet_id
-        nic[:private_ip_address] = private_ip_address if private_ip_address
-        nic[:device_index] = 0 unless nic.empty?
-        params[:network_interfaces] = [nic] unless nic.empty?
-      else
-        params[:security_groups] = sg
-        params[:subnet_id] = subnet_id if subnet_id
-        params[:private_ip_address] = private_ip_address if private_ip_address
+      if using_security_group_names?(sg)
+        raise Bosh::Clouds::CloudError, 'sg_name_mapper must be provided when using security_group names' unless @manifest_params[:sg_name_mapper]
+        sg = @manifest_params[:sg_name_mapper].call(sg)
       end
+
+      nic = {}
+      nic[:groups] = sg unless sg.nil? || sg.empty?
+      nic[:subnet_id] = subnet_id if subnet_id
+      nic[:private_ip_address] = private_ip_address if private_ip_address
+      nic[:device_index] = 0 unless nic.empty?
+      params[:network_interfaces] = [nic] unless nic.empty?
 
       params.delete_if { |k, v| v.nil? }
     end

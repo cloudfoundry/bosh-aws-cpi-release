@@ -65,6 +65,7 @@ module Bosh::AwsCloud
         volume_zones: volume_zones,
         subnet_az_mapping: subnet_az_mapping(networks_spec),
         block_device_mappings: block_device_mappings,
+        sg_name_mapper: sg_name_mapper
       }
       @param_mapper.validate
       instance_params = @param_mapper.instance_params
@@ -121,5 +122,14 @@ module Bosh::AwsCloud
       end
     end
 
+    def sg_name_mapper
+      Proc.new do |sg_names|
+        return [] unless sg_names
+        @client.security_groups.inject([]) do |security_group_ids, group|
+          security_group_ids << group.security_group_id if sg_names.include?(group.name)
+          security_group_ids
+        end
+      end
+    end
   end
 end

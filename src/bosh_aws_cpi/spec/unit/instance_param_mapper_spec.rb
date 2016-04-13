@@ -164,10 +164,20 @@ module Bosh::AwsCloud
         context 'when security_groups is provided by defaults (only) as names' do
           let(:input) do
             {
-              defaults: { 'default_security_groups' => ["sg-6-name", "sg-7-name"] }
+              defaults: { 'default_security_groups' => ["sg-6-name", "sg-7-name"] },
+              sg_name_mapper: sg_name_mapper
             }
           end
-          let(:output) { { security_groups: ["sg-6-name", "sg-7-name"], min_count: 1, max_count: 1 } }
+          let(:output) do
+            {
+              network_interfaces: [{
+                device_index: 0,
+                groups: ["sg-6-id", "sg-7-id"]
+              }],
+              min_count: 1,
+              max_count: 1
+            }
+          end
 
           it 'maps security_groups from defaults' do expect(mapping(input)).to eq(output) end
         end
@@ -179,10 +189,21 @@ module Bosh::AwsCloud
                 "net1" => {"cloud_properties" => {"security_groups" => ["sg-3-name", "sg-4-name"]}},
                 "net2" => {"cloud_properties" => {"security_groups" => "sg-5-name"}}
               },
-              defaults: { 'default_security_groups' => ["sg-6-name", "sg-7-name"] }
+              defaults: { 'default_security_groups' => ["sg-6-name", "sg-7-name"] },
+              sg_name_mapper: sg_name_mapper
             }
           end
-          let(:output) { { security_groups: ["sg-3-name", "sg-4-name", "sg-5-name"], min_count: 1, max_count: 1 } }
+
+          let(:output) do
+            {
+              network_interfaces: [{
+                device_index: 0,
+                groups: ["sg-3-id", "sg-4-id", "sg-5-id"]
+              }],
+              min_count: 1,
+              max_count: 1
+            }
+          end
 
           it 'maps security_groups from networks_spec' do expect(mapping(input)).to eq(output) end
         end
@@ -195,10 +216,20 @@ module Bosh::AwsCloud
                 "net1" => {"cloud_properties" => {"security_groups" => ["sg-3-name", "sg-4-name"]}},
                 "net2" => {"cloud_properties" => {"security_groups" => "sg-5-name"}}
               },
-              defaults: { 'default_security_groups' => ["sg-6-name", "sg-7-name"] }
+              defaults: { 'default_security_groups' => ["sg-6-name", "sg-7-name"] },
+              sg_name_mapper: sg_name_mapper
             }
           end
-          let(:output) { { security_groups: ["sg-1-name", "sg-2-name"], min_count: 1, max_count: 1 } }
+          let(:output) do
+            {
+              network_interfaces: [{
+                device_index: 0,
+                groups: ["sg-1-id", "sg-2-id"]
+              }],
+              min_count: 1,
+              max_count: 1
+            }
+          end
 
           it 'maps security_groups from resource_pool' do expect(mapping(input)).to eq(output) end
         end
@@ -297,39 +328,6 @@ module Bosh::AwsCloud
             expect(mapping(input)).to eq(output)
           end
         end
-
-        context 'when security group names are provided' do
-          let(:input) do
-            {
-              networks_spec: {
-                "net1" => {
-                  "type" => "dynamic"
-                },
-                "net2" => {
-                  "type" => "manual",
-                  "ip" => "1.1.1.1"
-                },
-                "net3" => {
-                  "type" => "manual",
-                  "ip" => "2.2.2.2",
-                  "cloud_properties" => {"security_groups" => ["sg-3-name", "sg-4-name"]}
-                }
-              }
-            }
-          end
-          let(:output) do
-            {
-              private_ip_address: '1.1.1.1',
-              security_groups: ["sg-3-name", "sg-4-name"],
-              min_count: 1,
-              max_count: 1
-            }
-          end
-
-          it 'does not create network interfaces for the IP address' do
-            expect(mapping(input)).to eq(output)
-          end
-        end
       end
 
       describe 'Subnet options' do
@@ -407,41 +405,6 @@ module Bosh::AwsCloud
           it 'maps subnet from the first matching network to subnet_id' do
             expect(mapping(input)).to eq(output)
           end
-        end
-
-        context 'when security group names are provided' do
-            let(:input) do
-              {
-                networks_spec: {
-                  "net1" => {
-                    "type" => "vip",
-                    "cloud_properties" => { "subnet" => "vip-subnet" }
-                  },
-                  "net2" => {
-                    "cloud_properties" => {
-                      "subnet" => "manual-subnet",
-                      "security_groups" => ["sg-3-name", "sg-4-name"]
-                    }
-                  }
-                },
-                subnet_az_mapping: {
-                  "manual-subnet" => "region-1b"
-                }
-              }
-            end
-            let(:output) do
-              {
-                subnet_id: "manual-subnet",
-                security_groups: ["sg-3-name", "sg-4-name"],
-                placement: { availability_zone: "region-1b" },
-                min_count: 1,
-                max_count: 1
-              }
-            end
-
-            it 'does not create network interfaces for the subnet' do
-              expect(mapping(input)).to eq(output)
-            end
         end
       end
 
@@ -598,59 +561,6 @@ module Bosh::AwsCloud
             expect(mapping(input)).to eq(output)
           end
         end
-
-        context 'with security group names' do
-          let(:input) do
-            {
-              stemcell_id: "ami-something",
-              resource_pool: {
-                "instance_type" => "fake-instance-type",
-                "availability_zone" => "region-1a",
-                "key_name" => "fake-key-name",
-                "iam_instance_profile" => "fake-iam-profile",
-                "security_groups" => ["sg-name-1", "sg-name-2"],
-                "tenancy" => "dedicated",
-
-              },
-              networks_spec: {
-                "net1" => {
-                  "type" => "manual",
-                  "ip" => "1.1.1.1",
-                  "dns" => "8.8.8.8",
-                  "cloud_properties" => { "subnet" => "manual-subnet" }
-                }
-              },
-              subnet_az_mapping: {
-                "dynamic-subnet" => "region-1a"
-              },
-              volume_zones: ["region-1a", "region-1a"],
-              registry_endpoint: "example.com",
-              block_device_mappings: ["fake-device"]
-            }
-          end
-          let(:output) do
-            {
-              min_count: 1,
-              max_count: 1,
-              image_id: "ami-something",
-              instance_type: "fake-instance-type",
-              placement: {
-                availability_zone: "region-1a",
-                tenancy: "dedicated"
-              },
-              key_name: "fake-key-name",
-              iam_instance_profile: { name: "fake-iam-profile" },
-              subnet_id: "manual-subnet",
-              private_ip_address: "1.1.1.1",
-              security_groups: ["sg-name-1", "sg-name-2"],
-              user_data: Base64.encode64('{"registry":{"endpoint":"example.com"},"dns":{"nameserver":"8.8.8.8"}}').strip,
-              block_device_mappings: ["fake-device"]
-            }
-          end
-          it 'correctly renders the instance params' do
-            expect(mapping(input)).to eq(output)
-          end
-        end
       end
     end
 
@@ -773,6 +683,21 @@ module Bosh::AwsCloud
       instance_param_mapper = InstanceParamMapper.new
       instance_param_mapper.manifest_params = input
       instance_params = instance_param_mapper.instance_params
+    end
+
+    def sg_name_mapper
+      Proc.new do |sg_names|
+        id_lookup = {
+          "sg-1-name" => "sg-1-id",
+          "sg-2-name" => "sg-2-id",
+          "sg-3-name" => "sg-3-id",
+          "sg-4-name" => "sg-4-id",
+          "sg-5-name" => "sg-5-id",
+          "sg-6-name" => "sg-6-id",
+          "sg-7-name" => "sg-7-id"
+        }
+        sg_names.map { |name| id_lookup[name] }
+      end
     end
   end
 end
