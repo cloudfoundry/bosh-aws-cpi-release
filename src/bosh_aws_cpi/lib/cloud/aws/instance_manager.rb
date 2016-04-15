@@ -97,7 +97,7 @@ module Bosh::AwsCloud
       # is too slow to update its state when we have released the IP address and want to
       # realocate it again.
       errors = [AWS::EC2::Errors::InvalidIPAddress::InUse]
-      Bosh::Common.retryable(sleep: instance_create_wait_time, tries: 10, on: errors) do |tries, error|
+      Bosh::Common.retryable(sleep: instance_create_wait_time, tries: 20, on: errors) do |tries, error|
         @logger.info("Launching on demand instance...")
         if error.class == AWS::EC2::Errors::InvalidIPAddress::InUse
           @logger.warn("IP address was in use: #{error}")
