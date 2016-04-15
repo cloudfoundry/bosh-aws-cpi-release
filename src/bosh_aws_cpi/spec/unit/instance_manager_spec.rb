@@ -225,28 +225,6 @@ module Bosh::AwsCloud
         )
       end
 
-      it 'retries creating the VM when the request limit is exceeded' do
-        instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
-        allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
-        allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
-
-        expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_raise(AWS::EC2::Errors::RequestLimitExceeded)
-        expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
-
-        allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
-        expect(logger).not_to receive(:warn).with(/IP address was in use/)
-
-        instance_manager.create(
-          agent_id,
-          stemcell_id,
-          resource_pool,
-          networks_spec,
-          disk_locality,
-          environment,
-          default_options
-        )
-      end
-
       context 'when waiting it to become running fails' do
         let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-instance-id') }
         let(:create_err) { StandardError.new('fake-err') }

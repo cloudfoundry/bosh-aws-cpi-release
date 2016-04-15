@@ -143,7 +143,7 @@ describe Bosh::AwsCloud::Cloud do
 
     before do
       allow(volume).to receive(:attach_to).
-          with(instance, '/dev/sdf').and_raise AWS::EC2::Errors::VolumeInUse
+          with(instance, '/dev/sdh').and_raise AWS::EC2::Errors::VolumeInUse
     end
 
     it 'retries default number of attempts' do
@@ -152,25 +152,7 @@ describe Bosh::AwsCloud::Cloud do
 
       expect {
         cloud.attach_disk('i-test', 'v-foobar')
-      }.to raise_error AWS::EC2::Errors::VolumeInUse
-    end
-  end
-
-  context 'when aws returns RequestLimitExceeded' do
-    before { allow(Kernel).to receive(:sleep) }
-
-    before do
-      allow(volume).to receive(:attach_to).
-          with(instance, '/dev/sdf').and_raise AWS::EC2::Errors::RequestLimitExceeded
-    end
-
-    it 'retries default wait attempts' do
-      expect(volume).to receive(:attach_to).exactly(
-          Bosh::AwsCloud::ResourceWait::DEFAULT_WAIT_ATTEMPTS).times
-
-      expect {
-        cloud.attach_disk('i-test', 'v-foobar')
-      }.to raise_error AWS::EC2::Errors::RequestLimitExceeded
+      }.to raise_error Bosh::Common::RetryCountExceeded
     end
   end
 end
