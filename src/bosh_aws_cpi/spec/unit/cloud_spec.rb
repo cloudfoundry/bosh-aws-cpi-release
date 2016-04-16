@@ -61,7 +61,7 @@ describe Bosh::AwsCloud::Cloud do
 
       context 'when optional properties are not provided' do
         it 'default value is used for max retries' do
-          expect(cloud.ec2_client.config.max_retries).to be 10
+          expect(cloud.ec2_client.config.max_retries).to be 8
         end
 
         it 'default value is used for http properties' do
