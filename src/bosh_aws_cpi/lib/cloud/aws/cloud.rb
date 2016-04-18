@@ -4,7 +4,6 @@ module Bosh::AwsCloud
   class Cloud < Bosh::Cloud
     include Helpers
 
-    # default maximum number of times to retry an AWS API call
     METADATA_TIMEOUT = 5 # in seconds
     DEVICE_POLL_TIMEOUT = 60 # in seconds
 
