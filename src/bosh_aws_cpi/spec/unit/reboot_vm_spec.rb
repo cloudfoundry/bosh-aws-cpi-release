@@ -3,24 +3,7 @@ require 'spec_helper'
 describe Bosh::AwsCloud::Cloud, "reboot_vm" do
   let(:cloud) { described_class.new(options) }
   let(:ec2) { double("ec2", regions: [ double("region") ]) }
-  let(:options) do
-    {
-      "aws" => {
-        "region" => "bar",
-        "access_key_id" => "access",
-        "secret_access_key" => "secret",
-        "default_key_name" => "sesame"
-      },
-      "registry" => {
-        "endpoint" => "endpoint",
-        "user" => "user",
-        "password" => "password"
-      },
-      "agent" => {
-        "baz" => "qux"
-      }
-    }
-  end
+  let(:options) { mock_cloud_options['properties'] }
 
   it 'deletes an EC2 instance' do
     registry = double("registry")

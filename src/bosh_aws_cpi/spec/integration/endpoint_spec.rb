@@ -20,7 +20,8 @@ describe Bosh::AwsCloud::Cloud do
           'elb_endpoint' => 'https://elasticloadbalancing.sa-east-1.amazonaws.com',
           'access_key_id' => @access_key_id,
           'default_key_name' => 'fake-key',
-          'secret_access_key' => @secret_access_key
+          'secret_access_key' => @secret_access_key,
+          'max_retries' => 8
         },
         'registry' => {
           'endpoint' => 'fake',
@@ -44,7 +45,8 @@ describe Bosh::AwsCloud::Cloud do
           'region' => 'us-east-1',
           'default_key_name' => 'fake-key',
           'access_key_id' => @access_key_id,
-          'secret_access_key' => @secret_access_key
+          'secret_access_key' => @secret_access_key,
+          'max_retries' => 8
         },
         'registry' => {
           'endpoint' => 'fake',

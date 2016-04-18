@@ -55,7 +55,7 @@ describe 'cpi.json.erb' do
             'default_key_name'=>'the_default_key_name',
             'default_security_groups'=>['security_group_1'],
             'region'=>'moon',
-            'max_retries'=>2
+            'max_retries'=>8
           },
           'registry'=>{
             'endpoint'=>'http://admin:admin@registry-host.example.com:25777',

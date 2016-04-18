@@ -16,7 +16,8 @@ def mock_cloud_options
         'secret_access_key' => MOCK_AWS_SECRET_ACCESS_KEY,
         'region' => 'us-east-1',
         'default_key_name' => 'sesame',
-        'default_security_groups' => []
+        'default_security_groups' => [],
+        'max_retries' => 8
       },
       'registry' => {
         'endpoint' => 'localhost:42288',
@@ -29,6 +30,28 @@ def mock_cloud_options
       }
     }
   }
+end
+
+def mock_cloud_properties_merge(override_options)
+  mock_cloud_options_merge(override_options, mock_cloud_options['properties'])
+end
+
+def mock_cloud_options_merge(override_options, base_hash = mock_cloud_options)
+  merged_options = {}
+  override_options ||= {}
+
+  override_options.each do |key, value|
+    if value.is_a? Hash
+      merged_options[key] = mock_cloud_options_merge(override_options[key], base_hash[key])
+    else
+      merged_options[key] = value
+    end
+  end
+
+  extra_keys = base_hash.keys - override_options.keys
+  extra_keys.each { |key| merged_options[key] = base_hash[key] }
+
+  merged_options
 end
 
 def mock_registry(endpoint = 'http://registry:3333')

@@ -32,22 +32,17 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
   let(:environment) { "environment" }
 
   let(:options) do
-    {
+    ops = mock_cloud_properties_merge({
       "aws" => {
-        "region" => "bar",
-        "access_key_id" => "access",
-        "secret_access_key" => "secret",
-        "default_key_name" => "sesame"
-      },
-      "registry" => {
-        "endpoint" => "endpoint",
-        "user" => "user",
-        "password" => "password"
-      },
-      "agent" => {
-        "baz" => "qux"
+          "region" => "bar",
       }
+    })
+
+    ops['agent'] = {
+        "baz" => "qux"
     }
+
+    ops
   end
 
   let(:cloud) do

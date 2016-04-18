@@ -40,7 +40,7 @@ properties:
     example: elasticloadbalancing.us-east-1.amazonaws.com
   aws.max_retries:
     description: The maximum number of times AWS service errors and throttling errors should be retried. There is an exponential backoff in between retries, so the more retries the longer it can take to fail.
-    default: 2
+    default: 8
   aws.connection_options.ca_cert:
     description: All required custom CA certificates
     example:

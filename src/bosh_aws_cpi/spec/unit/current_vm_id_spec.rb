@@ -7,22 +7,11 @@ describe Bosh::AwsCloud::Cloud do
 
   describe "#current_vm_id" do
     let(:options) {
-      {
-          "aws" => {
-              "region" => "bar",
-              "access_key_id" => "access",
-              "secret_access_key" => "secret",
-              "default_key_name" => "sesame"
-          },
-          "registry" => {
-              "endpoint" => "endpoint",
-              "user" => "user",
-              "password" => "password"
-          },
-          "agent" => {
-              "baz" => "qux"
-          }
-      }
+      mock_cloud_properties_merge({
+         "aws" => {
+           "region" => "bar"
+         }
+      })
     }
 
     let(:cloud) { described_class.new(options) }

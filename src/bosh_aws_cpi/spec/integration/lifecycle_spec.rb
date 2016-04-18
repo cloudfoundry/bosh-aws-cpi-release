@@ -41,7 +41,8 @@ describe Bosh::AwsCloud::Cloud do
         'default_security_groups' => get_security_group_ids(@subnet_id),
         'fast_path_delete' => 'yes',
         'access_key_id' => @access_key_id,
-        'secret_access_key' => @secret_access_key
+        'secret_access_key' => @secret_access_key,
+        'max_retries' => 8
       },
       'registry' => {
         'endpoint' => 'fake',
@@ -110,7 +111,8 @@ describe Bosh::AwsCloud::Cloud do
             'default_security_groups' => get_security_group_ids(@subnet_id),
             'fast_path_delete' => 'yes',
             'access_key_id' => @access_key_id,
-            'secret_access_key' => @secret_access_key
+            'secret_access_key' => @secret_access_key,
+            'max_retries' => 8
           },
           'registry' => {
             'endpoint' => 'fake',

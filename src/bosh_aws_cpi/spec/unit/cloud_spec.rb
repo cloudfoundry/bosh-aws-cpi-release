@@ -2,24 +2,8 @@ require 'spec_helper'
 
 describe Bosh::AwsCloud::Cloud do
   subject(:cloud) { described_class.new(options) }
-  let(:aws_options) do
-    {
-      'access_key_id' => 'keys to my heart',
-      'secret_access_key' => 'open sesame',
-      'region' => 'fake-region',
-      'default_key_name' => 'sesame',
-    }
-  end
-  let(:options) do
-    {
-      'aws' => aws_options,
-      'registry' => {
-        'user' => 'abuser',
-        'password' => 'hard2gess',
-        'endpoint' => 'http://websites.com'
-      }
-    }
-  end
+
+  let(:options) { mock_cloud_options['properties'] }
 
   let(:az_selector) { instance_double('Bosh::AwsCloud::AvailabilityZoneSelector') }
 
@@ -32,20 +16,31 @@ describe Bosh::AwsCloud::Cloud do
   describe '#initialize' do
     describe 'validating initialization options' do
       context 'when required options are missing' do
+        let(:options) do
+          {
+              'plugin' => 'aws',
+              'properties' => {}
+          }
+        end
+
         it 'raises an error' do
-          options.delete('registry')
-          aws_options.delete('default_key_name')
 
           expect { cloud }.to raise_error(
               ArgumentError,
-              'missing configuration parameters > aws:default_key_name, registry:endpoint, registry:user, registry:password'
+              'missing configuration parameters > aws:default_key_name, aws:max_retries, registry:endpoint, registry:user, registry:password'
             )
         end
       end
 
       context 'when both region or endpoints are missing' do
+        let(:options) do
+          opts = mock_cloud_options['properties']
+          opts['aws'].delete('region')
+          opts['aws'].delete('ec2_endpoint')
+          opts['aws'].delete('elb_endpoint')
+          opts
+        end
         it 'raises an error' do
-          aws_options.delete('region')
           expect { cloud }.to raise_error(
               ArgumentError,
               'missing configuration parameters > aws:region, or aws:ec2_endpoint and aws:elb_endpoint'
@@ -60,10 +55,6 @@ describe Bosh::AwsCloud::Cloud do
       end
 
       context 'when optional properties are not provided' do
-        it 'default value is used for max retries' do
-          expect(cloud.ec2_client.config.max_retries).to be 8
-        end
-
         it 'default value is used for http properties' do
           expect(cloud.ec2_client.config.http_read_timeout).to eq(60)
           expect(cloud.ec2_client.config.http_wire_trace).to be false
@@ -73,19 +64,13 @@ describe Bosh::AwsCloud::Cloud do
 
       context 'when optional and required properties are provided' do
         let(:options) do
-          {
-            'aws' => {
-              'access_key_id' => 'keys to my heart',
-              'secret_access_key' => 'open sesame',
-              'region' => 'fake-region',
-              'default_key_name' => 'sesame'
-            },
-            'registry' => {
-              'user' => 'abuser',
-              'password' => 'hard2gess',
-              'endpoint' => 'http://websites.com'
-            }
-          }
+          mock_cloud_properties_merge(
+              {
+                  'aws' => {
+                      'region' => 'fake-region'
+                  }
+              }
+          )
         end
 
         it 'passes required properties to AWS SDK' do
@@ -232,20 +217,15 @@ describe Bosh::AwsCloud::Cloud do
 
       context 'when access_key_id and secret_access_key are omitted' do
         let(:options) do
-          {
-            'aws' => {
-              'credentials_source' => 'static',
-              'access_key_id' => nil,
-              'secret_access_key' => nil,
-              'region' => 'fake-region',
-              'default_key_name' => 'sesame'
-            },
-            'registry' => {
-              'user' => 'abuser',
-              'password' => 'hard2gess',
-              'endpoint' => 'http://websites.com'
-            }
-          }
+          mock_cloud_properties_merge(
+              {
+                  'aws' => {
+                      'credentials_source' => 'static',
+                      'access_key_id' => nil,
+                      'secret_access_key' => nil
+                  }
+              }
+          )
         end
         it 'raises an error' do
           expect { cloud }.to raise_error(
@@ -258,20 +238,15 @@ describe Bosh::AwsCloud::Cloud do
 
     context 'when credentials_source is set to env_or_profile' do
       let(:options) do
-        {
-          'aws' => {
-            'credentials_source' => 'env_or_profile',
-            'access_key_id' => nil,
-            'secret_access_key' => nil,
-            'region' => 'fake-region',
-            'default_key_name' => 'sesame'
-          },
-          'registry' => {
-            'user' => 'abuser',
-            'password' => 'hard2gess',
-            'endpoint' => 'http://websites.com'
-          }
-        }
+        mock_cloud_properties_merge(
+            {
+                'aws' => {
+                    'credentials_source' => 'env_or_profile',
+                    'access_key_id' => nil,
+                    'secret_access_key' => nil
+                }
+            }
+        )
       end
       it 'does not raise an error ' do
         expect { cloud }.to_not raise_error
@@ -280,19 +255,14 @@ describe Bosh::AwsCloud::Cloud do
 
     context 'when credentials_source is set to env_or_profile and access_key_id is provided' do
       let(:options) do
-        {
-          'aws' => {
-            'credentials_source' => 'env_or_profile',
-            'access_key_id' => 'some access key',
-            'region' => 'fake-region',
-            'default_key_name' => 'sesame'
-          },
-          'registry' => {
-            'user' => 'abuser',
-            'password' => 'hard2gess',
-            'endpoint' => 'http://websites.com'
-          }
-        }
+        mock_cloud_properties_merge(
+            {
+                'aws' => {
+                    'credentials_source' => 'env_or_profile',
+                    'access_key_id' => 'some access key'
+                }
+            }
+        )
       end
       it 'raises an error' do
         expect { cloud }.to raise_error(
@@ -304,18 +274,13 @@ describe Bosh::AwsCloud::Cloud do
 
     context 'when an unknown credentails_source is set' do
       let(:options) do
-        {
-          'aws' => {
-            'credentials_source' => 'NotACredentialsSource',
-            'region' => 'fake-region',
-            'default_key_name' => 'sesame'
-          },
-          'registry' => {
-            'user' => 'abuser',
-            'password' => 'hard2gess',
-            'endpoint' => 'http://websites.com'
-          }
-        }
+        mock_cloud_properties_merge(
+            {
+                'aws' => {
+                    'credentials_source' => 'NotACredentialsSource'
+                }
+            }
+        )
       end
 
       it 'raises an error' do

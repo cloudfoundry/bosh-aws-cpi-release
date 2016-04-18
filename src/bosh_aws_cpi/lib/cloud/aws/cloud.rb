@@ -5,7 +5,6 @@ module Bosh::AwsCloud
     include Helpers
 
     # default maximum number of times to retry an AWS API call
-    DEFAULT_MAX_RETRIES = 8
     METADATA_TIMEOUT = 5 # in seconds
     DEVICE_POLL_TIMEOUT = 60 # in seconds
 
@@ -29,7 +28,7 @@ module Bosh::AwsCloud
       aws_logger = @logger
 
       @aws_params = {
-        max_retries: aws_properties['max_retries'] || DEFAULT_MAX_RETRIES,
+        max_retries: aws_properties['max_retries'],
         logger: aws_logger
       }
 
@@ -640,7 +639,7 @@ module Bosh::AwsCloud
     #
     def validate_options
       required_keys = {
-        "aws" => ["default_key_name"],
+        "aws" => ["default_key_name", "max_retries"],
         "registry" => ["endpoint", "user", "password"],
       }
 

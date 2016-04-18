@@ -30,20 +30,11 @@ module Bosh::AwsCloud
     describe 'authenticating EC2 API requests' do
       let(:cloud) { Bosh::AwsCloud::Cloud.new(options) }
       let(:options) {
-        {
+        mock_cloud_properties_merge({
           "aws" => {
-              "region" => "bar",
-              "default_key_name" => "sesame"
-          },
-          "registry" => {
-              "endpoint" => "endpoint",
-              "user" => "user",
-              "password" => "password"
-          },
-          "agent" => {
-              "baz" => "qux"
+              "region" => "bar"
           }
-        }
+        })
       }
       let(:region_body) {
         '<DescribeRegionsResponse xmlns="http://ec2.amazonaws.com/doc/2015-10-01/">
@@ -92,7 +83,9 @@ module Bosh::AwsCloud
 
         it 'retrieves credentials from the instance metadata endpoint' do
           options['aws'].merge!({
-            "credentials_source" => "env_or_profile"
+            "credentials_source" => "env_or_profile",
+            "access_key_id" => nil,
+            "secret_access_key" => nil
           })
 
           stub_request(:get, "http://169.254.169.254/latest/meta-data/iam/security-credentials/")
