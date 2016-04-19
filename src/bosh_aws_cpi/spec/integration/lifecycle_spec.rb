@@ -430,6 +430,8 @@ describe Bosh::AwsCloud::Cloud do
   def vm_lifecycle(options = {})
     vm_disks = options[:disks] || disks
     stemcell_id = cpi.create_stemcell('/not/a/real/path', { 'ami' => { 'us-east-1' => ami } })
+    expect(stemcell_id).to end_with(' light')
+
     instance_id = cpi.create_vm(
       nil,
       stemcell_id,
@@ -448,6 +450,7 @@ describe Bosh::AwsCloud::Cloud do
   ensure
     cpi.delete_vm(instance_id) if instance_id
     cpi.delete_stemcell(stemcell_id) if stemcell_id
+    expect(get_ami(ami)).to exist
   end
 
   def get_security_group_ids(subnet_id)
@@ -457,6 +460,14 @@ describe Bosh::AwsCloud::Cloud do
     )
     security_groups = ec2.subnets[subnet_id].vpc.security_groups
     security_groups.map { |sg| sg.id }
+  end
+
+  def get_ami(ami_id)
+    ec2 = AWS::EC2.new(
+      access_key_id:     @access_key_id,
+      secret_access_key: @secret_access_key,
+    )
+    ec2.images[ami_id]
   end
 end
 

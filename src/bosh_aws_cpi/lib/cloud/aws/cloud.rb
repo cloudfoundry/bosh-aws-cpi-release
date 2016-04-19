@@ -415,7 +415,7 @@ module Bosh::AwsCloud
           available_image = @ec2_client.images.filter('image-id', all_ami_ids).first
           raise Bosh::Clouds::CloudError, "Stemcell does not contain an AMI at endpoint (#{@ec2_client.client.endpoint})" unless available_image
 
-          available_image.id
+          "#{available_image.id} light"
         else
           create_ami_for_stemcell(image_path, stemcell_properties)
         end
