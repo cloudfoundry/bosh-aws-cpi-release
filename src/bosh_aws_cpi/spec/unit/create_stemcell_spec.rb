@@ -9,7 +9,7 @@ describe Bosh::AwsCloud::Cloud do
   describe "EBS-volume based flow" do
     let(:creator) { double(Bosh::AwsCloud::StemcellCreator) }
 
-    context "fake stemcell" do
+    context "light stemcell" do
       let(:stemcell_properties) do
         {
           "root_device_name" => "/dev/sda1",
@@ -22,11 +22,11 @@ describe Bosh::AwsCloud::Cloud do
         }
       end
 
-      it "should return a fake stemcell" do
+      it "should return a light stemcell" do
         cloud = mock_cloud do |ec2|
           allow(ec2).to receive_message_chain(:images, :filter).and_return([double('image', :id => "ami-xxxxxxxx")])
         end
-        expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
+        expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx light")
       end
     end
 
