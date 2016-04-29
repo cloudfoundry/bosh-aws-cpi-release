@@ -78,6 +78,23 @@ describe Bosh::AwsCloud::Cloud do
           expect(config.region).to eq('fake-region')
         end
       end
+
+      context 'when the given region is invalid' do
+        let(:regions) { instance_double(AWS::EC2::RegionCollection) }
+        before do
+          allow_any_instance_of(AWS::EC2).to receive(:regions).and_return(regions)
+          allow(regions).to receive(:first).and_raise(
+            SocketError,
+            'getaddrinfo: nodename nor servname provided, or not known'
+          )
+        end
+        it 'raises a cloud error' do
+          expect { cloud }.to raise_error(
+              Bosh::Clouds::CloudError,
+              'Unable to create a connection to AWS; please check your region or EC2 endpoint.'
+            )
+        end
+      end
     end
   end
 

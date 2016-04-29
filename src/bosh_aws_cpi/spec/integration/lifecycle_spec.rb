@@ -68,6 +68,27 @@ describe Bosh::AwsCloud::Cloud do
 
   extend Bosh::Cpi::CompatibilityHelpers
 
+  describe 'instantiating the CPI with invalid endpoint or region' do
+    it 'raises an Bosh::Clouds::CloudError' do
+      expect do
+        described_class.new('aws' => {
+          'region' => 'us-east',
+          'default_key_name' => 'blah',
+          'default_security_groups' => 'blah',
+          'fast_path_delete' => 'yes',
+          'access_key_id' => @access_key_id,
+          'secret_access_key' => @secret_access_key,
+          'max_retries' => 0
+        },
+        'registry' => {
+          'endpoint' => 'fake',
+          'user' => 'fake',
+          'password' => 'fake'
+        })
+      end.to raise_error(Bosh::Clouds::CloudError)
+    end
+  end
+
   describe 'deleting things that no longer exist' do
     it 'raises the appropriate Clouds::Error' do
       # pass in *real* previously deleted ids instead of made up ones

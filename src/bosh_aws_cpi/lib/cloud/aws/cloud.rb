@@ -736,6 +736,10 @@ module Bosh::AwsCloud
       # make an arbitrary HTTP request to ensure we can connect and creds are valid
       @ec2_client.regions.first
       true
+    rescue SocketError => socket_error
+      if socket_error.message == 'getaddrinfo: nodename nor servname provided, or not known'
+        cloud_error('Unable to create a connection to AWS; please check your region or EC2 endpoint.')
+      end
     rescue Net::OpenTimeout => e
       false
     end
