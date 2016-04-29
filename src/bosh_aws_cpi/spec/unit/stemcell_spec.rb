@@ -45,14 +45,14 @@ describe Bosh::AwsCloud::Stemcell do
     end
 
     context "with light stemcell" do
-      it "should fake ami deregistration" do
+      it "should raise an error" do
         stemcell = described_class.new(region, fake_aws_ami)
 
         allow(stemcell).to receive(:memoize_snapshots)
         expect(fake_aws_ami).to receive(:deregister).and_raise(AWS::EC2::Errors::AuthFailure)
         expect(Bosh::AwsCloud::ResourceWait).not_to receive(:for_image)
 
-        stemcell.delete
+        expect {stemcell.delete}.to raise_error(AWS::EC2::Errors::AuthFailure)
       end
       # AWS::EC2::Errors::AuthFailure
     end
