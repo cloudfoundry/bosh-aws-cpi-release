@@ -32,7 +32,7 @@ module Bosh::AwsCloud
       # if this IP is actually an allocated EC2 elastic IP, as
       # API call will fail in that case.
 
-      errors = [AWS::EC2::Errors::IncorrectInstanceState]
+      errors = [AWS::EC2::Errors::IncorrectInstanceState, AWS::EC2::Errors::InvalidInstanceID]
       Bosh::Common.retryable(tries: 10, sleep: 1, on: errors) do
         instance.associate_elastic_ip(elastic_ip)
         true # need to return true to end the retries
@@ -40,5 +40,3 @@ module Bosh::AwsCloud
     end
   end
 end
-
-

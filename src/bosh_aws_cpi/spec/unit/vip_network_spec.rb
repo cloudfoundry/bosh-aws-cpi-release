@@ -11,17 +11,21 @@ describe Bosh::AwsCloud::VipNetwork do
     }.to raise_error Bosh::Clouds::CloudError
   end
 
-  it 'should retry to attach until it succeeds' do
-    vip = described_class.new('vip', {'ip' => '1.2.3.4'})
+  [AWS::EC2::Errors::IncorrectInstanceState, AWS::EC2::Errors::InvalidInstanceID].each do |error|
+    context "when AWS returns an #{error} error" do
+      it 'should retry to attach until it succeeds' do
+        vip = described_class.new('vip', {'ip' => '1.2.3.4'})
 
-    elastic_ip = double('eip')
-    allow(ec2).to receive_message_chain(:elastic_ips, :[]).and_return(elastic_ip)
-    allow(Bosh::Common).to receive(:sleep)
+        elastic_ip = double('eip')
+        allow(ec2).to receive_message_chain(:elastic_ips, :[]).and_return(elastic_ip)
+        allow(Bosh::Common).to receive(:sleep)
 
-    expect(instance).to receive(:associate_elastic_ip).and_raise(AWS::EC2::Errors::IncorrectInstanceState)
-    expect(instance).to receive(:associate_elastic_ip).with(elastic_ip).and_return(true)
+        expect(instance).to receive(:associate_elastic_ip).and_raise(error)
+        expect(instance).to receive(:associate_elastic_ip).with(elastic_ip).and_return(true)
 
-    vip.configure(ec2, instance)
+        vip.configure(ec2, instance)
+      end
+    end
   end
 
 end
