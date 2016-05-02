@@ -83,12 +83,24 @@ describe Bosh::AwsCloud::Cloud do
         let(:regions) { instance_double(AWS::EC2::RegionCollection) }
         before do
           allow_any_instance_of(AWS::EC2).to receive(:regions).and_return(regions)
+        end
+
+        it 'raises a cloud error on OSX' do
           allow(regions).to receive(:first).and_raise(
             SocketError,
             'getaddrinfo: nodename nor servname provided, or not known'
           )
+          expect { cloud }.to raise_error(
+              Bosh::Clouds::CloudError,
+              /region.*getaddrinfo/m,
+            )
         end
-        it 'raises a cloud error' do
+
+        it 'raises a cloud error on Linux' do
+          allow(regions).to receive(:first).and_raise(
+            SocketError,
+            'getaddrinfo: Name or service not known',
+          )
           expect { cloud }.to raise_error(
               Bosh::Clouds::CloudError,
               /region.*getaddrinfo/m,

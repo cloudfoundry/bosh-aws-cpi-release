@@ -2,7 +2,9 @@
 
 set -e
 
-source bosh-cpi-src/ci/tasks/utils.sh
+release_dir="$( cd $(dirname $0) && cd ../.. && pwd )"
+
+source ${release_dir}/ci/tasks/utils.sh
 
 check_param aws_access_key_id
 check_param aws_secret_access_key
@@ -29,7 +31,7 @@ export BOSH_CLI_SILENCE_SLOW_LOAD_WARNING=true
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
 
-pushd bosh-cpi-src/src/bosh_aws_cpi
+pushd ${release_dir}/src/bosh_aws_cpi > /dev/null
   bundle install
   bundle exec rspec spec/integration/lifecycle_spec.rb
-popd
+popd > /dev/null
