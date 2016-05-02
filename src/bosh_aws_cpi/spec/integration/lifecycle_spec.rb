@@ -72,7 +72,7 @@ describe Bosh::AwsCloud::Cloud do
     it 'raises an Bosh::Clouds::CloudError' do
       expect do
         described_class.new('aws' => {
-          'region' => 'invalid_region',
+          'region' => 'invalid-region',
           'default_key_name' => 'blah',
           'default_security_groups' => 'blah',
           'fast_path_delete' => 'yes',
