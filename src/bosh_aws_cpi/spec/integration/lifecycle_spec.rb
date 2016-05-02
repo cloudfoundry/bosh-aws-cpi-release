@@ -72,7 +72,7 @@ describe Bosh::AwsCloud::Cloud do
     it 'raises an Bosh::Clouds::CloudError' do
       expect do
         described_class.new('aws' => {
-          'region' => 'us-east',
+          'region' => 'invalid_region',
           'default_key_name' => 'blah',
           'default_security_groups' => 'blah',
           'fast_path_delete' => 'yes',
@@ -85,7 +85,7 @@ describe Bosh::AwsCloud::Cloud do
           'user' => 'fake',
           'password' => 'fake'
         })
-      end.to raise_error(Bosh::Clouds::CloudError)
+      end.to raise_error(Bosh::Clouds::CloudError, /region/)
     end
   end
 

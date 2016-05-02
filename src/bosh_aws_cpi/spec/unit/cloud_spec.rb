@@ -91,7 +91,7 @@ describe Bosh::AwsCloud::Cloud do
         it 'raises a cloud error' do
           expect { cloud }.to raise_error(
               Bosh::Clouds::CloudError,
-              'Unable to create a connection to AWS; please check your region or EC2 endpoint.'
+              /region.*getaddrinfo/m,
             )
         end
       end

@@ -738,7 +738,7 @@ module Bosh::AwsCloud
       true
     rescue SocketError => socket_error
       if socket_error.message == 'getaddrinfo: nodename nor servname provided, or not known'
-        cloud_error('Unable to create a connection to AWS; please check your region or EC2 endpoint.')
+        cloud_error("Unable to create a connection to AWS; please check your region or EC2 endpoint.\nIaaS Error: #{socket_error.inspect}")
       end
     rescue Net::OpenTimeout => e
       false
