@@ -737,7 +737,8 @@ module Bosh::AwsCloud
       @ec2_client.regions.first
       true
     rescue SocketError => socket_error
-      cloud_error("Unable to create a connection to AWS; please check your region or EC2 endpoint.\nIaaS Error: #{socket_error.inspect}\nBacktrace: #{socket_error.backtrace.join("\n")}")
+      logger.error("Failed to connect to AWS: #{socket_error.inspect}\n#{socket_error.backtrace.join("\n")}")
+      cloud_error("Unable to create a connection to AWS; please check your region or EC2 endpoint.\nIaaS Error: #{socket_error.inspect}")
     rescue Net::OpenTimeout => e
       false
     end
