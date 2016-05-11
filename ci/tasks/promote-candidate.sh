@@ -2,11 +2,10 @@
 
 set -e -x
 
+: ${AWS_ACCESS_KEY_ID:?}
+: ${AWS_SECRET_ACCESS_KEY:?}
+
 source bosh-cpi-src/ci/tasks/utils.sh
-
-check_param aws_access_key_id
-check_param aws_secret_access_key
-
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
 
@@ -26,8 +25,8 @@ pushd promoted/repo
 ---
 blobstore:
   s3:
-    access_key_id: $aws_access_key_id
-    secret_access_key: $aws_secret_access_key
+    access_key_id: $AWS_ACCESS_KEY_ID
+    secret_access_key: $AWS_SECRET_ACCESS_KEY
 EOF
   set -x
 

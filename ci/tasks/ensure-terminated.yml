@@ -5,9 +5,8 @@ inputs:
   - name: bosh-cpi-src
   - name: environment
 run:
-  path: bosh-cpi-src/ci/tasks/run-lifecycle.sh
+  path: bosh-cpi-src/ci/tasks/ensure-terminated.sh
 params:
   AWS_ACCESS_KEY_ID:     ""
   AWS_SECRET_ACCESS_KEY: ""
   AWS_DEFAULT_REGION:    ""
-  AWS_PUBLIC_KEY_NAME:   ""

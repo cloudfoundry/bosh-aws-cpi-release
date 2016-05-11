@@ -1,26 +1,60 @@
 ---
 groups:
-  - name: bosh-aws-cpi-release
+  - name: bosh-aws-cpi
     jobs:
+      - create-environment
+      - destroy-environment
       - build-candidate
       - lifecycle
-      - promote-candidate
-
-  - name: primary
-    jobs:
-      - recreate-infrastructure-primary
-      - build-candidate
-      - lifecycle
-      - promote-candidate
-
-  - name: all
-    jobs:
-      - recreate-infrastructure-primary
-      - build-candidate
-      - lifecycle
+      - bats
       - promote-candidate
 
 jobs:
+  - name: create-environment
+    plan:
+      - get: bosh-cpi-src
+        resource: bosh-cpi-src-in
+
+      - put: terraform
+        params:
+          terraform:
+            source: bosh-cpi-src/ci/assets/terraform
+          delete_on_failure: true
+          generate_random_name: true
+
+      - put: environment
+        params:
+          add: terraform
+
+  - name: destroy-environment
+    plan:
+      - get: bosh-cpi-src
+        resource: bosh-cpi-src-in
+
+      - put: environment
+        params:
+          acquire: true
+
+      - task: ensure-terminated
+        file: bosh-cpi-src/ci/tasks/ensure-terminated.yml
+        params:
+          AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
+          AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
+          AWS_DEFAULT_REGION:    {{aws_region__primary}}
+
+      - put: terraform
+        params:
+          terraform:
+            source: bosh-cpi-src/ci/assets/terraform
+          env_name_file: environment/name
+          action: destroy
+        get_params:
+          action: destroy
+
+      - put: environment
+        params:
+          remove: environment
+
   - name: recreate-infrastructure-primary
     serial_groups: [lifecycle]
     plan:
@@ -58,41 +92,121 @@ jobs:
         file: bosh-cpi-src/ci/tasks/build-candidate.yml
 
       - put: bosh-cpi-dev-artifacts
-        params: {from: candidate/.*\.tgz}
+        params: {file: candidate/*.tgz}
 
   - name: lifecycle
-    serial_groups: [lifecycle]
     plan:
       - aggregate:
         - {trigger: true,  passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
         - {trigger: false, passed: [build-candidate], get: bosh-cpi-src, resource: bosh-cpi-src-in}
 
+      - put: environment
+        params:
+          acquire: true
+
       - task: test
         file: bosh-cpi-src/ci/tasks/run-lifecycle.yml
         params:
-          aws_access_key_id:            {{aws_access_key__primary}}
-          aws_secret_access_key:        {{aws_secret_key__primary}}
-          region_name:                  {{aws_region__primary}}
-          stack_name:                   primary
+          AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
+          AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
+          AWS_DEFAULT_REGION:    {{aws_region__primary}}
+          AWS_PUBLIC_KEY_NAME:   {{cpi_pipeline_public_key_name}}
+
+        ensure:
+          do:
+            - put: environment
+              params:
+                release: environment
+
+  - name: bats
+    serial: true
+    plan:
+      - aggregate:
+        - {get: cpi-release,   trigger: true,  resource: bosh-cpi-dev-artifacts, passed: [build-candidate]}
+        - {get: bosh-release,  trigger: false, resource: old-bosh-release}
+        - {get: bosh-cpi-src,  trigger: false, resource: bosh-cpi-src-in, passed: [build-candidate]}
+        - {get: stemcell,      trigger: false, resource: old-stemcell}
+        - {get: certification, trigger: false}
+        - {get: bosh-init,     trigger: false}
+        - {get: bats,          trigger: false}
+
+      - put: environment
+        params:
+          acquire: true
+
+      - task: prepare-director
+        file: bosh-cpi-src/ci/tasks/prepare-director.yml
+        params:
+            BOSH_DIRECTOR_USERNAME: {{BOSH_DIRECTOR_USERNAME}}
+            BOSH_DIRECTOR_PASSWORD: {{BOSH_DIRECTOR_PASSWORD}}
+            AWS_ACCESS_KEY:         {{aws_access_key__primary}}
+            AWS_SECRET_KEY:         {{aws_secret_key__primary}}
+            AWS_REGION_NAME:        {{aws_region__primary}}
+            PUBLIC_KEY_NAME:        {{cpi_pipeline_public_key_name}}
+            PRIVATE_KEY_DATA:       {{cpi_pipeline_private_key}}
+            USE_REDIS:              true
+
+      - do:
+          - task: deploy-director
+            file: certification/shared/tasks/deploy-director.yml
+            input_mapping: {pipelines: certification}
+            params:
+              BOSH_DIRECTOR_USERNAME: {{BOSH_DIRECTOR_USERNAME}}
+              BOSH_DIRECTOR_PASSWORD: {{BOSH_DIRECTOR_PASSWORD}}
+
+          - task: prepare-manual-bats
+            file: bosh-cpi-src/ci/tasks/prepare-manual-bats.yml
+            params:
+              AWS_ACCESS_KEY:         {{aws_access_key__primary}}
+              AWS_SECRET_KEY:         {{aws_secret_key__primary}}
+              AWS_REGION_NAME:        {{aws_region__primary}}
+              BAT_VCAP_PASSWORD:      {{BAT_VCAP_PASSWORD}}
+              PUBLIC_KEY_NAME:        {{cpi_pipeline_public_key_name}}
+              BOSH_DIRECTOR_USERNAME: {{BOSH_DIRECTOR_USERNAME}}
+              BOSH_DIRECTOR_PASSWORD: {{BOSH_DIRECTOR_PASSWORD}}
+              STEMCELL_NAME:          bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+
+          - task: run-bats
+            file: certification/shared/tasks/run-bats.yml
+            input_mapping: {pipelines: certification}
+
+        ensure:
+          do:
+            - task: teardown
+              file: certification/shared/tasks/teardown.yml
+              input_mapping: {pipelines: certification}
+              params:
+                BOSH_DIRECTOR_USERNAME: {{BOSH_DIRECTOR_USERNAME}}
+                BOSH_DIRECTOR_PASSWORD: {{BOSH_DIRECTOR_PASSWORD}}
+                DEPLOYMENT_NAME:        certification
+            - put: environment
+              params:
+                release: environment
 
   - name: promote-candidate
     plan:
       - aggregate:
-        - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts, passed: [lifecycle]}
+        - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts, passed: [lifecycle, bats]}
         - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-out}
         - {trigger: false, get: release-version-semver, params: {bump: major}}
 
       - task: promote
         file: bosh-cpi-src/ci/tasks/promote-candidate.yml
         params:
-          aws_access_key_id: {{aws_access_key__primary}}
-          aws_secret_access_key: {{aws_secret_key__primary}}
+          AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
+          AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
 
       - put: bosh-cpi-src-out
         params: {repository: promoted/repo, rebase: true, tag_prefix: "v", tag: promoted/integer_version}
 
       - put: release-version-semver
         params: {file: release-version-semver/number}
+
+resource_types:
+  - name: terraform_type
+    type: docker-image
+    source:
+      repository: ljfranklin/terraform-resource
 
 resources:
   - name: bosh-cpi-dev-artifacts
@@ -135,3 +249,60 @@ resources:
       bucket:            {{s3_aws_cpi_pipeline_bucket}}
       access_key_id:     {{aws_access_key__primary}}
       secret_access_key: {{aws_secret_key__primary}}
+
+  - name: environment
+    type: pool
+    source:
+      uri: git@github.com:cloudfoundry/bosh-cpi-environments.git
+      branch: master
+      pool: aws
+      private_key: {{github_deployment_key__bosh-cpi-environments}}
+
+  - name: terraform
+    type: terraform_type
+    source:
+      storage:
+        access_key_id:     {{aws_access_key__primary}}
+        secret_access_key: {{aws_secret_key__primary}}
+        bucket:            {{terraform_bucket}}
+        bucket_path:       terraform-state
+      terraform:
+        vars:
+          access_key: {{aws_access_key__primary}}
+          secret_key: {{aws_secret_key__primary}}
+          region:     {{aws_region__primary}}
+
+  - name: bosh-init
+    type: s3
+    source:
+      regexp: bosh-init-([0-9.]+)-linux-amd64
+      bucket: bosh-init-artifacts
+      region_name: us-east-1
+
+  - name: certification
+    type: git
+    source:
+      uri: https://github.com/cloudfoundry-incubator/bosh-cpi-certification
+      branch: master
+
+  # Remember to update these every once in a while
+  - name: old-bosh-release
+    type: s3
+    source:
+      bucket: bosh-cpi-certification-fixtures
+      regexp: precompiled-bosh-(255.8)-on-ubuntu-3232.3.tgz
+      region_name: us-east-1
+
+  - name: old-stemcell
+    type: s3
+    source:
+      bucket: bosh-cpi-certification-fixtures
+      regexp: light-bosh-stemcell-(3232.3)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
+      region_name: us-east-1
+
+  - name: bats
+    type: git
+    source:
+      uri: https://github.com/cloudfoundry/bosh-acceptance-tests.git
+      # TODO: change this back to master after bats promotion #118516887
+      branch: aws-missing-az # master

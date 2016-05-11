@@ -1,0 +1,25 @@
+---
+platform: linux
+image: docker:///boshcpi/cpi-certification
+
+inputs:
+  - name: bosh-cpi-src
+  - name: environment
+  - name: director-config
+
+outputs:
+  - name: bats-config
+
+run:
+  path: bosh-cpi-src/ci/tasks/prepare-manual-bats.sh
+
+params:
+  AWS_ACCESS_KEY:     ""
+  AWS_SECRET_KEY:     ""
+  AWS_REGION_NAME:    ""
+  AWS_STACK_NAME:     ""
+  BAT_VCAP_PASSWORD:  ""
+  PUBLIC_KEY_NAME:    ""
+  STEMCELL_NAME:      ""
+  BOSH_DIRECTOR_USERNAME: ""
+  BOSH_DIRECTOR_PASSWORD: ""

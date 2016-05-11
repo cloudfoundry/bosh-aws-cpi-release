@@ -2,34 +2,29 @@
 
 set -e
 
+: ${AWS_ACCESS_KEY_ID:?}
+: ${AWS_SECRET_ACCESS_KEY:?}
+: ${AWS_DEFAULT_REGION:?}
+: ${AWS_PUBLIC_KEY_NAME:?}
+
 release_dir="$( cd $(dirname $0) && cd ../.. && pwd )"
 
 source ${release_dir}/ci/tasks/utils.sh
-
-check_param aws_access_key_id
-check_param aws_secret_access_key
-check_param region_name
-check_param stack_name
-
-export AWS_ACCESS_KEY_ID=${aws_access_key_id}
-export AWS_SECRET_ACCESS_KEY=${aws_secret_access_key}
-export AWS_DEFAULT_REGION=${region_name}
-
-stack_info=$(get_stack_info $stack_name)
-
-export BOSH_AWS_ACCESS_KEY_ID=${aws_access_key_id}
-export BOSH_AWS_SECRET_ACCESS_KEY=${aws_secret_access_key}
-export BOSH_AWS_DEFAULT_KEY_NAME='bats'
-export BOSH_AWS_SUBNET_ID=$(get_stack_info_of "${stack_info}" "LifecycleSubnetID")
-export BOSH_AWS_SUBNET_ZONE=$(get_stack_info_of "${stack_info}" "LifecycleAvailabilityZone")
-export BOSH_AWS_LIFECYCLE_MANUAL_IP=$(get_stack_info_of "${stack_info}" "LifecycleManualIP")
-export BOSH_AWS_ELB_ENDPOINT=$(get_stack_info_of "${stack_info}" "LifecycleELB")
-export BOSH_AWS_ELB_ID="bosh-aws-cpi-lifecycle-elb"
-
-export BOSH_CLI_SILENCE_SLOW_LOAD_WARNING=true
-
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
+
+metadata=$(cat environment/metadata)
+
+export BOSH_AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+export BOSH_AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+export BOSH_AWS_DEFAULT_KEY_NAME=${AWS_PUBLIC_KEY_NAME}
+export BOSH_AWS_SUBNET_ID=$(echo ${metadata} | jq --raw-output ".PublicSubnetID")
+export BOSH_AWS_SUBNET_ZONE=$(echo ${metadata} | jq --raw-output ".AvailabilityZone")
+export BOSH_AWS_LIFECYCLE_MANUAL_IP=$(echo ${metadata} | jq --raw-output ".DirectorStaticIP")
+export BOSH_AWS_ELB_ENDPOINT=$(echo ${metadata} | jq --raw-output ".ELBEndpoint")
+export BOSH_AWS_ELB_ID=$(echo ${metadata} | jq --raw-output ".ELB")
+
+export BOSH_CLI_SILENCE_SLOW_LOAD_WARNING=true
 
 pushd ${release_dir}/src/bosh_aws_cpi > /dev/null
   bundle install
