@@ -187,7 +187,7 @@ jobs:
     plan:
       - aggregate:
         - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts, passed: [lifecycle, bats]}
-        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-out}
+        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in, passed: [lifecycle, bats]}
         - {trigger: false, get: release-version-semver, params: {bump: major}}
 
       - task: promote
