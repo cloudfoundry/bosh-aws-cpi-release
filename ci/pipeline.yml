@@ -55,29 +55,6 @@ jobs:
         params:
           remove: environment
 
-  - name: recreate-infrastructure-primary
-    serial_groups: [lifecycle]
-    plan:
-      - aggregate:
-        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in}
-
-      - task: check-for-running-instances
-        file: bosh-cpi-src/ci/tasks/check-for-running-instances.yml
-        params: &recreate-primary-params
-          aws_access_key_id:        {{aws_access_key__primary}}
-          aws_secret_access_key:    {{aws_secret_key__primary}}
-          region_name:              {{aws_region__primary}}
-          stack_name:               primary
-          stack_prefix:             not-applicable
-
-      - task: teardown-infrastructure
-        file: bosh-cpi-src/ci/tasks/teardown-infrastructure.yml
-        params: *recreate-primary-params
-
-      - task: setup-infrastructure
-        file: bosh-cpi-src/ci/tasks/setup-infrastructure.yml
-        params: *recreate-primary-params
-
   - name: build-candidate
     serial: true
     plan:
