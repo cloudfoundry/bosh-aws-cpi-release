@@ -19,7 +19,7 @@ jobs:
         params:
           terraform:
             source: bosh-cpi-src/ci/assets/terraform
-          delete_on_failure: true
+            delete_on_failure: true
           generate_random_name: true
 
       - put: environment
