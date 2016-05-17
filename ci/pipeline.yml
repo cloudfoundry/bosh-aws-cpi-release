@@ -5,7 +5,7 @@ groups:
       - create-environment
       - destroy-environment
       - build-candidate
-      - lifecycle
+      - integration
       - bats
       - promote-candidate
 
@@ -71,7 +71,7 @@ jobs:
       - put: bosh-cpi-dev-artifacts
         params: {file: candidate/*.tgz}
 
-  - name: lifecycle
+  - name: integration
     plan:
       - aggregate:
         - {trigger: true,  passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
@@ -82,7 +82,7 @@ jobs:
           acquire: true
 
       - task: test
-        file: bosh-cpi-src/ci/tasks/run-lifecycle.yml
+        file: bosh-cpi-src/ci/tasks/run-integration.yml
         params:
           AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
           AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
@@ -163,8 +163,8 @@ jobs:
   - name: promote-candidate
     plan:
       - aggregate:
-        - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts, passed: [lifecycle, bats]}
-        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in, passed: [lifecycle, bats]}
+        - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts, passed: [integration, bats]}
+        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in, passed: [integration, bats]}
         - {trigger: false, get: release-version-semver, params: {bump: major}}
 
       - task: promote
