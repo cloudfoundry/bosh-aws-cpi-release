@@ -48,6 +48,7 @@ resource "aws_route_table_association" "a" {
 resource "aws_subnet" "default" {
   vpc_id = "${aws_vpc.default.id}"
   cidr_block = "${aws_vpc.default.cidr_block}"
+  depends_on = ["aws_internet_gateway.default"]
 
   tags {
     Name = "${var.env_name}"

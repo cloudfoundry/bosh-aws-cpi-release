@@ -17,9 +17,8 @@ jobs:
 
       - put: terraform
         params:
-          terraform:
-            source: bosh-cpi-src/ci/assets/terraform
-            delete_on_failure: true
+          terraform_source: bosh-cpi-src/ci/assets/terraform
+          delete_on_failure: true
           generate_random_name: true
 
       - put: environment
@@ -44,8 +43,7 @@ jobs:
 
       - put: terraform
         params:
-          terraform:
-            source: bosh-cpi-src/ci/assets/terraform
+          terraform_source: bosh-cpi-src/ci/assets/terraform
           env_name_file: environment/name
           action: destroy
         get_params:
@@ -243,11 +241,10 @@ resources:
         secret_access_key: {{aws_secret_key__primary}}
         bucket:            {{terraform_bucket}}
         bucket_path:       terraform-state
-      terraform:
-        vars:
-          access_key: {{aws_access_key__primary}}
-          secret_key: {{aws_secret_key__primary}}
-          region:     {{aws_region__primary}}
+      vars:
+        access_key: {{aws_access_key__primary}}
+        secret_key: {{aws_secret_key__primary}}
+        region:     {{aws_region__primary}}
 
   - name: bosh-init
     type: s3
