@@ -2,8 +2,6 @@
 
 set -e
 
-source bosh-cpi-src/ci/tasks/utils.sh
-
 : ${AWS_ACCESS_KEY_ID:?}
 : ${AWS_SECRET_ACCESS_KEY:?}
 : ${AWS_DEFAULT_REGION:?}

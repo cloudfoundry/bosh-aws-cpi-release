@@ -5,7 +5,6 @@ set -e -x
 : ${AWS_ACCESS_KEY_ID:?}
 : ${AWS_SECRET_ACCESS_KEY:?}
 
-source bosh-cpi-src/ci/tasks/utils.sh
 source /etc/profile.d/chruby.sh
 chruby 2.1.2
 
