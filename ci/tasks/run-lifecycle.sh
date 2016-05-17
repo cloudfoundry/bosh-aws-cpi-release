@@ -7,13 +7,19 @@ set -e
 : ${AWS_DEFAULT_REGION:?}
 : ${AWS_PUBLIC_KEY_NAME:?}
 
+# NOTE: To run with specific line numbers, set:
+# RSPEC_ARGUMENTS="spec/integration/lifecycle_spec.rb:mm:nn"
+: ${RSPEC_ARGUMENTS:=spec/integration}
+: ${METADATA_FILE:=environment/metadata}
+
 release_dir="$( cd $(dirname $0) && cd ../.. && pwd )"
 
-source ${release_dir}/ci/tasks/utils.sh
-source /etc/profile.d/chruby.sh
-chruby 2.1.2
+if [ -f "/etc/profile.d/chruby.sh" ] ; then
+  source /etc/profile.d/chruby.sh
+  chruby 2.1.2
+fi
 
-metadata=$(cat environment/metadata)
+metadata=$(cat ${METADATA_FILE})
 
 export BOSH_AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
 export BOSH_AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
@@ -28,5 +34,5 @@ export BOSH_CLI_SILENCE_SLOW_LOAD_WARNING=true
 
 pushd ${release_dir}/src/bosh_aws_cpi > /dev/null
   bundle install
-  bundle exec rspec spec/integration/lifecycle_spec.rb
+  bundle exec rspec ${RSPEC_ARGUMENTS}
 popd > /dev/null
