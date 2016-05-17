@@ -4,14 +4,13 @@ module Bosh::AwsCloud
   describe 'BlockDeviceManager' do
     let(:logger) { Logger.new('/dev/null') }
 
-    describe '#mapping' do
+    describe '#mappings' do
 
       context 'when omitting the ephemeral disk' do
 
         context 'when instance type has instance storage' do
-
           context 'when raw_instance_storage is false' do
-            it 'uses instance storage' do
+            it 'returns an ebs volume with size determined by the instance_type' do
               manager = BlockDeviceManager.new(logger)
               manager.resource_pool = {
                 'key_name' => 'bar',
@@ -23,15 +22,18 @@ module Bosh::AwsCloud
               actual_output = manager.mappings
               expected_output = [{
                 device_name: '/dev/sdb',
-                virtual_name: 'ephemeral0',
+                ebs: {
+                  volume_size: 40,
+                  volume_type: 'standard',
+                  delete_on_termination: true,
+                }
               }]
               expect(actual_output).to eq(expected_output)
             end
           end
 
           context 'when raw_instance_storage is true' do
-
-            it 'returns an 10GB ebs volume and disks for each instance storage disk' do
+            it 'returns an ebs volume with size 10GB and disks for each instance storage disk' do
               manager = BlockDeviceManager.new(logger)
               manager.resource_pool = {
                 'key_name' => 'bar',
@@ -143,79 +145,94 @@ module Bosh::AwsCloud
       end
 
       context 'when specifying the ephemeral disk size' do
-        context 'when instance type has instance storage' do
-          context 'when raw_instance_storage is false' do
+        it 'returns an ebs with the specified ephemeral disk size' do
+          manager = BlockDeviceManager.new(logger)
+          manager.resource_pool = {
+            'key_name' => 'bar',
+            'availability_zone' => 'us-east-1a',
+            'instance_type' => 'm3.xlarge',
+            'raw_instance_storage' => false,
+            'ephemeral_disk' => {
+              'size' => 4000
+            }
+          }
 
-            it 'returns ebs storage when specified ephemeral disk size is bigger than instance storage' do
-              manager = BlockDeviceManager.new(logger)
-              manager.resource_pool = {
-                'key_name' => 'bar',
-                'availability_zone' => 'us-east-1a',
-                'instance_type' => 'm3.xlarge',
-                'raw_instance_storage' => false,
-                'ephemeral_disk' => {
-                  'size' => 51200
-                }
+          actual_output = manager.mappings
+          expected_output = [{
+            device_name: '/dev/sdb',
+            ebs: {
+              volume_size: 4,
+              volume_type: 'standard',
+              delete_on_termination: true,
+            }
+          }]
+          expect(actual_output).to eq(expected_output)
+        end
+
+        context 'when raw_instance_storage is true' do
+          it 'returns disks for new ebs volume and instance storage disks' do
+            manager = BlockDeviceManager.new(logger)
+            manager.resource_pool = {
+              'key_name' => 'bar',
+              'availability_zone' => 'us-east-1a',
+              # this instance type has 2 instance storage disks
+              'instance_type' => 'm3.xlarge',
+              'raw_instance_storage' => true,
+              'ephemeral_disk' => {
+                'size' => 4000
               }
+            }
 
-              actual_output = manager.mappings
-              expected_output = [{
-                device_name: '/dev/sdb',
-                ebs: {
-                  volume_size: 50,
-                  volume_type: 'standard',
-                  delete_on_termination: true,
-                }
-              }]
-              expect(actual_output).to eq(expected_output)
-            end
-
-            it 'returns instance storage when specified ephemeral disk size is not bigger than instance storage' do
-              manager = BlockDeviceManager.new(logger)
-              manager.resource_pool = {
-                'key_name' => 'bar',
-                'availability_zone' => 'us-east-1a',
-                'instance_type' => 'm3.xlarge',
-                'raw_instance_storage' => false,
-                'ephemeral_disk' => {
-                  'size' => 4000
-                }
+            expected_disks = []
+            instance_storage_disks = [
+              {
+                virtual_name: 'ephemeral0',
+                device_name: '/dev/xvdba',
+              },
+              {
+                virtual_name: 'ephemeral1',
+                device_name: '/dev/xvdbb',
               }
+            ]
+            expected_disks += instance_storage_disks
 
-              actual_output = manager.mappings
-              expected_output = [{
-                device_name: '/dev/sdb',
-                virtual_name: 'ephemeral0'
-              }]
-              expect(actual_output).to eq(expected_output)
-            end
+            ebs_disk = {
+              device_name: '/dev/sdb',
+              ebs: {
+                volume_size: 4,
+                volume_type: 'standard',
+                delete_on_termination: true,
+              }
+            }
+            expected_disks << ebs_disk
 
+            actual_disks = manager.mappings
+            expect(actual_disks).to match_array(expected_disks)
           end
 
-          context 'when raw_instance_storage is true' do
-
-            it 'returns disks for new ebs volume and instance storage disks' do
+          context 'when the instance is paravirtual' do
+            it 'returns disks for new ebs volume and instance storage disks under /dev/sd[c-z]' do
               manager = BlockDeviceManager.new(logger)
               manager.resource_pool = {
                 'key_name' => 'bar',
                 'availability_zone' => 'us-east-1a',
-                # this instance type has 2 instance storage disks
                 'instance_type' => 'm3.xlarge',
                 'raw_instance_storage' => true,
                 'ephemeral_disk' => {
                   'size' => 4000
                 }
               }
+              manager.virtualization_type = :paravirtual
 
               expected_disks = []
               instance_storage_disks = [
                 {
                   virtual_name: 'ephemeral0',
-                  device_name: '/dev/xvdba',
+                  device_name: '/dev/sdc'
                 },
                 {
                   virtual_name: 'ephemeral1',
-                  device_name: '/dev/xvdbb',
+                  device_name: '/dev/sdd',
                 }
               ]
               expected_disks += instance_storage_disks
@@ -233,75 +250,7 @@ module Bosh::AwsCloud
               actual_disks = manager.mappings
               expect(actual_disks).to match_array(expected_disks)
             end
-
-            context 'when the instance is paravirtual' do
-              it 'returns disks for new ebs volume and instance storage disks under /dev/sd[c-z]' do
-                manager = BlockDeviceManager.new(logger)
-                manager.resource_pool = {
-                  'key_name' => 'bar',
-                  'availability_zone' => 'us-east-1a',
-                  'instance_type' => 'm3.xlarge',
-                  'raw_instance_storage' => true,
-                  'ephemeral_disk' => {
-                    'size' => 4000
-                  }
-                }
-                manager.virtualization_type = :paravirtual
-
-                expected_disks = []
-                instance_storage_disks = [
-                  {
-                    virtual_name: 'ephemeral0',
-                    device_name: '/dev/sdc'
-                  },
-                  {
-                    virtual_name: 'ephemeral1',
-                    device_name: '/dev/sdd',
-                  }
-                ]
-                expected_disks += instance_storage_disks
-
-                ebs_disk = {
-                  device_name: '/dev/sdb',
-                  ebs: {
-                    volume_size: 4,
-                    volume_type: 'standard',
-                    delete_on_termination: true,
-                  }
-                }
-                expected_disks << ebs_disk
-
-                actual_disks = manager.mappings
-                expect(actual_disks).to match_array(expected_disks)
-              end
-            end
           end
-
-          context 'when instance type does not have instance storage' do
-            it 'uses ebs storage for ephemeral disk' do
-              manager = BlockDeviceManager.new(logger)
-              manager.resource_pool = {
-                'key_name' => 'bar',
-                'availability_zone' => 'us-east-1a',
-                'instance_type' => 't2.small',
-                'ephemeral_disk' => {
-                  'size' => 6000
-                }
-              }
-
-              actual_output = manager.mappings
-              expected_output = [{
-                device_name: '/dev/sdb',
-                ebs: {
-                  volume_size: 6,
-                  volume_type: 'standard',
-                  delete_on_termination: true,
-                }
-              }]
-              expect(actual_output).to eq(expected_output)
-            end
-          end
-
         end
       end
 
@@ -395,6 +344,93 @@ module Bosh::AwsCloud
         end
       end
 
+      context 'when specifying use_instance_storage' do
+        context 'when the instance_type has instance storage' do
+          it 'returns instance storage disks as ephemeral disk' do
+            manager = BlockDeviceManager.new(logger)
+            manager.resource_pool = {
+              'key_name' => 'bar',
+              'availability_zone' => 'us-east-1a',
+              'instance_type' => 'm3.xlarge',
+              'ephemeral_disk' => {
+                'use_instance_storage' => true
+              }
+            }
+
+            expected_disks = []
+            instance_storage_disks = [
+              {
+                virtual_name: 'ephemeral0',
+                device_name: '/dev/sdb',
+              }
+            ]
+            expected_disks += instance_storage_disks
+
+            actual_disks = manager.mappings
+            expect(actual_disks).to eq(expected_disks)
+          end
+        end
+
+        context 'when the instance_type has NO instance storage' do
+          it 'raises an error' do
+            manager = BlockDeviceManager.new(logger)
+            manager.resource_pool = {
+              'key_name' => 'bar',
+              'availability_zone' => 'us-east-1a',
+              'instance_type' => 't2.small',
+              'ephemeral_disk' => {
+                'use_instance_storage' => true
+              }
+            }
+
+            expect{ manager.mappings }.to raise_error(
+              Bosh::Clouds::CloudError,
+              "use_instance_storage requested for instance type 't2.small' that does not have instance storage"
+            )
+          end
+        end
+
+        context 'when any other properties are set for ephemeral_disk' do
+          it 'raises an error' do
+            manager = BlockDeviceManager.new(logger)
+            manager.resource_pool = {
+              'key_name' => 'bar',
+              'availability_zone' => 'us-east-1a',
+              'instance_type' => 'm3.medium',
+              'ephemeral_disk' => {
+                'use_instance_storage' => true,
+                'size' => 512
+              }
+            }
+
+            expect{ manager.mappings }.to raise_error(
+              Bosh::Clouds::CloudError,
+              "use_instance_storage cannot be combined with additional ephemeral_disk properties"
+            )
+          end
+        end
+
+        context 'when raw_instance_storage is also set' do
+          it 'raises an error' do
+            manager = BlockDeviceManager.new(logger)
+            manager.resource_pool = {
+              'key_name' => 'bar',
+              'availability_zone' => 'us-east-1a',
+              'instance_type' => 'm3.medium',
+              'ephemeral_disk' => {
+                'use_instance_storage' => true
+              },
+              'raw_instance_storage' => true
+            }
+
+            expect{ manager.mappings }.to raise_error(
+              Bosh::Clouds::CloudError,
+              "ephemeral_disk.use_instance_storage and raw_instance_storage cannot both be true"
+            )
+          end
+        end
+      end
+
       context 'when root disk is specified' do
         it 'should throw error if root disk size not specified' do
           manager = BlockDeviceManager.new(logger)
@@ -425,13 +461,16 @@ module Bosh::AwsCloud
           }
 
           expected_disks = []
-          instance_storage_disks = [
-            {
-              virtual_name: 'ephemeral0',
-              device_name: '/dev/sdb',
+
+          ephemeral_disks = [{
+            device_name: '/dev/sdb',
+            ebs: {
+              volume_size: 4,
+              volume_type: 'standard',
+              delete_on_termination: true,
             }
-          ]
-          expected_disks += instance_storage_disks
+          }]
+          expected_disks += ephemeral_disks
 
           root_disk = {
             device_name: '/dev/xvda',
@@ -479,13 +518,16 @@ module Bosh::AwsCloud
               }
             }
             expected_disks = []
-            instance_storage_disks = [
-              {
-                virtual_name: 'ephemeral0',
-                device_name: '/dev/sdb',
+
+            ephemeral_disks = [{
+              device_name: '/dev/sdb',
+              ebs: {
+                volume_size: 4,
+                volume_type: 'standard',
+                delete_on_termination: true,
               }
-            ]
-            expected_disks += instance_storage_disks
+            }]
+            expected_disks += ephemeral_disks
 
             root_disk = {
               device_name: '/dev/xvda',
@@ -516,13 +558,16 @@ module Bosh::AwsCloud
           manager.virtualization_type = :paravirtual
 
           expected_disks = []
-          instance_storage_disks = [
-            {
-              virtual_name: 'ephemeral0',
-              device_name: '/dev/sdb',
+
+          ephemeral_disks = [{
+            device_name: '/dev/sdb',
+            ebs: {
+              volume_size: 4,
+              volume_type: 'standard',
+              delete_on_termination: true,
             }
-          ]
-          expected_disks += instance_storage_disks
+          }]
+          expected_disks += ephemeral_disks
 
           root_disk = {
             device_name: '/dev/sda',

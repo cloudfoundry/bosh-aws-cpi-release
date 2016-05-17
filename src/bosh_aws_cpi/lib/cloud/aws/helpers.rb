@@ -1,15 +1,6 @@
 module Bosh::AwsCloud
 
   module Helpers
-    def default_ephemeral_disk_mapping
-       [
-         {
-           :device_name => '/dev/sdb',
-           :virtual_name => 'ephemeral0',
-         },
-       ]
-    end
-
     ##
     # Raises CloudError exception
     #

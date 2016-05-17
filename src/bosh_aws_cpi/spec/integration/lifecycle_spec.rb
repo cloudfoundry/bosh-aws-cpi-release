@@ -308,6 +308,33 @@ describe Bosh::AwsCloud::Cloud do
           expect(ephemeral_volume.size).to eq(4)
           expect(ephemeral_volume.type).to eq('io1')
           expect(ephemeral_volume.iops).to eq(100)
+
+          block_device_mapping = cpi.ec2_client.instances[instance_id].send(:block_device_mapping)
+          ebs_ephemeral = block_device_mapping.any? {|entry| entry[:device_name] == '/dev/sdb'}
+
+          expect(ebs_ephemeral).to eq(true)
+        end
+      end
+    end
+
+    context 'when ephemeral_disk.use_instance_storage is true' do
+      let(:resource_pool) do
+        {
+          'instance_type' => instance_type,
+          'availability_zone' => @subnet_zone,
+          'ephemeral_disk' => {
+            'use_instance_storage' => true
+          }
+        }
+      end
+      let(:instance_type) { instance_type_with_ephemeral }
+
+      it 'should not contain a block_device_mapping for /dev/sdb' do
+        vm_lifecycle do |instance_id|
+          block_device_mapping = cpi.ec2_client.instances[instance_id].send(:block_device_mapping)
+          ebs_ephemeral = block_device_mapping.any? {|entry| entry[:device_name] == '/dev/sdb'}
+
+          expect(ebs_ephemeral).to eq(false)
         end
       end
     end

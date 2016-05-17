@@ -118,7 +118,7 @@ module Bosh::AwsCloud
         :architecture => architecture,
       )
 
-      params[:block_device_mappings].push(*default_ephemeral_disk_mapping)
+      params[:block_device_mappings].push(BlockDeviceManager.default_instance_storage_disk_mapping)
 
       params
     end

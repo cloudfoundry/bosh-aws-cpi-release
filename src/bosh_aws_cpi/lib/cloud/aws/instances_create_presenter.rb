@@ -15,7 +15,7 @@ module Bosh
 
         ebs[:iops] = volume_properties.iops if volume_properties.iops
 
-        [{device_name: '/dev/sdb', ebs: ebs}]
+        {device_name: '/dev/sdb', ebs: ebs}
       end
 
       private
@@ -26,4 +26,3 @@ module Bosh
     end
   end
 end
-
