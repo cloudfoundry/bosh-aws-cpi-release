@@ -3,7 +3,7 @@ module Bosh
     class VolumeProperties
       include Helpers
 
-      attr_reader :size, :type, :iops, :az, :encrypted
+      attr_reader :size, :az, :iops, :type, :encrypted
 
       def initialize(options)
         @size = options[:size] || 0
@@ -25,6 +25,35 @@ module Bosh
             cloud_error("AWS CPI supports only gp2, io1, or standard disk type, received: #{@type}")
         end
         cloud_error("AWS CPI disk size must be greater than 0") if @size <= 0
+      end
+
+      def disk_mapping
+        mapping = {
+          volume_size: size_in_gb,
+          volume_type: @type,
+          delete_on_termination: true,
+        }
+
+        mapping[:iops] = @iops if @iops
+        { device_name: '/dev/sdb', ebs: mapping }
+      end
+
+      def volume_options
+        options = {
+          size: size_in_gb,
+          availability_zone: @az,
+          volume_type: @type,
+          encrypted: @encrypted
+        }
+
+        options[:iops] = @iops if @iops
+        options
+      end
+
+      private
+
+      def size_in_gb
+        (@size / 1024.0).ceil
       end
     end
   end

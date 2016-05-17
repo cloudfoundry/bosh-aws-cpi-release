@@ -208,9 +208,7 @@ module Bosh::AwsCloud
         )
         volume_properties.validate!
 
-        # if the disk is created for an instance, use the same availability zone as they must match
-        with_volume_options = VolumesCreatePresenter.new(volume_properties).present
-        volume = @ec2_client.volumes.create(with_volume_options)
+        volume = @ec2_client.volumes.create(volume_properties.volume_options)
 
         logger.info("Creating volume '#{volume.id}'")
         ResourceWait.for_volume(volume: volume, state: :available)

@@ -92,8 +92,7 @@ module Bosh::AwsCloud
         )
 
         volume_properties.validate!
-
-        result = InstancesCreatePresenter.new(volume_properties).present
+        result = volume_properties.disk_mapping
       end
 
       result[:bosh_type] = 'ephemeral'
