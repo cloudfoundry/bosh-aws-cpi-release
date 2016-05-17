@@ -56,6 +56,17 @@ describe Bosh::AwsCloud::Cloud do
       )
     end
 
+    before(:all) do
+      @original_cert_file = ENV['BOSH_CA_CERT_FILE']
+    end
+
+    after(:all) do
+      if @original_cert_file.nil?
+        ENV.delete('BOSH_CA_CERT_FILE')
+      else
+        ENV['BOSH_CA_CERT_FILE'] = @original_cert_file
+      end
+    end
 
     before(:each) { ENV.delete('BOSH_CA_CERT_FILE') }
 
