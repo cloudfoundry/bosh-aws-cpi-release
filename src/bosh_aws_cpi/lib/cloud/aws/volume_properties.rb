@@ -35,6 +35,8 @@ module Bosh
         }
 
         mapping[:iops] = @iops if @iops
+        mapping[:encrypted] = @encrypted if @encrypted
+
         { device_name: '/dev/sdb', ebs: mapping }
       end
 

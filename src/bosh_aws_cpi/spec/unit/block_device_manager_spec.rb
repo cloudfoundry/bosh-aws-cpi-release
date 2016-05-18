@@ -344,6 +344,33 @@ module Bosh::AwsCloud
         end
       end
 
+      context 'when specifying encrypted' do
+        it 'will add it to the ebs configuration' do
+          manager = BlockDeviceManager.new(logger)
+          manager.resource_pool = {
+            'key_name' => 'bar',
+            'availability_zone' => 'us-east-1a',
+            'instance_type' => 'm3.xlarge',
+            'ephemeral_disk' => {
+              'size' => 4000,
+              'encrypted' => true
+            }
+          }
+
+          actual_output = manager.mappings
+          expected_output = [{
+            device_name: '/dev/sdb',
+            ebs: {
+              volume_size: 4,
+              volume_type: 'standard',
+              delete_on_termination: true,
+              encrypted: true
+            }
+          }]
+          expect(actual_output).to eq(expected_output)
+        end
+      end
+
       context 'when specifying use_instance_storage' do
         context 'when the instance_type has instance storage' do
           it 'returns instance storage disks as ephemeral disk' do

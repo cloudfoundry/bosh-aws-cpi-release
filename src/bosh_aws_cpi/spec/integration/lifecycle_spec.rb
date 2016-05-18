@@ -309,32 +309,64 @@ describe Bosh::AwsCloud::Cloud do
           expect(ephemeral_volume.type).to eq('io1')
           expect(ephemeral_volume.iops).to eq(100)
 
-          block_device_mapping = cpi.ec2_client.instances[instance_id].send(:block_device_mapping)
-          ebs_ephemeral = block_device_mapping.any? {|entry| entry[:device_name] == '/dev/sdb'}
-
-          expect(ebs_ephemeral).to eq(true)
+          expect(ephemeral_volume.encrypted).to eq(false)
         end
       end
-    end
 
-    context 'when ephemeral_disk.use_instance_storage is true' do
-      let(:resource_pool) do
-        {
-          'instance_type' => instance_type,
-          'availability_zone' => @subnet_zone,
-          'ephemeral_disk' => {
-            'use_instance_storage' => true
+      context 'when ephemeral_disk.use_instance_storage is true' do
+        let(:resource_pool) do
+          {
+            'instance_type' => instance_type,
+            'availability_zone' => @subnet_zone,
+            'ephemeral_disk' => {
+              'use_instance_storage' => true
+            }
           }
-        }
+        end
+        let(:instance_type) { instance_type_with_ephemeral }
+
+        it 'should not contain a block_device_mapping for /dev/sdb' do
+          vm_lifecycle do |instance_id|
+            block_device_mapping = cpi.ec2_client.instances[instance_id].block_devices
+            ebs_ephemeral = block_device_mapping.any? {|entry| entry[:device_name] == '/dev/sdb'}
+
+            expect(ebs_ephemeral).to eq(false)
+          end
+        end
       end
-      let(:instance_type) { instance_type_with_ephemeral }
 
-      it 'should not contain a block_device_mapping for /dev/sdb' do
-        vm_lifecycle do |instance_id|
-          block_device_mapping = cpi.ec2_client.instances[instance_id].send(:block_device_mapping)
-          ebs_ephemeral = block_device_mapping.any? {|entry| entry[:device_name] == '/dev/sdb'}
+      context 'when encrypted is true' do
+        let(:resource_pool) do
+          {
+            'instance_type' => instance_type,
+            'availability_zone' => @subnet_zone,
+            'ephemeral_disk' => {
+              'size' => 4 * 1024,
+              'type' => 'io1',
+              'iops' => 100,
+              'encrypted' => true
+            }
+          }
+        end
+        let(:instance_type) { instance_type_without_ephemeral }
 
-          expect(ebs_ephemeral).to eq(false)
+        it 'creates an encrypted ephemeral disk' do
+          vm_lifecycle do |instance_id|
+            block_device_mapping = cpi.ec2_client.instances[instance_id].block_devices
+            ephemeral_block_device = block_device_mapping.detect {|entry| entry[:device_name] == '/dev/sdb'}
+
+            ephemeral_disk = cpi.ec2_client.volumes[ephemeral_block_device[:ebs][:volume_id]]
+
+            expect(ephemeral_disk.encrypted).to eq(true)
+          end
+        end
+
+        context 'when the instance_type does not support encryption' do
+          let(:instance_type) { 't1.micro' }
+          let(:ami) { 'ami-3ec82656' }
+          it 'raises an exception' do
+            expect { vm_lifecycle }.to raise_error
+          end
         end
       end
     end

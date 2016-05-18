@@ -89,6 +89,7 @@ module Bosh::AwsCloud
           size: disk_size,
           type: disk_options['type'],
           iops: disk_options['iops'],
+          encrypted: disk_options.fetch('encrypted', false)
         )
 
         volume_properties.validate!
