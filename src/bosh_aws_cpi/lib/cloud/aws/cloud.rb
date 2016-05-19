@@ -72,7 +72,8 @@ module Bosh::AwsCloud
 
       elb = AWS::ELB.new(@aws_params)
 
-      instance_param_mapper = InstanceParamMapper.new
+      security_group_mapper = SecurityGroupMapper.new(@ec2_client)
+      instance_param_mapper = InstanceParamMapper.new(security_group_mapper)
       block_device_manager = BlockDeviceManager.new(@logger)
       @instance_manager = InstanceManager.new(@ec2_client, registry, elb, instance_param_mapper, block_device_manager, @logger)
 

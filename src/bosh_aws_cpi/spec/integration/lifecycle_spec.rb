@@ -24,6 +24,7 @@ describe Bosh::AwsCloud::Cloud do
   let(:network_spec) { {} }
   let(:resource_pool) { { 'instance_type' => instance_type, 'availability_zone' => @subnet_zone } }
   let(:registry) { instance_double(Bosh::Cpi::RegistryClient).as_null_object }
+  let(:security_groups) { get_security_group_ids(@subnet_id) }
 
   before {
     allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
@@ -38,7 +39,7 @@ describe Bosh::AwsCloud::Cloud do
       'aws' => {
         'region' => 'us-east-1',
         'default_key_name' => default_key_name,
-        'default_security_groups' => get_security_group_ids(@subnet_id),
+        'default_security_groups' => security_groups,
         'fast_path_delete' => 'yes',
         'access_key_id' => @access_key_id,
         'secret_access_key' => @secret_access_key,
@@ -129,7 +130,7 @@ describe Bosh::AwsCloud::Cloud do
             'ec2_endpoint' => 'https://ec2.us-east-1.amazonaws.com',
             'elb_endpoint' => 'https://elasticloadbalancing.us-east-1.amazonaws.com',
             'default_key_name' => default_key_name,
-            'default_security_groups' => get_security_group_ids(@subnet_id),
+            'default_security_groups' => security_groups,
             'fast_path_delete' => 'yes',
             'access_key_id' => @access_key_id,
             'secret_access_key' => @secret_access_key,
@@ -504,8 +505,15 @@ describe Bosh::AwsCloud::Cloud do
     it 'can exercise the vm lifecycle' do
       vm_lifecycle
     end
-  end
 
+    context 'with security groups names' do
+      let(:security_groups) { get_security_group_names(@subnet_id) }
+
+      it 'can exercise the vm lifecycle' do
+        vm_lifecycle
+      end
+    end
+  end
 
   def vm_lifecycle(options = {})
     vm_disks = options[:disks] || disks
@@ -540,6 +548,15 @@ describe Bosh::AwsCloud::Cloud do
     )
     security_groups = ec2.subnets[subnet_id].vpc.security_groups
     security_groups.map { |sg| sg.id }
+  end
+
+  def get_security_group_names(subnet_id)
+    ec2 = AWS::EC2.new(
+      access_key_id:     @access_key_id,
+      secret_access_key: @secret_access_key,
+    )
+    security_groups = ec2.subnets[subnet_id].vpc.security_groups
+    security_groups.map { |sg| sg.name }
   end
 
   def get_ami(ami_id)

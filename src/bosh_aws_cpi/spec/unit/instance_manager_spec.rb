@@ -113,7 +113,7 @@ module Bosh::AwsCloud
           allow(ec2).to receive(:client).and_return(aws_client)
 
           # need to translate security group names to security group ids
-          sg1 = instance_double('AWS::EC2::SecurityGroup', security_group_id:'sg-baz-1234')
+          sg1 = instance_double('AWS::EC2::SecurityGroup', id:'sg-baz-1234')
           allow(sg1).to receive(:name).and_return('baz')
           allow(ec2).to receive(:security_groups).and_return([sg1])
 

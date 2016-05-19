@@ -1,7 +1,31 @@
 require "spec_helper"
 
 module Bosh::AwsCloud
-  describe 'InstanceParamMapper' do
+  describe InstanceParamMapper do
+    let(:instance_param_mapper) { InstanceParamMapper.new(security_group_mapper) }
+    let(:security_group_mapper) { SecurityGroupMapper.new(ec2_client) }
+    let(:ec2_client) { instance_double(AWS::EC2) }
+    let(:security_groups) do
+      [
+        instance_double(AWS::EC2::SecurityGroup, name: 'sg-1-name', id: 'sg-11111111'),
+        instance_double(AWS::EC2::SecurityGroup, name: 'sg-2-name', id: 'sg-22222222'),
+        instance_double(AWS::EC2::SecurityGroup, name: 'sg-3-name', id: 'sg-33333333'),
+        instance_double(AWS::EC2::SecurityGroup, name: 'sg-4-name', id: 'sg-44444444'),
+        instance_double(AWS::EC2::SecurityGroup, name: 'sg-5-name', id: 'sg-55555555'),
+        instance_double(AWS::EC2::SecurityGroup, name: 'sg-6-name', id: 'sg-66666666'),
+        instance_double(AWS::EC2::SecurityGroup, name: 'sg-7-name', id: 'sg-77777777')
+      ]
+    end
+    let(:shared_subnet) do
+      instance_double(AWS::EC2::Subnet,
+        vpc: instance_double(AWS::EC2::VPC, security_groups: security_groups))
+    end
+    let(:subnets) { instance_double(AWS::EC2::SubnetCollection, :[] => shared_subnet) }
+
+    before do
+      allow(ec2_client).to receive(:subnets).and_return(subnets)
+    end
+
     describe '#instance_params' do
 
       context 'when stemcell_id is provided' do
@@ -92,17 +116,25 @@ module Bosh::AwsCloud
       end
 
       describe 'Security Group options' do
-        context 'when security_groups is provided by defaults (only) as ids' do
+        context 'when security_groups is provided by defaults (only)' do
           let(:input) do
             {
-              defaults: { 'default_security_groups' => ["sg-67890123", "sg-78901234"] }
+              networks_spec: {
+                "net1" => {
+                  "cloud_properties" => {
+                    "subnet" => "dynamic-subnet",
+                  }
+                },
+              },
+              defaults: { 'default_security_groups' => ["sg-11111111", "sg-2-name"] }
             }
           end
           let(:output) do
             {
               network_interfaces: [{
                 device_index: 0,
-                groups: ["sg-67890123", "sg-78901234"]
+                subnet_id: "dynamic-subnet",
+                groups: ["sg-11111111", "sg-22222222"]
               }]
             }
           end
@@ -110,21 +142,32 @@ module Bosh::AwsCloud
           it 'maps network_interfaces.first[:groups] from defaults' do expect(mapping(input)).to eq(output) end
         end
 
-        context 'when security_groups is provided by defaults and networks_spec as ids' do
+        context 'when security_groups is provided by defaults and networks_spec' do
           let(:input) do
             {
               networks_spec: {
-                "net1" => {"cloud_properties" => {"security_groups" => ["sg-34567890", "sg-45678901"]}},
-                "net2" => {"cloud_properties" => {"security_groups" => "sg-56789012"}}
+                "net1" => {
+                  "cloud_properties" => {
+                    "security_groups" => ["sg-11111111", "sg-2-name"],
+                    "subnet" => "dynamic-subnet",
+                  }
+                },
+                "net2" => {
+                  "cloud_properties" => {
+                    "security_groups" => "sg-33333333",
+                    "subnet" => "dynamic-subnet",
+                  }
+                }
               },
-              defaults: { 'default_security_groups' => ["sg-67890123", "sg-78901234"] }
+              defaults: { 'default_security_groups' => ["sg-44444444", "sg-5-name"] }
             }
           end
           let(:output) do
             {
               network_interfaces: [{
                 device_index: 0,
-                groups: ["sg-34567890", "sg-45678901", "sg-56789012"]
+                subnet_id: "dynamic-subnet",
+                groups: ["sg-11111111", "sg-22222222", "sg-33333333"]
               }]
             }
           end
@@ -132,94 +175,38 @@ module Bosh::AwsCloud
           it 'maps network_interfaces.first[:groups] from networks_spec' do expect(mapping(input)).to eq(output) end
         end
 
-        context 'when security_groups is provided by defaults, networks_spec, and resource_pool as ids' do
+        context 'when security_groups is provided by defaults, networks_spec, and resource_pool' do
           let(:input) do
             {
-              resource_pool: { 'security_groups' => ["sg-12345678", "sg-23456789"] },
+              resource_pool: { 'security_groups' => ["sg-11111111", "sg-2-name"] },
               networks_spec: {
-                "net1" => {"cloud_properties" => {"security_groups" => ["sg-34567890", "sg-45678901"]}},
-                "net2" => {"cloud_properties" => {"security_groups" => "sg-56789012"}}
+                "net1" => {
+                  "cloud_properties" => {
+                    "security_groups" => ["sg-33333333", "sg-4-name"],
+                    "subnet" => "dynamic-subnet",
+                  }
+                },
+                "net2" => {
+                  "cloud_properties" => {
+                    "security_groups" => "sg-55555555",
+                    "subnet" => "dynamic-subnet",
+                  }
+                }
               },
-              defaults: { 'default_security_groups' => ["sg-67890123", "sg-78901234"] }
+              defaults: { 'default_security_groups' => ["sg-6-name", "sg-77777777"] }
             }
           end
           let(:output) do
             {
               network_interfaces: [{
                 device_index: 0,
-                groups: ["sg-12345678", "sg-23456789"]
+                subnet_id: "dynamic-subnet",
+                groups: ["sg-11111111", "sg-22222222"]
               }]
             }
           end
 
           it 'maps network_interfaces.first[:groups] from resource_pool' do expect(mapping(input)).to eq(output) end
-        end
-
-        context 'when security_groups is provided by defaults (only) as names' do
-          let(:input) do
-            {
-              defaults: { 'default_security_groups' => ["sg-6-name", "sg-7-name"] },
-              sg_name_mapper: sg_name_mapper
-            }
-          end
-          let(:output) do
-            {
-              network_interfaces: [{
-                device_index: 0,
-                groups: ["sg-6-id", "sg-7-id"]
-              }]
-            }
-          end
-
-          it 'maps security_groups from defaults' do expect(mapping(input)).to eq(output) end
-        end
-
-        context 'when security_groups is provided by defaults and networks_spec as names' do
-          let(:input) do
-            {
-              networks_spec: {
-                "net1" => {"cloud_properties" => {"security_groups" => ["sg-3-name", "sg-4-name"]}},
-                "net2" => {"cloud_properties" => {"security_groups" => "sg-5-name"}}
-              },
-              defaults: { 'default_security_groups' => ["sg-6-name", "sg-7-name"] },
-              sg_name_mapper: sg_name_mapper
-            }
-          end
-
-          let(:output) do
-            {
-              network_interfaces: [{
-                device_index: 0,
-                groups: ["sg-3-id", "sg-4-id", "sg-5-id"]
-              }]
-            }
-          end
-
-          it 'maps security_groups from networks_spec' do expect(mapping(input)).to eq(output) end
-        end
-
-        context 'when security_groups is provided by defaults, networks_spec, and resource_pool as names' do
-          let(:input) do
-            {
-              resource_pool: { 'security_groups' => ["sg-1-name", "sg-2-name"] },
-              networks_spec: {
-                "net1" => {"cloud_properties" => {"security_groups" => ["sg-3-name", "sg-4-name"]}},
-                "net2" => {"cloud_properties" => {"security_groups" => "sg-5-name"}}
-              },
-              defaults: { 'default_security_groups' => ["sg-6-name", "sg-7-name"] },
-              sg_name_mapper: sg_name_mapper
-            }
-          end
-          let(:output) do
-            {
-              network_interfaces: [{
-                device_index: 0,
-                groups: ["sg-1-id", "sg-2-id"]
-              }]
-            }
-          end
-
-          it 'maps security_groups from resource_pool' do expect(mapping(input)).to eq(output) end
         end
       end
 
@@ -549,7 +536,6 @@ module Bosh::AwsCloud
           '\(resource_pool.security_groups or network security_groups or defaults.default_security_groups\)',
           'networks_spec.\[\].cloud_properties.subnet_id'
         ]
-        instance_param_mapper = InstanceParamMapper.new
 
         required_inputs.each do |input_name|
           expect {
@@ -559,25 +545,8 @@ module Bosh::AwsCloud
       end
     end
 
-    describe '#validate_security_groups' do
-      it 'raises an exception if security groups are a mixture of ids and names' do
-        instance_param_mapper = InstanceParamMapper.new
-
-        instance_param_mapper.manifest_params = {
-          resource_pool: {
-            "security_groups" => ["sg-12345678", "named-sg"]
-          },
-        }
-        expect {
-          instance_param_mapper.validate_security_groups
-        }.to raise_error Bosh::Clouds::CloudError, 'security group names and ids can not be used together in security groups'
-      end
-    end
-
     describe '#validate_availability_zone' do
       it 'raises an error when provided AZs do not match' do
-        instance_param_mapper = InstanceParamMapper.new
-
         instance_param_mapper.manifest_params = {
           volume_zones: ["region-1a", "region-1a"],
           resource_pool: {
@@ -601,8 +570,6 @@ module Bosh::AwsCloud
 
     describe '#validate' do
       it 'does not raise an exception on valid input' do
-        instance_param_mapper = InstanceParamMapper.new
-
         instance_param_mapper.manifest_params = {
           stemcell_id: "ami-something",
           resource_pool: {
@@ -625,8 +592,6 @@ module Bosh::AwsCloud
       end
 
       it 'does not raise an exception on valid input and defaults' do
-        instance_param_mapper = InstanceParamMapper.new
-
         instance_param_mapper.manifest_params = {
           stemcell_id: "ami-something",
           resource_pool: {
@@ -654,24 +619,8 @@ module Bosh::AwsCloud
     private
 
     def mapping(input)
-      instance_param_mapper = InstanceParamMapper.new
       instance_param_mapper.manifest_params = input
       instance_params = instance_param_mapper.instance_params
-    end
-
-    def sg_name_mapper
-      Proc.new do |sg_names|
-        id_lookup = {
-          "sg-1-name" => "sg-1-id",
-          "sg-2-name" => "sg-2-id",
-          "sg-3-name" => "sg-3-id",
-          "sg-4-name" => "sg-4-id",
-          "sg-5-name" => "sg-5-id",
-          "sg-6-name" => "sg-6-id",
-          "sg-7-name" => "sg-7-id"
-        }
-        sg_names.map { |name| id_lookup[name] }
-      end
     end
   end
 end

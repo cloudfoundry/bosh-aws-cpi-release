@@ -4,13 +4,13 @@ module Bosh::AwsCloud
   class InstanceParamMapper
     attr_accessor :manifest_params
 
-    def initialize
+    def initialize(security_group_mapper)
       @manifest_params = {}
+      @security_group_mapper = security_group_mapper
     end
 
     def validate
       validate_required_inputs
-      validate_security_groups
       validate_availability_zone
     end
 
@@ -50,18 +50,6 @@ module Bosh::AwsCloud
       end
     end
 
-    def validate_security_groups
-      sg = security_groups
-      unless ( sg.nil? || sg.empty? )
-        is_id = is_security_group_id?(sg.first)
-        sg.drop(1).each do |group|
-          unless is_security_group_id?(group) == is_id
-            raise Bosh::Clouds::CloudError, 'security group names and ids can not be used together in security groups'
-          end
-        end
-      end
-    end
-
     def validate_availability_zone
       # Check to see if provided availability zones match
       availability_zone
@@ -84,11 +72,7 @@ module Bosh::AwsCloud
       placement[:tenancy] = 'dedicated' if resource_pool['tenancy'] == 'dedicated'
       params[:placement] = placement unless placement.empty?
 
-      sg = security_groups
-      if using_security_group_names?(sg)
-        raise Bosh::Clouds::CloudError, 'sg_name_mapper must be provided when using security_group names' unless @manifest_params[:sg_name_mapper]
-        sg = @manifest_params[:sg_name_mapper].call(sg)
-      end
+      sg = @security_group_mapper.map_to_ids(security_groups, subnet_id)
 
       nic = {}
       nic[:groups] = sg unless sg.nil? || sg.empty?
@@ -101,16 +85,6 @@ module Bosh::AwsCloud
     end
 
     private
-
-    def is_security_group_id?(security_group)
-      security_group.start_with?('sg-') && security_group.size == 11
-    end
-
-    def using_security_group_names?(security_groups)
-      return false if security_groups.nil? || security_groups.empty?
-      return false if is_security_group_id?(security_groups.first)
-      true
-    end
 
     def resource_pool
       @manifest_params[:resource_pool] || {}
