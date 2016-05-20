@@ -24,7 +24,7 @@ module Bosh::AwsCloud
     let(:snapshot) { double("snapshot", :id => "snap-xxxxxxxx") }
     let(:image_id) { "ami-a1b2c3d4" }
     let(:image) { double("image", :id => image_id) }
-    let(:ebs_volume) { double("ebs_volume") }
+    let(:device_path) { double("device_path") }
 
     it "should create a real stemcell" do
       creator = described_class.new(region, properties)
@@ -40,7 +40,7 @@ module Bosh::AwsCloud
       expect(volume).to receive(:create_snapshot).and_return(snapshot)
       expect(Bosh::AwsCloud::TagManager).to receive(:tag).with(image, "Name", "stemcell-name 0.7.0")
 
-      creator.create(volume, ebs_volume, "/path/to/image")
+      creator.create(volume, device_path, "/path/to/image")
     end
 
     describe "#image_params" do
@@ -136,7 +136,7 @@ module Bosh::AwsCloud
       let(:creator) do
         creator = described_class.new(region, properties)
         allow(creator).to receive(:image_path).and_return('/path/to/image')
-        allow(creator).to receive(:ebs_volume).and_return('/dev/volume')
+        allow(creator).to receive(:device_path).and_return('/dev/volume')
         creator
       end
 

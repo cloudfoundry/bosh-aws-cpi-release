@@ -4,16 +4,16 @@ module Bosh::AwsCloud
     include Helpers
 
     attr_reader :client, :properties
-    attr_reader :volume, :ebs_volume, :image_path
+    attr_reader :volume, :device_path, :image_path
 
     def initialize(client, properties)
       @client = client
       @properties = properties
     end
 
-    def create(volume, ebs_volume, image_path)
+    def create(volume, device_path, image_path)
       @volume = volume
-      @ebs_volume = ebs_volume
+      @device_path = device_path
       @image_path = image_path
 
       copy_root_image
@@ -32,7 +32,7 @@ module Bosh::AwsCloud
     end
 
     # This method tries to execute the helper script stemcell-copy
-    # as root using sudo, since it needs to write to the ebs_volume.
+    # as root using sudo, since it needs to write to the device_path.
     # If stemcell-copy isn't available, it falls back to writing directly
     # to the device, which is used in the micro bosh deployer.
     # The stemcell-copy script must be in the PATH of the user running
@@ -46,11 +46,11 @@ module Bosh::AwsCloud
         logger.debug("copying stemcell using stemcell-copy script")
         # note that is is a potentially dangerous operation, but as the
         # stemcell-copy script sets PATH to a sane value this is safe
-        command = "sudo -n #{stemcell_copy} #{image_path} #{ebs_volume} 2>&1"
+        command = "sudo -n #{stemcell_copy} #{image_path} #{device_path} 2>&1"
       else
         logger.info("falling back to using included copy stemcell")
         included_stemcell_copy = File.expand_path("../../../../bin/stemcell-copy", __FILE__)
-        command = "sudo -n #{included_stemcell_copy} #{image_path} #{ebs_volume} 2>&1"
+        command = "sudo -n #{included_stemcell_copy} #{image_path} #{device_path} 2>&1"
       end
 
       result = sh(command)

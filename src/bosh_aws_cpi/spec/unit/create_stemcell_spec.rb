@@ -1,5 +1,3 @@
-# Copyright (c) 2009-2012 VMware, Inc.
-
 require "spec_helper"
 
 describe Bosh::AwsCloud::Cloud do
@@ -60,7 +58,7 @@ describe Bosh::AwsCloud::Cloud do
 
         expect(cloud).to receive(:create_disk).with(2048, {}, "i-xxxxxxxx").and_return("vol-xxxxxxxx")
         expect(cloud).to receive(:attach_ebs_volume).with(instance, volume).and_return("/dev/sdh")
-        expect(cloud).to receive(:find_ebs_device).with("/dev/sdh").and_return("ebs")
+        expect(cloud).to receive(:find_device_path_by_name).with("/dev/sdh").and_return("ebs")
 
         expect(creator).to receive(:create).with(volume, "ebs", "/tmp/foo").and_return(stemcell)
 
@@ -88,7 +86,7 @@ describe Bosh::AwsCloud::Cloud do
 
           expect(cloud).to receive(:create_disk).with(2048, {}, "i-xxxxxxxx").and_return("vol-xxxxxxxx")
           expect(cloud).to receive(:attach_ebs_volume).with(instance, volume).and_return("/dev/sdh")
-          expect(cloud).to receive(:find_ebs_device).with("/dev/sdh").and_return("ebs")
+          expect(cloud).to receive(:find_device_path_by_name).with("/dev/sdh").and_return("ebs")
 
           allow(creator).to receive(:create)
           expect(creator).to receive(:create).with(volume, "ebs", "/tmp/foo").and_return(stemcell)
@@ -101,13 +99,13 @@ describe Bosh::AwsCloud::Cloud do
       end
     end
 
-    describe "#find_ebs_device" do
+    describe "#find_device_path_by_name" do
       it "should locate ebs volume on the current instance and return the device name" do
         cloud = mock_cloud
 
         allow(File).to receive(:blockdev?).with("/dev/sdf").and_return(true)
 
-        expect(cloud.find_ebs_device("/dev/sdf")).to eq("/dev/sdf")
+        expect(cloud.find_device_path_by_name("/dev/sdf")).to eq("/dev/sdf")
       end
 
       it "should locate ebs volume on the current instance and return the virtual device name" do
@@ -116,7 +114,7 @@ describe Bosh::AwsCloud::Cloud do
         allow(File).to receive(:blockdev?).with("/dev/sdf").and_return(false)
         allow(File).to receive(:blockdev?).with("/dev/xvdf").and_return(true)
 
-        expect(cloud.find_ebs_device("/dev/sdf")).to eq("/dev/xvdf")
+        expect(cloud.find_device_path_by_name("/dev/sdf")).to eq("/dev/xvdf")
       end
     end
   end

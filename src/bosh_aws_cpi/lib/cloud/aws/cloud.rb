@@ -463,7 +463,7 @@ module Bosh::AwsCloud
       logger.error("could not tag #{instance.id}: #{e.message}")
     end
 
-    def find_ebs_device(sd_name)
+    def find_device_path_by_name(sd_name)
       xvd_name = sd_name.gsub(/^\/dev\/sd/, "/dev/xvd")
 
       DEVICE_POLL_TIMEOUT.times do
@@ -542,10 +542,10 @@ module Bosh::AwsCloud
         volume = @ec2_client.volumes[volume_id]
 
         sd_name = attach_ebs_volume(instance, volume)
-        ebs_volume = find_ebs_device(sd_name)
+        device_path = find_device_path_by_name(sd_name)
 
         logger.info("Creating stemcell with: '#{volume.id}' and '#{stemcell_properties.inspect}'")
-        creator.create(volume, ebs_volume, image_path).id
+        creator.create(volume, device_path, image_path).id
       rescue => e
         logger.error(e)
         raise e
