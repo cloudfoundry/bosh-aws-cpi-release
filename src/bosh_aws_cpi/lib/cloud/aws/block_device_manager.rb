@@ -92,7 +92,6 @@ module Bosh::AwsCloud
           encrypted: disk_options.fetch('encrypted', false)
         )
 
-        volume_properties.validate!
         result = volume_properties.disk_mapping
       end
 
@@ -138,7 +137,6 @@ module Bosh::AwsCloud
         type: root_disk_type,
         iops: root_disk_iops
       )
-      root_disk_volume_properties.validate!
 
       root_device = {
         :volume_size => (root_disk_size_in_mb / 1024.0).ceil,

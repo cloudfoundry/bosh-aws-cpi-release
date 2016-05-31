@@ -13,18 +13,6 @@ module Bosh
         @encrypted = options[:encrypted] || false
       end
 
-      def validate!
-        case @type
-          when 'standard'
-            cloud_error("Cannot specify an 'iops' value when disk type is '#{@type}'. 'iops' is only allowed for 'io1' volume types.") unless @iops.nil?
-          when 'gp2'
-            cloud_error("Cannot specify an 'iops' value when disk type is '#{@type}'. 'iops' is only allowed for 'io1' volume types.") unless @iops.nil?
-          when 'io1'
-            cloud_error("Must specify an 'iops' value when the volume type is 'io1'") if @iops.nil?
-        end
-        cloud_error("AWS CPI disk size must be greater than 0") if @size <= 0
-      end
-
       def disk_mapping
         mapping = {
           volume_size: size_in_gb,

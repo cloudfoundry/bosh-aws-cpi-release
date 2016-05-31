@@ -301,46 +301,6 @@ module Bosh::AwsCloud
             }
             expect(manager.mappings).to contain_exactly(ebs_disk)
           end
-
-          context 'when omitting iops' do
-            it 'raises an error' do
-              manager = BlockDeviceManager.new(logger)
-              manager.resource_pool = {
-                'key_name' => 'bar',
-                'availability_zone' => 'us-east-1a',
-                'instance_type' => 't2.small',
-                'ephemeral_disk' => {
-                  'type' => 'io1'
-                }
-              }
-
-              expect{ manager.mappings }.to raise_error(
-                Bosh::Clouds::CloudError,
-                "Must specify an 'iops' value when the volume type is 'io1'"
-              )
-            end
-          end
-        end
-
-        context 'when type is not io1' do
-          it 'raises an error if iops are specified' do
-            manager = BlockDeviceManager.new(logger)
-            manager.resource_pool = {
-              'key_name' => 'bar',
-              'availability_zone' => 'us-east-1a',
-              'instance_type' => 't2.small',
-              'ephemeral_disk' => {
-                'type' => 'gp2',
-                'iops' => 123
-              }
-            }
-
-            expect{ manager.mappings }.to raise_error(
-              Bosh::Clouds::CloudError,
-              "Cannot specify an 'iops' value when disk type is 'gp2'. 'iops' is only allowed for 'io1' volume types."
-            )
-          end
-
         end
       end
 
@@ -459,23 +419,6 @@ module Bosh::AwsCloud
       end
 
       context 'when root disk is specified' do
-        it 'should throw error if root disk size not specified' do
-          manager = BlockDeviceManager.new(logger)
-          manager.resource_pool = {
-            'key_name' => 'bar',
-            'availability_zone' => 'us-east-1a',
-            'instance_type' => 'm3.medium',
-            'root_disk' => {
-              'type' => 'standard'
-            }
-          }
-
-          expect{ manager.mappings }.to raise_error(
-            Bosh::Clouds::CloudError,
-            'AWS CPI disk size must be greater than 0'
-          )
-        end
-
         it 'should default root disk type to standard if type is not specified' do
           manager = BlockDeviceManager.new(logger)
           manager.resource_pool = {
@@ -514,24 +457,6 @@ module Bosh::AwsCloud
         end
 
         context 'when root disk type is io1' do
-          it 'should throw error if iops is not specified' do
-            manager = BlockDeviceManager.new(logger)
-            manager.resource_pool = {
-              'key_name' => 'bar',
-              'availability_zone' => 'us-east-1a',
-              'instance_type' => 'm3.medium',
-              'root_disk' => {
-                'type' => 'io1',
-                'size' => 42 * 1024.0
-              }
-            }
-
-            expect{ manager.mappings }.to raise_error(
-              Bosh::Clouds::CloudError,
-              "Must specify an 'iops' value when the volume type is 'io1'"
-            )
-          end
-
           it 'should create disk type of io1 with iops' do
             manager = BlockDeviceManager.new(logger)
             manager.resource_pool = {

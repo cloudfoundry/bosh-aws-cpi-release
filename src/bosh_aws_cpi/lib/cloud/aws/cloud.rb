@@ -207,7 +207,6 @@ module Bosh::AwsCloud
           az: @az_selector.select_availability_zone(instance_id),
           encrypted: cloud_properties['encrypted']
         )
-        volume_properties.validate!
 
         volume = @ec2_client.volumes.create(volume_properties.volume_options)
 
