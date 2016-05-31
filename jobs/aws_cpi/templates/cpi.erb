@@ -29,6 +29,5 @@ export BUNDLE_GEMFILE=$BOSH_PACKAGES_DIR/bosh_aws_cpi/Gemfile
 
 bundle_cmd="$BOSH_PACKAGES_DIR/ruby_aws_cpi/bin/bundle"
 
-read INPUT
 exec $bundle_cmd exec $BOSH_PACKAGES_DIR/bosh_aws_cpi/bin/aws_cpi \
-  $BOSH_JOBS_DIR/aws_cpi/config/cpi.json < <(echo $INPUT)
+  $BOSH_JOBS_DIR/aws_cpi/config/cpi.json
