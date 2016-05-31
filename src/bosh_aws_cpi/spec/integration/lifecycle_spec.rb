@@ -272,17 +272,29 @@ describe Bosh::AwsCloud::Cloud do
     end
 
     it 'can create encrypted disks' do
-      vm_lifecycle do |instance_id|
-        begin
-          volume_id = cpi.create_disk(2048, {'encrypted' => true}, instance_id)
-          expect(volume_id).not_to be_nil
-          expect(cpi.has_disk?(volume_id)).to be(true)
+      begin
+        volume_id = cpi.create_disk(2048, {'encrypted' => true})
+        expect(volume_id).not_to be_nil
+        expect(cpi.has_disk?(volume_id)).to be(true)
 
-          encrypted_volume = cpi.ec2_client.volumes[volume_id]
-          expect(encrypted_volume.encrypted?).to be(true)
-        ensure
-          cpi.delete_disk(volume_id)
-        end
+        encrypted_volume = cpi.ec2_client.volumes[volume_id]
+        expect(encrypted_volume.encrypted?).to be(true)
+      ensure
+        cpi.delete_disk(volume_id) if volume_id
+      end
+    end
+
+    it 'can create optimized magnetic disks' do
+      begin
+        minimum_magnetic_disk_size = 500 * 1024
+        volume_id = cpi.create_disk(minimum_magnetic_disk_size, {'type' => 'sc1'})
+        expect(volume_id).not_to be_nil
+        expect(cpi.has_disk?(volume_id)).to be(true)
+
+        volume = cpi.ec2_client.volumes[volume_id]
+        expect(volume.type).to eq('sc1')
+      ensure
+        cpi.delete_disk(volume_id) if volume_id
       end
     end
 

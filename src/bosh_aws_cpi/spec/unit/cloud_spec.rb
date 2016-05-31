@@ -123,16 +123,6 @@ describe Bosh::AwsCloud::Cloud do
         context 'when disk size is between 1 GiB and 16 TiB' do
           let(:disk_size) { 10240000 }
 
-          context 'when disk type is not gp2, io1, or standard' do
-            let(:disk_type) { 'non-existing-disk-type' }
-
-            it 'raises an error' do
-              expect {
-                cloud.create_disk(disk_size, cloud_properties, 42)
-              }.to raise_error /AWS CPI supports only gp2, io1, or standard disk type/
-            end
-          end
-
           context 'when disk type is gp2' do
             let(:disk_type) { 'gp2' }
 
