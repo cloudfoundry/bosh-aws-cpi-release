@@ -1,5 +1,7 @@
 module Bosh::AwsCloud
   class Instance
+    include Helpers
+
     def initialize(aws_instance, registry, elb, logger)
       @aws_instance = aws_instance
       @registry = registry
@@ -31,8 +33,9 @@ module Bosh::AwsCloud
         @logger.info("Waiting for instance to be ready...")
         ResourceWait.for_instance(instance: @aws_instance, state: :running)
       rescue Bosh::Common::RetryCountExceeded
-        @logger.warn("Timed out waiting for instance '#{aws_instance.id}' to be running")
-        raise Bosh::Clouds::VMCreationFailed.new(true)
+        message = "Timed out waiting for instance '#{@aws_instance.id}' to be running"
+        @logger.warn(message)
+        raise Bosh::Clouds::VMCreationFailed.new(true), message
       end
     end
 

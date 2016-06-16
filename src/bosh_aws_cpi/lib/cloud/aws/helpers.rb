@@ -10,6 +10,5 @@ module Bosh::AwsCloud
       end
       raise Bosh::Clouds::CloudError, message
     end
-
   end
 end

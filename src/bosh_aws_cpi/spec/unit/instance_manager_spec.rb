@@ -154,51 +154,72 @@ module Bosh::AwsCloud
           )
         end
 
-        it 'should raise an exception when spot creation fails' do
-          instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
-          expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false))
+        context 'when spot creation fails' do
+          it 'raises and logs an error' do
+            instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+            expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false))
+            expect(logger).to receive(:warn).with(/Spot instance creation failed/)
 
-          expect {
-            instance_manager.create(
-              agent_id,
-              stemcell_id,
-              resource_pool,
-              networks_spec,
-              disk_locality,
-              environment,
-              default_options
-            )
-          }.to raise_error(Bosh::Clouds::VMCreationFailed)
-        end
+            expect {
+              instance_manager.create(
+                agent_id,
+                stemcell_id,
+                resource_pool,
+                networks_spec,
+                disk_locality,
+                environment,
+                default_options
+              )
+            }.to raise_error(Bosh::Clouds::VMCreationFailed, /Spot instance creation failed/)
 
-        context 'when spot_ondemand_fallback is configured' do
-          let(:resource_pool) do
-            {
-              'spot_bid_price' => 0.15,
-              'spot_ondemand_fallback' => true,
-              'instance_type' => 'm1.small',
-              'key_name' => 'bar',
-              'availability_zone' => 'us-east-1a'
-            }
           end
 
-          it 'should create an on demand instance when spot creation fails AND we have enabled spot_ondemand_fallback' do
-            instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
-            allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
+          context 'and spot_ondemand_fallback is configured' do
+            let(:instance_manager) { InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger) }
+            let(:resource_pool) do
+              {
+                'spot_bid_price' => 0.15,
+                'spot_ondemand_fallback' => true,
+                'instance_type' => 'm1.small',
+                'key_name' => 'bar',
+                'availability_zone' => 'us-east-1a'
+              }
+            end
 
-            expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false))
+            before do
+              allow(aws_client).to receive(:run_instances)
+              allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
+              expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false))
+            end
 
-            expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
+            it 'creates an on demand instance' do
+              expect(aws_client).to receive(:run_instances)
+                .with({ fake: 'instance-params', min_count: 1, max_count: 1 })
 
-            instance_manager.create(
-              agent_id,
-              stemcell_id,
-              resource_pool,
-              networks_spec,
-              disk_locality,
-              environment,
-              default_options
-            )
+              instance_manager.create(
+                agent_id,
+                stemcell_id,
+                resource_pool,
+                networks_spec,
+                disk_locality,
+                environment,
+                default_options
+              )
+            end
+
+            it 'does not log a warning' do
+              expect(logger).to_not receive(:warn)
+
+              instance_manager.create(
+                agent_id,
+                stemcell_id,
+                resource_pool,
+                networks_spec,
+                disk_locality,
+                environment,
+                default_options
+              )
+            end
           end
         end
       end

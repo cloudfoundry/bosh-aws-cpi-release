@@ -19,7 +19,9 @@ module Bosh::AwsCloud
         launch_specification: instance_params
       }
       unless instance_params[:security_groups].nil?
-        raise Bosh::Clouds::VMCreationFailed.new(false), "Cannot use security group names when creating spot instances"
+        message = "Cannot use security group names when creating spot instances"
+        @logger.error(message)
+        raise Bosh::Clouds::VMCreationFailed.new(false), message
       end
 
       @logger.debug("Requesting spot instance with: #{spot_request_spec.inspect}")
@@ -29,7 +31,9 @@ module Bosh::AwsCloud
         @spot_instance_requests = @ec2.client.request_spot_instances(spot_request_spec)
         @logger.debug("Got spot instance requests: #{@spot_instance_requests.inspect}")
       rescue => e
-        raise Bosh::Clouds::VMCreationFailed.new(false), e.inspect
+        message = "Failed to get spot instance request: #{e.inspect}"
+        @logger.error(message)
+        raise Bosh::Clouds::VMCreationFailed.new(false), message
       end
 
       wait_for_spot_instance
