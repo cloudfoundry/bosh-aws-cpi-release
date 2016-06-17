@@ -82,12 +82,8 @@ properties:
     description: Port of agent blobstore server used by s3 blobstore plugin
   agent.blobstore.host:
     description: Host of agent blobstore server used by simple blobstore plugin
-  agent.blobstore.s3_force_path_style:
-    description: Whether the agent blobstore plugin will always use path style for bucket access
   agent.blobstore.ssl_verify_peer:
     description: Whether the agent blobstore plugin should verify its peer when using SSL
-  agent.blobstore.s3_multipart_threshold:
-    description: Agent blobstore threshold for multipart uploads
   agent.blobstore.s3_signature_version:
     description: Signature version used to connect to an s3 blobstore
   blobstore.provider:
@@ -114,13 +110,8 @@ properties:
     default: 443
   blobstore.host:
     description: Host of blobstore server used by simple blobstore plugin
-  blobstore.s3_force_path_style:
-    description: Whether the blobstore plugin will always use path style for bucket access
-    default: false
   blobstore.ssl_verify_peer:
     description: Whether the simple blobstore plugin should verify its peer when using SSL
-  blobstore.s3_multipart_threshold:
-    description: Simple blobstore threshold for multipart uploads
   blobstore.s3_signature_version:
     description: Signature version used to connect to an s3 blobstore
   blobstore.path:
