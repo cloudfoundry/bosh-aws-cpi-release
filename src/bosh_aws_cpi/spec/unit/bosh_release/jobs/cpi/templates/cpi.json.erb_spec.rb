@@ -195,7 +195,9 @@ describe 'cpi.json.erb' do
           's3_port' => 21,
           'host' => 'blobstore-host',
           'ssl_verify_peer' => true,
-          's3_signature_version' => '11'
+          's3_signature_version' => '11',
+          'server_side_encryption' => 'AES256',
+          'sse_kms_key_id' => 'kms-key'
         })
       end
 
@@ -214,6 +216,8 @@ describe 'cpi.json.erb' do
               'port' => 21,
               'ssl_verify_peer' => true,
               'signature_version' => '11',
+              'server_side_encryption' => 'AES256',
+              'sse_kms_key_id' => 'kms-key'
             }
           }
         )
@@ -231,6 +235,8 @@ describe 'cpi.json.erb' do
             'host' => 'agent-host',
             'ssl_verify_peer' => true,
             's3_signature_version' => '99',
+            'server_side_encryption' => 'from-agent',
+            'sse_kms_key_id' => 'from-agent'
           }
         }
 
@@ -244,6 +250,8 @@ describe 'cpi.json.erb' do
           'host' => 'blobstore-host',
           'ssl_verify_peer' => false,
           's3_signature_version' => '11',
+          'server_side_encryption' => 'from-root',
+          'sse_kms_key_id' => 'from-root'
         })
 
         expect(rendered_blobstore['options']['access_key_id']).to eq('agent_access_key_id')
@@ -255,6 +263,8 @@ describe 'cpi.json.erb' do
         expect(rendered_blobstore['options']['host']).to eq('agent-host')
         expect(rendered_blobstore['options']['ssl_verify_peer']).to be true
         expect(rendered_blobstore['options']['signature_version']).to eq('99')
+        expect(rendered_blobstore['options']['server_side_encryption']).to eq('from-agent')
+        expect(rendered_blobstore['options']['sse_kms_key_id']).to eq('from-agent')
       end
     end
 

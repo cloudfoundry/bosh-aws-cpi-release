@@ -86,6 +86,11 @@ properties:
     description: Whether the agent blobstore plugin should verify its peer when using SSL
   agent.blobstore.s3_signature_version:
     description: Signature version used to connect to an s3 blobstore
+  agent.blobstore.server_side_encryption:
+    description: Server-side encryption algorithm used when storing blobs in S3 (Optional - "AES256"|"aws:kms")
+  agent.blobstore.sse_kms_key_id:
+    description: AWS KMS key ID to use for object encryption. All GET and PUT requests for an object protected by AWS KMS will fail if not made via SSL or using SigV4.
+
   blobstore.provider:
     description: Provider of the blobstore used by director and agent (dav|simple|s3)
     default: 'dav'
@@ -114,6 +119,11 @@ properties:
     description: Whether the simple blobstore plugin should verify its peer when using SSL
   blobstore.s3_signature_version:
     description: Signature version used to connect to an s3 blobstore
+  blobstore.server_side_encryption:
+    description: Server-side encryption algorithm used when storing blobs in S3 (Optional - "AES256"|"aws:kms")
+  blobstore.sse_kms_key_id:
+    description: AWS KMS key ID to use for object encryption. All GET and PUT requests for an object protected by AWS KMS will fail if not made via SSL or using SigV4.
+
   blobstore.path:
     description: local blobstore path
   blobstore.address:

@@ -71,7 +71,8 @@ if_p('blobstore') do
     update_blobstore_options(blobstore, 'ssl_verify_peer')
     update_blobstore_options(blobstore, 's3_signature_version', 'signature_version')
     update_blobstore_options(blobstore, 's3_region', 'region')
-
+    update_blobstore_options(blobstore, 'server_side_encryption')
+    update_blobstore_options(blobstore, 'sse_kms_key_id')
   elsif p('blobstore.provider') == 'local'
     blobstore["options"] = {
       "blobstore_path" => p('blobstore.path')
