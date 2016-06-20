@@ -205,10 +205,12 @@ module Bosh::AwsCloud
           type: cloud_properties['type'],
           iops: cloud_properties['iops'],
           az: @az_selector.select_availability_zone(instance_id),
-          encrypted: cloud_properties['encrypted']
+          encrypted: cloud_properties['encrypted'],
+          kms_key_arn: cloud_properties['kms_key_arn']
         )
 
-        volume = @ec2_client.volumes.create(volume_properties.volume_options)
+        resp = @ec2_client.client.create_volume(volume_properties.persistent_disk_config)
+        volume = AWS::EC2::Volume.new_from(:create_volume, resp, resp.volume_id)
 
         logger.info("Creating volume '#{volume.id}'")
         ResourceWait.for_volume(volume: volume, state: :available)

@@ -86,6 +86,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
           AWS_DEFAULT_REGION:    {{aws_region__primary}}
           AWS_PUBLIC_KEY_NAME:   {{cpi_pipeline_public_key_name}}
+          AWS_KMS_KEY_ARN:       {{aws_kms_key_arn}}
 
         ensure:
           do:

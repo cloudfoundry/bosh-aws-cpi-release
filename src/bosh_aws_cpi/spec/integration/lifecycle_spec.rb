@@ -12,6 +12,7 @@ describe Bosh::AwsCloud::Cloud do
     @subnet_zone       = ENV['BOSH_AWS_SUBNET_ZONE']         || raise("Missing BOSH_AWS_SUBNET_ZONE")
     @manual_ip         = ENV['BOSH_AWS_LIFECYCLE_MANUAL_IP'] || raise("Missing BOSH_AWS_LIFECYCLE_MANUAL_IP")
     @elb_id            = ENV['BOSH_AWS_ELB_ID']              || raise("Missing BOSH_AWS_ELB_ID")
+    @kms_key_arn       = ENV['BOSH_AWS_KMS_KEY_ARN']         || raise("Missing BOSH_AWS_KMS_KEY_ARN")
   end
 
   let(:instance_type_with_ephemeral)    { ENV.fetch('BOSH_AWS_INSTANCE_TYPE', 'm3.medium') }
@@ -271,16 +272,40 @@ describe Bosh::AwsCloud::Cloud do
       end
     end
 
-    it 'can create encrypted disks' do
-      begin
-        volume_id = cpi.create_disk(2048, {'encrypted' => true})
-        expect(volume_id).not_to be_nil
-        expect(cpi.has_disk?(volume_id)).to be(true)
+    context 'when encrypted is true' do
+      let(:cloud_properties) { {'encrypted' => true} }
+      it 'can create encrypted disks' do
+        begin
+          volume_id = cpi.create_disk(2048, cloud_properties)
+          expect(volume_id).not_to be_nil
+          expect(cpi.has_disk?(volume_id)).to be(true)
 
-        encrypted_volume = cpi.ec2_client.volumes[volume_id]
-        expect(encrypted_volume.encrypted?).to be(true)
-      ensure
-        cpi.delete_disk(volume_id) if volume_id
+          encrypted_volume = cpi.ec2_client.volumes[volume_id]
+          expect(encrypted_volume.encrypted?).to be(true)
+        ensure
+          cpi.delete_disk(volume_id) if volume_id
+        end
+      end
+
+      context 'and kms_key_arn is specified' do
+        before do
+          cloud_properties['kms_key_arn'] = @kms_key_arn
+        end
+
+        it 'creates an encrypted persistent disk' do
+          begin
+            volume_id = cpi.create_disk(2048, cloud_properties)
+            expect(volume_id).not_to be_nil
+            expect(cpi.has_disk?(volume_id)).to be(true)
+
+            volumes = cpi.ec2_client.client.describe_volumes({volume_ids: [volume_id]})
+            expect(volumes[:volume_set]).to_not be_empty
+            encrypted_volume = volumes[:volume_set].first
+            expect(encrypted_volume[:kms_key_id]).to eq(@kms_key_arn)
+          ensure
+            cpi.delete_disk(volume_id) if volume_id
+          end
+        end
       end
     end
 

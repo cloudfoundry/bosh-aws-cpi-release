@@ -3,13 +3,21 @@ require 'spec_helper'
 module Bosh::AwsCloud
   describe VolumeProperties do
     let(:minimal_options) { {} }
-    let(:maximal_options) { {size: 2048, type: 'my-fake-disk-type', iops: 1, az: 'us-east-1a', encrypted: true} }
-    describe '#disk_mapping' do
+    let(:maximal_options) do
+      {
+        size: 2048,
+        type: 'my-fake-disk-type',
+        iops: 1, az: 'us-east-1a',
+        encrypted: true,
+        kms_key_arn: 'my_fake_kms_arn'
+      }
+    end
+    describe '#ephemeral_disk_config' do
 
       context 'given a minimal set of options' do
         subject(:volume_properties) {described_class.new(minimal_options)}
         it 'maps the properties to the disk' do
-          vp = volume_properties.disk_mapping
+          vp = volume_properties.ephemeral_disk_config
           expect(vp).to eq({
             device_name: '/dev/sdb',
             ebs: {
@@ -24,7 +32,7 @@ module Bosh::AwsCloud
       context 'given a maximal set of options' do
         subject(:volume_properties) {described_class.new(maximal_options)}
         it 'maps the properties to the disk' do
-          vp = volume_properties.disk_mapping
+          vp = volume_properties.ephemeral_disk_config
           expect(vp).to eq({
             device_name: '/dev/sdb',
             ebs: {
@@ -32,18 +40,18 @@ module Bosh::AwsCloud
               volume_type: 'my-fake-disk-type',
               iops: 1,
               encrypted: true,
-              delete_on_termination: true
+              delete_on_termination: true,
             }
           })
         end
       end
     end
 
-    describe '#volume_options' do
+    describe '#persistent_disk_config' do
       context 'given a minimal set of options' do
         subject(:volume_properties) {described_class.new(minimal_options)}
-        it 'returns the correct volume_options' do
-          vp = volume_properties.volume_options
+        it 'returns the correct persistent_disk_config' do
+          vp = volume_properties.persistent_disk_config
           expect(vp).to eq({
             size: 0,
             availability_zone: nil,
@@ -55,14 +63,15 @@ module Bosh::AwsCloud
 
       context 'given a maximal set of options' do
         subject(:volume_properties) {described_class.new(maximal_options)}
-        it 'returns the correct volume_options' do
-          vp = volume_properties.volume_options
+        it 'returns the correct persistent_disk_config' do
+          vp = volume_properties.persistent_disk_config
           expect(vp).to eq({
             size: 2,
             availability_zone: 'us-east-1a',
             volume_type: 'my-fake-disk-type',
             encrypted: true,
             iops: 1,
+            kms_key_id: 'my_fake_kms_arn'
           })
         end
       end

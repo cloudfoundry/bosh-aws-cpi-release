@@ -92,7 +92,7 @@ module Bosh::AwsCloud
           encrypted: disk_options.fetch('encrypted', false)
         )
 
-        result = volume_properties.disk_mapping
+        result = volume_properties.ephemeral_disk_config
       end
 
       result[:bosh_type] = 'ephemeral'

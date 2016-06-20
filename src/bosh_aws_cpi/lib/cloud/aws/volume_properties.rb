@@ -10,10 +10,11 @@ module Bosh
         @type = options[:type] || 'standard'
         @iops = options[:iops]
         @az = options[:az]
+        @kms_key_arn = options[:kms_key_arn]
         @encrypted = options[:encrypted] || false
       end
 
-      def disk_mapping
+      def ephemeral_disk_config
         mapping = {
           volume_size: size_in_gb,
           volume_type: @type,
@@ -26,16 +27,17 @@ module Bosh
         { device_name: '/dev/sdb', ebs: mapping }
       end
 
-      def volume_options
-        options = {
+      def persistent_disk_config
+        output = {
           size: size_in_gb,
           availability_zone: @az,
           volume_type: @type,
           encrypted: @encrypted
         }
 
-        options[:iops] = @iops if @iops
-        options
+        output[:iops] = @iops if @iops
+        output[:kms_key_id] = @kms_key_arn if @kms_key_arn
+        output
       end
 
       private

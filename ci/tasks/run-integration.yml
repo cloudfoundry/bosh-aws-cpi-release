@@ -13,3 +13,4 @@ params:
   AWS_SECRET_ACCESS_KEY: ""
   AWS_DEFAULT_REGION:    ""
   AWS_PUBLIC_KEY_NAME:   ""
+  AWS_KMS_KEY_ARN:       ""
