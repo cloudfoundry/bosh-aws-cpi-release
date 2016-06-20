@@ -31,7 +31,7 @@ module Bosh::AwsCloud
 
       new.for_resource(resource: instance, errors: ignored_errors, target_state: target_state) do |current_state|
         if target_state == :running && current_state == :terminated
-          message = "instance #{instance.id} terminated while starting"
+          message = "Instance '#{instance.id}' terminated while starting"
           logger.error(message)
           raise Bosh::Clouds::VMCreationFailed.new(true), message
         else

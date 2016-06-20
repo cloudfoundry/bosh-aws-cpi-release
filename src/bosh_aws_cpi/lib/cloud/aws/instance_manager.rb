@@ -85,7 +85,7 @@ module Bosh::AwsCloud
           return create_aws_spot_instance instance_params, resource_pool["spot_bid_price"]
         rescue Bosh::Clouds::VMCreationFailed => e
           unless resource_pool["spot_ondemand_fallback"]
-            message = "Spot instance creation failed"
+            message = "Spot instance creation failed: #{e.inspect}"
             @logger.warn(message)
             raise e, message
           end
