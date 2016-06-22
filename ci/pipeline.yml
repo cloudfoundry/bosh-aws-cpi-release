@@ -279,5 +279,4 @@ resources:
     type: git
     source:
       uri: https://github.com/cloudfoundry/bosh-acceptance-tests.git
-      # TODO: change this back to master after bats promotion #118516887
-      branch: aws-missing-az # master
+      branch: master
