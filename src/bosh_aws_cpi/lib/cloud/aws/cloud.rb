@@ -62,7 +62,9 @@ module Bosh::AwsCloud
       # so we need to trigger eager autoload while constructing CPI
       AWS.eager_autoload!
 
-      @ec2_client = AWS::EC2.new(@aws_params)
+      AWS.config(@aws_params)
+
+      @ec2_client = AWS::EC2.new
 
       cloud_error("Please make sure the CPI has proper network access to AWS.") unless aws_accessible?
 
@@ -70,7 +72,7 @@ module Bosh::AwsCloud
 
       initialize_registry
 
-      elb = AWS::ELB.new(@aws_params)
+      elb = AWS::ELB.new
 
       security_group_mapper = SecurityGroupMapper.new(@ec2_client)
       instance_param_mapper = InstanceParamMapper.new(security_group_mapper)
