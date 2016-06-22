@@ -20,10 +20,36 @@ bosh create release --force
 
 The release is now ready for use. If everything works, commit the changes including the updated gems.
 
+### Manually deploy bosh director
+
+1. Claim env from pool
+  1. `cd ~/workspace/bosh-cpi-environments`
+  1. `git mv aws/unclaimed/SOME_ENV aws/claimed/`
+  1. `git ci -m "manually claiming SOME_ENV for testing on #STORY_ID"`
+  1. `git push`
+1. Create a file containing necessary environment variables in `~/scratch`
+  1. `source ~/scratch/YOUR_ENV_FILE`
+1. Generate bosh-init manifest and Artifacts
+  1. `METADATA_FILE=~/workspace/bosh-cpi-environments/aws/claimed/SOME_ENV \
+       OUTPUT_DIR=~/scratch/OUTPUT_DIR \
+       ./ci/tasks/prepare-director.sh`
+1. Deploy with bosh-init
+  1. `cd ~/scratch/OUTPUT_DIR`
+  1. `bosh-init deploy director.yml`
+
+### Manually run lifecycle tests
+
+1. Claim env from pool
+1. Create a file containing necessary environment variables in `~/scratch`
+1. Run tests
+  1. `RSPEC_ARGUMENTS=spec/integration/lifecycle_spec.rb \
+        METADATA_FILE=~/workspace/bosh-cpi-environments/aws/claimed/SOME_ENV \
+        ./ci/tasks/run-integration.sh`
+
 ### Rubymine support
 
-Given the `Bosh Release` nature of this project, the ruby project content is under `src/bosh_aws_cpi` which does not 
-work for RubyMine when trying to locate the Gemfile to run the RSpec tests.  To resolve this you can modify the 
+Given the `Bosh Release` nature of this project, the ruby project content is under `src/bosh_aws_cpi` which does not
+work for RubyMine when trying to locate the Gemfile to run the RSpec tests.  To resolve this you can modify the
 RubyMine project in the following way:
 
 - Edit `Project Structure`

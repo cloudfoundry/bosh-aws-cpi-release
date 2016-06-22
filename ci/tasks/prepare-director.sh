@@ -2,6 +2,17 @@
 
 set -e
 
+# inputs
+release_dir="$( cd $(dirname $0) && cd ../.. && pwd )"
+workspace_dir="$( cd ${release_dir} && cd .. && pwd )"
+ci_bosh_dir="${workspace_dir}/bosh-release"
+ci_cpi_dir="${workspace_dir}/cpi-release"
+ci_stemcell_dir="${workspace_dir}/stemcell"
+ci_environment_dir="${workspace_dir}/environment"
+
+# outputs
+ci_output_dir="${workspace_dir}/director-config"
+
 # environment
 : ${BOSH_DIRECTOR_USERNAME:?}
 : ${BOSH_DIRECTOR_PASSWORD:?}
@@ -11,17 +22,67 @@ set -e
 : ${PUBLIC_KEY_NAME:?}
 : ${PRIVATE_KEY_DATA:?}
 : ${USE_REDIS:=false}
+: ${BOSH_RELEASE_PATH:=}
+: ${CPI_RELEASE_PATH:=}
+: ${STEMCELL_PATH:=}
+: ${METADATA_FILE:=${ci_environment_dir}/metadata}
+: ${OUTPUT_DIR:=${ci_output_dir}}
+red='\033[0;31m'
+green='\033[0;32m'
+yellow='\033[0;33m'
+nc='\033[0m'
 
-# inputs
-# paths will be resolved in a separate task so use relative paths
-BOSH_RELEASE_URI="file://$(echo bosh-release/*.tgz)"
-CPI_RELEASE_URI="file://$(echo cpi-release/*.tgz)"
-STEMCELL_URI="file://$(echo stemcell/*.tgz)"
+if [ ! -d ${OUTPUT_DIR} ]; then
+  echo -e "${red}OUTPUT_DIR '${OUTPUT_DIR}' does not exist${nc}"
+  exit 1
+fi
+if [ ! -f ${METADATA_FILE} ]; then
+  echo -e "${red}METADATA_FILE '${METADATA_FILE}' does not exist${nc}"
+  exit 1
+fi
 
-# outputs
-output_dir="$(realpath director-config)"
+metadata="$( cat ${METADATA_FILE} )"
 
-metadata=$(cat environment/metadata)
+tmpdir="$(mktemp -d /tmp/bosh-director-artifacts.XXXXXXXXXX)"
+
+if [ -z "$BOSH_RELEASE_PATH" ]; then
+  if [ -f ${ci_bosh_dir}/*.tgz ]; then
+    BOSH_RELEASE_PATH="$( ls ${ci_bosh_dir}/*.tgz )"
+    echo -e "${yellow}Using local bosh-release from ${BOSH_RELEASE_PATH}${nc}"
+  else
+    download_url="https://bosh.io/d/github.com/cloudfoundry/bosh"
+    echo -e "${yellow}Downloading remote bosh-release from ${download_url}${nc}"
+    BOSH_RELEASE_PATH="${tmpdir}/bosh.tgz"
+    wget -O "${BOSH_RELEASE_PATH}" "${download_url}"
+  fi
+fi
+bosh_release_uri="file://${BOSH_RELEASE_PATH}"
+
+if [ -z "$CPI_RELEASE_PATH" ]; then
+  if [ -f ${ci_cpi_dir}/*.tgz ]; then
+    CPI_RELEASE_PATH="$( ls ${ci_cpi_dir}/*.tgz )"
+    echo -e "${yellow}Using local cpi-release from ${CPI_RELEASE_PATH}${nc}"
+  else
+    download_url="https://bosh.io/d/github.com/cloudfoundry-incubator/bosh-aws-cpi-release"
+    echo -e "${yellow}Downloading remote cpi-release from ${download_url}${nc}"
+    CPI_RELEASE_PATH="${tmpdir}/bosh-cpi.tgz"
+    wget -O "${CPI_RELEASE_PATH}" "${download_url}"
+  fi
+fi
+cpi_release_uri="file://${CPI_RELEASE_PATH}"
+
+if [ -z "$STEMCELL_PATH" ]; then
+  if [ -f ${ci_stemcell_dir}/*.tgz ]; then
+    STEMCELL_PATH="$( ls ${ci_stemcell_dir}/*.tgz )"
+    echo -e "${yellow}Using local stemcell from ${STEMCELL_PATH}${nc}"
+  else
+    download_url="https://bosh.io/d/stemcells/bosh-aws-xen-hvm-ubuntu-trusty-go_agent"
+    echo -e "${yellow}Downloading remote stemcell from ${download_url}${nc}"
+    STEMCELL_PATH="${tmpdir}/stemcell.tgz"
+    wget -O "${STEMCELL_PATH}" "${download_url}"
+  fi
+fi
+stemcell_uri="file://${STEMCELL_PATH}"
 
 # configuration
 : ${SECURITY_GROUP:=$(       echo ${metadata} | jq --raw-output ".SecurityGroupID" )}
@@ -33,10 +94,12 @@ metadata=$(cat environment/metadata)
 : ${AWS_NETWORK_DNS:=$(      echo ${metadata} | jq --raw-output ".DNS" )}
 : ${DIRECTOR_STATIC_IP:=$(   echo ${metadata} | jq --raw-output ".DirectorStaticIP" )}
 : ${BLOBSTORE_BUCKET_NAME:=$(echo ${metadata} | jq --raw-output ".BlobstoreBucket" )}
+: ${STATIC_RANGE:=$(         echo ${metadata} | jq --raw-output ".StaticRange" )}
+: ${RESERVED_RANGE:=$(       echo ${metadata} | jq --raw-output ".ReservedRange" )}
 
 # keys
 shared_key="shared.pem"
-echo "${PRIVATE_KEY_DATA}" > "${output_dir}/${shared_key}"
+echo "${PRIVATE_KEY_DATA}" > "${OUTPUT_DIR}/${shared_key}"
 
 redis_job=""
 if [ "${USE_REDIS}" == true ]; then
@@ -44,7 +107,7 @@ if [ "${USE_REDIS}" == true ]; then
 fi
 
 # env file generation
-cat > "${output_dir}/director.env" <<EOF
+cat > "${OUTPUT_DIR}/director.env" <<EOF
 #!/usr/bin/env bash
 
 export BOSH_DIRECTOR_IP=${DIRECTOR_EIP}
@@ -53,21 +116,21 @@ export BOSH_DIRECTOR_PASSWORD=${BOSH_DIRECTOR_PASSWORD}
 EOF
 
 # manifest generation
-cat > "${output_dir}/director.yml" <<EOF
+cat > "${OUTPUT_DIR}/director.yml" <<EOF
 ---
 name: certification-director
 
 releases:
   - name: bosh
-    url: ${BOSH_RELEASE_URI}
+    url: ${bosh_release_uri}
   - name: bosh-aws-cpi
-    url: ${CPI_RELEASE_URI}
+    url: ${cpi_release_uri}
 
 resource_pools:
   - name: default
     network: private
     stemcell:
-      url: ${STEMCELL_URI}
+      url: ${stemcell_uri}
     cloud_properties:
       instance_type: m3.medium
       availability_zone: ${AVAILABILITY_ZONE}
@@ -210,3 +273,47 @@ cloud_provider:
 
     ntp: *ntp
 EOF
+
+cat > "${OUTPUT_DIR}/cloud-config.yml" <<EOF
+azs:
+- name: z1
+  cloud_properties: {availability_zone: ${AVAILABILITY_ZONE}}
+
+vm_types:
+- name: default
+  cloud_properties:
+    instance_type: t2.micro
+    ephemeral_disk: {size: 3000, type: gp2}
+
+disk_types:
+- name: default
+  disk_size: 3000
+  cloud_properties: {type: gp2}
+
+networks:
+- name: default
+  type: manual
+  subnets:
+  - range:    ${AWS_NETWORK_CIDR}
+    gateway:  ${AWS_NETWORK_GATEWAY}
+    az:       z1
+    dns:      [8.8.8.8]
+    static:   [${STATIC_RANGE}]
+    reserved:   [${RESERVED_RANGE}]
+    cloud_properties: {subnet: ${SUBNET_ID}}
+- name: vip
+  type: vip
+
+compilation:
+  workers: 5
+  reuse_compilation_vms: true
+  az: z1
+  vm_type: default
+  network: default
+EOF
+
+echo -e "${green}Successfully generated manifest!${nc}"
+echo -e "${green}Manifest:    ${OUTPUT_DIR}director.yml${nc}"
+echo -e "${green}Env:         ${OUTPUT_DIR}director.env${nc}"
+echo -e "${green}CloudConfig: ${OUTPUT_DIR}cloud-config.yml${nc}"
+echo -e "${green}Artifacts:   ${tmpdir}${nc}"
