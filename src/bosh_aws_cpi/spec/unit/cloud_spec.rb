@@ -113,9 +113,16 @@ describe Bosh::AwsCloud::Cloud do
     end
 
     context 'when volumes are set' do
-      let(:ec2_client) { instance_double('AWS::EC2', volumes: volumes) }
-      let(:volumes) { instance_double('AWS::EC2::VolumeCollection') }
-      before { cloud.instance_variable_set(:'@ec2_client', ec2_client) }
+      let(:ec2_client) { instance_double('AWS::EC2', client: low_level_client) }
+      let(:low_level_client) { instance_double('AWS::EC2::Client::V20141001') }
+      let(:volume_resp) { double('AWS::Core::Response', volume_id: 'fake-volume-id') }
+      let(:volume) { double('AWS::EC2::Volume', id: 'fake-volume-id') }
+      before do
+        cloud.instance_variable_set(:'@ec2_client', ec2_client)
+        allow(AWS::EC2::Volume).to receive(:new_from)
+          .with(:create_volume, volume_resp, 'fake-volume-id')
+          .and_return(volume)
+      end
 
       context 'when disk type is provided' do
         let(:cloud_properties) { { 'type' => disk_type } }
@@ -127,12 +134,12 @@ describe Bosh::AwsCloud::Cloud do
             let(:disk_type) { 'gp2' }
 
             it 'creates disk with gp2 type' do
-              expect(volumes).to receive(:create).with(
+              expect(low_level_client).to receive(:create_volume).with(
                 size: 10000,
                 availability_zone: 'fake-availability-zone',
                 volume_type: 'gp2',
                 encrypted: false
-              ).and_return(volume)
+              ).and_return(volume_resp)
               cloud.create_disk(disk_size, cloud_properties, 42)
             end
           end
@@ -142,13 +149,13 @@ describe Bosh::AwsCloud::Cloud do
             let(:disk_type) { 'io1' }
 
             it 'creates disk with io1 type' do
-              expect(volumes).to receive(:create).with(
+              expect(low_level_client).to receive(:create_volume).with(
                 size: 10000,
                 availability_zone: 'fake-availability-zone',
                 volume_type: 'io1',
                 iops: 123,
                 encrypted: false
-              ).and_return(volume)
+              ).and_return(volume_resp)
               cloud.create_disk(disk_size, cloud_properties, 42)
             end
           end
@@ -161,12 +168,12 @@ describe Bosh::AwsCloud::Cloud do
             let(:disk_type) { 'standard' }
 
             it 'creates disk with standard type' do
-              expect(volumes).to receive(:create).with(
+              expect(low_level_client).to receive(:create_volume).with(
                 size: 2,
                 availability_zone: 'fake-availability-zone',
                 volume_type: 'standard',
                 encrypted: false
-              ).and_return(volume)
+              ).and_return(volume_resp)
               cloud.create_disk(disk_size, cloud_properties, 42)
             end
           end
@@ -178,12 +185,12 @@ describe Bosh::AwsCloud::Cloud do
         let(:disk_size) { 1025 }
 
         it 'creates disk with standard disk type' do
-          expect(volumes).to receive(:create).with(
+          expect(low_level_client).to receive(:create_volume).with(
             size: 2,
             availability_zone: 'fake-availability-zone',
             volume_type: 'standard',
             encrypted: false
-          ).and_return(volume)
+          ).and_return(volume_resp)
           cloud.create_disk(disk_size, cloud_properties, 42)
         end
       end
