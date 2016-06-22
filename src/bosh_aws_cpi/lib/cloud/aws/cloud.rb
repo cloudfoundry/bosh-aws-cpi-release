@@ -210,7 +210,7 @@ module Bosh::AwsCloud
         )
 
         resp = @ec2_client.client.create_volume(volume_properties.persistent_disk_config)
-        volume = AWS::EC2::Volume.new_from(:create_volume, resp, resp.volume_id)
+        volume = AWS::EC2::Volume.new_from(:create_volume, resp, resp.volume_id, config: @ec2_client.config)
 
         logger.info("Creating volume '#{volume.id}'")
         ResourceWait.for_volume(volume: volume, state: :available)
