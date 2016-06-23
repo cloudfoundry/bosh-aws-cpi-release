@@ -16,11 +16,12 @@ describe Bosh::AwsCloud::Cloud do
       @ec2 = _ec2
       allow(@ec2).to receive_messages(:availability_zones => zones)
       allow(@ec2).to receive_messages(instances: double('instances', :[] => instance))
+      allow(@ec2).to receive(:config).and_return('fake-config')
       allow(@ec2).to receive(:client).and_return(low_level_client)
       allow(low_level_client).to receive(:create_volume).and_return(volume_resp)
 
       allow(AWS::EC2::Volume).to receive(:new_from)
-        .with(:create_volume, volume_resp, 'v-foobar')
+        .with(:create_volume, volume_resp, 'v-foobar', config: 'fake-config')
         .and_return(volume)
     end
   end

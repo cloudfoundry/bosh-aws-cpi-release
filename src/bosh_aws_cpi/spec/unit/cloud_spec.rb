@@ -119,8 +119,9 @@ describe Bosh::AwsCloud::Cloud do
       let(:volume) { double('AWS::EC2::Volume', id: 'fake-volume-id') }
       before do
         cloud.instance_variable_set(:'@ec2_client', ec2_client)
+        allow(ec2_client).to receive(:config).and_return('fake-config')
         allow(AWS::EC2::Volume).to receive(:new_from)
-          .with(:create_volume, volume_resp, 'fake-volume-id')
+          .with(:create_volume, volume_resp, 'fake-volume-id', config: 'fake-config')
           .and_return(volume)
       end
 
