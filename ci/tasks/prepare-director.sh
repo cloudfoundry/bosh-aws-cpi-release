@@ -56,7 +56,8 @@ if [ -z "$BOSH_RELEASE_PATH" ]; then
     wget -O "${BOSH_RELEASE_PATH}" "${download_url}"
   fi
 fi
-bosh_release_uri="file://${BOSH_RELEASE_PATH}"
+# use relative paths: paths will be resolved in a separate task
+bosh_release_uri="file://${BOSH_RELEASE_PATH/*bosh-release/bosh-release}"
 
 if [ -z "$CPI_RELEASE_PATH" ]; then
   if [ -f ${ci_cpi_dir}/*.tgz ]; then
@@ -69,7 +70,7 @@ if [ -z "$CPI_RELEASE_PATH" ]; then
     wget -O "${CPI_RELEASE_PATH}" "${download_url}"
   fi
 fi
-cpi_release_uri="file://${CPI_RELEASE_PATH}"
+cpi_release_uri="file://${CPI_RELEASE_PATH/*cpi-release/cpi-release}"
 
 if [ -z "$STEMCELL_PATH" ]; then
   if [ -f ${ci_stemcell_dir}/*.tgz ]; then
@@ -82,7 +83,7 @@ if [ -z "$STEMCELL_PATH" ]; then
     wget -O "${STEMCELL_PATH}" "${download_url}"
   fi
 fi
-stemcell_uri="file://${STEMCELL_PATH}"
+stemcell_uri="file://${STEMCELL_PATH/*stemcell\//stemcell/}"
 
 # configuration
 : ${SECURITY_GROUP:=$(       echo ${metadata} | jq --raw-output ".SecurityGroupID" )}

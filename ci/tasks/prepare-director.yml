@@ -13,6 +13,9 @@ inputs:
 
 outputs:
   - name: director-config
+  - name: bosh-release
+  - name: cpi-release
+  - name: stemcell
 
 run:
   path: bosh-cpi-src/ci/tasks/prepare-director.sh
