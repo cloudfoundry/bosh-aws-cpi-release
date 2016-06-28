@@ -314,7 +314,7 @@ compilation:
 EOF
 
 echo -e "${green}Successfully generated manifest!${nc}"
-echo -e "${green}Manifest:    ${OUTPUT_DIR}director.yml${nc}"
-echo -e "${green}Env:         ${OUTPUT_DIR}director.env${nc}"
-echo -e "${green}CloudConfig: ${OUTPUT_DIR}cloud-config.yml${nc}"
-echo -e "${green}Artifacts:   ${tmpdir}${nc}"
+echo -e "${green}Manifest:    ${OUTPUT_DIR}/director.yml${nc}"
+echo -e "${green}Env:         ${OUTPUT_DIR}/director.env${nc}"
+echo -e "${green}CloudConfig: ${OUTPUT_DIR}/cloud-config.yml${nc}"
+echo -e "${green}Artifacts:   ${tmpdir}/${nc}"
