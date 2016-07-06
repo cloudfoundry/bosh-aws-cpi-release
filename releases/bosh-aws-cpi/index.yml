@@ -78,4 +78,6 @@ builds:
     version: '52'
   9b0df292-2b6c-41fb-b1ab-487b2f5b6d6f:
     version: '53'
+  800cec14-a5ee-4239-bbf1-29163467015d:
+    version: '54'
 format-version: '2'
