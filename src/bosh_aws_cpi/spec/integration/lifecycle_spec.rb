@@ -6,13 +6,13 @@ require 'cloud'
 
 describe Bosh::AwsCloud::Cloud do
   before(:all) do
-    @access_key_id     = ENV['BOSH_AWS_ACCESS_KEY_ID']       || raise("Missing BOSH_AWS_ACCESS_KEY_ID")
-    @secret_access_key = ENV['BOSH_AWS_SECRET_ACCESS_KEY']   || raise("Missing BOSH_AWS_SECRET_ACCESS_KEY")
-    @subnet_id         = ENV['BOSH_AWS_SUBNET_ID']           || raise("Missing BOSH_AWS_SUBNET_ID")
-    @subnet_zone       = ENV['BOSH_AWS_SUBNET_ZONE']         || raise("Missing BOSH_AWS_SUBNET_ZONE")
-    @manual_ip         = ENV['BOSH_AWS_LIFECYCLE_MANUAL_IP'] || raise("Missing BOSH_AWS_LIFECYCLE_MANUAL_IP")
-    @elb_id            = ENV['BOSH_AWS_ELB_ID']              || raise("Missing BOSH_AWS_ELB_ID")
-    @kms_key_arn       = ENV['BOSH_AWS_KMS_KEY_ARN']         || raise("Missing BOSH_AWS_KMS_KEY_ARN")
+    @access_key_id     = ENV['BOSH_AWS_ACCESS_KEY_ID']       || raise('Missing BOSH_AWS_ACCESS_KEY_ID')
+    @secret_access_key = ENV['BOSH_AWS_SECRET_ACCESS_KEY']   || raise('Missing BOSH_AWS_SECRET_ACCESS_KEY')
+    @subnet_id         = ENV['BOSH_AWS_SUBNET_ID']           || raise('Missing BOSH_AWS_SUBNET_ID')
+    @subnet_zone       = ENV['BOSH_AWS_SUBNET_ZONE']         || raise('Missing BOSH_AWS_SUBNET_ZONE')
+    @manual_ip         = ENV['BOSH_AWS_LIFECYCLE_MANUAL_IP'] || raise('Missing BOSH_AWS_LIFECYCLE_MANUAL_IP')
+    @elb_id            = ENV['BOSH_AWS_ELB_ID']              || raise('Missing BOSH_AWS_ELB_ID')
+    @kms_key_arn       = ENV['BOSH_AWS_KMS_KEY_ARN']         || raise('Missing BOSH_AWS_KMS_KEY_ARN')
   end
 
   let(:instance_type_with_ephemeral)    { ENV.fetch('BOSH_AWS_INSTANCE_TYPE', 'm3.medium') }
@@ -173,7 +173,7 @@ describe Bosh::AwsCloud::Cloud do
 
           retry_options = { sleep: 10, tries: 10, on: RegisteredInstances }
 
-          logger.debug("Waiting for deregistration from ELB")
+          logger.debug('Waiting for deregistration from ELB')
           expect {
             Bosh::Common.retryable(retry_options) do |tries, error|
               ensure_no_instances_registered_with_elb(logger, elb_client, @elb_id)
@@ -426,11 +426,11 @@ describe Bosh::AwsCloud::Cloud do
       it 'requests all available instance disks and puts the mappings in the registry' do
         vm_lifecycle do |instance_id|
           expect(registry).to have_received(:update_settings).with(instance_id, hash_including({
-                "disks" => {
-                    "system" => "/dev/xvda",
-                    "persistent" => {},
-                    "ephemeral" => "/dev/sdb",
-                    "raw_ephemeral" => [{"path" => "/dev/xvdba"}]
+                'disks' => {
+                    'system' => '/dev/xvda',
+                    'persistent' => {},
+                    'ephemeral' => '/dev/sdb',
+                    'raw_ephemeral' => [{'path' => '/dev/xvdba'}]
                 }
             }))
         end

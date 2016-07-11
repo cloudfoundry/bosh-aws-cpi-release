@@ -69,8 +69,8 @@ module Bosh::AwsCloud
         allow(param_mapper).to receive(:validate)
         allow(block_device_manager).to receive(:resource_pool=)
         allow(block_device_manager).to receive(:virtualization_type=)
-        allow(block_device_manager).to receive(:mappings).and_return("fake-block-device-mappings")
-        allow(block_device_manager).to receive(:agent_info).and_return("fake-block-device-agent-info")
+        allow(block_device_manager).to receive(:mappings).and_return('fake-block-device-mappings')
+        allow(block_device_manager).to receive(:agent_info).and_return('fake-block-device-agent-info')
 
         allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
 
@@ -117,10 +117,10 @@ module Bosh::AwsCloud
           allow(sg1).to receive(:name).and_return('baz')
           allow(ec2).to receive(:security_groups).and_return([sg1])
 
-          # Should not recieve an ondemand instance create call
+          # Should not receive an on-demand instance create call
           expect(aws_client).to_not receive(:run_instances)
 
-          # Should rather recieve a spot instance request
+          # Should rather receive a spot instance request
           expect(aws_client).to receive(:request_spot_instances) do |spot_request|
             expect(spot_request[:spot_price]).to eq('0.15')
             expect(spot_request[:instance_count]).to eq(1)
@@ -138,7 +138,7 @@ module Bosh::AwsCloud
             with(:spot_instance_request_ids=>['sir-12345c']).
             and_return(:spot_instance_request_set => [{:state => 'active', :instance_id=>'i-12345678'}])
 
-          # Should then wait for instance to be running, just like in the case of on deman
+          # Should then wait for instance to be running, just like in the case of on-demand
           expect(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
 
           # Trigger spot instance request
@@ -227,7 +227,7 @@ module Bosh::AwsCloud
       it 'should retry creating the VM when AWS::EC2::Errors::InvalidIPAddress::InUse raised' do
         instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
         allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
-        allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
+        allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
         expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_raise(AWS::EC2::Errors::InvalidIPAddress::InUse)
         expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")

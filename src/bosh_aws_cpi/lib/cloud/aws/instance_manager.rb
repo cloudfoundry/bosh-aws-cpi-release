@@ -73,16 +73,16 @@ module Bosh::AwsCloud
     end
 
     def create_aws_spot_instance(instance_params, spot_bid_price)
-      @logger.info("Launching spot instance...")
+      @logger.info('Launching spot instance...')
       spot_manager = Bosh::AwsCloud::SpotManager.new(@ec2)
 
       spot_manager.create(instance_params, spot_bid_price)
     end
 
     def create_aws_instance(instance_params, resource_pool)
-      if resource_pool["spot_bid_price"]
+      if resource_pool['spot_bid_price']
         begin
-          return create_aws_spot_instance instance_params, resource_pool["spot_bid_price"]
+          return create_aws_spot_instance instance_params, resource_pool['spot_bid_price']
         rescue Bosh::Clouds::VMCreationFailed => e
           unless resource_pool["spot_ondemand_fallback"]
             message = "Spot instance creation failed: #{e.inspect}"
@@ -98,10 +98,10 @@ module Bosh::AwsCloud
       # Retry the create instance operation a couple of times if we are told that the IP
       # address is in use - it can happen when the director recreates a VM and AWS
       # is too slow to update its state when we have released the IP address and want to
-      # realocate it again.
+      # reallocate it again.
       errors = [AWS::EC2::Errors::InvalidIPAddress::InUse]
       Bosh::Common.retryable(sleep: instance_create_wait_time, tries: 20, on: errors) do |tries, error|
-        @logger.info("Launching on demand instance...")
+        @logger.info('Launching on demand instance...')
         if error.class == AWS::EC2::Errors::InvalidIPAddress::InUse
           @logger.warn("IP address was in use: #{error}")
         end
