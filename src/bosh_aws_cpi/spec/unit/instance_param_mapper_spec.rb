@@ -299,6 +299,29 @@ module Bosh::AwsCloud
             expect(mapping(input)).to eq(output)
           end
         end
+
+        context 'when associate_public_ip_address is true' do
+          let(:input) do
+            {
+              resource_pool: {
+                'auto_assign_public_ip' => true
+              }
+            }
+          end
+          let(:output) do
+            {
+              network_interfaces: [
+                {
+                  associate_public_ip_address: true,
+                  device_index: 0
+                }
+              ]
+            }
+          end
+          it 'adds the option to the output' do
+            expect(mapping(input)).to eq(output)
+          end
+        end
       end
 
       describe 'Subnet options' do

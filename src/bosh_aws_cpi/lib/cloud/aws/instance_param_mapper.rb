@@ -78,6 +78,8 @@ module Bosh::AwsCloud
       nic[:groups] = sg unless sg.nil? || sg.empty?
       nic[:subnet_id] = subnet_id if subnet_id
       nic[:private_ip_address] = private_ip_address if private_ip_address
+      nic[:associate_public_ip_address] = resource_pool['auto_assign_public_ip'] if resource_pool['auto_assign_public_ip']
+
       nic[:device_index] = 0 unless nic.empty?
       params[:network_interfaces] = [nic] unless nic.empty?
 

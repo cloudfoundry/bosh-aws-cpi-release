@@ -552,6 +552,33 @@ describe Bosh::AwsCloud::Cloud do
     end
   end
 
+  context 'when auto_assign_public_ip is true' do
+    let(:resource_pool) do
+      {
+        'instance_type' => instance_type,
+        'availability_zone' => @subnet_zone,
+        'auto_assign_public_ip' => true
+      }
+    end
+    let(:network_spec) do
+      {
+        'default' => {
+          'type' => 'dynamic',
+          'cloud_properties' => { 'subnet' => @subnet_id }
+        }
+      }
+    end
+    it 'assigns a public IP to the instance' do
+      begin
+        vm_lifecycle do |instance_id|
+          begin
+            expect(cpi.ec2_client.instances[instance_id].ip_address).to_not be_nil
+          end
+        end
+      end
+    end
+  end
+
   def vm_lifecycle(options = {})
     vm_disks = options[:disks] || disks
     stemcell_id = cpi.create_stemcell('/not/a/real/path', { 'ami' => { 'us-east-1' => ami } })
