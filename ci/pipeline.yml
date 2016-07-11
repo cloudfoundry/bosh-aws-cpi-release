@@ -111,7 +111,6 @@ jobs:
           acquire: true
 
       - task: prepare-director
-        tags: [ bosh-cpi-1 ]
         file: bosh-cpi-src/ci/tasks/prepare-director.yml
         params:
             BOSH_DIRECTOR_USERNAME: {{BOSH_DIRECTOR_USERNAME}}
@@ -125,7 +124,6 @@ jobs:
 
       - do:
           - task: deploy-director
-            tags: [ bosh-cpi-1 ]
             file: certification/shared/tasks/deploy-director.yml
             input_mapping: {pipelines: certification}
             params:
@@ -133,7 +131,6 @@ jobs:
               BOSH_DIRECTOR_PASSWORD: {{BOSH_DIRECTOR_PASSWORD}}
 
           - task: prepare-manual-bats
-            tags: [ bosh-cpi-1 ]
             file: bosh-cpi-src/ci/tasks/prepare-manual-bats.yml
             params:
               AWS_ACCESS_KEY:         {{aws_access_key__primary}}
@@ -146,14 +143,12 @@ jobs:
               STEMCELL_NAME:          bosh-aws-xen-hvm-ubuntu-trusty-go_agent
 
           - task: run-bats
-            tags: [ bosh-cpi-1 ]
             file: certification/shared/tasks/run-bats.yml
             input_mapping: {pipelines: certification}
 
         ensure:
           do:
             - task: teardown
-              tags: [ bosh-cpi-1 ]
               file: certification/shared/tasks/teardown.yml
               input_mapping: {pipelines: certification}
               params:
