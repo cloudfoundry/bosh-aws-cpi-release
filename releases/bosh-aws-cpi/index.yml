@@ -80,4 +80,6 @@ builds:
     version: '53'
   800cec14-a5ee-4239-bbf1-29163467015d:
     version: '54'
+  51c57bb4-a21b-4417-8ef7-ac017f38d6dd:
+    version: '55'
 format-version: '2'
