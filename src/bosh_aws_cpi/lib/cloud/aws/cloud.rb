@@ -77,6 +77,8 @@ module Bosh::AwsCloud
       block_device_manager = BlockDeviceManager.new(@logger)
       @instance_manager = InstanceManager.new(@ec2_client, registry, elb, instance_param_mapper, block_device_manager, @logger)
 
+      @instance_type_mapper = InstanceTypeMapper.new
+
       @metadata_lock = Mutex.new
     end
 
@@ -462,6 +464,27 @@ module Bosh::AwsCloud
       TagManager.tag(instance, "Name", name) if name
     rescue AWS::EC2::Errors::TagLimitExceeded => e
       logger.error("could not tag #{instance.id}: #{e.message}")
+    end
+
+    # Map a set of cloud agnostic VM properties (cpu, ram, ephemeral_disk_size) to
+    # a set of AWS specific cloud_properties
+    # @param [Hash] vm_properties requested cpu, ram, and ephemeral_disk_size
+    # @return [Hash] AWS specific cloud_properties describing instance (e.g. instance_type)
+    def calculate_vm_cloud_properties(vm_properties)
+      required_keys = ['cpu', 'ram', 'ephemeral_disk_size']
+      missing_keys = required_keys.reject { |key| vm_properties[key] }
+      unless missing_keys.empty?
+        missing_keys.map! { |k| "'#{k}'" }
+        raise "Missing VM cloud properties: #{missing_keys.join(', ')}"
+      end
+
+      instance_type = @instance_type_mapper.map(vm_properties)
+      {
+        'instance_type' => instance_type,
+        'ephemeral_disk' => {
+          'size' => vm_properties['ephemeral_disk_size'],
+        }
+      }
     end
 
     def find_device_path_by_name(sd_name)

@@ -39,6 +39,7 @@ require "cloud/aws/credentials_provider"
 require "cloud/aws/instance_param_mapper"
 require "cloud/aws/security_group_mapper"
 require "cloud/aws/block_device_manager"
+require "cloud/aws/instance_type_mapper"
 
 module Bosh
   module Clouds
