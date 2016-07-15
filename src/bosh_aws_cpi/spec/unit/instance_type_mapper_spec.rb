@@ -29,11 +29,11 @@ describe Bosh::AwsCloud::InstanceTypeMapper do
 
   it 'raises an error if no match is found' do
     too_large_vm = {
-      'cpu' => 32,
+      'cpu' => 3200,
       'ram' => 102400,
     }
     expect {
       expect(subject.map(too_large_vm))
-    }.to raise_error(/Unable to meet requested VM requirements:.*32 CPU.*102400 RAM/)
+    }.to raise_error(/Unable to meet requested VM requirements:.*3200 CPU.*102400 RAM/)
   end
 end
