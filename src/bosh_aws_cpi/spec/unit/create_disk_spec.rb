@@ -57,19 +57,19 @@ describe Bosh::AwsCloud::Cloud do
 
   context 'cloud properties' do
     describe 'volume type' do
-      it 'defaults to standard' do
+      it 'defaults to gp2' do
         @cloud.create_disk(2048, {})
 
         expect(low_level_client).to have_received(:create_volume) do |params|
-          expect(params[:volume_type]).to eq('standard')
+          expect(params[:volume_type]).to eq('gp2')
         end
       end
 
       it 'is pulled from cloud properties' do
-        @cloud.create_disk(2048, { 'type' => 'gp2' })
+        @cloud.create_disk(2048, { 'type' => 'standard' })
 
         expect(low_level_client).to have_received(:create_volume) do |params|
-          expect(params[:volume_type]).to eq('gp2')
+          expect(params[:volume_type]).to eq('standard')
         end
       end
     end

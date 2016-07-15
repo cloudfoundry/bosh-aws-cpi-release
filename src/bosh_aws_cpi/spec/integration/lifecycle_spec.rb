@@ -272,6 +272,42 @@ describe Bosh::AwsCloud::Cloud do
       end
     end
 
+    context 'when disk_pool.cloud_properties are empty' do
+      let(:cloud_properties) { {} }
+
+      it 'creates an unencrypted gp2 disk of the specified size' do
+        begin
+          volume_id = cpi.create_disk(2048, cloud_properties)
+          expect(volume_id).not_to be_nil
+          expect(cpi.has_disk?(volume_id)).to be(true)
+
+          volume = cpi.ec2_client.volumes[volume_id]
+          expect(volume.encrypted?).to be(false)
+          expect(volume.type).to eq('gp2')
+          expect(volume.size).to eq(2)
+        ensure
+          cpi.delete_disk(volume_id) if volume_id
+        end
+      end
+    end
+
+    context 'when disk_pool specifies a disk type' do
+      let(:cloud_properties) { {'type' => 'standard'} }
+
+      it 'creates a disk of the given type' do
+        begin
+          volume_id = cpi.create_disk(2048, cloud_properties)
+          expect(volume_id).not_to be_nil
+          expect(cpi.has_disk?(volume_id)).to be(true)
+
+          volume = cpi.ec2_client.volumes[volume_id]
+          expect(volume.type).to eq('standard')
+        ensure
+          cpi.delete_disk(volume_id) if volume_id
+        end
+      end
+    end
+
     context 'when encrypted is true' do
       let(:cloud_properties) { {'encrypted' => true} }
       it 'can create encrypted disks' do
@@ -330,8 +366,6 @@ describe Bosh::AwsCloud::Cloud do
           'availability_zone' => @subnet_zone,
           'ephemeral_disk' => {
             'size' => 4 * 1024,
-            'type' => 'io1',
-            'iops' => 100
           }
         }
       end
@@ -344,10 +378,37 @@ describe Bosh::AwsCloud::Cloud do
 
           ephemeral_volume = cpi.ec2_client.volumes[disks[1]]
           expect(ephemeral_volume.size).to eq(4)
-          expect(ephemeral_volume.type).to eq('io1')
-          expect(ephemeral_volume.iops).to eq(100)
+          expect(ephemeral_volume.type).to eq('gp2')
 
           expect(ephemeral_volume.encrypted).to eq(false)
+        end
+      end
+
+      context 'when iops are specified' do
+        let(:resource_pool) do
+          {
+            'instance_type' => instance_type,
+            'availability_zone' => @subnet_zone,
+            'ephemeral_disk' => {
+              'size' => 4 * 1024,
+              'type' => 'io1',
+              'iops' => 100
+            }
+          }
+        end
+
+        it 'requests ephemeral disk with the specified iops' do
+          vm_lifecycle do |instance_id|
+            disks = cpi.get_disks(instance_id)
+            expect(disks.size).to eq(2)
+
+            ephemeral_volume = cpi.ec2_client.volumes[disks[1]]
+            expect(ephemeral_volume.size).to eq(4)
+            expect(ephemeral_volume.type).to eq('io1')
+            expect(ephemeral_volume.iops).to eq(100)
+
+            expect(ephemeral_volume.encrypted).to eq(false)
+          end
         end
       end
 
@@ -416,8 +477,7 @@ describe Bosh::AwsCloud::Cloud do
           'availability_zone' => @subnet_zone,
           'raw_instance_storage' => true,
           'ephemeral_disk' => {
-              'size' => 4 * 1024,
-              'type' => 'gp2'
+              'size' => 4 * 1024
           }
         }
       end
@@ -442,14 +502,13 @@ describe Bosh::AwsCloud::Cloud do
             'instance_type' => instance_type,
             'availability_zone' => @subnet_zone,
             'root_disk' => {
-                'size' => 11 * 1024,
-                'type' => 'gp2'
+              'size' => 11 * 1024
             }
           }
         end
         let(:instance_type) { instance_type_without_ephemeral }
 
-        it 'requests root disk with the specified size and type' do
+        it 'requests root disk with the specified size and type gp2' do
           vm_lifecycle do |instance_id|
             disks = cpi.get_disks(instance_id)
             expect(disks.size).to eq(2)
@@ -457,6 +516,30 @@ describe Bosh::AwsCloud::Cloud do
             root_disk = cpi.ec2_client.volumes[disks[0]]
             expect(root_disk.size).to eq(11)
             expect(root_disk.type).to eq('gp2')
+          end
+        end
+
+        context 'and type is specified' do
+          let(:resource_pool) do
+            {
+              'instance_type' => instance_type,
+              'availability_zone' => @subnet_zone,
+              'root_disk' => {
+                'size' => 11 * 1024,
+                'type' => 'standard'
+              }
+            }
+          end
+
+          it 'requests root disk with the specified size and type' do
+            vm_lifecycle do |instance_id|
+              disks = cpi.get_disks(instance_id)
+              expect(disks.size).to eq(2)
+
+              root_disk = cpi.ec2_client.volumes[disks[0]]
+              expect(root_disk.size).to eq(11)
+              expect(root_disk.type).to eq('standard')
+            end
           end
         end
       end

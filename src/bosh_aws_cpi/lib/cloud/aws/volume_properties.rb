@@ -7,7 +7,7 @@ module Bosh
 
       def initialize(options)
         @size = options[:size] || 0
-        @type = options[:type] || 'standard'
+        @type = options[:type] || 'gp2'
         @iops = options[:iops]
         @az = options[:az]
         @kms_key_arn = options[:kms_key_arn]

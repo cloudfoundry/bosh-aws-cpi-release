@@ -129,23 +129,20 @@ module Bosh::AwsCloud
     end
 
     def root_disk_mapping
-      root_disk_size_in_mb = @resource_pool['root_disk']['size']
-      root_disk_type = @resource_pool['root_disk'].fetch('type', 'standard')
-      root_disk_iops = @resource_pool['root_disk']['iops']
-      root_disk_volume_properties = VolumeProperties.new(
-        size: root_disk_size_in_mb,
-        type: root_disk_type,
-        iops: root_disk_iops
+      disk_properties = VolumeProperties.new(
+        size: @resource_pool['root_disk']['size'],
+        type: @resource_pool['root_disk']['type'],
+        iops: @resource_pool['root_disk']['iops'],
       )
 
       root_device = {
-        :volume_size => (root_disk_size_in_mb / 1024.0).ceil,
-        :volume_type => root_disk_type,
+        :volume_size => (disk_properties.size / 1024.0).ceil,
+        :volume_type => disk_properties.type,
         :delete_on_termination => true,
       }
 
-      if root_disk_type == 'io1' && root_disk_iops > 0
-        root_device[:iops] = root_disk_iops
+      if disk_properties.type == 'io1' && disk_properties.iops > 0
+        root_device[:iops] = disk_properties.iops
       end
 
       if @virtualization_type == :hvm

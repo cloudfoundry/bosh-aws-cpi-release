@@ -24,7 +24,7 @@ module Bosh::AwsCloud
                 device_name: '/dev/sdb',
                 ebs: {
                   volume_size: 40,
-                  volume_type: 'standard',
+                  volume_type: 'gp2',
                   delete_on_termination: true,
                 }
               }]
@@ -60,7 +60,7 @@ module Bosh::AwsCloud
                 device_name: '/dev/sdb',
                 ebs: {
                   volume_size: 10,
-                  volume_type: 'standard',
+                  volume_type: 'gp2',
                   delete_on_termination: true,
                 }
               }
@@ -97,7 +97,7 @@ module Bosh::AwsCloud
                   device_name: '/dev/sdb',
                   ebs: {
                     volume_size: 10,
-                    volume_type: 'standard',
+                    volume_type: 'gp2',
                     delete_on_termination: true,
                   }
                 }
@@ -121,7 +121,7 @@ module Bosh::AwsCloud
               device_name: '/dev/sdb',
               ebs: {
                 volume_size: 10,
-                volume_type: 'standard',
+                volume_type: 'gp2',
                 delete_on_termination: true,
               }
             }
@@ -162,7 +162,7 @@ module Bosh::AwsCloud
             device_name: '/dev/sdb',
             ebs: {
               volume_size: 4,
-              volume_type: 'standard',
+              volume_type: 'gp2',
               delete_on_termination: true,
             }
           }]
@@ -200,7 +200,7 @@ module Bosh::AwsCloud
               device_name: '/dev/sdb',
               ebs: {
                 volume_size: 4,
-                volume_type: 'standard',
+                volume_type: 'gp2',
                 delete_on_termination: true,
               }
             }
@@ -241,7 +241,7 @@ module Bosh::AwsCloud
                 device_name: '/dev/sdb',
                 ebs: {
                   volume_size: 4,
-                  volume_type: 'standard',
+                  volume_type: 'gp2',
                   delete_on_termination: true,
                 }
               }
@@ -322,7 +322,7 @@ module Bosh::AwsCloud
             device_name: '/dev/sdb',
             ebs: {
               volume_size: 4,
-              volume_type: 'standard',
+              volume_type: 'gp2',
               delete_on_termination: true,
               encrypted: true
             }
@@ -419,7 +419,7 @@ module Bosh::AwsCloud
       end
 
       context 'when root disk is specified' do
-        it 'should default root disk type to standard if type is not specified' do
+        it 'should default root disk type to gp2 if type is not specified' do
           manager = BlockDeviceManager.new(logger)
           manager.resource_pool = {
             'key_name' => 'bar',
@@ -436,7 +436,7 @@ module Bosh::AwsCloud
             device_name: '/dev/sdb',
             ebs: {
               volume_size: 4,
-              volume_type: 'standard',
+              volume_type: 'gp2',
               delete_on_termination: true,
             }
           }]
@@ -446,7 +446,7 @@ module Bosh::AwsCloud
             device_name: '/dev/xvda',
             ebs: {
               volume_size: 42,
-              volume_type: 'standard',
+              volume_type: 'gp2',
               delete_on_termination: true,
             }
           }
@@ -475,7 +475,7 @@ module Bosh::AwsCloud
               device_name: '/dev/sdb',
               ebs: {
                 volume_size: 4,
-                volume_type: 'standard',
+                volume_type: 'gp2',
                 delete_on_termination: true,
               }
             }]
@@ -515,7 +515,7 @@ module Bosh::AwsCloud
             device_name: '/dev/sdb',
             ebs: {
               volume_size: 4,
-              volume_type: 'standard',
+              volume_type: 'gp2',
               delete_on_termination: true,
             }
           }]
@@ -525,7 +525,7 @@ module Bosh::AwsCloud
             device_name: '/dev/sda',
             ebs: {
               volume_size: 42,
-              volume_type: 'standard',
+              volume_type: 'gp2',
               delete_on_termination: true,
             }
           }
