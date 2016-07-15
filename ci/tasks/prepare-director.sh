@@ -137,12 +137,11 @@ resource_pools:
       availability_zone: ${AVAILABILITY_ZONE}
       ephemeral_disk:
         size: 25000
-        type: gp2
 
 disk_pools:
   - name: default
     disk_size: 25_000
-    cloud_properties: {type: gp2}
+    cloud_properties: {}
 
 networks:
   - name: private
@@ -284,12 +283,12 @@ vm_types:
 - name: default
   cloud_properties:
     instance_type: t2.micro
-    ephemeral_disk: {size: 3000, type: gp2}
+    ephemeral_disk: {size: 3000}
 
 disk_types:
 - name: default
   disk_size: 3000
-  cloud_properties: {type: gp2}
+  cloud_properties: {}
 
 networks:
 - name: default
