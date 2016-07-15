@@ -6,10 +6,12 @@ module Bosh::AwsCloud
     let(:maximal_options) do
       {
         size: 2048,
-        type: 'my-fake-disk-type',
-        iops: 1, az: 'us-east-1a',
+        type: 'io1',
+        iops: 1,
+        az: 'us-east-1a',
         encrypted: true,
-        kms_key_arn: 'my_fake_kms_arn'
+        kms_key_arn: 'my_fake_kms_arn',
+        virtualization_type: 'paravirtual',
       }
     end
     describe '#ephemeral_disk_config' do
@@ -37,7 +39,7 @@ module Bosh::AwsCloud
             device_name: '/dev/sdb',
             ebs: {
               volume_size: 2,
-              volume_type: 'my-fake-disk-type',
+              volume_type: 'io1',
               iops: 1,
               encrypted: true,
               delete_on_termination: true,
@@ -68,10 +70,43 @@ module Bosh::AwsCloud
           expect(vp).to eq({
             size: 2,
             availability_zone: 'us-east-1a',
-            volume_type: 'my-fake-disk-type',
+            volume_type: 'io1',
             encrypted: true,
             iops: 1,
             kms_key_id: 'my_fake_kms_arn'
+          })
+        end
+      end
+    end
+
+    describe '#root_disk_config' do
+      context 'given a minimal set of options' do
+        subject(:volume_properties) {described_class.new(minimal_options)}
+        it 'returns the correct root_disk_config' do
+          vp = volume_properties.root_disk_config
+          expect(vp).to eq({
+            device_name: '/dev/xvda',
+            ebs: {
+              volume_size: 0,
+              volume_type: 'gp2',
+              delete_on_termination: true,
+            }
+          })
+        end
+      end
+
+      context 'given a maximal set of options' do
+        subject(:volume_properties) {described_class.new(maximal_options)}
+        it 'returns the correct root_disk_config' do
+          vp = volume_properties.root_disk_config
+          expect(vp).to eq({
+            device_name: '/dev/sda',
+            ebs: {
+              volume_size: 2,
+              volume_type: 'io1',
+              iops: 1,
+              delete_on_termination: true,
+            }
           })
         end
       end

@@ -133,29 +133,9 @@ module Bosh::AwsCloud
         size: @resource_pool['root_disk']['size'],
         type: @resource_pool['root_disk']['type'],
         iops: @resource_pool['root_disk']['iops'],
+        virtualization_type: @virtualization_type,
       )
-
-      root_device = {
-        :volume_size => (disk_properties.size / 1024.0).ceil,
-        :volume_type => disk_properties.type,
-        :delete_on_termination => true,
-      }
-
-      if disk_properties.type == 'io1' && disk_properties.iops > 0
-        root_device[:iops] = disk_properties.iops
-      end
-
-      if @virtualization_type == :hvm
-        {
-          device_name: "/dev/xvda",
-          ebs: root_device
-        }
-      else
-        {
-          device_name: "/dev/sda",
-          ebs: root_device
-        }
-      end
+      disk_properties.root_disk_config
     end
 
     class DiskInfo
