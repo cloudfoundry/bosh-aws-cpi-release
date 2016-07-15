@@ -192,7 +192,9 @@ module Bosh::AwsCloud
         'd2.xlarge' => [2000, 3],
         'd2.2xlarge' => [2000, 6],
         'd2.4xlarge' => [2000, 12],
-        'd2.8xlarge' => [2000, 2]
+        'd2.8xlarge' => [2000, 24],
+
+        'x1.32xlarge' => [1920, 2],
       }
 
       attr_reader :size, :count
