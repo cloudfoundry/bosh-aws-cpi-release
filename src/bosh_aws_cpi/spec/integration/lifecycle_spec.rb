@@ -626,6 +626,53 @@ describe Bosh::AwsCloud::Cloud do
       vm_lifecycle
     end
 
+    context 'with advertised_routes' do
+      let(:route_destination) { '9.9.9.9/32' }
+      let(:route_table_id) do
+        rt = cpi.ec2_client.subnets[@subnet_id].route_table
+        expect(rt).to_not be_nil, "Subnet '#{@subnet_id}' must have an associated route table"
+        rt.id
+      end
+      let(:resource_pool) do
+        {
+          'instance_type' => instance_type,
+          'availability_zone' => @subnet_zone,
+          'advertised_routes' => [
+            {
+              'table_id' => route_table_id,
+              'destination' => route_destination,
+            }
+          ]
+        }
+      end
+
+      it 'associates the route to the created instance' do
+        route_table = cpi.ec2_client.route_tables[route_table_id]
+        expect(route_table).to_not be_nil, "Could not found route table with id '#{route_table_id}'"
+
+        vm_lifecycle do |instance_id|
+          found_route = route_table.routes.any? { |r| r.destination_cidr_block == route_destination && r.instance.id == instance_id }
+          expect(found_route).to be(true), "Expected to find route with destination '#{route_destination}', but did not"
+        end
+      end
+
+      it 'updates the route if the route already exists' do
+        route_table = cpi.ec2_client.route_tables[route_table_id]
+        expect(route_table).to_not be_nil, "Could not found route table with id '#{route_table_id}'"
+
+        vm_lifecycle do |original_instance_id|
+          found_route = route_table.routes.any? { |r| r.destination_cidr_block == route_destination && r.instance.id == original_instance_id }
+          expect(found_route).to be(true), "Expected to find route with destination '#{route_destination}', but did not"
+
+          resource_pool['advertised_routes'].first['destination'] = '7.7.7.7/32'
+          vm_lifecycle do |instance_id|
+            found_route = route_table.routes.any? { |r| r.destination_cidr_block == '7.7.7.7/32' && r.instance.id == instance_id }
+            expect(found_route).to be(true), "Expected to find route with destination '#{route_destination}', but did not"
+          end
+        end
+      end
+    end
+
     context 'with security groups names' do
       let(:security_groups) { get_security_group_names(@subnet_id) }
 
