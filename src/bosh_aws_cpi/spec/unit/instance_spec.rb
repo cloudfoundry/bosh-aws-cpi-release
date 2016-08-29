@@ -142,6 +142,32 @@ module Bosh::AwsCloud
       end
     end
 
+    describe '#update_routing_tables' do
+      let(:fake_vpc) { instance_double('AWS::EC2::VPC') }
+      let(:fake_tables) { instance_double('AWS::EC2::RouteTableCollection') }
+      let(:fake_table) { instance_double('AWS::EC2::RouteTable') }
+      let(:fake_route) { instance_double('AWS::EC2::Route') }
+      let(:fake_routes) {[ fake_route ]}
+
+      before do
+        allow(aws_instance).to receive(:vpc).and_return(fake_vpc)
+        allow(fake_vpc).to receive(:route_tables).and_return(fake_tables)
+        allow(fake_tables).to receive(:[]).with('r-12345').and_return(fake_table)
+        allow(fake_table).to receive(:routes).and_return(fake_routes)
+        allow(fake_route).to receive(:destination_cidr_block).and_return("10.0.0.0/16")
+      end
+      it 'updates the routing table entry with the instance ID when finding an existing route' do
+          destination = "10.0.0.0/16"
+          expect(fake_table).to receive(:replace_route).with(destination, { :instance => aws_instance })
+          instance.update_routing_tables [{ "table_id" => "r-12345", "destination" => destination }]
+      end
+      it 'creates a routing table entry with the instance ID when the route does not exist' do
+          destination = "10.5.0.0/16"
+          expect(fake_table).to receive(:create_route).with(destination, { :instance => aws_instance })
+          instance.update_routing_tables [{ "table_id" => "r-12345", "destination" => destination }]
+      end
+    end
+
     describe '#attach_to_load_balancers' do
       before { allow(elb).to receive(:load_balancers).and_return(load_balancers) }
       let(:load_balancers) { { 'fake-lb1-id' => load_balancer1, 'fake-lb2-id' => load_balancer2 } }

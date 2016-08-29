@@ -83,6 +83,30 @@ module Bosh::AwsCloud
       @aws_instance.exists? && @aws_instance.status != :terminated
     end
 
+    def update_routing_tables(route_definitions)
+      if route_definitions.length > 0
+        @logger.debug("Associating instance with destinations in the routing tables")
+        tables = @aws_instance.vpc.route_tables
+        route_definitions.each do |definition|
+          @logger.debug("Finding routing table '#{definition["table_id"]}'")
+          table = tables[definition["table_id"]]
+          @logger.debug("Sending traffic for '#{definition["destination"]}' to '#{@aws_instance.id}' in '#{definition["table_id"]}'")
+
+          existing = false
+          table.routes.each do |route|
+              if definition["destination"] == route.destination_cidr_block
+                  existing = true
+              end
+          end
+          if existing
+            table.replace_route(definition["destination"], { :instance => @aws_instance })
+          else
+            table.create_route(definition["destination"], { :instance => @aws_instance })
+          end
+        end
+      end
+    end
+
     def attach_to_load_balancers(load_balancer_ids)
       load_balancer_ids.each do |load_balancer_id|
         lb = @elb.load_balancers[load_balancer_id]

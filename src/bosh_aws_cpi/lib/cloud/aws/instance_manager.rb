@@ -33,6 +33,7 @@ module Bosh::AwsCloud
         # attach to a load balancer, the instance must be running.
         instance.wait_for_running
         instance.attach_to_load_balancers(resource_pool['elbs'] || [])
+        instance.update_routing_tables(resource_pool['advertised_instance_routes'] || [])
       rescue => e
         @logger.warn("Failed to configure instance '#{instance.id}': #{e.inspect}")
         begin
