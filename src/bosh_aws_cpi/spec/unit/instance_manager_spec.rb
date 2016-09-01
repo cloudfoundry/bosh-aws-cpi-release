@@ -24,7 +24,8 @@ module Bosh::AwsCloud
       let(:stemcell_id) { 'stemcell-id' }
       let(:resource_pool) { {
         'instance_type' => 'm1.small',
-        'availability_zone' => 'us-east-1a'
+        'availability_zone' => 'us-east-1a',
+        'source_dest_check' => false
       } }
       let(:networks_spec) do
         {
@@ -90,6 +91,7 @@ module Bosh::AwsCloud
       it 'should ask AWS to create an instance in the given region, with parameters built up from the given arguments' do
         instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
         allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
+        allow(aws_instance).to receive(:source_dest_check=).with(true)
 
         expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
         instance_manager.create(
@@ -111,6 +113,7 @@ module Bosh::AwsCloud
 
         it 'should ask AWS to create a SPOT instance in the given region, when resource_pool includes spot_bid_price' do
           allow(ec2).to receive(:client).and_return(aws_client)
+          allow(aws_instance).to receive(:source_dest_check=).with(true)
 
           # need to translate security group names to security group ids
           sg1 = instance_double('AWS::EC2::SecurityGroup', id:'sg-baz-1234')
@@ -193,6 +196,7 @@ module Bosh::AwsCloud
             end
 
             it 'creates an on demand instance' do
+              allow(aws_instance).to receive(:source_dest_check=).with(true)
               expect(aws_client).to receive(:run_instances)
                 .with({ fake: 'instance-params', min_count: 1, max_count: 1 })
 
@@ -209,6 +213,7 @@ module Bosh::AwsCloud
 
             it 'does not log a warning' do
               expect(logger).to_not receive(:warn)
+              allow(aws_instance).to receive(:source_dest_check=).with(true)
 
               instance_manager.create(
                 agent_id,
@@ -233,6 +238,7 @@ module Bosh::AwsCloud
         expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
 
         allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
+        allow(aws_instance).to receive(:source_dest_check=).with(true)
         expect(logger).to receive(:warn).with(/IP address was in use/).once
 
         instance_manager.create(
@@ -246,7 +252,7 @@ module Bosh::AwsCloud
         )
       end
 
-      context 'when waiting it to become running fails' do
+      context 'when waiting for the instance to be running fails' do
         let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-instance-id') }
         let(:create_err) { StandardError.new('fake-err') }
 

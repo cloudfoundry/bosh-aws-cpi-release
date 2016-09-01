@@ -25,6 +25,10 @@ module Bosh::AwsCloud
       @aws_instance.disassociate_elastic_ip
     end
 
+    def source_dest_check=(state)
+      @aws_instance.source_dest_check = state
+    end
+
     def wait_for_running
       # If we time out, it is because the instance never gets from state running to started,
       # so we signal the director that it is ok to retry the operation. At the moment this

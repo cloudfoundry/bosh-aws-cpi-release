@@ -168,6 +168,13 @@ module Bosh::AwsCloud
       end
     end
 
+    describe '#source_dest_check=' do
+      it 'propagates source_dest_check=' do
+        expect(aws_instance).to receive(:source_dest_check=).with(false)
+        instance.source_dest_check = false
+      end
+    end
+
     describe '#attach_to_load_balancers' do
       before { allow(elb).to receive(:load_balancers).and_return(load_balancers) }
       let(:load_balancers) { { 'fake-lb1-id' => load_balancer1, 'fake-lb2-id' => load_balancer2 } }

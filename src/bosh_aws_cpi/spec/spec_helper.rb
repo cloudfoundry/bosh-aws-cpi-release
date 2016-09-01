@@ -17,7 +17,8 @@ def mock_cloud_options
         'region' => 'us-east-1',
         'default_key_name' => 'sesame',
         'default_security_groups' => [],
-        'max_retries' => 8
+        'max_retries' => 8,
+        'source_dest_check' => false
       },
       'registry' => {
         'endpoint' => 'localhost:42288',
