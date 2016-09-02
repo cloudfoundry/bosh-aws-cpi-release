@@ -169,9 +169,14 @@ module Bosh::AwsCloud
     end
 
     describe '#source_dest_check=' do
-      it 'propagates source_dest_check=' do
+      it 'propagates source_dest_check= true' do
         expect(aws_instance).to receive(:source_dest_check=).with(false)
         instance.source_dest_check = false
+      end
+
+      it 'propagates source_dest_check= false' do
+        expect(aws_instance).to receive(:source_dest_check=).with(true)
+        instance.source_dest_check = true
       end
     end
 

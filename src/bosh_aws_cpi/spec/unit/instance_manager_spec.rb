@@ -91,7 +91,7 @@ module Bosh::AwsCloud
       it 'should ask AWS to create an instance in the given region, with parameters built up from the given arguments' do
         instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
         allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
-        allow(aws_instance).to receive(:source_dest_check=).with(true)
+        allow(aws_instance).to receive(:source_dest_check=).with(false)
 
         expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
         instance_manager.create(
@@ -238,7 +238,7 @@ module Bosh::AwsCloud
         expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
 
         allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
-        allow(aws_instance).to receive(:source_dest_check=).with(true)
+        allow(aws_instance).to receive(:source_dest_check=).with(false)
         expect(logger).to receive(:warn).with(/IP address was in use/).once
 
         instance_manager.create(
