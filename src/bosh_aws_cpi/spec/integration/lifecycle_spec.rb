@@ -673,6 +673,32 @@ describe Bosh::AwsCloud::Cloud do
       end
     end
 
+    it 'sets source_dest_check to true by default' do
+      vm_lifecycle do |instance_id|
+        instance = cpi.ec2_client.instances[instance_id]
+
+        expect(instance.source_dest_check).to be(true)
+      end
+    end
+
+    context 'with source_dest_check disabled' do
+      let(:resource_pool) do
+        {
+          'instance_type' => instance_type,
+          'availability_zone' => @subnet_zone,
+          'source_dest_check' => false
+        }
+      end
+
+      it 'modifies the instance to disable source_dest_check' do
+        vm_lifecycle do |instance_id|
+          instance = cpi.ec2_client.instances[instance_id]
+
+          expect(instance.source_dest_check).to be(false)
+        end
+      end
+    end
+
     context 'with security groups names' do
       let(:security_groups) { get_security_group_names(@subnet_id) }
 
