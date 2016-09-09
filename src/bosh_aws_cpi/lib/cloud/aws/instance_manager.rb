@@ -34,7 +34,9 @@ module Bosh::AwsCloud
         instance.wait_for_running
         instance.attach_to_load_balancers(resource_pool['elbs'] || [])
         instance.update_routing_tables(resource_pool['advertised_routes'] || [])
-        instance.source_dest_check = resource_pool.fetch('source_dest_check', true)
+        if resource_pool['source_dest_check'].to_s == 'false'
+          instance.source_dest_check = false
+        end
       rescue => e
         @logger.warn("Failed to configure instance '#{instance.id}': #{e.inspect}")
         begin

@@ -25,7 +25,6 @@ module Bosh::AwsCloud
       let(:resource_pool) { {
         'instance_type' => 'm1.small',
         'availability_zone' => 'us-east-1a',
-        'source_dest_check' => false
       } }
       let(:networks_spec) do
         {
@@ -91,7 +90,6 @@ module Bosh::AwsCloud
       it 'should ask AWS to create an instance in the given region, with parameters built up from the given arguments' do
         instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
         allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
-        allow(aws_instance).to receive(:source_dest_check=).with(false)
 
         expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
         instance_manager.create(
@@ -113,7 +111,6 @@ module Bosh::AwsCloud
 
         it 'should ask AWS to create a SPOT instance in the given region, when resource_pool includes spot_bid_price' do
           allow(ec2).to receive(:client).and_return(aws_client)
-          allow(aws_instance).to receive(:source_dest_check=).with(true)
 
           # need to translate security group names to security group ids
           sg1 = instance_double('AWS::EC2::SecurityGroup', id:'sg-baz-1234')
@@ -196,7 +193,6 @@ module Bosh::AwsCloud
             end
 
             it 'creates an on demand instance' do
-              allow(aws_instance).to receive(:source_dest_check=).with(true)
               expect(aws_client).to receive(:run_instances)
                 .with({ fake: 'instance-params', min_count: 1, max_count: 1 })
 
@@ -213,7 +209,6 @@ module Bosh::AwsCloud
 
             it 'does not log a warning' do
               expect(logger).to_not receive(:warn)
-              allow(aws_instance).to receive(:source_dest_check=).with(true)
 
               instance_manager.create(
                 agent_id,
@@ -229,6 +224,29 @@ module Bosh::AwsCloud
         end
       end
 
+      context 'when source_dest_check is set to false' do
+        before do
+          resource_pool['source_dest_check'] = false
+        end
+        it 'disables source_dest_check on the instance' do
+          instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+          allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
+
+          expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
+          expect(aws_instance).to receive(:source_dest_check=).with(false)
+
+          instance_manager.create(
+            agent_id,
+            stemcell_id,
+            resource_pool,
+            networks_spec,
+            disk_locality,
+            environment,
+            default_options
+          )
+        end
+      end
+
       it 'should retry creating the VM when AWS::EC2::Errors::InvalidIPAddress::InUse raised' do
         instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
         allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
@@ -238,7 +256,6 @@ module Bosh::AwsCloud
         expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
 
         allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
-        allow(aws_instance).to receive(:source_dest_check=).with(false)
         expect(logger).to receive(:warn).with(/IP address was in use/).once
 
         instance_manager.create(
