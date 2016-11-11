@@ -2,8 +2,8 @@ source 'https://rubygems.org'
 
 gem 'aws-sdk',    '1.66.0'
 gem 'httpclient', '=2.7.1'
-gem 'bosh_common'
-gem 'bosh_cpi'
+gem 'bosh_common', '1.3262.24.0'
+gem 'bosh_cpi', '2.0.0'
 
 group :development, :test do
   gem 'rspec', '~> 3.0.0'

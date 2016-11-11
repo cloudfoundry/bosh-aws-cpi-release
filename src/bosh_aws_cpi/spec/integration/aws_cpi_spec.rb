@@ -28,7 +28,7 @@ describe "the aws_cpi executable" do
             'fast_path_delete' => 'yes',
             'max_retries' => 0
           },
-            'registry' => {
+          'registry' => {
             'endpoint' => 'fake',
             'user' => 'fake',
             'password' => 'fake'
@@ -93,6 +93,43 @@ describe "the aws_cpi executable" do
       })
 
       expect(result['log']).to include('backtrace')
+    end
+  end
+
+  context 'when given cpi config in the context' do
+    let(:cloud_properties) {
+      {
+        'cloud' => {
+          'properties' => {
+            'aws' => {
+            },
+            'registry' => {
+              'endpoint' => 'fake',
+              'user' => 'fake',
+              'password' => 'fake'
+            }
+          }
+        }
+      }
+    }
+    let(:context) {
+      {
+        'director_uuid' => 'abc123',
+        'access_key_id' => @access_key_id,
+        'secret_access_key' => @secret_access_key,
+        'region' => 'us-east-1',
+        'default_key_name' => 'default_key_name',
+        'fast_path_delete' => 'yes',
+        'max_retries' => 0
+      }
+    }
+    it 'merges the context into the cloud_properties' do
+      result = run_cpi({'method'=>'has_vm', 'arguments'=>['fake-vm-id'], 'context'=> context})
+
+      expect(result.keys).to eq(%w(result error log))
+
+      expect(result['result']).to be_falsey
+      expect(result['error']).to be_nil
     end
   end
 
