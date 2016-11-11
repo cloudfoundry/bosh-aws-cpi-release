@@ -21,7 +21,6 @@ ci_output_dir="${workspace_dir}/director-config"
 : ${AWS_REGION_NAME:?}
 : ${PUBLIC_KEY_NAME:?}
 : ${PRIVATE_KEY_DATA:?}
-: ${USE_REDIS:=false}
 : ${BOSH_RELEASE_PATH:=}
 : ${CPI_RELEASE_PATH:=}
 : ${STEMCELL_PATH:=}
@@ -102,11 +101,6 @@ stemcell_uri="file://${STEMCELL_PATH/*stemcell\//stemcell/}"
 shared_key="shared.pem"
 echo "${PRIVATE_KEY_DATA}" > "${OUTPUT_DIR}/${shared_key}"
 
-redis_job=""
-if [ "${USE_REDIS}" == true ]; then
-  redis_job="- {name: redis, release: bosh}"
-fi
-
 # env file generation
 cat > "${OUTPUT_DIR}/director.env" <<EOF
 #!/usr/bin/env bash
@@ -167,7 +161,6 @@ jobs:
       - {name: powerdns, release: bosh}
       - {name: registry, release: bosh}
       - {name: aws_cpi, release: bosh-aws-cpi}
-      ${redis_job}
 
     resource_pool: default
     persistent_disk_pool: default
@@ -191,12 +184,6 @@ jobs:
         password: postgres-password
         database: bosh
         adapter: postgres
-
-      # required for some upgrade paths
-      redis:
-        listen_addresss: 127.0.0.1
-        address: 127.0.0.1
-        password: redis-password
 
       registry:
         address: ${DIRECTOR_STATIC_IP}

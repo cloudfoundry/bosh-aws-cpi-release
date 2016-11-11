@@ -26,4 +26,3 @@ params:
   BOSH_PASSWORD:          ""
   PUBLIC_KEY_NAME:        ""
   PRIVATE_KEY_DATA:       ""
-  USE_REDIS:              ""
