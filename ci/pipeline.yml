@@ -138,8 +138,8 @@ jobs:
               AWS_REGION_NAME:        {{aws_region__primary}}
               BAT_VCAP_PASSWORD:      {{BAT_VCAP_PASSWORD}}
               PUBLIC_KEY_NAME:        {{cpi_pipeline_public_key_name}}
-              BOSH_USER: {{BOSH_USER}}
-              BOSH_PASSWORD: {{BOSH_PASSWORD}}
+              BOSH_USER:              {{BOSH_USER}}
+              BOSH_PASSWORD:          {{BOSH_PASSWORD}}
               STEMCELL_NAME:          bosh-aws-xen-hvm-ubuntu-trusty-go_agent
 
           - task: run-bats
@@ -149,12 +149,7 @@ jobs:
         ensure:
           do:
             - task: teardown
-              file: certification/shared/tasks/teardown.yml
-              input_mapping: {pipelines: certification}
-              params:
-                BOSH_USER: {{BOSH_USER}}
-                BOSH_PASSWORD: {{BOSH_PASSWORD}}
-                DEPLOYMENT_NAME:        certification
+              file: bosh-cpi-src/ci/tasks/teardown.yml
             - put: environment
               params:
                 release: environment
