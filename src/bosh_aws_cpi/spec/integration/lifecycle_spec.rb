@@ -13,6 +13,7 @@ describe Bosh::AwsCloud::Cloud do
     @manual_ip         = ENV['BOSH_AWS_LIFECYCLE_MANUAL_IP'] || raise('Missing BOSH_AWS_LIFECYCLE_MANUAL_IP')
     @elb_id            = ENV['BOSH_AWS_ELB_ID']              || raise('Missing BOSH_AWS_ELB_ID')
     @kms_key_arn       = ENV['BOSH_AWS_KMS_KEY_ARN']         || raise('Missing BOSH_AWS_KMS_KEY_ARN')
+    @region            = ENV['BOSH_AWS_REGION']              || 'us-east-1'
   end
 
   let(:instance_type_with_ephemeral)    { ENV.fetch('BOSH_AWS_INSTANCE_TYPE', 'm3.medium') }
@@ -38,7 +39,7 @@ describe Bosh::AwsCloud::Cloud do
   subject!(:cpi) do
     described_class.new(
       'aws' => {
-        'region' => 'us-east-1',
+        'region' => @region,
         'default_key_name' => default_key_name,
         'default_security_groups' => security_groups,
         'fast_path_delete' => 'yes',
@@ -765,6 +766,7 @@ describe Bosh::AwsCloud::Cloud do
     ec2 = AWS::EC2.new(
       access_key_id:     @access_key_id,
       secret_access_key: @secret_access_key,
+      region:            @region,
     )
     security_groups = ec2.subnets[subnet_id].vpc.security_groups
     security_groups.map { |sg| sg.id }
@@ -774,6 +776,7 @@ describe Bosh::AwsCloud::Cloud do
     ec2 = AWS::EC2.new(
       access_key_id:     @access_key_id,
       secret_access_key: @secret_access_key,
+      region:            @region,
     )
     security_groups = ec2.subnets[subnet_id].vpc.security_groups
     security_groups.map { |sg| sg.name }
@@ -783,6 +786,7 @@ describe Bosh::AwsCloud::Cloud do
     ec2 = AWS::EC2.new(
       access_key_id:     @access_key_id,
       secret_access_key: @secret_access_key,
+      region:            @region,
     )
     ec2.images[ami_id]
   end
