@@ -13,11 +13,14 @@ Bosh::Clouds::Config.configure(cloud_config)
 
 cpi_log = StringIO.new # Empty on AWS
 
-cpi_lambda = lambda do
+cpi_lambda = lambda do |context|
   unless cpi_config.has_key?('cloud') && cpi_config['cloud'].has_key?('properties')
     raise "Could not find cloud properties in the configuration"
   end
   cloud_properties = cpi_config['cloud']['properties']
+
+  cloud_properties['aws'].merge!(context)
+
   Bosh::Clouds::Aws.new(cloud_properties)
 end
 

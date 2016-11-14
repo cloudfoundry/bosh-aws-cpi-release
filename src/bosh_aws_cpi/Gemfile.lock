@@ -7,7 +7,7 @@ GEM
     aws-sdk-v1 (1.66.0)
       json (~> 1.4)
       nokogiri (>= 1.4.4)
-    bosh_common (1.3262.1)
+    bosh_common (1.3262.24.0)
       logging (~> 1.8.2)
       semi_semantic (~> 1.2.0)
     bosh_cpi (2.0.1)
