@@ -30,6 +30,7 @@ module Bosh::AwsCloud
 
       @info.group_by { |v| v[:bosh_type] }
         .map { |type, devices| {type => devices.map { |device| {"path" => device[:device_name]} }} }
+        .select { |elem| elem[nil].nil? }
         .inject({}) { |a, b| a.merge(b) }
     end
 
@@ -50,6 +51,8 @@ module Bosh::AwsCloud
 
       if @resource_pool.has_key?('root_disk')
         block_devices << root_disk_mapping
+      else
+        block_devices << VolumeProperties.new(virtualization_type: @virtualization_type).default_root_disk_volume_type
       end
 
       block_devices

@@ -65,6 +65,23 @@ module Bosh
         end
       end
 
+      def default_root_disk_volume_type
+        root_device = {
+            :volume_type => @type,
+        }
+        if @virtualization_type == :hvm
+          {
+              device_name: "/dev/xvda",
+              ebs: root_device
+          }
+        else
+          {
+              device_name: "/dev/sda",
+              ebs: root_device
+          }
+        end
+      end
+
       private
 
       def size_in_gb

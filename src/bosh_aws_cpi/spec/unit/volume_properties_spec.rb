@@ -111,5 +111,20 @@ module Bosh::AwsCloud
         end
       end
     end
+
+    describe '#default_root_disk_to_gp2' do
+      context 'given no root_disk section in manifest' do
+        subject(:volume_properties) {described_class.new(minimal_options)}
+        it 'returns a volume_type of gp2' do
+          vp = volume_properties.default_root_disk_volume_type
+          expect(vp).to eq({
+             device_name: '/dev/xvda',
+             ebs: {
+                 volume_type: 'gp2',
+             }
+           })
+        end
+      end
+    end
   end
 end

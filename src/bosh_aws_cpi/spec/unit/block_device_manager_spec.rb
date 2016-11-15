@@ -3,6 +3,16 @@ require 'spec_helper'
 module Bosh::AwsCloud
   describe 'BlockDeviceManager' do
     let(:logger) { Logger.new('/dev/null') }
+    let(:default_root) {
+      {
+        device_name: default_root_dev,
+        ebs: {
+          volume_type: 'gp2',
+        },
+      }
+    }
+    let(:default_root_dev) { '/dev/xvda' }
+
 
     describe '#mappings' do
 
@@ -20,14 +30,17 @@ module Bosh::AwsCloud
               }
 
               actual_output = manager.mappings
-              expected_output = [{
-                device_name: '/dev/sdb',
-                ebs: {
-                  volume_size: 40,
-                  volume_type: 'gp2',
-                  delete_on_termination: true,
-                }
-              }]
+              expected_output = [
+                {
+                  device_name: '/dev/sdb',
+                  ebs: {
+                    volume_size: 40,
+                    volume_type: 'gp2',
+                    delete_on_termination: true,
+                  }
+                },
+                default_root,
+              ]
               expect(actual_output).to eq(expected_output)
             end
           end
@@ -43,7 +56,7 @@ module Bosh::AwsCloud
               }
 
               actual_output = manager.mappings
-              expected_output = []
+              expected_output = [default_root]
               instance_storage_disks = [
                 {
                   virtual_name: 'ephemeral0',
@@ -69,6 +82,7 @@ module Bosh::AwsCloud
             end
 
             context 'when the instance is paravirtual' do
+              let(:default_root_dev) { '/dev/sda' }
               it 'attaches instance disks under /dev/sd[c-z]' do
                 manager = BlockDeviceManager.new(logger)
                 manager.resource_pool = {
@@ -80,7 +94,7 @@ module Bosh::AwsCloud
                 manager.virtualization_type = :paravirtual
 
                 actual_output = manager.mappings
-                expected_output = []
+                expected_output = [default_root]
                 instance_storage_disks = [
                   {
                     virtual_name: 'ephemeral0',
@@ -125,7 +139,7 @@ module Bosh::AwsCloud
                 delete_on_termination: true,
               }
             }
-            expect(manager.mappings).to contain_exactly(ebs_disk)
+            expect(manager.mappings).to contain_exactly(ebs_disk, default_root)
           end
 
           it 'raises an error when asked for raw instance storage' do
@@ -137,9 +151,9 @@ module Bosh::AwsCloud
               'raw_instance_storage' => true
             }
             expect { manager.mappings }.to raise_error(
-              Bosh::Clouds::CloudError,
-              "raw_instance_storage requested for instance type 't2.small' that does not have instance storage"
-            )
+                                             Bosh::Clouds::CloudError,
+                                             "raw_instance_storage requested for instance type 't2.small' that does not have instance storage"
+                                           )
           end
         end
       end
@@ -157,16 +171,18 @@ module Bosh::AwsCloud
             }
           }
 
-          actual_output = manager.mappings
-          expected_output = [{
-            device_name: '/dev/sdb',
-            ebs: {
-              volume_size: 4,
-              volume_type: 'gp2',
-              delete_on_termination: true,
-            }
-          }]
-          expect(actual_output).to eq(expected_output)
+          expected_output = [
+            {
+              device_name: '/dev/sdb',
+              ebs: {
+                volume_size: 4,
+                volume_type: 'gp2',
+                delete_on_termination: true,
+              },
+            },
+            default_root,
+          ]
+          expect(manager.mappings).to match_array(expected_output)
         end
 
         context 'when raw_instance_storage is true' do
@@ -183,8 +199,8 @@ module Bosh::AwsCloud
               }
             }
 
-            expected_disks = []
-            instance_storage_disks = [
+            expected_disks = [
+              default_root,
               {
                 virtual_name: 'ephemeral0',
                 device_name: '/dev/xvdba',
@@ -192,25 +208,22 @@ module Bosh::AwsCloud
               {
                 virtual_name: 'ephemeral1',
                 device_name: '/dev/xvdbb',
+              },
+              {
+                device_name: '/dev/sdb',
+                ebs: {
+                  volume_size: 4,
+                  volume_type: 'gp2',
+                  delete_on_termination: true,
+                }
               }
             ]
-            expected_disks += instance_storage_disks
 
-            ebs_disk = {
-              device_name: '/dev/sdb',
-              ebs: {
-                volume_size: 4,
-                volume_type: 'gp2',
-                delete_on_termination: true,
-              }
-            }
-            expected_disks << ebs_disk
-
-            actual_disks = manager.mappings
-            expect(actual_disks).to match_array(expected_disks)
+            expect(manager.mappings).to match_array(expected_disks)
           end
 
           context 'when the instance is paravirtual' do
+            let(:default_root_dev) { '/dev/sda' }
             it 'returns disks for new ebs volume and instance storage disks under /dev/sd[c-z]' do
               manager = BlockDeviceManager.new(logger)
               manager.resource_pool = {
@@ -224,8 +237,8 @@ module Bosh::AwsCloud
               }
               manager.virtualization_type = :paravirtual
 
-              expected_disks = []
-              instance_storage_disks = [
+              expected_disks = [
+                default_root,
                 {
                   virtual_name: 'ephemeral0',
                   device_name: '/dev/sdc'
@@ -233,22 +246,18 @@ module Bosh::AwsCloud
                 {
                   virtual_name: 'ephemeral1',
                   device_name: '/dev/sdd',
+                },
+                {
+                  device_name: '/dev/sdb',
+                  ebs: {
+                    volume_size: 4,
+                    volume_type: 'gp2',
+                    delete_on_termination: true,
+                  }
                 }
               ]
-              expected_disks += instance_storage_disks
 
-              ebs_disk = {
-                device_name: '/dev/sdb',
-                ebs: {
-                  volume_size: 4,
-                  volume_type: 'gp2',
-                  delete_on_termination: true,
-                }
-              }
-              expected_disks << ebs_disk
-
-              actual_disks = manager.mappings
-              expect(actual_disks).to match_array(expected_disks)
+              expect(manager.mappings).to match_array(expected_disks)
             end
           end
         end
@@ -274,7 +283,7 @@ module Bosh::AwsCloud
               delete_on_termination: true,
             }
           }
-          expect(manager.mappings).to contain_exactly(ebs_disk)
+          expect(manager.mappings).to contain_exactly(ebs_disk, default_root)
         end
 
         context 'when type is io1' do
@@ -299,7 +308,7 @@ module Bosh::AwsCloud
                 delete_on_termination: true,
               }
             }
-            expect(manager.mappings).to contain_exactly(ebs_disk)
+            expect(manager.mappings).to contain_exactly(ebs_disk, default_root)
           end
         end
       end
@@ -317,17 +326,19 @@ module Bosh::AwsCloud
             }
           }
 
-          actual_output = manager.mappings
-          expected_output = [{
-            device_name: '/dev/sdb',
-            ebs: {
-              volume_size: 4,
-              volume_type: 'gp2',
-              delete_on_termination: true,
-              encrypted: true
-            }
-          }]
-          expect(actual_output).to eq(expected_output)
+          expected_output = [
+            {
+              device_name: '/dev/sdb',
+              ebs: {
+                volume_size: 4,
+                volume_type: 'gp2',
+                delete_on_termination: true,
+                encrypted: true
+              }
+            },
+            default_root
+          ]
+          expect(manager.mappings).to match_array(expected_output)
         end
       end
 
@@ -344,17 +355,15 @@ module Bosh::AwsCloud
               }
             }
 
-            expected_disks = []
-            instance_storage_disks = [
+            expected_disks = [
               {
                 virtual_name: 'ephemeral0',
                 device_name: '/dev/sdb',
-              }
+              },
+              default_root
             ]
-            expected_disks += instance_storage_disks
 
-            actual_disks = manager.mappings
-            expect(actual_disks).to eq(expected_disks)
+            expect(manager.mappings).to match_array(expected_disks)
           end
         end
 
@@ -370,10 +379,10 @@ module Bosh::AwsCloud
               }
             }
 
-            expect{ manager.mappings }.to raise_error(
-              Bosh::Clouds::CloudError,
-              "use_instance_storage requested for instance type 't2.small' that does not have instance storage"
-            )
+            expect { manager.mappings }.to raise_error(
+                                             Bosh::Clouds::CloudError,
+                                             "use_instance_storage requested for instance type 't2.small' that does not have instance storage"
+                                           )
           end
         end
 
@@ -390,10 +399,10 @@ module Bosh::AwsCloud
               }
             }
 
-            expect{ manager.mappings }.to raise_error(
-              Bosh::Clouds::CloudError,
-              "use_instance_storage cannot be combined with additional ephemeral_disk properties"
-            )
+            expect { manager.mappings }.to raise_error(
+                                             Bosh::Clouds::CloudError,
+                                             "use_instance_storage cannot be combined with additional ephemeral_disk properties"
+                                           )
           end
         end
 
@@ -410,10 +419,10 @@ module Bosh::AwsCloud
               'raw_instance_storage' => true
             }
 
-            expect{ manager.mappings }.to raise_error(
-              Bosh::Clouds::CloudError,
-              "ephemeral_disk.use_instance_storage and raw_instance_storage cannot both be true"
-            )
+            expect { manager.mappings }.to raise_error(
+                                             Bosh::Clouds::CloudError,
+                                             "ephemeral_disk.use_instance_storage and raw_instance_storage cannot both be true"
+                                           )
           end
         end
       end
@@ -426,34 +435,30 @@ module Bosh::AwsCloud
             'availability_zone' => 'us-east-1a',
             'instance_type' => 'm3.medium',
             'root_disk' => {
-              'size'=> 42 * 1024.0
+              'size' => 42 * 1024.0
             }
           }
 
-          expected_disks = []
-
-          ephemeral_disks = [{
-            device_name: '/dev/sdb',
-            ebs: {
-              volume_size: 4,
-              volume_type: 'gp2',
-              delete_on_termination: true,
+          expected_disks = [
+            {
+              device_name: '/dev/xvda',
+              ebs: {
+                volume_size: 42,
+                volume_type: 'gp2',
+                delete_on_termination: true,
+              }
+            },
+            {
+              device_name: '/dev/sdb',
+              ebs: {
+                volume_size: 4,
+                volume_type: 'gp2',
+                delete_on_termination: true,
+              }
             }
-          }]
-          expected_disks += ephemeral_disks
+          ]
 
-          root_disk = {
-            device_name: '/dev/xvda',
-            ebs: {
-              volume_size: 42,
-              volume_type: 'gp2',
-              delete_on_termination: true,
-            }
-          }
-          expected_disks << root_disk
-
-          actual_disks = manager.mappings
-          expect(actual_disks).to match_array(expected_disks)
+          expect(manager.mappings).to match_array(expected_disks)
         end
 
         context 'when root disk type is io1' do
@@ -472,13 +477,13 @@ module Bosh::AwsCloud
             expected_disks = []
 
             ephemeral_disks = [{
-              device_name: '/dev/sdb',
-              ebs: {
-                volume_size: 4,
-                volume_type: 'gp2',
-                delete_on_termination: true,
-              }
-            }]
+                                 device_name: '/dev/sdb',
+                                 ebs: {
+                                   volume_size: 4,
+                                   volume_type: 'gp2',
+                                   delete_on_termination: true,
+                                 }
+                               }]
             expected_disks += ephemeral_disks
 
             root_disk = {
@@ -504,7 +509,7 @@ module Bosh::AwsCloud
             'availability_zone' => 'us-east-1a',
             'instance_type' => 'm3.medium',
             'root_disk' => {
-              'size'=> 42 * 1024.0
+              'size' => 42 * 1024.0
             }
           }
           manager.virtualization_type = :paravirtual
@@ -512,13 +517,13 @@ module Bosh::AwsCloud
           expected_disks = []
 
           ephemeral_disks = [{
-            device_name: '/dev/sdb',
-            ebs: {
-              volume_size: 4,
-              volume_type: 'gp2',
-              delete_on_termination: true,
-            }
-          }]
+                               device_name: '/dev/sdb',
+                               ebs: {
+                                 volume_size: 4,
+                                 volume_type: 'gp2',
+                                 delete_on_termination: true,
+                               }
+                             }]
           expected_disks += ephemeral_disks
 
           root_disk = {
@@ -551,9 +556,11 @@ module Bosh::AwsCloud
               'raw_instance_storage' => false
             }
 
-            expect(manager.agent_info).to eq({
-              'ephemeral' => [{'path' => '/dev/sdb'}],
-            })
+            expect(manager.agent_info).to eq(
+              {
+                'ephemeral' => [{'path' => '/dev/sdb'}],
+              }
+            )
           end
         end
 
@@ -568,8 +575,8 @@ module Bosh::AwsCloud
             }
 
             expect(manager.agent_info).to eq({
-              'ephemeral' => [{'path' => '/dev/sdb'}],
-            })
+                                               'ephemeral' => [{'path' => '/dev/sdb'}],
+                                             })
           end
         end
       end
@@ -585,9 +592,28 @@ module Bosh::AwsCloud
           }
 
           expect(manager.agent_info).to eq({
-            'ephemeral' => [{'path' => '/dev/sdb'}],
-            'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}],
-          })
+                                             'ephemeral' => [{'path' => '/dev/sdb'}],
+                                             'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}],
+                                           })
+        end
+      end
+
+      context 'when root_disk is specified' do
+        it 'returns information about a managed EBS disk' do
+          manager = BlockDeviceManager.new(logger)
+          manager.resource_pool = {
+            'key_name' => 'bar',
+            'availability_zone' => 'us-east-1a',
+            'instance_type' => 'm3.xlarge',
+            'root_disk' => {
+              'size' => 42 * 1024.0,
+              'type' => 'st1'
+            }
+          }
+
+          expect(manager.agent_info).to eq({
+                                             'ephemeral' => [{'path' => '/dev/sdb'}],
+                                           })
         end
       end
     end

@@ -19,7 +19,7 @@ describe Bosh::AwsCloud::Cloud do
   let(:instance_type_with_ephemeral)    { ENV.fetch('BOSH_AWS_INSTANCE_TYPE', 'm3.medium') }
   let(:instance_type_without_ephemeral) { ENV.fetch('BOSH_AWS_INSTANCE_TYPE_WITHOUT_EPHEMERAL', 't2.small') }
   let(:default_key_name)                { ENV.fetch('BOSH_AWS_DEFAULT_KEY_NAME', 'bosh')}
-  let(:ami)                             { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-b66ed3de') }
+  let(:ami)                             { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-145a7603') }
   let(:instance_type) { instance_type_with_ephemeral }
   let(:vm_metadata) { { deployment: 'deployment', job: 'cpi_spec', index: '0', delete_me: 'please' } }
   let(:disks) { [] }
@@ -377,10 +377,14 @@ describe Bosh::AwsCloud::Cloud do
           disks = cpi.get_disks(instance_id)
           expect(disks.size).to eq(2)
 
+          root_volume = cpi.ec2_client.volumes[disks[0]]
+          expect(root_volume.size).to eq(3)
+          expect(root_volume.type).to eq('gp2')
+          expect(root_volume.encrypted).to eq(false)
+
           ephemeral_volume = cpi.ec2_client.volumes[disks[1]]
           expect(ephemeral_volume.size).to eq(4)
           expect(ephemeral_volume.type).to eq('gp2')
-
           expect(ephemeral_volume.encrypted).to eq(false)
         end
       end
