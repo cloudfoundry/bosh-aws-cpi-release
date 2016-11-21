@@ -12,7 +12,7 @@ module Bosh
         @az = options[:az]
         @kms_key_arn = options[:kms_key_arn]
         @encrypted = options[:encrypted] || false
-        @virtualization_type = options[:virtualization_type] || :hvm
+        @root_device_name = options[:root_device_name] || '/dev/xvda'
       end
 
       def ephemeral_disk_config
@@ -43,43 +43,21 @@ module Bosh
 
       def root_disk_config
         root_device = {
-          :volume_size => size_in_gb,
           :volume_type => @type,
           :delete_on_termination => true,
         }
+        if @size > 0
+          root_device[:volume_size] = size_in_gb
+        end
 
         if @type == 'io1' && @iops > 0
           root_device[:iops] = @iops
         end
 
-        if @virtualization_type == :hvm
-          {
-            device_name: "/dev/xvda",
-            ebs: root_device
-          }
-        else
-          {
-            device_name: "/dev/sda",
-            ebs: root_device
-          }
-        end
-      end
-
-      def default_root_disk_volume_type
-        root_device = {
-            :volume_type => @type,
+        {
+          device_name: @root_device_name,
+          ebs: root_device
         }
-        if @virtualization_type == :hvm
-          {
-              device_name: "/dev/xvda",
-              ebs: root_device
-          }
-        else
-          {
-              device_name: "/dev/sda",
-              ebs: root_device
-          }
-        end
       end
 
       private

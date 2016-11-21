@@ -69,6 +69,7 @@ module Bosh::AwsCloud
         allow(param_mapper).to receive(:validate)
         allow(block_device_manager).to receive(:resource_pool=)
         allow(block_device_manager).to receive(:virtualization_type=)
+        allow(block_device_manager).to receive(:root_device_name=)
         allow(block_device_manager).to receive(:mappings).and_return('fake-block-device-mappings')
         allow(block_device_manager).to receive(:agent_info).and_return('fake-block-device-agent-info')
 

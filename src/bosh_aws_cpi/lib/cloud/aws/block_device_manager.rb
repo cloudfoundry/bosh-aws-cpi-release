@@ -3,6 +3,7 @@ module Bosh::AwsCloud
   class BlockDeviceManager
     attr_writer :resource_pool
     attr_writer :virtualization_type
+    attr_writer :root_device_name
 
     DEFAULT_VIRTUALIZATION_TYPE = :hvm
 
@@ -50,9 +51,9 @@ module Bosh::AwsCloud
       end
 
       if @resource_pool.has_key?('root_disk')
-        block_devices << root_disk_mapping
+        block_devices << user_specified_root_disk_mapping
       else
-        block_devices << VolumeProperties.new(virtualization_type: @virtualization_type).default_root_disk_volume_type
+        block_devices << default_root_disk_mapping
       end
 
       block_devices
@@ -131,14 +132,34 @@ module Bosh::AwsCloud
       end
     end
 
-    def root_disk_mapping
+    def user_specified_root_disk_mapping
       disk_properties = VolumeProperties.new(
         size: @resource_pool['root_disk']['size'],
         type: @resource_pool['root_disk']['type'],
         iops: @resource_pool['root_disk']['iops'],
         virtualization_type: @virtualization_type,
+        root_device_name: root_device_name,
       )
       disk_properties.root_disk_config
+    end
+
+    def default_root_disk_mapping
+      disk_properties = VolumeProperties.new(
+        virtualization_type: @virtualization_type,
+        root_device_name: root_device_name,
+      )
+      disk_properties.root_disk_config
+    end
+
+    def root_device_name
+      return @root_device_name if @root_device_name
+
+      # fallback
+      if @virtualization_type == :paravirtual
+        return '/dev/sda'
+      else
+        return '/dev/xvda'
+      end
     end
 
     class DiskInfo

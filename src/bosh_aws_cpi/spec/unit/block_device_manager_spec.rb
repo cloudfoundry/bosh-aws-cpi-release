@@ -8,6 +8,7 @@ module Bosh::AwsCloud
         device_name: default_root_dev,
         ebs: {
           volume_type: 'gp2',
+          delete_on_termination: true,
         },
       }
     }

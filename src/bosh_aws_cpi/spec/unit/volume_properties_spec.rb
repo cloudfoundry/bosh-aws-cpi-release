@@ -11,7 +11,7 @@ module Bosh::AwsCloud
         az: 'us-east-1a',
         encrypted: true,
         kms_key_arn: 'my_fake_kms_arn',
-        virtualization_type: 'paravirtual',
+        root_device_name: '/dev/sda',
       }
     end
     describe '#ephemeral_disk_config' do
@@ -87,7 +87,6 @@ module Bosh::AwsCloud
           expect(vp).to eq({
             device_name: '/dev/xvda',
             ebs: {
-              volume_size: 0,
               volume_type: 'gp2',
               delete_on_termination: true,
             }
@@ -108,21 +107,6 @@ module Bosh::AwsCloud
               delete_on_termination: true,
             }
           })
-        end
-      end
-    end
-
-    describe '#default_root_disk_to_gp2' do
-      context 'given no root_disk section in manifest' do
-        subject(:volume_properties) {described_class.new(minimal_options)}
-        it 'returns a volume_type of gp2' do
-          vp = volume_properties.default_root_disk_volume_type
-          expect(vp).to eq({
-             device_name: '/dev/xvda',
-             ebs: {
-                 volume_type: 'gp2',
-             }
-           })
         end
       end
     end

@@ -16,7 +16,9 @@ module Bosh::AwsCloud
 
     def create(agent_id, stemcell_id, resource_pool, networks_spec, disk_locality, environment, options)
       @block_device_manager.resource_pool = resource_pool
-      @block_device_manager.virtualization_type = @ec2.images[stemcell_id].virtualization_type
+      ami = @ec2.images[stemcell_id]
+      @block_device_manager.virtualization_type = ami.virtualization_type
+      @block_device_manager.root_device_name = ami.root_device_name
       block_device_info = @block_device_manager.mappings
       block_device_agent_info = @block_device_manager.agent_info
 
