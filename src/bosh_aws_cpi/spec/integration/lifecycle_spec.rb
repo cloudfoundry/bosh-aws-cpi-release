@@ -377,11 +377,6 @@ describe Bosh::AwsCloud::Cloud do
           disks = cpi.get_disks(instance_id)
           expect(disks.size).to eq(2)
 
-          root_volume = cpi.ec2_client.volumes[disks[0]]
-          expect(root_volume.size).to eq(3)
-          expect(root_volume.type).to eq('gp2')
-          expect(root_volume.encrypted).to eq(false)
-
           ephemeral_volume = cpi.ec2_client.volumes[disks[1]]
           expect(ephemeral_volume.size).to eq(4)
           expect(ephemeral_volume.type).to eq('gp2')
@@ -498,6 +493,20 @@ describe Bosh::AwsCloud::Cloud do
                     'raw_ephemeral' => [{'path' => '/dev/xvdba'}]
                 }
             }))
+        end
+      end
+
+      context 'when root_disk properties are omitted' do
+        it 'requests root disk with the default type and size' do
+          vm_lifecycle do |instance_id|
+            disks = cpi.get_disks(instance_id)
+            expect(disks.size).to be >= 1
+
+            root_volume = cpi.ec2_client.volumes[disks[0]]
+            expect(root_volume.size).to eq(3)
+            expect(root_volume.type).to eq('gp2')
+            expect(root_volume.encrypted).to eq(false)
+          end
         end
       end
 
