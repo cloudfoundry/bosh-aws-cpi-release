@@ -24,7 +24,7 @@ describe Bosh::AwsCloud::Cloud do
   let(:vm_metadata) { { deployment: 'deployment', job: 'cpi_spec', index: '0', delete_me: 'please' } }
   let(:disks) { [] }
   let(:network_spec) { {} }
-  let(:resource_pool) { { 'instance_type' => instance_type, 'availability_zone' => @subnet_zone } }
+  let(:vm_type) { { 'instance_type' => instance_type, 'availability_zone' => @subnet_zone } }
   let(:registry) { instance_double(Bosh::Cpi::RegistryClient).as_null_object }
   let(:security_groups) { get_security_group_ids(@subnet_id) }
 
@@ -118,8 +118,8 @@ describe Bosh::AwsCloud::Cloud do
       }
     end
 
-    context 'resource_pool specifies elb for instance' do
-      let(:resource_pool) do
+    context 'vm_type specifies elb for instance' do
+      let(:vm_type) do
         {
           'instance_type' => instance_type,
           'availability_zone' => @subnet_zone,
@@ -152,7 +152,7 @@ describe Bosh::AwsCloud::Cloud do
           vm_id = endpoint_configured_cpi.create_vm(
             nil,
             stemcell_id,
-            resource_pool,
+            vm_type,
             network_spec,
             nil,
           )
@@ -361,7 +361,7 @@ describe Bosh::AwsCloud::Cloud do
     end
 
     context 'when ephemeral_disk properties are specified' do
-      let(:resource_pool) do
+      let(:vm_type) do
         {
           'instance_type' => instance_type,
           'availability_zone' => @subnet_zone,
@@ -385,7 +385,7 @@ describe Bosh::AwsCloud::Cloud do
       end
 
       context 'when iops are specified' do
-        let(:resource_pool) do
+        let(:vm_type) do
           {
             'instance_type' => instance_type,
             'availability_zone' => @subnet_zone,
@@ -413,7 +413,7 @@ describe Bosh::AwsCloud::Cloud do
       end
 
       context 'when ephemeral_disk.use_instance_storage is true' do
-        let(:resource_pool) do
+        let(:vm_type) do
           {
             'instance_type' => instance_type,
             'availability_zone' => @subnet_zone,
@@ -435,7 +435,7 @@ describe Bosh::AwsCloud::Cloud do
       end
 
       context 'when encrypted is true' do
-        let(:resource_pool) do
+        let(:vm_type) do
           {
             'instance_type' => instance_type,
             'availability_zone' => @subnet_zone,
@@ -471,7 +471,7 @@ describe Bosh::AwsCloud::Cloud do
     end
 
     context 'when raw_instance_storage is true' do
-      let(:resource_pool) do
+      let(:vm_type) do
         {
           'instance_type' => instance_type,
           'availability_zone' => @subnet_zone,
@@ -511,7 +511,7 @@ describe Bosh::AwsCloud::Cloud do
       end
 
       context 'when root_disk properties are specified' do
-        let(:resource_pool) do
+        let(:vm_type) do
           {
             'instance_type' => instance_type,
             'availability_zone' => @subnet_zone,
@@ -534,7 +534,7 @@ describe Bosh::AwsCloud::Cloud do
         end
 
         context 'and type is specified' do
-          let(:resource_pool) do
+          let(:vm_type) do
             {
               'instance_type' => instance_type,
               'availability_zone' => @subnet_zone,
@@ -566,7 +566,7 @@ describe Bosh::AwsCloud::Cloud do
           vm_id = cpi.create_vm(
             nil,
             stemcell_id,
-            resource_pool,
+            vm_type,
             network_spec,
             [],
             nil,
@@ -584,7 +584,7 @@ describe Bosh::AwsCloud::Cloud do
           new_vm_id = cpi.create_vm(
             nil,
             stemcell_id,
-            resource_pool,
+            vm_type,
             network_spec,
             [disk_id],
             nil,
@@ -647,7 +647,7 @@ describe Bosh::AwsCloud::Cloud do
         expect(rt).to_not be_nil, "Subnet '#{@subnet_id}' must have an associated route table"
         rt.id
       end
-      let(:resource_pool) do
+      let(:vm_type) do
         {
           'instance_type' => instance_type,
           'availability_zone' => @subnet_zone,
@@ -678,7 +678,7 @@ describe Bosh::AwsCloud::Cloud do
           found_route = route_table.routes.any? { |r| r.destination_cidr_block == route_destination && r.instance.id == original_instance_id }
           expect(found_route).to be(true), "Expected to find route with destination '#{route_destination}', but did not"
 
-          resource_pool['advertised_routes'].first['destination'] = '7.7.7.7/32'
+          vm_type['advertised_routes'].first['destination'] = '7.7.7.7/32'
           vm_lifecycle do |instance_id|
             found_route = route_table.routes.any? { |r| r.destination_cidr_block == '7.7.7.7/32' && r.instance.id == instance_id }
             expect(found_route).to be(true), "Expected to find route with destination '#{route_destination}', but did not"
@@ -696,7 +696,7 @@ describe Bosh::AwsCloud::Cloud do
     end
 
     context 'with source_dest_check disabled' do
-      let(:resource_pool) do
+      let(:vm_type) do
         {
           'instance_type' => instance_type,
           'availability_zone' => @subnet_zone,
@@ -723,7 +723,7 @@ describe Bosh::AwsCloud::Cloud do
   end
 
   context 'when auto_assign_public_ip is true' do
-    let(:resource_pool) do
+    let(:vm_type) do
       {
         'instance_type' => instance_type,
         'availability_zone' => @subnet_zone,
@@ -757,7 +757,7 @@ describe Bosh::AwsCloud::Cloud do
     instance_id = cpi.create_vm(
       nil,
       stemcell_id,
-      resource_pool,
+      vm_type,
       network_spec,
       vm_disks,
       nil,

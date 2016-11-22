@@ -23,7 +23,7 @@ module Bosh::AwsCloud
           context 'when raw_instance_storage is false' do
             it 'returns an ebs volume with size determined by the instance_type' do
               manager = BlockDeviceManager.new(logger)
-              manager.resource_pool = {
+              manager.vm_type = {
                 'key_name' => 'bar',
                 'availability_zone' => 'us-east-1a',
                 'instance_type' => 'm3.xlarge',
@@ -49,7 +49,7 @@ module Bosh::AwsCloud
           context 'when raw_instance_storage is true' do
             it 'returns an ebs volume with size 10GB and disks for each instance storage disk' do
               manager = BlockDeviceManager.new(logger)
-              manager.resource_pool = {
+              manager.vm_type = {
                 'key_name' => 'bar',
                 'availability_zone' => 'us-east-1a',
                 'instance_type' => 'm3.xlarge',
@@ -86,7 +86,7 @@ module Bosh::AwsCloud
               let(:default_root_dev) { '/dev/sda' }
               it 'attaches instance disks under /dev/sd[c-z]' do
                 manager = BlockDeviceManager.new(logger)
-                manager.resource_pool = {
+                manager.vm_type = {
                   'key_name' => 'bar',
                   'availability_zone' => 'us-east-1a',
                   'instance_type' => 'm3.xlarge',
@@ -126,7 +126,7 @@ module Bosh::AwsCloud
         context 'when instance type does not have instance storage' do
           it 'uses a default 10GB ebs storage for ephemeral disk' do
             manager = BlockDeviceManager.new(logger)
-            manager.resource_pool = {
+            manager.vm_type = {
               'key_name' => 'bar',
               'availability_zone' => 'us-east-1a',
               'instance_type' => 't2.small'
@@ -145,7 +145,7 @@ module Bosh::AwsCloud
 
           it 'raises an error when asked for raw instance storage' do
             manager = BlockDeviceManager.new(logger)
-            manager.resource_pool = {
+            manager.vm_type = {
               'key_name' => 'bar',
               'availability_zone' => 'us-east-1a',
               'instance_type' => 't2.small',
@@ -162,7 +162,7 @@ module Bosh::AwsCloud
       context 'when specifying the ephemeral disk size' do
         it 'returns an ebs with the specified ephemeral disk size' do
           manager = BlockDeviceManager.new(logger)
-          manager.resource_pool = {
+          manager.vm_type = {
             'key_name' => 'bar',
             'availability_zone' => 'us-east-1a',
             'instance_type' => 'm3.xlarge',
@@ -189,7 +189,7 @@ module Bosh::AwsCloud
         context 'when raw_instance_storage is true' do
           it 'returns disks for new ebs volume and instance storage disks' do
             manager = BlockDeviceManager.new(logger)
-            manager.resource_pool = {
+            manager.vm_type = {
               'key_name' => 'bar',
               'availability_zone' => 'us-east-1a',
               # this instance type has 2 instance storage disks
@@ -227,7 +227,7 @@ module Bosh::AwsCloud
             let(:default_root_dev) { '/dev/sda' }
             it 'returns disks for new ebs volume and instance storage disks under /dev/sd[c-z]' do
               manager = BlockDeviceManager.new(logger)
-              manager.resource_pool = {
+              manager.vm_type = {
                 'key_name' => 'bar',
                 'availability_zone' => 'us-east-1a',
                 'instance_type' => 'm3.xlarge',
@@ -267,7 +267,7 @@ module Bosh::AwsCloud
       context 'when specifying the ephemeral disk type' do
         it 'uses the specified type' do
           manager = BlockDeviceManager.new(logger)
-          manager.resource_pool = {
+          manager.vm_type = {
             'key_name' => 'bar',
             'availability_zone' => 'us-east-1a',
             'instance_type' => 't2.small',
@@ -290,7 +290,7 @@ module Bosh::AwsCloud
         context 'when type is io1' do
           it 'configures the io1 disk' do
             manager = BlockDeviceManager.new(logger)
-            manager.resource_pool = {
+            manager.vm_type = {
               'key_name' => 'bar',
               'availability_zone' => 'us-east-1a',
               'instance_type' => 't2.small',
@@ -317,7 +317,7 @@ module Bosh::AwsCloud
       context 'when specifying encrypted' do
         it 'will add it to the ebs configuration' do
           manager = BlockDeviceManager.new(logger)
-          manager.resource_pool = {
+          manager.vm_type = {
             'key_name' => 'bar',
             'availability_zone' => 'us-east-1a',
             'instance_type' => 'm3.xlarge',
@@ -347,7 +347,7 @@ module Bosh::AwsCloud
         context 'when the instance_type has instance storage' do
           it 'returns instance storage disks as ephemeral disk' do
             manager = BlockDeviceManager.new(logger)
-            manager.resource_pool = {
+            manager.vm_type = {
               'key_name' => 'bar',
               'availability_zone' => 'us-east-1a',
               'instance_type' => 'm3.xlarge',
@@ -371,7 +371,7 @@ module Bosh::AwsCloud
         context 'when the instance_type has NO instance storage' do
           it 'raises an error' do
             manager = BlockDeviceManager.new(logger)
-            manager.resource_pool = {
+            manager.vm_type = {
               'key_name' => 'bar',
               'availability_zone' => 'us-east-1a',
               'instance_type' => 't2.small',
@@ -390,7 +390,7 @@ module Bosh::AwsCloud
         context 'when any other properties are set for ephemeral_disk' do
           it 'raises an error' do
             manager = BlockDeviceManager.new(logger)
-            manager.resource_pool = {
+            manager.vm_type = {
               'key_name' => 'bar',
               'availability_zone' => 'us-east-1a',
               'instance_type' => 'm3.medium',
@@ -410,7 +410,7 @@ module Bosh::AwsCloud
         context 'when raw_instance_storage is also set' do
           it 'raises an error' do
             manager = BlockDeviceManager.new(logger)
-            manager.resource_pool = {
+            manager.vm_type = {
               'key_name' => 'bar',
               'availability_zone' => 'us-east-1a',
               'instance_type' => 'm3.medium',
@@ -431,7 +431,7 @@ module Bosh::AwsCloud
       context 'when root disk is specified' do
         it 'should default root disk type to gp2 if type is not specified' do
           manager = BlockDeviceManager.new(logger)
-          manager.resource_pool = {
+          manager.vm_type = {
             'key_name' => 'bar',
             'availability_zone' => 'us-east-1a',
             'instance_type' => 'm3.medium',
@@ -465,7 +465,7 @@ module Bosh::AwsCloud
         context 'when root disk type is io1' do
           it 'should create disk type of io1 with iops' do
             manager = BlockDeviceManager.new(logger)
-            manager.resource_pool = {
+            manager.vm_type = {
               'key_name' => 'bar',
               'availability_zone' => 'us-east-1a',
               'instance_type' => 'm3.medium',
@@ -505,7 +505,7 @@ module Bosh::AwsCloud
 
         it 'should set device name if virtualization type is not hvm' do
           manager = BlockDeviceManager.new(logger)
-          manager.resource_pool = {
+          manager.vm_type = {
             'key_name' => 'bar',
             'availability_zone' => 'us-east-1a',
             'instance_type' => 'm3.medium',
@@ -550,7 +550,7 @@ module Bosh::AwsCloud
         context 'when instance type has instance storage' do
           it 'returns information about the first managed instance storage disk, ignoring the other disks' do
             manager = BlockDeviceManager.new(logger)
-            manager.resource_pool = {
+            manager.vm_type = {
               'key_name' => 'bar',
               'availability_zone' => 'us-east-1a',
               'instance_type' => 'm3.xlarge',
@@ -568,7 +568,7 @@ module Bosh::AwsCloud
         context 'when instance type does not have instance storage' do
           it 'returns information about the first managed EBS disk' do
             manager = BlockDeviceManager.new(logger)
-            manager.resource_pool = {
+            manager.vm_type = {
               'key_name' => 'bar',
               'availability_zone' => 'us-east-1a',
               'instance_type' => 't2.small',
@@ -585,7 +585,7 @@ module Bosh::AwsCloud
       context 'when raw_instance_storage is true' do
         it 'returns information about a managed EBS disk and the raw ephemeral instance disks' do
           manager = BlockDeviceManager.new(logger)
-          manager.resource_pool = {
+          manager.vm_type = {
             'key_name' => 'bar',
             'availability_zone' => 'us-east-1a',
             'instance_type' => 'm3.xlarge',
@@ -602,7 +602,7 @@ module Bosh::AwsCloud
       context 'when root_disk is specified' do
         it 'returns information about a managed EBS disk' do
           manager = BlockDeviceManager.new(logger)
-          manager.resource_pool = {
+          manager.vm_type = {
             'key_name' => 'bar',
             'availability_zone' => 'us-east-1a',
             'instance_type' => 'm3.xlarge',

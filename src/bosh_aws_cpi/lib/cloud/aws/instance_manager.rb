@@ -14,19 +14,19 @@ module Bosh::AwsCloud
       @logger = logger
     end
 
-    def create(agent_id, stemcell_id, resource_pool, networks_spec, disk_locality, environment, options)
-      @block_device_manager.resource_pool = resource_pool
+    def create(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment, options)
+      @block_device_manager.vm_type = vm_type
       ami = @ec2.images[stemcell_id]
       @block_device_manager.virtualization_type = ami.virtualization_type
       @block_device_manager.root_device_name = ami.root_device_name
       block_device_info = @block_device_manager.mappings
       block_device_agent_info = @block_device_manager.agent_info
 
-      instance_params = build_instance_params(stemcell_id, resource_pool, networks_spec, block_device_info, disk_locality, options)
+      instance_params = build_instance_params(stemcell_id, vm_type, networks_spec, block_device_info, disk_locality, options)
 
       @logger.info("Creating new instance with: #{instance_params.inspect}")
 
-      aws_instance = create_aws_instance(instance_params, resource_pool)
+      aws_instance = create_aws_instance(instance_params, vm_type)
 
       instance = Instance.new(aws_instance, @registry, @elb, @logger)
 
@@ -34,9 +34,9 @@ module Bosh::AwsCloud
         # We need to wait here for the instance to be running, as if we are going to
         # attach to a load balancer, the instance must be running.
         instance.wait_for_running
-        instance.attach_to_load_balancers(resource_pool['elbs'] || [])
-        instance.update_routing_tables(resource_pool['advertised_routes'] || [])
-        if resource_pool['source_dest_check'].to_s == 'false'
+        instance.attach_to_load_balancers(vm_type['elbs'] || [])
+        instance.update_routing_tables(vm_type['advertised_routes'] || [])
+        if vm_type['source_dest_check'].to_s == 'false'
           instance.source_dest_check = false
         end
       rescue => e
@@ -59,12 +59,12 @@ module Bosh::AwsCloud
 
     private
 
-    def build_instance_params(stemcell_id, resource_pool, networks_spec, block_device_mappings, disk_locality = [], options = {})
+    def build_instance_params(stemcell_id, vm_type, networks_spec, block_device_mappings, disk_locality = [], options = {})
       volume_zones = (disk_locality || []).map { |volume_id| @ec2.volumes[volume_id].availability_zone.to_s }
 
       @param_mapper.manifest_params = {
         stemcell_id: stemcell_id,
-        resource_pool: resource_pool,
+        vm_type: vm_type,
         registry_endpoint: @registry.endpoint,
         networks_spec: networks_spec,
         defaults: options['aws'],
@@ -85,12 +85,12 @@ module Bosh::AwsCloud
       spot_manager.create(instance_params, spot_bid_price)
     end
 
-    def create_aws_instance(instance_params, resource_pool)
-      if resource_pool['spot_bid_price']
+    def create_aws_instance(instance_params, vm_type)
+      if vm_type['spot_bid_price']
         begin
-          return create_aws_spot_instance instance_params, resource_pool['spot_bid_price']
+          return create_aws_spot_instance instance_params, vm_type['spot_bid_price']
         rescue Bosh::Clouds::VMCreationFailed => e
-          unless resource_pool["spot_ondemand_fallback"]
+          unless vm_type["spot_ondemand_fallback"]
             message = "Spot instance creation failed: #{e.inspect}"
             @logger.warn(message)
             raise e, message

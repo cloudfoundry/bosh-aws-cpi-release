@@ -106,7 +106,7 @@ def combined_network_spec
   }
 end
 
-def resource_pool_spec
+def vm_type_spec
   {
     'key_name' => 'test_key',
     'availability_zone' => 'foobar-1a',

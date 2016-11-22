@@ -35,30 +35,30 @@ module Bosh::AwsCloud
         it 'maps to image_id' do expect(mapping(input)).to eq(output) end
       end
 
-      context 'when instance_type is provided by resource_pool' do
-        let(:input) { { resource_pool: { 'instance_type' => 'fake-instance' } } }
+      context 'when instance_type is provided by vm_type' do
+        let(:input) { { vm_type: { 'instance_type' => 'fake-instance' } } }
         let(:output) { { instance_type: 'fake-instance' } }
 
         it 'maps to instance_type' do expect(mapping(input)).to eq(output) end
       end
 
-      context 'when placement_group is provided by resource_pool' do
-        let(:input) { { resource_pool: { 'placement_group' => 'fake-group' } } }
+      context 'when placement_group is provided by vm_type' do
+        let(:input) { { vm_type: { 'placement_group' => 'fake-group' } } }
         let(:output) { { placement: { group_name: 'fake-group' } } }
 
         it 'maps to placement.group_name' do expect(mapping(input)).to eq(output) end
       end
 
       describe 'Tenancy options' do
-        context 'when tenancy is provided by resource_pool, as "dedicated"' do
-          let(:input) { { resource_pool: { 'tenancy' => 'dedicated' } } }
+        context 'when tenancy is provided by vm_type, as "dedicated"' do
+          let(:input) { { vm_type: { 'tenancy' => 'dedicated' } } }
           let(:output) { { placement: { tenancy: 'dedicated' } } }
 
           it 'maps to placement.tenancy' do expect(mapping(input)).to eq(output) end
         end
 
-        context 'when tenancy is provided by resource_pool, as other than "dedicated"' do
-          let(:input) { { resource_pool: { 'tenancy' => 'ignored' } } }
+        context 'when tenancy is provided by vm_type, as other than "dedicated"' do
+          let(:input) { { vm_type: { 'tenancy' => 'ignored' } } }
           let(:output) { {} }
 
           it 'is ignored' do expect(mapping(input)).to eq(output) end
@@ -77,16 +77,16 @@ module Bosh::AwsCloud
           it 'maps key_name from defaults' do expect(mapping(input)).to eq(output) end
         end
 
-        context 'when key_name is provided by defaults and resource_pool' do
+        context 'when key_name is provided by defaults and vm_type' do
           let(:input) do
             {
-              resource_pool: { 'key_name' => 'fake-key-name' },
+              vm_type: { 'key_name' => 'fake-key-name' },
               defaults: { 'default_key_name' => 'default-fake-key-name' }
             }
           end
           let(:output) { { key_name: 'fake-key-name' } }
 
-          it 'maps key_name from resource_pool' do expect(mapping(input)).to eq(output) end
+          it 'maps key_name from vm_type' do expect(mapping(input)).to eq(output) end
         end
       end
 
@@ -102,16 +102,16 @@ module Bosh::AwsCloud
           it 'maps iam_instance_profile from defaults' do expect(mapping(input)).to eq(output) end
         end
 
-        context 'when iam_instance_profile is provided by defaults and resource_pool' do
+        context 'when iam_instance_profile is provided by defaults and vm_type' do
           let(:input) do
             {
-              resource_pool: { 'iam_instance_profile' => 'fake-iam-profile' },
+              vm_type: { 'iam_instance_profile' => 'fake-iam-profile' },
               defaults: { 'default_iam_instance_profile' => 'default-fake-iam-profile' }
             }
           end
           let(:output) { { iam_instance_profile: { name: 'fake-iam-profile' } } }
 
-          it 'maps iam_instance_profile from resource_pool' do expect(mapping(input)).to eq(output) end
+          it 'maps iam_instance_profile from vm_type' do expect(mapping(input)).to eq(output) end
         end
       end
 
@@ -175,10 +175,10 @@ module Bosh::AwsCloud
           it 'maps network_interfaces.first[:groups] from networks_spec' do expect(mapping(input)).to eq(output) end
         end
 
-        context 'when security_groups is provided by defaults, networks_spec, and resource_pool' do
+        context 'when security_groups is provided by defaults, networks_spec, and vm_type' do
           let(:input) do
             {
-              resource_pool: { 'security_groups' => ["sg-11111111", "sg-2-name"] },
+              vm_type: { 'security_groups' => ["sg-11111111", "sg-2-name"] },
               networks_spec: {
                 "net1" => {
                   "cloud_properties" => {
@@ -206,7 +206,7 @@ module Bosh::AwsCloud
             }
           end
 
-          it 'maps network_interfaces.first[:groups] from resource_pool' do expect(mapping(input)).to eq(output) end
+          it 'maps network_interfaces.first[:groups] from vm_type' do expect(mapping(input)).to eq(output) end
         end
       end
 
@@ -303,7 +303,7 @@ module Bosh::AwsCloud
         context 'when associate_public_ip_address is true' do
           let(:input) do
             {
-              resource_pool: {
+              vm_type: {
                 'auto_assign_public_ip' => true
               }
             }
@@ -400,9 +400,9 @@ module Bosh::AwsCloud
 
       describe 'Availability Zone options' do
         context 'when (only) resource pool AZ is provided' do
-          let(:input) { { resource_pool: { "availability_zone" => "region-1a" } } }
+          let(:input) { { vm_type: { "availability_zone" => "region-1a" } } }
           let(:output) { { placement: { availability_zone: "region-1a" } } }
-          it 'maps placement.availability_zone from resource_pool' do
+          it 'maps placement.availability_zone from vm_type' do
             expect(mapping(input)).to eq(output)
           end
         end
@@ -410,7 +410,7 @@ module Bosh::AwsCloud
         context 'when resource pool AZ, and networks AZs are provided' do
           let(:input) do
             {
-              resource_pool: {
+              vm_type: {
                 "availability_zone" => "region-1a"
               },
               networks_spec: {
@@ -447,7 +447,7 @@ module Bosh::AwsCloud
           let(:input) do
             {
               volume_zones: ["region-1a", "region-1a"],
-              resource_pool: {
+              vm_type: {
                 "availability_zone" => "region-1a"
               },
               networks_spec: {
@@ -494,7 +494,7 @@ module Bosh::AwsCloud
           let(:input) do
             {
               stemcell_id: "ami-something",
-              resource_pool: {
+              vm_type: {
                 "instance_type" => "fake-instance-type",
                 "availability_zone" => "region-1a",
                 "key_name" => "fake-key-name",
@@ -553,10 +553,10 @@ module Bosh::AwsCloud
         required_inputs = [
           'stemcell_id',
           'registry_endpoint',
-          'resource_pool.instance_type',
-          'resource_pool.availability_zone',
-          '\(resource_pool.key_name or defaults.default_key_name\)',
-          '\(resource_pool.security_groups or network security_groups or defaults.default_security_groups\)',
+          'vm_type.instance_type',
+          'vm_type.availability_zone',
+          '\(vm_type.key_name or defaults.default_key_name\)',
+          '\(vm_type.security_groups or network security_groups or defaults.default_security_groups\)',
           'networks_spec.\[\].cloud_properties.subnet_id'
         ]
 
@@ -572,7 +572,7 @@ module Bosh::AwsCloud
       it 'raises an error when provided AZs do not match' do
         instance_param_mapper.manifest_params = {
           volume_zones: ["region-1a", "region-1a"],
-          resource_pool: {
+          vm_type: {
             "availability_zone" => "region-1a",
           },
           networks_spec: {
@@ -595,7 +595,7 @@ module Bosh::AwsCloud
       it 'does not raise an exception on valid input' do
         instance_param_mapper.manifest_params = {
           stemcell_id: "ami-something",
-          resource_pool: {
+          vm_type: {
             "instance_type" => "fake-instance-type",
             "availability_zone" => "region-1a",
             "key_name" => "fake-key-name",
@@ -617,7 +617,7 @@ module Bosh::AwsCloud
       it 'does not raise an exception on valid input and defaults' do
         instance_param_mapper.manifest_params = {
           stemcell_id: "ami-something",
-          resource_pool: {
+          vm_type: {
             "instance_type" => "fake-instance-type",
             "availability_zone" => "region-1a"
           },

@@ -19,7 +19,7 @@ module Bosh::AwsCloud
         'stemcell_id',
         'registry_endpoint'
       ]
-      required_resource_pool = [
+      required_vm_type = [
         'instance_type',
         'availability_zone'
       ]
@@ -28,17 +28,17 @@ module Bosh::AwsCloud
       required_top_level.each do |input_name|
         missing_inputs << input_name unless @manifest_params[input_name.to_sym]
       end
-      required_resource_pool.each do |input_name|
-        missing_inputs << "resource_pool.#{input_name}" unless resource_pool[input_name]
+      required_vm_type.each do |input_name|
+        missing_inputs << "vm_type.#{input_name}" unless vm_type[input_name]
       end
 
       unless key_name
-        missing_inputs << "(resource_pool.key_name or defaults.default_key_name)"
+        missing_inputs << "(vm_type.key_name or defaults.default_key_name)"
       end
 
       sg = security_groups
       if ( sg.nil? || sg.empty? )
-        missing_inputs << "(resource_pool.security_groups or network security_groups or defaults.default_security_groups)"
+        missing_inputs << "(vm_type.security_groups or network security_groups or defaults.default_security_groups)"
       end
 
       if subnet_id.nil?
@@ -58,7 +58,7 @@ module Bosh::AwsCloud
     def instance_params
       params = {
         image_id: @manifest_params[:stemcell_id],
-        instance_type: resource_pool['instance_type'],
+        instance_type: vm_type['instance_type'],
         key_name: key_name,
         iam_instance_profile: iam_instance_profile,
         user_data: user_data,
@@ -67,9 +67,9 @@ module Bosh::AwsCloud
 
       az = availability_zone
       placement = {}
-      placement[:group_name] = resource_pool['placement_group'] if resource_pool['placement_group']
+      placement[:group_name] = vm_type['placement_group'] if vm_type['placement_group']
       placement[:availability_zone] = az if az
-      placement[:tenancy] = 'dedicated' if resource_pool['tenancy'] == 'dedicated'
+      placement[:tenancy] = 'dedicated' if vm_type['tenancy'] == 'dedicated'
       params[:placement] = placement unless placement.empty?
 
       sg = @security_group_mapper.map_to_ids(security_groups, subnet_id)
@@ -78,7 +78,7 @@ module Bosh::AwsCloud
       nic[:groups] = sg unless sg.nil? || sg.empty?
       nic[:subnet_id] = subnet_id if subnet_id
       nic[:private_ip_address] = private_ip_address if private_ip_address
-      nic[:associate_public_ip_address] = resource_pool['auto_assign_public_ip'] if resource_pool['auto_assign_public_ip']
+      nic[:associate_public_ip_address] = vm_type['auto_assign_public_ip'] if vm_type['auto_assign_public_ip']
 
       nic[:device_index] = 0 unless nic.empty?
       params[:network_interfaces] = [nic] unless nic.empty?
@@ -88,8 +88,8 @@ module Bosh::AwsCloud
 
     private
 
-    def resource_pool
-      @manifest_params[:resource_pool] || {}
+    def vm_type
+      @manifest_params[:vm_type] || {}
     end
 
     def networks_spec
@@ -109,16 +109,16 @@ module Bosh::AwsCloud
     end
 
     def key_name
-      resource_pool["key_name"] || defaults["default_key_name"]
+      vm_type["key_name"] || defaults["default_key_name"]
     end
 
     def iam_instance_profile
-      profile_name = resource_pool["iam_instance_profile"] || defaults["default_iam_instance_profile"]
+      profile_name = vm_type["iam_instance_profile"] || defaults["default_iam_instance_profile"]
       { name: profile_name } if profile_name
     end
 
     def security_groups
-      groups = resource_pool["security_groups"] || extract_security_groups(networks_spec)
+      groups = vm_type["security_groups"] || extract_security_groups(networks_spec)
       groups.empty? ? defaults["default_security_groups"] : groups
     end
 
@@ -154,7 +154,7 @@ module Bosh::AwsCloud
       az_selector = AvailabilityZoneSelector.new(nil)
       az_selector.common_availability_zone(
         volume_zones,
-        resource_pool["availability_zone"],
+        vm_type["availability_zone"],
         subnet_az_mapping[subnet_id]
       )
     end

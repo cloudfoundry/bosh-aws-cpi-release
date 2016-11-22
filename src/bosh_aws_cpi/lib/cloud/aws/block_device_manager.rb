@@ -1,7 +1,7 @@
 
 module Bosh::AwsCloud
   class BlockDeviceManager
-    attr_writer :resource_pool
+    attr_writer :vm_type
     attr_writer :virtualization_type
     attr_writer :root_device_name
 
@@ -36,7 +36,7 @@ module Bosh::AwsCloud
     end
 
     def build_info
-      instance_type = @resource_pool.fetch('instance_type', 'unspecified')
+      instance_type = @vm_type.fetch('instance_type', 'unspecified')
 
       disk_info = DiskInfo.for(instance_type)
       if raw_instance_storage? && disk_info.nil?
@@ -50,7 +50,7 @@ module Bosh::AwsCloud
         block_devices += raw_instance_mappings(disk_info.count)
       end
 
-      if @resource_pool.has_key?('root_disk')
+      if @vm_type.has_key?('root_disk')
         block_devices << user_specified_root_disk_mapping
       else
         block_devices << default_root_disk_mapping
@@ -62,7 +62,7 @@ module Bosh::AwsCloud
     private
 
     def ephemeral_disk_mapping(instance_type, disk_info)
-      disk_options = @resource_pool.fetch("ephemeral_disk", {})
+      disk_options = @vm_type.fetch("ephemeral_disk", {})
 
       if disk_options['use_instance_storage']
         if raw_instance_storage?
@@ -115,7 +115,7 @@ module Bosh::AwsCloud
     end
 
     def raw_instance_storage?
-      @resource_pool.fetch('raw_instance_storage', false)
+      @vm_type.fetch('raw_instance_storage', false)
     end
 
     def raw_instance_mappings(num_of_devices)
@@ -134,9 +134,9 @@ module Bosh::AwsCloud
 
     def user_specified_root_disk_mapping
       disk_properties = VolumeProperties.new(
-        size: @resource_pool['root_disk']['size'],
-        type: @resource_pool['root_disk']['type'],
-        iops: @resource_pool['root_disk']['iops'],
+        size: @vm_type['root_disk']['size'],
+        type: @vm_type['root_disk']['type'],
+        iops: @vm_type['root_disk']['iops'],
         virtualization_type: @virtualization_type,
         root_device_name: root_device_name,
       )

@@ -115,7 +115,7 @@ module Bosh::AwsCloud
     # @param [String] agent_id agent id associated with new VM
     # @param [String] stemcell_id AMI id of the stemcell used to
     #  create the new instance
-    # @param [Hash] resource_pool resource pool specification
+    # @param [Hash] vm_type resource pool specification
     # @param [Hash] network_spec network specification, if it contains
     #  security groups they must already exist
     # @param [optional, Array] disk_locality list of disks that
@@ -126,7 +126,7 @@ module Bosh::AwsCloud
     # @param [optional, Hash] environment data to be merged into
     #   agent settings
     # @return [String] EC2 instance id of the new virtual machine
-    def create_vm(agent_id, stemcell_id, resource_pool, network_spec, disk_locality = nil, environment = nil)
+    def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = nil, environment = nil)
       with_thread_name("create_vm(#{agent_id}, ...)") do
         # do this early to fail fast
         stemcell = StemcellFinder.find_by_id(@ec2_client, stemcell_id)
@@ -135,7 +135,7 @@ module Bosh::AwsCloud
           instance, block_device_agent_info = @instance_manager.create(
             agent_id,
             stemcell.image_id,
-            resource_pool,
+            vm_type,
             network_spec,
             (disk_locality || []),
             environment,

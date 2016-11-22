@@ -22,7 +22,7 @@ module Bosh::AwsCloud
 
       let(:agent_id) { 'agent-id' }
       let(:stemcell_id) { 'stemcell-id' }
-      let(:resource_pool) { {
+      let(:vm_type) { {
         'instance_type' => 'm1.small',
         'availability_zone' => 'us-east-1a',
       } }
@@ -67,7 +67,7 @@ module Bosh::AwsCloud
         allow(param_mapper).to receive(:instance_params).and_return({ fake: 'instance-params' })
         allow(param_mapper).to receive(:manifest_params=)
         allow(param_mapper).to receive(:validate)
-        allow(block_device_manager).to receive(:resource_pool=)
+        allow(block_device_manager).to receive(:vm_type=)
         allow(block_device_manager).to receive(:virtualization_type=)
         allow(block_device_manager).to receive(:root_device_name=)
         allow(block_device_manager).to receive(:mappings).and_return('fake-block-device-mappings')
@@ -96,7 +96,7 @@ module Bosh::AwsCloud
         instance_manager.create(
           agent_id,
           stemcell_id,
-          resource_pool,
+          vm_type,
           networks_spec,
           disk_locality,
           environment,
@@ -105,12 +105,12 @@ module Bosh::AwsCloud
       end
 
       context 'when spot_bid_price is specified' do
-        let(:resource_pool) do
+        let(:vm_type) do
           # NB: The spot_bid_price param should trigger spot instance creation
           {'spot_bid_price'=>0.15, 'instance_type' => 'm1.small', 'key_name' => 'bar', 'availability_zone' => 'us-east-1a'}
         end
 
-        it 'should ask AWS to create a SPOT instance in the given region, when resource_pool includes spot_bid_price' do
+        it 'should ask AWS to create a SPOT instance in the given region, when vm_type includes spot_bid_price' do
           allow(ec2).to receive(:client).and_return(aws_client)
 
           # need to translate security group names to security group ids
@@ -147,7 +147,7 @@ module Bosh::AwsCloud
           instance_manager.create(
             agent_id,
             stemcell_id,
-            resource_pool,
+            vm_type,
             networks_spec,
             disk_locality,
             environment,
@@ -165,7 +165,7 @@ module Bosh::AwsCloud
               instance_manager.create(
                 agent_id,
                 stemcell_id,
-                resource_pool,
+                vm_type,
                 networks_spec,
                 disk_locality,
                 environment,
@@ -177,7 +177,7 @@ module Bosh::AwsCloud
 
           context 'and spot_ondemand_fallback is configured' do
             let(:instance_manager) { InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger) }
-            let(:resource_pool) do
+            let(:vm_type) do
               {
                 'spot_bid_price' => 0.15,
                 'spot_ondemand_fallback' => true,
@@ -200,7 +200,7 @@ module Bosh::AwsCloud
               instance_manager.create(
                 agent_id,
                 stemcell_id,
-                resource_pool,
+                vm_type,
                 networks_spec,
                 disk_locality,
                 environment,
@@ -214,7 +214,7 @@ module Bosh::AwsCloud
               instance_manager.create(
                 agent_id,
                 stemcell_id,
-                resource_pool,
+                vm_type,
                 networks_spec,
                 disk_locality,
                 environment,
@@ -227,7 +227,7 @@ module Bosh::AwsCloud
 
       context 'when source_dest_check is set to false' do
         before do
-          resource_pool['source_dest_check'] = false
+          vm_type['source_dest_check'] = false
         end
         it 'disables source_dest_check on the instance' do
           instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
@@ -239,7 +239,7 @@ module Bosh::AwsCloud
           instance_manager.create(
             agent_id,
             stemcell_id,
-            resource_pool,
+            vm_type,
             networks_spec,
             disk_locality,
             environment,
@@ -262,7 +262,7 @@ module Bosh::AwsCloud
         instance_manager.create(
           agent_id,
           stemcell_id,
-          resource_pool,
+          vm_type,
           networks_spec,
           disk_locality,
           environment,
@@ -289,7 +289,7 @@ module Bosh::AwsCloud
             instance_manager.create(
               agent_id,
               stemcell_id,
-              resource_pool,
+              vm_type,
               networks_spec,
               disk_locality,
               environment,
@@ -312,7 +312,7 @@ module Bosh::AwsCloud
               instance_manager.create(
                 agent_id,
                 stemcell_id,
-                resource_pool,
+                vm_type,
                 networks_spec,
                 disk_locality,
                 environment,
@@ -342,7 +342,7 @@ module Bosh::AwsCloud
             instance_manager.create(
               agent_id,
               stemcell_id,
-              resource_pool,
+              vm_type,
               networks_spec,
               disk_locality,
               environment,
@@ -365,7 +365,7 @@ module Bosh::AwsCloud
               instance_manager.create(
                 agent_id,
                 stemcell_id,
-                resource_pool,
+                vm_type,
                 networks_spec,
                 disk_locality,
                 environment,
