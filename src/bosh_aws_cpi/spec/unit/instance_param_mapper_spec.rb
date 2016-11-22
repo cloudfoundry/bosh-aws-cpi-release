@@ -553,11 +553,11 @@ module Bosh::AwsCloud
         required_inputs = [
           'stemcell_id',
           'registry_endpoint',
-          'vm_type.instance_type',
-          'vm_type.availability_zone',
-          '\(vm_type.key_name or defaults.default_key_name\)',
-          '\(vm_type.security_groups or network security_groups or defaults.default_security_groups\)',
-          'networks_spec.\[\].cloud_properties.subnet_id'
+          'cloud_properties.instance_type',
+          'cloud_properties.availability_zone',
+          '\(cloud_properties.key_name or defaults.default_key_name\)',
+          '\(cloud_properties.security_groups or defaults.default_security_groups\)',
+          'cloud_properties.subnet_id'
         ]
 
         required_inputs.each do |input_name|

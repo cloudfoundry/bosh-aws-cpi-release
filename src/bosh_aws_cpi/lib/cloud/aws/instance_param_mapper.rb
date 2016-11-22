@@ -29,24 +29,24 @@ module Bosh::AwsCloud
         missing_inputs << input_name unless @manifest_params[input_name.to_sym]
       end
       required_vm_type.each do |input_name|
-        missing_inputs << "vm_type.#{input_name}" unless vm_type[input_name]
+        missing_inputs << "cloud_properties.#{input_name}" unless vm_type[input_name]
       end
 
       unless key_name
-        missing_inputs << "(vm_type.key_name or defaults.default_key_name)"
+        missing_inputs << "(cloud_properties.key_name or defaults.default_key_name)"
       end
 
       sg = security_groups
       if ( sg.nil? || sg.empty? )
-        missing_inputs << "(vm_type.security_groups or network security_groups or defaults.default_security_groups)"
+        missing_inputs << "(cloud_properties.security_groups or defaults.default_security_groups)"
       end
 
       if subnet_id.nil?
-        missing_inputs << "networks_spec.[].cloud_properties.subnet_id"
+        missing_inputs << "cloud_properties.subnet_id"
       end
 
       unless missing_inputs.empty?
-        raise Bosh::Clouds::CloudError, "Missing properties: #{missing_inputs.join(', ')}"
+        raise Bosh::Clouds::CloudError, "Missing properties: #{missing_inputs.join(', ')}. See http://bosh.io/docs/aws-cpi.html for the list of supported properties."
       end
     end
 
