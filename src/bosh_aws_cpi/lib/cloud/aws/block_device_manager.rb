@@ -4,6 +4,7 @@ module Bosh::AwsCloud
     attr_writer :vm_type
     attr_writer :virtualization_type
     attr_writer :root_device_name
+    attr_writer :ami_block_device_names
 
     DEFAULT_VIRTUALIZATION_TYPE = :hvm
 
@@ -152,7 +153,16 @@ module Bosh::AwsCloud
     end
 
     def root_device_name
-      return @root_device_name if @root_device_name
+      if @root_device_name
+        block_device_to_override = (@ami_block_device_names || {}).find do |name|
+          # covers two cases:
+          # 1. root and block device match exactly
+          # 2. root is a partition and block device is the entire device
+          #    e.g. root == /dev/sda1 and block device == /dev/sda
+          @root_device_name.start_with?(name)
+        end
+        return block_device_to_override if block_device_to_override
+      end
 
       # fallback
       if @virtualization_type == :paravirtual

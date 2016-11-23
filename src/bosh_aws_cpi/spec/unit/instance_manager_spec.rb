@@ -70,6 +70,7 @@ module Bosh::AwsCloud
         allow(block_device_manager).to receive(:vm_type=)
         allow(block_device_manager).to receive(:virtualization_type=)
         allow(block_device_manager).to receive(:root_device_name=)
+        allow(block_device_manager).to receive(:ami_block_device_names=)
         allow(block_device_manager).to receive(:mappings).and_return('fake-block-device-mappings')
         allow(block_device_manager).to receive(:agent_info).and_return('fake-block-device-agent-info')
 
@@ -81,6 +82,7 @@ module Bosh::AwsCloud
           stemcell_id => instance_double('AWS::EC2::Image',
             block_devices: block_devices,
             root_device_name: 'fake-image-root-device',
+            block_device_mappings: { 'fake-image-root-device': {} },
             virtualization_type: :hvm
           )
         })

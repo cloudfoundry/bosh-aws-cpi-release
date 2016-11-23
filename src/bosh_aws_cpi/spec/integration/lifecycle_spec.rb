@@ -19,7 +19,10 @@ describe Bosh::AwsCloud::Cloud do
   let(:instance_type_with_ephemeral)    { ENV.fetch('BOSH_AWS_INSTANCE_TYPE', 'm3.medium') }
   let(:instance_type_without_ephemeral) { ENV.fetch('BOSH_AWS_INSTANCE_TYPE_WITHOUT_EPHEMERAL', 't2.small') }
   let(:default_key_name)                { ENV.fetch('BOSH_AWS_DEFAULT_KEY_NAME', 'bosh')}
-  let(:ami)                             { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-145a7603') }
+  let(:ami)                             { hvm_ami }
+  let(:hvm_ami)                         { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-145a7603') }
+  let(:pv_ami)                          { ENV.fetch('BOSH_AWS_PV_IMAGE_ID', 'ami-d4c6e2c3') }
+  let(:windows_ami)                     { ENV.fetch('BOSH_AWS_WINDOWS_IMAGE_ID', 'ami-8927779e') }
   let(:instance_type) { instance_type_with_ephemeral }
   let(:vm_metadata) { { deployment: 'deployment', job: 'cpi_spec', index: '0', delete_me: 'please' } }
   let(:disks) { [] }
@@ -496,64 +499,159 @@ describe Bosh::AwsCloud::Cloud do
         end
       end
 
-      context 'when root_disk properties are omitted' do
-        it 'requests root disk with the default type and size' do
-          vm_lifecycle do |instance_id|
-            disks = cpi.get_disks(instance_id)
-            expect(disks.size).to be >= 1
+      describe 'root device configuration' do
+        let(:root_disk_size) { nil }
+        let(:root_disk_type) { nil }
 
-            root_volume = cpi.ec2_client.volumes[disks[0]]
-            expect(root_volume.size).to eq(3)
-            expect(root_volume.type).to eq('gp2')
-            expect(root_volume.encrypted).to eq(false)
+        context 'when root_disk properties are omitted' do
+          context 'and AMI is hvm' do
+            let(:root_disk_vm_props) do
+              { ami: hvm_ami }
+            end
+
+            it 'requests root disk with the default type and size' do
+              verify_root_disk_properties
+            end
+          end
+
+          context 'and AMI is paravirtual' do
+            let(:root_disk_vm_props) do
+              { ami: pv_ami }
+            end
+
+            it 'requests root disk with the default type and size' do
+              verify_root_disk_properties
+            end
+          end
+
+          context 'and AMI is Windows' do
+            let(:root_disk_vm_props) do
+              { ami: windows_ami }
+            end
+
+            it 'requests root disk with the default type and size' do
+              verify_root_disk_properties
+            end
           end
         end
-      end
 
-      context 'when root_disk properties are specified' do
-        let(:vm_type) do
-          {
-            'instance_type' => instance_type,
-            'availability_zone' => @subnet_zone,
-            'root_disk' => {
-              'size' => 11 * 1024
-            }
-          }
-        end
-        let(:instance_type) { instance_type_without_ephemeral }
-
-        it 'requests root disk with the specified size and type gp2' do
-          vm_lifecycle do |instance_id|
-            disks = cpi.get_disks(instance_id)
-            expect(disks.size).to eq(2)
-
-            root_disk = cpi.ec2_client.volumes[disks[0]]
-            expect(root_disk.size).to eq(11)
-            expect(root_disk.type).to eq('gp2')
-          end
-        end
-
-        context 'and type is specified' do
+        context 'when root_disk properties are specified' do
+          let(:root_disk_size) { 30 * 1024 }
           let(:vm_type) do
             {
               'instance_type' => instance_type,
               'availability_zone' => @subnet_zone,
               'root_disk' => {
-                'size' => 11 * 1024,
-                'type' => 'standard'
+                'size' => root_disk_size,
               }
             }
           end
 
-          it 'requests root disk with the specified size and type' do
-            vm_lifecycle do |instance_id|
-              disks = cpi.get_disks(instance_id)
-              expect(disks.size).to eq(2)
-
-              root_disk = cpi.ec2_client.volumes[disks[0]]
-              expect(root_disk.size).to eq(11)
-              expect(root_disk.type).to eq('standard')
+          context 'and AMI is hvm' do
+            let(:root_disk_vm_props) do
+              { ami: ami }
             end
+
+            it 'requests root disk with the specified size and type gp2' do
+              verify_root_disk_properties
+            end
+          end
+
+          context 'and AMI is pv' do
+            let(:root_disk_vm_props) do
+              { ami: pv_ami }
+            end
+
+            it 'requests root disk with the specified size and type gp2' do
+              verify_root_disk_properties
+            end
+          end
+
+          context 'and AMI is Windows' do
+            let(:root_disk_vm_props) do
+              { ami: windows_ami }
+            end
+
+            it 'requests root disk with the specified size and type gp2' do
+              verify_root_disk_properties
+            end
+          end
+
+          context 'and type is specified' do
+            let(:root_disk_type) { 'standard' }
+            let(:vm_type) do
+              {
+                'instance_type' => instance_type,
+                'availability_zone' => @subnet_zone,
+                'root_disk' => {
+                  'size' => root_disk_size,
+                  'type' => root_disk_type,
+                }
+              }
+            end
+
+            context 'and AMI is hvm' do
+              let(:root_disk_vm_props) do
+                { ami: ami }
+              end
+
+              it 'requests root disk with the specified size and type gp2' do
+                verify_root_disk_properties
+              end
+            end
+
+            context 'and AMI is pv' do
+              let(:root_disk_vm_props) do
+                { ami: pv_ami }
+              end
+
+              it 'requests root disk with the specified size and type gp2' do
+                verify_root_disk_properties
+              end
+            end
+
+            context 'and AMI is Windows' do
+              let(:root_disk_vm_props) do
+                { ami: windows_ami }
+              end
+
+              it 'requests root disk with the specified size and type gp2' do
+                verify_root_disk_properties
+              end
+            end
+          end
+        end
+
+        def verify_root_disk_properties
+          target_ami = get_ami(root_disk_vm_props[:ami])
+          root_device_type = target_ami.root_device_type # :ebs or :instance_store
+          ami_root_device = get_root_block_device(target_ami.root_device_name, target_ami.block_devices)
+
+          ami_root_volume_size = ami_root_device[root_device_type][:volume_size]
+          expect(ami_root_volume_size).to be > 0
+
+          vm_lifecycle(root_disk_vm_props) do |instance_id|
+            instance = cpi.ec2_client.instances[instance_id]
+            instance_root_device = get_root_block_device(instance.root_device_name, instance.block_devices)
+
+            root_volume = cpi.ec2_client.volumes[instance_root_device[root_device_type][:volume_id]]
+
+            if root_disk_size
+              expect(root_volume.size).to eq(root_disk_size / 1024)
+            else
+              expect(root_volume.size).to eq(ami_root_volume_size)
+            end
+            if root_disk_type
+              expect(root_volume.type).to eq(root_disk_type)
+            else
+              expect(root_volume.type).to eq('gp2')
+            end
+          end
+        end
+
+        def get_root_block_device(root_device_name, block_devices)
+          block_devices.find do |device|
+            root_device_name.start_with?(device[:device_name])
           end
         end
       end
@@ -751,7 +849,8 @@ describe Bosh::AwsCloud::Cloud do
 
   def vm_lifecycle(options = {})
     vm_disks = options[:disks] || disks
-    stemcell_id = cpi.create_stemcell('/not/a/real/path', { 'ami' => { 'us-east-1' => ami } })
+    ami_id = options[:ami] || ami
+    stemcell_id = cpi.create_stemcell('/not/a/real/path', { 'ami' => { @region => ami_id } })
     expect(stemcell_id).to end_with(' light')
 
     instance_id = cpi.create_vm(
