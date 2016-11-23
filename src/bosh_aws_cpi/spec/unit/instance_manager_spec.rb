@@ -82,7 +82,7 @@ module Bosh::AwsCloud
           stemcell_id => instance_double('AWS::EC2::Image',
             block_devices: block_devices,
             root_device_name: 'fake-image-root-device',
-            block_device_mappings: { 'fake-image-root-device': {} },
+            block_device_mappings: { 'fake-image-root-device' => {} },
             virtualization_type: :hvm
           )
         })
