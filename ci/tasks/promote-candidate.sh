@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e -x
+set -e
 
 : ${AWS_ACCESS_KEY_ID:?}
 : ${AWS_SECRET_ACCESS_KEY:?}
@@ -18,7 +18,6 @@ cp -r bosh-cpi-src promoted/repo
 dev_release=$(echo $PWD/bosh-cpi-release/*.tgz)
 
 pushd promoted/repo
-  set +x
   echo creating config/private.yml with blobstore secrets
   cat > config/private.yml << EOF
 ---
@@ -27,7 +26,6 @@ blobstore:
     access_key_id: $AWS_ACCESS_KEY_ID
     secret_access_key: $AWS_SECRET_ACCESS_KEY
 EOF
-  set -x
 
   echo "using bosh CLI version..."
   bosh version
