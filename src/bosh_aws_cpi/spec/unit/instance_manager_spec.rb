@@ -2,23 +2,23 @@ require 'spec_helper'
 
 module Bosh::AwsCloud
   describe InstanceManager do
-    let(:ec2) { instance_double(AWS::EC2) }
-    let(:aws_client) { instance_double("#{AWS::EC2::Client.new.class}") }
+    let(:ec2) { instance_double(Aws::EC2) }
+    let(:aws_client) { instance_double("#{Aws::EC2::Client.new.class}") }
     before { allow(ec2).to receive(:client).and_return(aws_client) }
 
     let(:registry) { double('Bosh::Registry::Client', :endpoint => 'http://...', :update_settings => nil) }
-    let(:elb) { double('AWS::ELB', load_balancers: nil) }
+    let(:elb) { double('Aws::ELB', load_balancers: nil) }
     let(:param_mapper) { instance_double(InstanceParamMapper) }
     let(:block_device_manager) { instance_double(BlockDeviceManager) }
     let(:logger) { Logger.new('/dev/null') }
 
     describe '#create' do
-      let(:fake_subnet_collection) { instance_double('AWS::EC2::SubnetCollection')}
-      let(:fake_availability_zone) { instance_double('AWS::EC2::AvailabilityZone', name: 'us-east-1a')}
-      let(:fake_aws_subnet) { instance_double('AWS::EC2::Subnet', id: 'sub-123456', availability_zone: fake_availability_zone) }
+      let(:fake_subnet_collection) { instance_double('Aws::EC2::SubnetCollection')}
+      let(:fake_availability_zone) { instance_double('Aws::EC2::AvailabilityZone', name: 'us-east-1a')}
+      let(:fake_aws_subnet) { instance_double('Aws::EC2::Subnet', id: 'sub-123456', availability_zone: fake_availability_zone) }
 
-      let(:aws_instances) { instance_double('AWS::EC2::InstanceCollection') }
-      let(:aws_instance) { instance_double('AWS::EC2::Instance', id: 'i-12345678') }
+      let(:aws_instances) { instance_double('Aws::EC2::InstanceCollection') }
+      let(:aws_instance) { instance_double('Aws::EC2::Instance', id: 'i-12345678') }
 
       let(:agent_id) { 'agent-id' }
       let(:stemcell_id) { 'stemcell-id' }
@@ -79,7 +79,7 @@ module Bosh::AwsCloud
         allow(ec2).to receive(:subnets).and_return(fake_subnet_collection)
         allow(ec2).to receive(:instances).and_return(aws_instances)
         allow(ec2).to receive(:images).and_return({
-          stemcell_id => instance_double('AWS::EC2::Image',
+          stemcell_id => instance_double('Aws::EC2::Image',
             block_devices: block_devices,
             root_device_name: 'fake-image-root-device',
             block_device_mappings: { 'fake-image-root-device' => {} },
@@ -116,7 +116,7 @@ module Bosh::AwsCloud
           allow(ec2).to receive(:client).and_return(aws_client)
 
           # need to translate security group names to security group ids
-          sg1 = instance_double('AWS::EC2::SecurityGroup', id:'sg-baz-1234')
+          sg1 = instance_double('Aws::EC2::SecurityGroup', id:'sg-baz-1234')
           allow(sg1).to receive(:name).and_return('baz')
           allow(ec2).to receive(:security_groups).and_return([sg1])
 
@@ -250,12 +250,12 @@ module Bosh::AwsCloud
         end
       end
 
-      it 'should retry creating the VM when AWS::EC2::Errors::InvalidIPAddress::InUse raised' do
+      it 'should retry creating the VM when Aws::EC2::Errors::InvalidIPAddress::InUse raised' do
         instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
         allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
         allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
-        expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_raise(AWS::EC2::Errors::InvalidIPAddress::InUse)
+        expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_raise(Aws::EC2::Errors::InvalidIPAddress::InUse)
         expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
 
         allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
@@ -381,7 +381,7 @@ module Bosh::AwsCloud
 
     describe '#find' do
       before { allow(ec2).to receive(:instances).and_return(instance_id => aws_instance) }
-      let(:aws_instance) { instance_double('AWS::EC2::Instance', id: instance_id) }
+      let(:aws_instance) { instance_double('Aws::EC2::Instance', id: instance_id) }
       let(:instance_id) { 'fake-id' }
 
       it 'returns found instance (even though it might not exist)' do

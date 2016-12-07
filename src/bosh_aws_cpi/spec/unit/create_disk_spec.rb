@@ -7,8 +7,8 @@ describe Bosh::AwsCloud::Cloud do
   let(:zones) { [double('us-east-1a', :name => 'us-east-1a')] }
   let(:volume) { double('volume', :id => 'v-foobar') }
   let(:instance) { double('instance', id: 'i-test', availability_zone: 'foobar-land') }
-  let(:low_level_client) { instance_double('AWS::EC2::Client::V20141001') }
-  let(:volume_resp) { double('AWS::Core::Response', volume_id: 'v-foobar') }
+  let(:low_level_client) { instance_double('Aws::EC2::Client::V20141001') }
+  let(:volume_resp) { double('Aws::Core::Response', volume_id: 'v-foobar') }
 
   before do
     allow(Bosh::AwsCloud::ResourceWait).to receive(:for_volume).with(volume: volume, state: :available)
@@ -20,7 +20,7 @@ describe Bosh::AwsCloud::Cloud do
       allow(@ec2).to receive(:client).and_return(low_level_client)
       allow(low_level_client).to receive(:create_volume).and_return(volume_resp)
 
-      allow(AWS::EC2::Volume).to receive(:new_from)
+      allow(Aws::EC2::Volume).to receive(:new_from)
         .with(:create_volume, volume_resp, 'v-foobar', config: 'fake-config')
         .and_return(volume)
     end

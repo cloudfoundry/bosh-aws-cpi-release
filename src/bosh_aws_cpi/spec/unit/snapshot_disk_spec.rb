@@ -2,9 +2,9 @@ require 'spec_helper'
 
 describe Bosh::AwsCloud::Cloud do
   describe '#snapshot_disk' do
-    let(:volume) { double(AWS::EC2::Volume, id: 'vol-xxxxxxxx') }
-    let(:snapshot) { double(AWS::EC2::Snapshot, id: 'snap-xxxxxxxx') }
-    let(:attachment) { double(AWS::EC2::Attachment, device: '/dev/sdf') }
+    let(:volume) { double(Aws::EC2::Volume, id: 'vol-xxxxxxxx') }
+    let(:snapshot) { double(Aws::EC2::Snapshot, id: 'snap-xxxxxxxx') }
+    let(:attachment) { double(Aws::EC2::Attachment, device: '/dev/sdf') }
     let(:metadata) {
       {
           agent_id: 'agent',

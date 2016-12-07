@@ -4,23 +4,23 @@ module Bosh::AwsCloud
   describe InstanceParamMapper do
     let(:instance_param_mapper) { InstanceParamMapper.new(security_group_mapper) }
     let(:security_group_mapper) { SecurityGroupMapper.new(ec2_client) }
-    let(:ec2_client) { instance_double(AWS::EC2) }
+    let(:ec2_client) { instance_double(Aws::EC2) }
     let(:security_groups) do
       [
-        instance_double(AWS::EC2::SecurityGroup, name: 'sg-1-name', id: 'sg-11111111'),
-        instance_double(AWS::EC2::SecurityGroup, name: 'sg-2-name', id: 'sg-22222222'),
-        instance_double(AWS::EC2::SecurityGroup, name: 'sg-3-name', id: 'sg-33333333'),
-        instance_double(AWS::EC2::SecurityGroup, name: 'sg-4-name', id: 'sg-44444444'),
-        instance_double(AWS::EC2::SecurityGroup, name: 'sg-5-name', id: 'sg-55555555'),
-        instance_double(AWS::EC2::SecurityGroup, name: 'sg-6-name', id: 'sg-66666666'),
-        instance_double(AWS::EC2::SecurityGroup, name: 'sg-7-name', id: 'sg-77777777')
+        instance_double(Aws::EC2::SecurityGroup, name: 'sg-1-name', id: 'sg-11111111'),
+        instance_double(Aws::EC2::SecurityGroup, name: 'sg-2-name', id: 'sg-22222222'),
+        instance_double(Aws::EC2::SecurityGroup, name: 'sg-3-name', id: 'sg-33333333'),
+        instance_double(Aws::EC2::SecurityGroup, name: 'sg-4-name', id: 'sg-44444444'),
+        instance_double(Aws::EC2::SecurityGroup, name: 'sg-5-name', id: 'sg-55555555'),
+        instance_double(Aws::EC2::SecurityGroup, name: 'sg-6-name', id: 'sg-66666666'),
+        instance_double(Aws::EC2::SecurityGroup, name: 'sg-7-name', id: 'sg-77777777')
       ]
     end
     let(:shared_subnet) do
-      instance_double(AWS::EC2::Subnet,
-        vpc: instance_double(AWS::EC2::VPC, security_groups: security_groups))
+      instance_double(Aws::EC2::Subnet,
+        vpc: instance_double(Aws::EC2::VPC, security_groups: security_groups))
     end
-    let(:subnets) { instance_double(AWS::EC2::SubnetCollection, :[] => shared_subnet) }
+    let(:subnets) { instance_double(Aws::EC2::SubnetCollection, :[] => shared_subnet) }
 
     before do
       allow(ec2_client).to receive(:subnets).and_return(subnets)

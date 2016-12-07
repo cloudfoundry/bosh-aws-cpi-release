@@ -2,8 +2,8 @@ require 'spec_helper'
 
 describe Bosh::AwsCloud::SpotManager do
   let(:spot_manager) { described_class.new(ec2) }
-  let(:ec2) { instance_double(AWS::EC2) }
-  let(:aws_client) { instance_double("#{AWS::EC2::Client.new.class}") }
+  let(:ec2) { instance_double(Aws::EC2) }
+  let(:aws_client) { instance_double("#{Aws::EC2::Client.new.class}") }
   let(:fake_instance_params) { { fake: 'params' } }
 
   before do
@@ -27,7 +27,7 @@ describe Bosh::AwsCloud::SpotManager do
   end
 
   before { allow(ec2).to receive(:instances).and_return( {'i-12345678' => instance } ) }
-  let(:instance) { double(AWS::EC2::Instance, id: 'i-12345678') }
+  let(:instance) { double(Aws::EC2::Instance, id: 'i-12345678') }
 
   # Override total_spot_instance_request_wait_time to be "unit test" speed
   before { stub_const('Bosh::AwsCloud::SpotManager::TOTAL_WAIT_TIME_IN_SECONDS', 0.1) }
@@ -74,11 +74,11 @@ describe Bosh::AwsCloud::SpotManager do
     }
   end
 
-  it 'should retry checking spot instance request state when AWS::EC2::Errors::InvalidSpotInstanceRequestID::NotFound raised' do
+  it 'should retry checking spot instance request state when Aws::EC2::Errors::InvalidSpotInstanceRequestID::NotFound raised' do
     #Simulate first recieving an error when asking for spot request state
     expect(aws_client).to receive(:describe_spot_instance_requests).
       with({ spot_instance_request_ids: ['sir-12345c'] }).
-      and_raise(AWS::EC2::Errors::InvalidSpotInstanceRequestID::NotFound)
+      and_raise(Aws::EC2::Errors::InvalidSpotInstanceRequestID::NotFound)
     expect(aws_client).to receive(:describe_spot_instance_requests).
       with({ spot_instance_request_ids: ['sir-12345c'] }).
       and_return({ spot_instance_request_set: [{ state: 'active', instance_id: 'i-12345678' }] })
@@ -136,7 +136,7 @@ describe Bosh::AwsCloud::SpotManager do
   end
 
   it 'should fail VM creation and log an error when there is a CPI error' do
-    aws_error = AWS::EC2::Errors::InvalidParameterValue.new(%q{price "0.3" exceeds your maximum Spot price limit of "0.24"})
+    aws_error = Aws::EC2::Errors::InvalidParameterValue.new(%q{price "0.3" exceeds your maximum Spot price limit of "0.24"})
     allow(aws_client).to receive(:request_spot_instances).and_raise(aws_error)
 
     expect(Bosh::Clouds::Config.logger).to receive(:error).with(/Failed to get spot instance request/)

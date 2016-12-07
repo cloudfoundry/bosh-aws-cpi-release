@@ -69,7 +69,7 @@ module Bosh::AwsCloud
 
     # Applies network configuration to the vm
     # @param [AWS:EC2] ec2 instance EC2 client
-    # @param [AWS::EC2::Instance] instance EC2 instance to configure
+    # @param [Aws::EC2::Instance] instance EC2 instance to configure
     def configure(ec2, instance)
       if @vip_network
         @vip_network.configure(ec2, instance)

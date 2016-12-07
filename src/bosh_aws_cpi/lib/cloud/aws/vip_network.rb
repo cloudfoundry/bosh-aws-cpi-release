@@ -17,7 +17,7 @@ module Bosh::AwsCloud
     # Configures vip network
     #
     # @param [AWS:EC2] ec2 EC2 client
-    # @param [AWS::EC2::Instance] instance EC2 instance to configure
+    # @param [Aws::EC2::Instance] instance EC2 instance to configure
     def configure(ec2, instance)
       if @ip.nil?
         cloud_error("No IP provided for vip network `#{@name}'")
@@ -32,7 +32,7 @@ module Bosh::AwsCloud
       # if this IP is actually an allocated EC2 elastic IP, as
       # API call will fail in that case.
 
-      errors = [AWS::EC2::Errors::IncorrectInstanceState, AWS::EC2::Errors::InvalidInstanceID]
+      errors = [Aws::EC2::Errors::IncorrectInstanceState, Aws::EC2::Errors::InvalidInstanceID]
       Bosh::Common.retryable(tries: 10, sleep: 1, on: errors) do
         instance.associate_elastic_ip(elastic_ip)
         true # need to return true to end the retries

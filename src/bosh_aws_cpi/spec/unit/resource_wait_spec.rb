@@ -5,7 +5,7 @@ module Bosh::AwsCloud
     before { allow(Kernel).to receive(:sleep) }
 
     describe '.for_instance' do
-      let(:instance) { double(AWS::EC2::Instance, id: 'i-1234') }
+      let(:instance) { double(Aws::EC2::Instance, id: 'i-1234') }
 
       context 'deletion' do
         it 'should wait until the state is terminated' do
@@ -20,7 +20,7 @@ module Bosh::AwsCloud
       context 'creation' do
         context 'when EC2 fails to find an instance' do
           it 'should wait until the state is running' do
-            expect(instance).to receive(:status).and_raise(AWS::EC2::Errors::InvalidInstanceID::NotFound)
+            expect(instance).to receive(:status).and_raise(Aws::EC2::Errors::InvalidInstanceID::NotFound)
             expect(instance).to receive(:status).and_return(:pending)
             expect(instance).to receive(:status).and_return(:running)
 
@@ -30,7 +30,7 @@ module Bosh::AwsCloud
 
         context 'when resource is not found' do
           it 'should wait until the state is running' do
-            expect(instance).to receive(:status).and_raise(AWS::Core::Resource::NotFound)
+            expect(instance).to receive(:status).and_raise(Aws::Core::Resource::NotFound)
             expect(instance).to receive(:status).and_return(:pending)
             expect(instance).to receive(:status).and_return(:running)
 
@@ -41,7 +41,7 @@ module Bosh::AwsCloud
         context 'when resource status service is not available' do
           it 'should wait until the service is available and the state is running' do
             expect(instance).to receive(:status).and_raise(
-              AWS::Errors::ServerError.new('The service is unavailable. Please try again shortly.'))
+              Aws::Errors::ServerError.new('The service is unavailable. Please try again shortly.'))
             expect(instance).to receive(:status).and_return(:pending)
             expect(instance).to receive(:status).and_return(:running)
 
@@ -63,9 +63,9 @@ module Bosh::AwsCloud
     end
 
     describe '.for_attachment' do
-      let(:volume) { double(AWS::EC2::Volume, id: 'vol-1234') }
-      let(:instance) { double(AWS::EC2::Instance, id: 'i-5678') }
-      let(:attachment) { double(AWS::EC2::Attachment, volume: volume, instance: instance, device: '/dev/sda1') }
+      let(:volume) { double(Aws::EC2::Volume, id: 'vol-1234') }
+      let(:instance) { double(Aws::EC2::Instance, id: 'i-5678') }
+      let(:attachment) { double(Aws::EC2::Attachment, volume: volume, instance: instance, device: '/dev/sda1') }
 
       context 'attachment' do
         it 'should wait until the state is attached' do
@@ -75,8 +75,8 @@ module Bosh::AwsCloud
           described_class.for_attachment(attachment: attachment, state: :attached)
         end
 
-        it 'should retry when AWS::Core::Resource::NotFound is raised' do
-          expect(attachment).to receive(:status).and_raise(AWS::Core::Resource::NotFound)
+        it 'should retry when Aws::Core::Resource::NotFound is raised' do
+          expect(attachment).to receive(:status).and_raise(Aws::Core::Resource::NotFound)
           expect(attachment).to receive(:status).and_return(:attached)
 
           described_class.for_attachment(attachment: attachment, state: :attached)
@@ -91,9 +91,9 @@ module Bosh::AwsCloud
           described_class.for_attachment(attachment: attachment, state: :detached)
         end
 
-        it 'should consider AWS::Core::Resource::NotFound to be detached' do
+        it 'should consider Aws::Core::Resource::NotFound to be detached' do
           expect(attachment).to receive(:status).and_return(:detaching)
-          expect(attachment).to receive(:status).and_raise(AWS::Core::Resource::NotFound)
+          expect(attachment).to receive(:status).and_raise(Aws::Core::Resource::NotFound)
 
           described_class.for_attachment(attachment: attachment, state: :detached)
         end
@@ -101,7 +101,7 @@ module Bosh::AwsCloud
     end
 
     describe '.for_volume' do
-      let(:volume) { double(AWS::EC2::Volume, id: 'v-123') }
+      let(:volume) { double(Aws::EC2::Volume, id: 'v-123') }
 
       context 'creation' do
         it 'should wait until the state is available' do
@@ -131,7 +131,7 @@ module Bosh::AwsCloud
 
         it 'should consider InvalidVolume error to mean deleted' do
           expect(volume).to receive(:status).and_return(:deleting)
-          expect(volume).to receive(:status).and_raise(AWS::EC2::Errors::InvalidVolume::NotFound)
+          expect(volume).to receive(:status).and_raise(Aws::EC2::Errors::InvalidVolume::NotFound)
 
           described_class.for_volume(volume: volume, state: :deleted)
         end
@@ -139,7 +139,7 @@ module Bosh::AwsCloud
     end
 
     describe '.for_snapshot' do
-      let(:snapshot) { double(AWS::EC2::Snapshot, id: 'snap-123') }
+      let(:snapshot) { double(Aws::EC2::Snapshot, id: 'snap-123') }
 
       context 'creation' do
         it 'should wait until the state is completed' do
@@ -161,7 +161,7 @@ module Bosh::AwsCloud
     end
 
     describe '.for_image' do
-      let(:image) { double(AWS::EC2::Image, id: 'ami-123') }
+      let(:image) { double(Aws::EC2::Image, id: 'ami-123') }
 
       context 'creation' do
         it 'should wait until the state is available' do
@@ -171,8 +171,8 @@ module Bosh::AwsCloud
           described_class.for_image(image: image, state: :available)
         end
 
-        it 'should wait if AWS::EC2::Errors::InvalidAMIID::NotFound raised' do
-          expect(image).to receive(:state).and_raise(AWS::EC2::Errors::InvalidAMIID::NotFound)
+        it 'should wait if Aws::EC2::Errors::InvalidAMIID::NotFound raised' do
+          expect(image).to receive(:state).and_raise(Aws::EC2::Errors::InvalidAMIID::NotFound)
           expect(image).to receive(:state).and_return(:pending)
           expect(image).to receive(:state).and_return(:available)
 
@@ -201,7 +201,7 @@ module Bosh::AwsCloud
     end
 
     describe '.for_subnet' do
-      let(:subnet) { double(AWS::EC2::Subnet, id: 'subnet-123') }
+      let(:subnet) { double(Aws::EC2::Subnet, id: 'subnet-123') }
 
       context 'creation' do
         it 'should wait until the state is completed' do

@@ -3,19 +3,19 @@ require "spec_helper"
 module Bosh::AwsCloud
   describe SecurityGroupMapper do
     let(:security_group_mapper) { SecurityGroupMapper.new(ec2_client) }
-    let(:ec2_client) { instance_double(AWS::EC2) }
+    let(:ec2_client) { instance_double(Aws::EC2) }
     let(:security_groups) do
       [
-        instance_double(AWS::EC2::SecurityGroup, name: 'valid-sg0', id: 'sg-00000000'),
-        instance_double(AWS::EC2::SecurityGroup, name: 'valid-sg1', id: 'sg-11111111')
+        instance_double(Aws::EC2::SecurityGroup, name: 'valid-sg0', id: 'sg-00000000'),
+        instance_double(Aws::EC2::SecurityGroup, name: 'valid-sg1', id: 'sg-11111111')
       ]
     end
     let(:target_subnet_id) { 'fake-subnet-id' }
     let(:subnets) do
       {
-        target_subnet_id => instance_double(AWS::EC2::Subnet,
+        target_subnet_id => instance_double(Aws::EC2::Subnet,
           id: target_subnet_id,
-          vpc: instance_double(AWS::EC2::VPC, security_groups: security_groups))
+          vpc: instance_double(Aws::EC2::VPC, security_groups: security_groups))
       }
     end
 
@@ -61,8 +61,8 @@ module Bosh::AwsCloud
         context 'when provided name matches multiple groups' do
           let(:ec2_groups) do
             [
-              instance_double('AWS::EC2::SecurityGroup', name: 'duplicate-name', id: 'sg-00000000'),
-              instance_double('AWS::EC2::SecurityGroup', name: 'duplicate-name', id: 'sg-11111111')
+              instance_double('Aws::EC2::SecurityGroup', name: 'duplicate-name', id: 'sg-00000000'),
+              instance_double('Aws::EC2::SecurityGroup', name: 'duplicate-name', id: 'sg-11111111')
             ]
           end
           it 'raises an error' do

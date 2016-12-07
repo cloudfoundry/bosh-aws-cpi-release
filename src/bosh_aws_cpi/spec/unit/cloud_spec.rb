@@ -9,8 +9,8 @@ describe Bosh::AwsCloud::Cloud do
 
   before do
     allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
-    reg = AWS::EC2::Region.new('fake-region', endpoint: 'http://some.endpoint')
-    allow_any_instance_of(AWS::EC2).to receive(:regions).and_return([reg])
+    reg = Aws::EC2::Region.new('fake-region', endpoint: 'http://some.endpoint')
+    allow_any_instance_of(Aws::EC2).to receive(:regions).and_return([reg])
   end
 
   describe '#initialize' do
@@ -80,9 +80,9 @@ describe Bosh::AwsCloud::Cloud do
       end
 
       context 'when the given region is invalid' do
-        let(:regions) { instance_double(AWS::EC2::RegionCollection) }
+        let(:regions) { instance_double(Aws::EC2::RegionCollection) }
         before do
-          allow_any_instance_of(AWS::EC2).to receive(:regions).and_return(regions)
+          allow_any_instance_of(Aws::EC2).to receive(:regions).and_return(regions)
         end
 
         it 'raises a cloud error' do
@@ -101,7 +101,7 @@ describe Bosh::AwsCloud::Cloud do
 
   describe '#create_disk' do
     let(:cloud_properties) { {} }
-    let(:volume) { instance_double('AWS::EC2::Volume', id: 'fake-volume-id') }
+    let(:volume) { instance_double('Aws::EC2::Volume', id: 'fake-volume-id') }
 
     before do
       allow(az_selector).to receive(:select_availability_zone).
@@ -113,14 +113,14 @@ describe Bosh::AwsCloud::Cloud do
     end
 
     context 'when volumes are set' do
-      let(:ec2_client) { instance_double('AWS::EC2', client: low_level_client) }
-      let(:low_level_client) { instance_double('AWS::EC2::Client::V20141001') }
-      let(:volume_resp) { double('AWS::Core::Response', volume_id: 'fake-volume-id') }
-      let(:volume) { double('AWS::EC2::Volume', id: 'fake-volume-id') }
+      let(:ec2_client) { instance_double('Aws::EC2', client: low_level_client) }
+      let(:low_level_client) { instance_double('Aws::EC2::Client::V20141001') }
+      let(:volume_resp) { double('Aws::Core::Response', volume_id: 'fake-volume-id') }
+      let(:volume) { double('Aws::EC2::Volume', id: 'fake-volume-id') }
       before do
         cloud.instance_variable_set(:'@ec2_client', ec2_client)
         allow(ec2_client).to receive(:config).and_return('fake-config')
-        allow(AWS::EC2::Volume).to receive(:new_from)
+        allow(Aws::EC2::Volume).to receive(:new_from)
           .with(:create_volume, volume_resp, 'fake-volume-id', config: 'fake-config')
           .and_return(volume)
       end

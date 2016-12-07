@@ -106,10 +106,10 @@ module Bosh::AwsCloud
       # address is in use - it can happen when the director recreates a VM and AWS
       # is too slow to update its state when we have released the IP address and want to
       # reallocate it again.
-      errors = [AWS::EC2::Errors::InvalidIPAddress::InUse]
+      errors = [Aws::EC2::Errors::InvalidIPAddress::InUse]
       Bosh::Common.retryable(sleep: instance_create_wait_time, tries: 20, on: errors) do |tries, error|
         @logger.info('Launching on demand instance...')
-        if error.class == AWS::EC2::Errors::InvalidIPAddress::InUse
+        if error.class == Aws::EC2::Errors::InvalidIPAddress::InUse
           @logger.warn("IP address was in use: #{error}")
         end
         resp = @ec2.client.run_instances(instance_params)

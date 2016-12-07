@@ -56,13 +56,17 @@ module Bosh::AwsCloud
         static_credentials[:secret_access_key] = aws_properties['secret_access_key']
       end
 
-      @aws_params[:credential_provider] = Bosh::AwsCloud::CredentialsProvider.new(static_credentials)
+      # @aws_params[:credential_provider] = Bosh::AwsCloud::CredentialsProvider.new(static_credentials)
+      @aws_params[:credentials] = Aws::Credentials.new(aws_properties['access_key_id'], aws_properties['secret_access_key'])
 
       # AWS Ruby SDK is threadsafe but Ruby autoload isn't,
       # so we need to trigger eager autoload while constructing CPI
-      AWS.eager_autoload!
+      Aws.eager_autoload!
 
-      @ec2_client = AWS::EC2.new(@aws_params)
+      # In SDK v2 the default is more request driven, while the old 'model way' lives in Resource.
+      # Therefore in most cases Aws::EC2::Resource would replace the client.
+      @ec2_client = Aws::EC2::Client.new(@aws_params)
+      @ec2_resource = Aws::EC2::Resource.new(client: @ec2_client)
 
       cloud_error("Please make sure the CPI has proper network access to AWS.") unless aws_accessible?
 
@@ -70,12 +74,12 @@ module Bosh::AwsCloud
 
       initialize_registry
 
-      elb = AWS::ELB.new(@aws_params)
+      elb = Aws::ElasticLoadBalancingV2::Client.new(region: @aws_params[:region], credentials: @aws_params[:credentials])
 
-      security_group_mapper = SecurityGroupMapper.new(@ec2_client)
+      security_group_mapper = SecurityGroupMapper.new(@ec2_resource)
       instance_param_mapper = InstanceParamMapper.new(security_group_mapper)
       block_device_manager = BlockDeviceManager.new(@logger)
-      @instance_manager = InstanceManager.new(@ec2_client, registry, elb, instance_param_mapper, block_device_manager, @logger)
+      @instance_manager = InstanceManager.new(@ec2_resource, registry, elb, instance_param_mapper, block_device_manager, @logger)
 
       @instance_type_mapper = InstanceTypeMapper.new
 
@@ -212,7 +216,7 @@ module Bosh::AwsCloud
         )
 
         resp = @ec2_client.client.create_volume(volume_properties.persistent_disk_config)
-        volume = AWS::EC2::Volume.new_from(:create_volume, resp, resp.volume_id, config: @ec2_client.config)
+        volume = Aws::EC2::Volume.new_from(:create_volume, resp, resp.volume_id, config: @ec2_client.config)
 
         logger.info("Creating volume '#{volume.id}'")
         ResourceWait.for_volume(volume: volume, state: :available)
@@ -254,12 +258,12 @@ module Bosh::AwsCloud
         ensure_cb = Proc.new do |retries|
           cloud_error("Timed out waiting to delete volume `#{volume.id}'") if retries == tries
         end
-        error = AWS::EC2::Errors::VolumeInUse
+        error = Aws::EC2::Errors::VolumeInUse
 
         Bosh::Common.retryable(tries: tries, sleep: sleep_cb, on: error, ensure: ensure_cb) do
           begin
             volume.delete
-          rescue AWS::EC2::Errors::InvalidVolume::NotFound => e
+          rescue Aws::EC2::Errors::InvalidVolume::NotFound => e
             logger.warn("Failed to delete disk '#{disk_id}' because it was not found: #{e.inspect}")
             raise Bosh::Clouds::DiskNotFound.new(false), "Disk '#{disk_id}' not found"
           end
@@ -270,7 +274,7 @@ module Bosh::AwsCloud
           begin
             TagManager.tag(volume, "Name", "to be deleted")
             logger.info("Volume `#{disk_id}' has been marked for deletion")
-          rescue AWS::EC2::Errors::InvalidVolume::NotFound
+          rescue Aws::EC2::Errors::InvalidVolume::NotFound
             # Once in a blue moon AWS if actually fast enough that the volume is already gone
             # when we get here, and if it is, our work here is done!
           end
@@ -462,7 +466,7 @@ module Bosh::AwsCloud
         name = "compiling/#{metadata['compiling']}"
       end
       TagManager.tag(instance, "Name", name) if name
-    rescue AWS::EC2::Errors::TagLimitExceeded => e
+    rescue Aws::EC2::Errors::TagLimitExceeded => e
       logger.error("could not tag #{instance.id}: #{e.message}")
     end
 
@@ -603,12 +607,12 @@ module Bosh::AwsCloud
       )
 
       Bosh::Common.retryable(
-        on: [AWS::EC2::Errors::IncorrectState, AWS::EC2::Errors::VolumeInUse],
+        on: [Aws::EC2::Errors::IncorrectState, Aws::EC2::Errors::VolumeInUse],
         sleep: sleep_cb,
         tries: tries
       ) do |retries, error|
         # Continue to retry after 15 attempts only for VolumeInUse
-        if retries > 15 && error.instance_of?(AWS::EC2::Errors::IncorrectState)
+        if retries > 15 && error.instance_of?(Aws::EC2::Errors::IncorrectState)
           cloud_error("Failed to attach disk: #{error.message}")
         end
 
