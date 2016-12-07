@@ -53,7 +53,7 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
   before do
     allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
 
-    allow(AWS::EC2).to receive(:new).and_return(ec2)
+    allow(Aws::EC2).to receive(:new).and_return(ec2)
 
     allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).
         with(ec2).
@@ -65,7 +65,7 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
       with(
         ec2,
         registry,
-        be_an_instance_of(AWS::ELB),
+        be_an_instance_of(Aws::ELB),
         be_an_instance_of(Bosh::AwsCloud::InstanceParamMapper),
         be_an_instance_of(Bosh::AwsCloud::BlockDeviceManager),
         be_an_instance_of(Logger)

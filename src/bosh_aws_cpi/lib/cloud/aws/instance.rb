@@ -59,7 +59,7 @@ module Bosh::AwsCloud
     def terminate(fast=false)
       begin
         @aws_instance.terminate
-      rescue AWS::EC2::Errors::InvalidInstanceID::NotFound => e
+      rescue Aws::EC2::Errors::InvalidInstanceID::NotFound => e
         @logger.warn("Failed to terminate instance '#{@aws_instance.id}' because it was not found: #{e.inspect}")
         raise Bosh::Clouds::VMNotFound, "VM `#{@aws_instance.id}' not found"
       ensure
@@ -76,7 +76,7 @@ module Bosh::AwsCloud
       begin
         @logger.info("Deleting instance '#{@aws_instance.id}'")
         ResourceWait.for_instance(instance: @aws_instance, state: :terminated)
-      rescue AWS::EC2::Errors::InvalidInstanceID::NotFound => e
+      rescue Aws::EC2::Errors::InvalidInstanceID::NotFound => e
         @logger.debug("Failed to find terminated instance '#{@aws_instance.id}' after deletion: #{e.inspect}")
         # It's OK, just means that instance has already been deleted
       end

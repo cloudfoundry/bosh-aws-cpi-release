@@ -49,16 +49,16 @@ describe Bosh::AwsCloud::Stemcell do
         stemcell = described_class.new(region, fake_aws_ami)
 
         allow(stemcell).to receive(:memoize_snapshots)
-        expect(fake_aws_ami).to receive(:deregister).and_raise(AWS::EC2::Errors::AuthFailure)
+        expect(fake_aws_ami).to receive(:deregister).and_raise(Aws::EC2::Errors::AuthFailure)
         expect(Bosh::AwsCloud::ResourceWait).not_to receive(:for_image)
 
-        expect {stemcell.delete}.to raise_error(AWS::EC2::Errors::AuthFailure)
+        expect {stemcell.delete}.to raise_error(Aws::EC2::Errors::AuthFailure)
       end
-      # AWS::EC2::Errors::AuthFailure
+      # Aws::EC2::Errors::AuthFailure
     end
 
     context 'when the AMI is not found after deletion' do
-      it 'should not propagate a AWS::Core::Resource::NotFound error' do
+      it 'should not propagate a Aws::Core::Resource::NotFound error' do
         stemcell = described_class.new(region, fake_aws_ami)
 
         expect(stemcell).to receive(:memoize_snapshots).ordered
@@ -67,7 +67,7 @@ describe Bosh::AwsCloud::Stemcell do
         allow(Bosh::AwsCloud::ResourceWait).to receive_messages(new: resource_wait)
         allow(resource_wait).to receive(:for_resource).with(
           resource: fake_aws_ami, errors: [], target_state: :deleted, state_method: :state).and_raise(
-          AWS::Core::Resource::NotFound)
+          Aws::Core::Resource::NotFound)
         expect(stemcell).to receive(:delete_snapshots).ordered
 
         stemcell.delete

@@ -63,7 +63,7 @@ end
 
 def mock_cloud(options = nil)
   ec2 = mock_ec2
-  allow(AWS::EC2).to receive(:new).and_return(ec2)
+  allow(Aws::EC2::Resource).to receive(:new).and_return(ec2)
 
   yield ec2 if block_given?
 
@@ -71,7 +71,7 @@ def mock_cloud(options = nil)
 end
 
 def mock_ec2
-  ec2 = double(AWS::EC2,
+  ec2 = double(AWS::EC2::Resource,
                :instances => double(AWS::EC2::InstanceCollection),
                :volumes => double(AWS::EC2::VolumeCollection),
                :images => double(AWS::EC2::ImageCollection),

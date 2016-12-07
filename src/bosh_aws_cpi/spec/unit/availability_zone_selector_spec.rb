@@ -2,12 +2,12 @@ require "spec_helper"
 
 describe Bosh::AwsCloud::AvailabilityZoneSelector do
 
-  let(:instances) { double(AWS::EC2::InstanceCollection) }
-  let(:instance) { double(AWS::EC2::Instance, :availability_zone => 'this_zone') }
-  let(:us_east_1a) { double(AWS::EC2::AvailabilityZone, name: 'us-east-1a') }
-  let(:us_east_1b) { double(AWS::EC2::AvailabilityZone, name: 'us-east-1b') }
+  let(:instances) { double(Aws::EC2::InstanceCollection) }
+  let(:instance) { double(Aws::EC2::Instance, :availability_zone => 'this_zone') }
+  let(:us_east_1a) { double(Aws::EC2::AvailabilityZone, name: 'us-east-1a') }
+  let(:us_east_1b) { double(Aws::EC2::AvailabilityZone, name: 'us-east-1b') }
   let(:zones) { [us_east_1a, us_east_1b] }
-  let(:region) { double(AWS::EC2::Region, :instances => instances, :availability_zones => zones) }
+  let(:region) { double(Aws::EC2::Region, :instances => instances, :availability_zones => zones) }
   let(:subject) { described_class.new(region) }
 
   describe '#common_availability_zone' do
