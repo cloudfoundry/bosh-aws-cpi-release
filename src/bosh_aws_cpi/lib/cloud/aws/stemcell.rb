@@ -5,7 +5,7 @@ module Bosh::AwsCloud
     attr_reader :ami, :snapshots
 
     def self.find(client, id)
-      image = client.images[id]
+      image = client.image(id)
       raise Bosh::Clouds::CloudError, "could not find AMI '#{id}'" unless image.exists?
       new(client, image)
     end

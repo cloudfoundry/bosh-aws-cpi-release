@@ -15,11 +15,11 @@ module Bosh::AwsCloud
     end
 
     def create(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment, options)
-      ami = @ec2.images[stemcell_id]
+      ami = @ec2.image(stemcell_id)
       @block_device_manager.vm_type = vm_type
       @block_device_manager.virtualization_type = ami.virtualization_type
       @block_device_manager.root_device_name = ami.root_device_name
-      @block_device_manager.ami_block_device_names = ami.block_device_mappings.keys
+      @block_device_manager.ami_block_device_names = ami.block_device_mappings.map { |blk| blk['device_name'] }
       block_device_info = @block_device_manager.mappings
       block_device_agent_info = @block_device_manager.agent_info
 
@@ -106,10 +106,10 @@ module Bosh::AwsCloud
       # address is in use - it can happen when the director recreates a VM and AWS
       # is too slow to update its state when we have released the IP address and want to
       # reallocate it again.
-      errors = [Aws::EC2::Errors::InvalidIPAddress::InUse]
+      errors = [Aws::EC2::Errors::InvalidIPAddressInUse]
       Bosh::Common.retryable(sleep: instance_create_wait_time, tries: 20, on: errors) do |tries, error|
         @logger.info('Launching on demand instance...')
-        if error.class == Aws::EC2::Errors::InvalidIPAddress::InUse
+        if error.class == Aws::EC2::Errors::InvalidIPAddressInUse
           @logger.warn("IP address was in use: #{error}")
         end
         resp = @ec2.client.run_instances(instance_params)
@@ -118,7 +118,7 @@ module Bosh::AwsCloud
     end
 
     def get_created_instance_id(resp)
-      resp.instances_set.first.instance_id
+      resp.instances.first.instance_id
     end
 
     def instance_create_wait_time
@@ -128,9 +128,14 @@ module Bosh::AwsCloud
     def subnet_az_mapping(networks_spec)
       subnet_networks = networks_spec.select { |net, spec| ["dynamic", "manual", nil].include?(spec["type"]) }
       subnet_ids = subnet_networks.values.map { |spec| spec["cloud_properties"]["subnet"] unless spec["cloud_properties"].nil? }
-      filtered_subnets = @ec2.subnets.filter('subnet-id', subnet_ids)
+      filtered_subnets = @ec2.subnets({
+        filters: [{
+          name: 'subnet-id',
+          values: subnet_ids
+        }]
+      })
       filtered_subnets.inject({}) do |mapping, subnet|
-        mapping[subnet.id] = subnet.availability_zone.name
+        mapping[subnet.id] = subnet.availability_zone
         mapping
       end
     end
