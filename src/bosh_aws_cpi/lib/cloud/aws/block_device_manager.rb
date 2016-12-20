@@ -106,9 +106,9 @@ module Bosh::AwsCloud
 
     def first_raw_ephemeral_device
       case @virtualization_type
-        when :hvm
+        when 'hvm'
           '/dev/xvdba'
-        when :paravirtual
+        when 'paravirtual'
           '/dev/sdc'
         else
           raise Bosh::Clouds::CloudError, "unknown virtualization type #{@virtualization_type}"

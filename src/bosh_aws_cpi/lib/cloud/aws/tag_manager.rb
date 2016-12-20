@@ -10,11 +10,18 @@ module Bosh::AwsCloud
       return if key.nil? || value.nil?
       trimmed_key = key.to_s.slice(0, MAX_TAG_KEY_LENGTH)
       trimmed_value = value.to_s.slice(0, MAX_TAG_VALUE_LENGTH)
-      taggable.add_tag(trimmed_key, :value => trimmed_value)
+      taggable.create_tags({
+        tags: [
+          {
+            key: trimmed_key,
+            value: trimmed_value,
+          }
+        ]
+      })
     rescue Aws::EC2::Errors::InvalidParameterValue => e
       logger.error("could not tag #{taggable.id}: #{e.message}")
-    rescue Aws::EC2::Errors::InvalidAMIID::NotFound,
-        Aws::EC2::Errors::InvalidInstanceID::NotFound=> e
+    rescue Aws::EC2::Errors::InvalidAMIIDNotFound,
+        Aws::EC2::Errors::InvalidInstanceIDNotFound=> e
       # Due to the AWS eventual consistency, the taggable might not
       # be there, even though we previous have waited until it is,
       # so we wait again...

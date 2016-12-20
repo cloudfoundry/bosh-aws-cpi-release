@@ -3,6 +3,7 @@ require 'bosh/cpi/compatibility_helpers/delete_vm'
 require 'tempfile'
 require 'logger'
 require 'cloud'
+require 'pry-byebug'
 
 describe Bosh::AwsCloud::Cloud do
   before(:all) do
@@ -64,9 +65,8 @@ describe Bosh::AwsCloud::Cloud do
         access_key_id:     @access_key_id,
         secret_access_key: @secret_access_key,
       )
-      # TODO: make sure we're using filters properly
       instances = Aws::EC2::Resource.new(client: ec2_client).instances({
-        filters: [{ name: 'tag:delete-me', }],
+        filters: [ { name: 'tag-key', values: ['delete_me'] } ],
       }).each(&:terminate)
     rescue Aws::EC2::Errors::InvalidInstanceIdNotFound
       # don't blow up tests if instance that we're trying to delete was not found
@@ -95,7 +95,7 @@ describe Bosh::AwsCloud::Cloud do
           'user' => 'fake',
           'password' => 'fake'
         })
-      end.to raise_error(Bosh::Clouds::CloudError, /region/)
+      end.to raise_error(/region/)
     end
   end
 
@@ -170,11 +170,11 @@ describe Bosh::AwsCloud::Cloud do
             'secret_access_key' => @secret_access_key
           }
 
-          elb_client = Aws::ELB::Client.new(aws_params)
-          instances = elb_client.describe_load_balancers({:load_balancer_names => [@elb_id]})[:load_balancer_descriptions]
-                        .first[:instances].first[:instance_id]
+          elb_client = Aws::ElasticLoadBalancing::Client.new(aws_params)
+          instance_ids = elb_client.describe_load_balancers({:load_balancer_names => [@elb_id]}).load_balancer_descriptions
+                        .first.instances.map { |i| i.instance_id }
 
-          expect(instances).to include(vm_id)
+          expect(instance_ids).to include(vm_id)
 
           endpoint_configured_cpi.delete_vm(vm_id)
 
@@ -189,8 +189,8 @@ describe Bosh::AwsCloud::Cloud do
             end
           }.to_not raise_error
 
-          instances = elb_client.describe_load_balancers({:load_balancer_names => [@elb_id]})[:load_balancer_descriptions]
-                        .first[:instances]
+          instances = elb_client.describe_load_balancers({:load_balancer_names => [@elb_id]}).load_balancer_descriptions
+                        .first.instances
 
           expect(instances).to be_empty
         ensure
@@ -217,18 +217,17 @@ describe Bosh::AwsCloud::Cloud do
               director_name: 'Director',
               director_uuid: '6d06b0cc-2c08-43c5-95be-f1b2dd247e18',
             )
-
             snapshot_id = cpi.snapshot_disk(volume_id, snapshot_metadata)
             expect(snapshot_id).not_to be_nil
 
-            snapshot = cpi.ec2_client.snapshots[snapshot_id]
-            expect(snapshot.tags.device).to eq '/dev/sdf'
-            expect(snapshot.tags.agent_id).to eq 'agent'
-            expect(snapshot.tags.instance_id).to eq 'instance'
-            expect(snapshot.tags.director_name).to eq 'Director'
-            expect(snapshot.tags.director_uuid).to eq '6d06b0cc-2c08-43c5-95be-f1b2dd247e18'
-
-            expect(snapshot.tags[:Name]).to eq 'deployment/cpi_spec/0/sdf'
+            snapshot = cpi.ec2_resource.snapshot(snapshot_id)
+            snapshot_tags = array_key_value_to_hash(snapshot.tags)
+            expect(snapshot_tags['device']).to eq '/dev/sdf'
+            expect(snapshot_tags['agent_id']).to eq 'agent'
+            expect(snapshot_tags['instance_id']).to eq 'instance'
+            expect(snapshot_tags['director_name']).to eq 'Director'
+            expect(snapshot_tags['director_uuid']).to eq '6d06b0cc-2c08-43c5-95be-f1b2dd247e18'
+            expect(snapshot_tags['Name']).to eq 'deployment/cpi_spec/0/sdf'
 
           ensure
             cpi.delete_snapshot(snapshot_id)
@@ -290,9 +289,9 @@ describe Bosh::AwsCloud::Cloud do
           expect(volume_id).not_to be_nil
           expect(cpi.has_disk?(volume_id)).to be(true)
 
-          volume = cpi.ec2_client.volumes[volume_id]
-          expect(volume.encrypted?).to be(false)
-          expect(volume.type).to eq('gp2')
+          volume = cpi.ec2_resource.volume(volume_id)
+          expect(volume.encrypted).to be(false)
+          expect(volume.volume_type).to eq('gp2')
           expect(volume.size).to eq(2)
         ensure
           cpi.delete_disk(volume_id) if volume_id
@@ -309,8 +308,8 @@ describe Bosh::AwsCloud::Cloud do
           expect(volume_id).not_to be_nil
           expect(cpi.has_disk?(volume_id)).to be(true)
 
-          volume = cpi.ec2_client.volumes[volume_id]
-          expect(volume.type).to eq('standard')
+          volume = cpi.ec2_resource.volume(volume_id)
+          expect(volume.volume_type).to eq('standard')
         ensure
           cpi.delete_disk(volume_id) if volume_id
         end
@@ -325,8 +324,8 @@ describe Bosh::AwsCloud::Cloud do
           expect(volume_id).not_to be_nil
           expect(cpi.has_disk?(volume_id)).to be(true)
 
-          encrypted_volume = cpi.ec2_client.volumes[volume_id]
-          expect(encrypted_volume.encrypted?).to be(true)
+          encrypted_volume = cpi.ec2_resource.volume(volume_id)
+          expect(encrypted_volume.encrypted).to be(true)
         ensure
           cpi.delete_disk(volume_id) if volume_id
         end
@@ -343,10 +342,8 @@ describe Bosh::AwsCloud::Cloud do
             expect(volume_id).not_to be_nil
             expect(cpi.has_disk?(volume_id)).to be(true)
 
-            volumes = cpi.ec2_client.client.describe_volumes({volume_ids: [volume_id]})
-            expect(volumes[:volume_set]).to_not be_empty
-            encrypted_volume = volumes[:volume_set].first
-            expect(encrypted_volume[:kms_key_id]).to eq(@kms_key_arn)
+            encrypted_volume = cpi.ec2_resource.volume(volume_id)
+            expect(encrypted_volume.kms_key_id).to eq(@kms_key_arn)
           ensure
             cpi.delete_disk(volume_id) if volume_id
           end
@@ -361,8 +358,8 @@ describe Bosh::AwsCloud::Cloud do
         expect(volume_id).not_to be_nil
         expect(cpi.has_disk?(volume_id)).to be(true)
 
-        volume = cpi.ec2_client.volumes[volume_id]
-        expect(volume.type).to eq('sc1')
+        volume = cpi.ec2_resource.volume(volume_id)
+        expect(volume.volume_type).to eq('sc1')
       ensure
         cpi.delete_disk(volume_id) if volume_id
       end
@@ -385,9 +382,9 @@ describe Bosh::AwsCloud::Cloud do
           disks = cpi.get_disks(instance_id)
           expect(disks.size).to eq(2)
 
-          ephemeral_volume = cpi.ec2_client.volumes[disks[1]]
+          ephemeral_volume = cpi.ec2_resource.volume(disks[1])
           expect(ephemeral_volume.size).to eq(4)
-          expect(ephemeral_volume.type).to eq('gp2')
+          expect(ephemeral_volume.volume_type).to eq('gp2')
           expect(ephemeral_volume.encrypted).to eq(false)
         end
       end
@@ -410,9 +407,9 @@ describe Bosh::AwsCloud::Cloud do
             disks = cpi.get_disks(instance_id)
             expect(disks.size).to eq(2)
 
-            ephemeral_volume = cpi.ec2_client.volumes[disks[1]]
+            ephemeral_volume = cpi.ec2_resource.volume(disks[1])
             expect(ephemeral_volume.size).to eq(4)
-            expect(ephemeral_volume.type).to eq('io1')
+            expect(ephemeral_volume.volume_type).to eq('io1')
             expect(ephemeral_volume.iops).to eq(100)
 
             expect(ephemeral_volume.encrypted).to eq(false)
@@ -434,8 +431,8 @@ describe Bosh::AwsCloud::Cloud do
 
         it 'should not contain a block_device_mapping for /dev/sdb' do
           vm_lifecycle do |instance_id|
-            block_device_mapping = cpi.ec2_client.instances[instance_id].block_devices
-            ebs_ephemeral = block_device_mapping.any? {|entry| entry[:device_name] == '/dev/sdb'}
+            block_device_mapping = cpi.ec2_resource.instance(instance_id).block_device_mappings
+            ebs_ephemeral = block_device_mapping.any? {|entry| entry.device_name == '/dev/sdb'}
 
             expect(ebs_ephemeral).to eq(false)
           end
@@ -459,10 +456,10 @@ describe Bosh::AwsCloud::Cloud do
 
         it 'creates an encrypted ephemeral disk' do
           vm_lifecycle do |instance_id|
-            block_device_mapping = cpi.ec2_client.instances[instance_id].block_devices
-            ephemeral_block_device = block_device_mapping.detect {|entry| entry[:device_name] == '/dev/sdb'}
+            block_device_mapping = cpi.ec2_resource.instance(instance_id).block_device_mappings
+            ephemeral_block_device = block_device_mapping.find {|entry| entry.device_name == '/dev/sdb'}
 
-            ephemeral_disk = cpi.ec2_client.volumes[ephemeral_block_device[:ebs][:volume_id]]
+            ephemeral_disk = cpi.ec2_resource.volume(ephemeral_block_device.ebs.volume_id)
 
             expect(ephemeral_disk.encrypted).to eq(true)
           end
@@ -629,17 +626,16 @@ describe Bosh::AwsCloud::Cloud do
 
         def verify_root_disk_properties
           target_ami = get_ami(root_disk_vm_props[:ami])
-          root_device_type = target_ami.root_device_type # :ebs or :instance_store
-          ami_root_device = get_root_block_device(target_ami.root_device_name, target_ami.block_devices)
+          ami_root_device = get_root_block_device(target_ami.root_device_name, target_ami.block_device_mappings)
 
-          ami_root_volume_size = ami_root_device[root_device_type][:volume_size]
+          ami_root_volume_size = ami_root_device.ebs.volume_size
           expect(ami_root_volume_size).to be > 0
 
           vm_lifecycle(root_disk_vm_props) do |instance_id|
-            instance = cpi.ec2_client.instances[instance_id]
-            instance_root_device = get_root_block_device(instance.root_device_name, instance.block_devices)
+            instance = cpi.ec2_resource.instance(instance_id)
+            instance_root_device = get_root_block_device(instance.root_device_name, instance.block_device_mappings)
 
-            root_volume = cpi.ec2_client.volumes[instance_root_device[root_device_type][:volume_id]]
+            root_volume = cpi.ec2_resource.volume(instance_root_device.ebs.volume_id)
 
             if root_disk_size
               expect(root_volume.size).to eq(root_disk_size / 1024)
@@ -647,16 +643,16 @@ describe Bosh::AwsCloud::Cloud do
               expect(root_volume.size).to eq(ami_root_volume_size)
             end
             if root_disk_type
-              expect(root_volume.type).to eq(root_disk_type)
+              expect(root_volume.volume_type).to eq(root_disk_type)
             else
-              expect(root_volume.type).to eq('gp2')
+              expect(root_volume.volume_type).to eq('gp2')
             end
           end
         end
 
         def get_root_block_device(root_device_name, block_devices)
           block_devices.find do |device|
-            root_device_name.start_with?(device[:device_name])
+            root_device_name.start_with?(device.device_name)
           end
         end
       end
@@ -711,7 +707,8 @@ describe Bosh::AwsCloud::Cloud do
       # Detaching a non-existing disk from vm should NOT raise error
       vm_lifecycle do |instance_id|
         expect {
-          cpi.detach_disk(instance_id, 'non-existing-volume-uuid')
+          # long-gone volume id used, avoids `Aws::EC2::Errors::InvalidParameterValue`
+          cpi.detach_disk(instance_id, 'vol-092cfeeb61c2cf243')
         }.to_not raise_error
       end
     end
@@ -719,7 +716,8 @@ describe Bosh::AwsCloud::Cloud do
     context '#set_vm_metadata' do
       it 'correctly sets the tags set by #set_vm_metadata' do
         vm_lifecycle do |instance_id|
-          tags = cpi.ec2_client.instances[instance_id].tags
+          instance = cpi.ec2_resource.instance(instance_id)
+          tags = array_key_value_to_hash(instance.tags)
           expect(tags['deployment']).to eq('deployment')
           expect(tags['job']).to eq('cpi_spec')
           expect(tags['index']).to eq('0')
@@ -746,9 +744,12 @@ describe Bosh::AwsCloud::Cloud do
     context 'with advertised_routes' do
       let(:route_destination) { '9.9.9.9/32' }
       let(:route_table_id) do
-        rt = cpi.ec2_client.subnets[@subnet_id].route_table
-        expect(rt).to_not be_nil, "Subnet '#{@subnet_id}' must have an associated route table"
-        rt.id
+        vpc_id = cpi.ec2_resource.subnet(@subnet_id).vpc_id
+        rt = cpi.ec2_resource.client.create_route_table({
+          vpc_id: vpc_id,
+        }).route_table
+        expect(rt).to_not be_nil
+        rt.route_table_id
       end
       let(:vm_type) do
         {
@@ -763,27 +764,31 @@ describe Bosh::AwsCloud::Cloud do
         }
       end
 
+      after(:each) do
+        cpi.ec2_resource.client.delete_route_table({ route_table_id: route_table_id })
+      end
+
       it 'associates the route to the created instance' do
-        route_table = cpi.ec2_client.route_tables[route_table_id]
+        route_table = cpi.ec2_resource.route_table(route_table_id)
         expect(route_table).to_not be_nil, "Could not found route table with id '#{route_table_id}'"
 
         vm_lifecycle do |instance_id|
-          found_route = route_table.routes.any? { |r| r.destination_cidr_block == route_destination && r.instance.id == instance_id }
+          found_route = route_table.routes.any? { |r| r.destination_cidr_block == route_destination && r.instance_id == instance_id }
           expect(found_route).to be(true), "Expected to find route with destination '#{route_destination}', but did not"
         end
       end
 
       it 'updates the route if the route already exists' do
-        route_table = cpi.ec2_client.route_tables[route_table_id]
+        route_table = cpi.ec2_resource.route_table(route_table_id)
         expect(route_table).to_not be_nil, "Could not found route table with id '#{route_table_id}'"
 
         vm_lifecycle do |original_instance_id|
-          found_route = route_table.routes.any? { |r| r.destination_cidr_block == route_destination && r.instance.id == original_instance_id }
+          found_route = route_table.routes.any? { |r| r.destination_cidr_block == route_destination && r.instance_id == original_instance_id }
           expect(found_route).to be(true), "Expected to find route with destination '#{route_destination}', but did not"
 
           vm_type['advertised_routes'].first['destination'] = '7.7.7.7/32'
           vm_lifecycle do |instance_id|
-            found_route = route_table.routes.any? { |r| r.destination_cidr_block == '7.7.7.7/32' && r.instance.id == instance_id }
+            found_route = route_table.routes.any? { |r| r.destination_cidr_block == '7.7.7.7/32' && r.instance_id == instance_id }
             expect(found_route).to be(true), "Expected to find route with destination '#{route_destination}', but did not"
           end
         end
@@ -792,7 +797,7 @@ describe Bosh::AwsCloud::Cloud do
 
     it 'sets source_dest_check to true by default' do
       vm_lifecycle do |instance_id|
-        instance = cpi.ec2_client.instances[instance_id]
+        instance = cpi.ec2_client.instance(instance_id)
 
         expect(instance.source_dest_check).to be(true)
       end
@@ -809,7 +814,7 @@ describe Bosh::AwsCloud::Cloud do
 
       it 'modifies the instance to disable source_dest_check' do
         vm_lifecycle do |instance_id|
-          instance = cpi.ec2_client.instances[instance_id]
+          instance = cpi.ec2_client.instance(instance_id)
 
           expect(instance.source_dest_check).to be(false)
         end
@@ -845,7 +850,7 @@ describe Bosh::AwsCloud::Cloud do
       begin
         vm_lifecycle do |instance_id|
           begin
-            expect(cpi.ec2_client.instances[instance_id].ip_address).to_not be_nil
+            expect(cpi.ec2_client.instance(instance_id).ip_address).to_not be_nil
           end
         end
       end
@@ -902,15 +907,24 @@ describe Bosh::AwsCloud::Cloud do
   end
 
   def get_ami(ami_id)
-    ec2 = Aws::EC2::Client.new(
+    ec2_client = Aws::EC2::Client.new(
       access_key_id:     @access_key_id,
       secret_access_key: @secret_access_key,
       region:            @region,
     )
+    ec2 = Aws::EC2::Resource.new(ec2_client)
     ec2.image(ami_id)
   end
 end
 
+def array_key_value_to_hash(arr_with_keys)
+  hash = {}
+
+  arr_with_keys.each do |obj|
+    hash[obj.key] = obj.value
+  end
+  hash
+end
 
 class RegisteredInstances < StandardError; end
 

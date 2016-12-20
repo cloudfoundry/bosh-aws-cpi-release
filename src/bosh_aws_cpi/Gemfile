@@ -6,6 +6,7 @@ gem 'bosh_common', '1.3262.24.0'
 gem 'bosh_cpi', '2.0.1'
 
 group :development, :test do
+  gem 'pry-byebug'
   gem 'rspec', '~> 3.0.0'
   gem 'rake', '~>10.3.2'
   gem 'webmock'

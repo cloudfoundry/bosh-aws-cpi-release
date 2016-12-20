@@ -94,7 +94,7 @@ module Bosh::AwsCloud
           # AWS returns NotFound error if instance no longer exists in AWS console
           # (This could happen when instance was deleted manually and BOSH is not aware of that)
           allow(aws_instance).to receive(:terminate).
-            with(no_args).and_raise(Aws::EC2::Errors::InvalidInstanceID::NotFound)
+            with(no_args).and_raise(Aws::EC2::Errors::InvalidInstanceIDNotFound)
         end
 
         it 'raises Bosh::Clouds::VMNotFound but still removes settings from registry' do
@@ -117,9 +117,9 @@ module Bosh::AwsCloud
           expect(registry).to receive(:delete_settings).with(instance_id)
 
           allow(aws_instance).to receive(:status).
-                                     with(no_args).and_raise(Aws::EC2::Errors::InvalidInstanceID::NotFound)
+                                     with(no_args).and_raise(Aws::EC2::Errors::InvalidInstanceIDNotFound)
 
-          expect(logger).to receive(:debug).with("Failed to find terminated instance '#{instance_id}' after deletion: #{Aws::EC2::Errors::InvalidInstanceID::NotFound.new.inspect}")
+          expect(logger).to receive(:debug).with("Failed to find terminated instance '#{instance_id}' after deletion: #{Aws::EC2::Errors::InvalidInstanceIDNotFound.new.inspect}")
 
           instance.terminate
         end

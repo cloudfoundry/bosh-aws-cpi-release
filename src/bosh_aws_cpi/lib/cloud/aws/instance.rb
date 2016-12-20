@@ -14,15 +14,26 @@ module Bosh::AwsCloud
     end
 
     def elastic_ip
-      @aws_instance.elastic_ip
+      if @aws_instance.classic_address
+        @aws_instance.classic_address.public_ip
+      else
+        nil
+      end
     end
 
     def associate_elastic_ip(elastic_ip)
-      @aws_instance.associate_elastic_ip(elastic_ip)
+      classic_address = Aws::EC2::ClassicAddress.new(elastic_ip)
+      classic_address.associate({
+        instance_id: @aws_instance.id,
+      })
     end
 
     def disassociate_elastic_ip
-      @aws_instance.disassociate_elastic_ip
+      if @aws_instance.classic_address
+        @aws_instance.classic_address.disassociate
+      else
+        raise Bosh::Clouds::CloudError, 'Cannot call `disassociate_elastic_ip` on an Instance without an attached Elastic IP'
+      end
     end
 
     def source_dest_check=(state)
@@ -35,6 +46,7 @@ module Bosh::AwsCloud
       # forever (until the operation is cancelled by the user).
       begin
         @logger.info("Waiting for instance to be ready...")
+        # TODO: are states symbols or strings
         ResourceWait.for_instance(instance: @aws_instance, state: :running)
       rescue Bosh::Common::RetryCountExceeded
         message = "Timed out waiting for instance '#{@aws_instance.id}' to be running"
@@ -59,7 +71,7 @@ module Bosh::AwsCloud
     def terminate(fast=false)
       begin
         @aws_instance.terminate
-      rescue Aws::EC2::Errors::InvalidInstanceID::NotFound => e
+      rescue Aws::EC2::Errors::InvalidInstanceIDNotFound => e
         @logger.warn("Failed to terminate instance '#{@aws_instance.id}' because it was not found: #{e.inspect}")
         raise Bosh::Clouds::VMNotFound, "VM `#{@aws_instance.id}' not found"
       ensure
@@ -76,7 +88,7 @@ module Bosh::AwsCloud
       begin
         @logger.info("Deleting instance '#{@aws_instance.id}'")
         ResourceWait.for_instance(instance: @aws_instance, state: :terminated)
-      rescue Aws::EC2::Errors::InvalidInstanceID::NotFound => e
+      rescue Aws::EC2::Errors::InvalidInstanceIDNotFound => e
         @logger.debug("Failed to find terminated instance '#{@aws_instance.id}' after deletion: #{e.inspect}")
         # It's OK, just means that instance has already been deleted
       end
@@ -84,22 +96,28 @@ module Bosh::AwsCloud
 
     # Determines if the instance exists.
     def exists?
-      @aws_instance.exists? && @aws_instance.status != :terminated
+      @aws_instance.exists? && @aws_instance.state.name != :terminated
     end
 
     def update_routing_tables(route_definitions)
       if route_definitions.length > 0
-        @logger.debug("Associating instance with destinations in the routing tables")
+        @logger.debug('Associating instance with destinations in the routing tables')
         tables = @aws_instance.vpc.route_tables
         route_definitions.each do |definition|
-          @logger.debug("Finding routing table '#{definition["table_id"]}'")
-          table = tables[definition["table_id"]]
-          @logger.debug("Sending traffic for '#{definition["destination"]}' to '#{@aws_instance.id}' in '#{definition["table_id"]}'")
+          @logger.debug("Finding routing table '#{definition['table_id']}'")
+          table = tables.find { |t| t.id == definition['table_id'] }
+          @logger.debug("Sending traffic for '#{definition['destination']}' to '#{@aws_instance.id}' in '#{definition['table_id']}'")
 
-          if table.routes.any? {|route| route.destination_cidr_block == definition["destination"] }
-            table.replace_route(definition["destination"], { :instance => @aws_instance })
+          if table.routes.any? {|route| route.destination_cidr_block == definition['destination'] }
+            table.replace_route({
+              destination_cidr_block: definition['destination'],
+              instance_id: @aws_instance.id,
+            })
           else
-            table.create_route(definition["destination"], { :instance => @aws_instance })
+            table.create_route({
+              destination_cidr_block: definition['destination'],
+              instance_id: @aws_instance.id,
+            })
           end
         end
       end
@@ -107,8 +125,14 @@ module Bosh::AwsCloud
 
     def attach_to_load_balancers(load_balancer_ids)
       load_balancer_ids.each do |load_balancer_id|
-        lb = @elb.load_balancers[load_balancer_id]
-        lb.instances.register(@aws_instance)
+        lb = @elb.register_instances_with_load_balancer({
+          instances: [
+            {
+              instance_id: @aws_instance.id
+            }
+          ],
+          load_balancer_name: load_balancer_id,
+        })
       end
     end
   end

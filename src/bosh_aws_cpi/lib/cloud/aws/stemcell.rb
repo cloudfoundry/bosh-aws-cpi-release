@@ -56,7 +56,7 @@ module Bosh::AwsCloud
     def delete_snapshots
       snapshots.each do |id|
         logger.info("cleaning up snapshot '#{id}'")
-        snapshot = @client.snapshots[id]
+        snapshot = @client.snapshot(id)
         snapshot.delete
       end
     end

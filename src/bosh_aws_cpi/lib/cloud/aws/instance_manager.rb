@@ -19,7 +19,7 @@ module Bosh::AwsCloud
       @block_device_manager.vm_type = vm_type
       @block_device_manager.virtualization_type = ami.virtualization_type
       @block_device_manager.root_device_name = ami.root_device_name
-      @block_device_manager.ami_block_device_names = ami.block_device_mappings.map { |blk| blk['device_name'] }
+      @block_device_manager.ami_block_device_names = ami.block_device_mappings.map { |blk| blk.device_name }
       block_device_info = @block_device_manager.mappings
       block_device_agent_info = @block_device_manager.agent_info
 
@@ -55,13 +55,13 @@ module Bosh::AwsCloud
 
     # @param [String] instance_id EC2 instance id
     def find(instance_id)
-      Instance.new(@ec2.instances[instance_id], @registry, @elb, @logger)
+      Instance.new(@ec2.instance(instance_id), @registry, @elb, @logger)
     end
 
     private
 
     def build_instance_params(stemcell_id, vm_type, networks_spec, block_device_mappings, disk_locality = [], options = {})
-      volume_zones = (disk_locality || []).map { |volume_id| @ec2.volumes[volume_id].availability_zone.to_s }
+      volume_zones = (disk_locality || []).map { |volume_id| @ec2.volume(volume_id).availability_zone }
 
       @param_mapper.manifest_params = {
         stemcell_id: stemcell_id,
@@ -113,7 +113,7 @@ module Bosh::AwsCloud
           @logger.warn("IP address was in use: #{error}")
         end
         resp = @ec2.client.run_instances(instance_params)
-        @ec2.instances[get_created_instance_id(resp)]
+        @ec2.instance(get_created_instance_id(resp))
       end
     end
 

@@ -17,6 +17,8 @@ GEM
       bosh_common (~> 1.3262.24.0)
       logging (~> 1.8.2)
       membrane (~> 1.1.0)
+    byebug (9.0.6)
+    coderay (1.1.1)
     crack (0.4.2)
       safe_yaml (~> 1.0.0)
     diff-lcs (1.2.5)
@@ -27,7 +29,15 @@ GEM
       little-plugger (>= 1.1.3)
       multi_json (>= 1.8.4)
     membrane (1.1.0)
+    method_source (0.8.2)
     multi_json (1.12.1)
+    pry (0.10.4)
+      coderay (~> 1.1.0)
+      method_source (~> 0.8.1)
+      slop (~> 3.4)
+    pry-byebug (3.4.2)
+      byebug (~> 9.0)
+      pry (~> 0.10)
     rake (10.3.2)
     rspec (3.0.0)
       rspec-core (~> 3.0.0)
@@ -43,6 +53,7 @@ GEM
     rspec-support (3.0.4)
     safe_yaml (1.0.4)
     semi_semantic (1.2.0)
+    slop (3.6.0)
     webmock (1.21.0)
       addressable (>= 2.3.6)
       crack (>= 0.3.2)
@@ -55,9 +66,10 @@ DEPENDENCIES
   bosh_common (= 1.3262.24.0)
   bosh_cpi (= 2.0.1)
   httpclient (= 2.7.1)
+  pry-byebug
   rake (~> 10.3.2)
   rspec (~> 3.0.0)
   webmock
 
 BUNDLED WITH
-   1.12.5
+   1.13.6

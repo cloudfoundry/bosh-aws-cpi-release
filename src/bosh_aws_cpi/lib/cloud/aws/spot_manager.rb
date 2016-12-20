@@ -61,7 +61,7 @@ module Bosh::AwsCloud
             end
           when 'active'
             @logger.info("Spot request instances fulfilled: #{status.inspect}")
-            instance = @ec2.instances[status[:instance_id]]
+            instance = @ec2.instance(status[:instance_id])
         end
       end
 
