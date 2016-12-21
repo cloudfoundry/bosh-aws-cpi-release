@@ -22,7 +22,7 @@ module Bosh::AwsCloud
     private
 
     def convert_to_id(input, existing_groups)
-      found = existing_groups.select { |group| group.name == input }
+      found = existing_groups.select { |group| group.group_name == input }
 
       if found.empty?
         raise Bosh::Clouds::CloudError, "Security group not found with name '#{input}'"
@@ -38,7 +38,7 @@ module Bosh::AwsCloud
 
     def existing_groups_for_subnet(subnet_id)
       # NOTE: We call #to_a to ensure the EC2 client makes a single request.
-      @ec2_client.subnets[subnet_id].vpc.security_groups.to_a
+      @ec2_client.subnet(subnet_id).vpc.security_groups.to_a
     end
 
     def is_id?(input)

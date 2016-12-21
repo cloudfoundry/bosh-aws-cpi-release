@@ -788,8 +788,9 @@ describe Bosh::AwsCloud::Cloud do
 
           vm_type['advertised_routes'].first['destination'] = '7.7.7.7/32'
           vm_lifecycle do |instance_id|
+            route_table.reload
             found_route = route_table.routes.any? { |r| r.destination_cidr_block == '7.7.7.7/32' && r.instance_id == instance_id }
-            expect(found_route).to be(true), "Expected to find route with destination '#{route_destination}', but did not"
+            expect(found_route).to be(true), "Expected to find route with destination '7.7.7.7/32', but did not"
           end
         end
       end
@@ -797,7 +798,7 @@ describe Bosh::AwsCloud::Cloud do
 
     it 'sets source_dest_check to true by default' do
       vm_lifecycle do |instance_id|
-        instance = cpi.ec2_client.instance(instance_id)
+        instance = cpi.ec2_resource.instance(instance_id)
 
         expect(instance.source_dest_check).to be(true)
       end
@@ -814,7 +815,7 @@ describe Bosh::AwsCloud::Cloud do
 
       it 'modifies the instance to disable source_dest_check' do
         vm_lifecycle do |instance_id|
-          instance = cpi.ec2_client.instance(instance_id)
+          instance = cpi.ec2_resource.instance(instance_id)
 
           expect(instance.source_dest_check).to be(false)
         end
@@ -850,7 +851,7 @@ describe Bosh::AwsCloud::Cloud do
       begin
         vm_lifecycle do |instance_id|
           begin
-            expect(cpi.ec2_client.instance(instance_id).ip_address).to_not be_nil
+            expect(cpi.ec2_resource.instance(instance_id).public_ip_address).to_not be_nil
           end
         end
       end
@@ -903,7 +904,7 @@ describe Bosh::AwsCloud::Cloud do
     )
     ec2 = Aws::EC2::Resource.new(ec2_client)
     security_groups = ec2.subnet(subnet_id).vpc.security_groups
-    security_groups.map { |sg| sg.name }
+    security_groups.map { |sg| sg.group_name }
   end
 
   def get_ami(ami_id)

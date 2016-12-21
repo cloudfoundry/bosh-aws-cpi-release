@@ -14,30 +14,34 @@ module Bosh::AwsCloud
     end
 
     def elastic_ip
-      if @aws_instance.classic_address
-        @aws_instance.classic_address.public_ip
-      else
+      if @aws_instance.vpc_addresses.count == 0
         nil
+      else
+        @aws_instance.vpc_addresses.first.public_ip
       end
     end
 
     def associate_elastic_ip(elastic_ip)
-      classic_address = Aws::EC2::ClassicAddress.new(elastic_ip)
-      classic_address.associate({
+      elastic_ip = Aws::EC2::VpcAddress.new(elastic_ip)
+      elastic_ip.associate({
         instance_id: @aws_instance.id,
       })
     end
 
     def disassociate_elastic_ip
-      if @aws_instance.classic_address
-        @aws_instance.classic_address.disassociate
-      else
+      if @aws_instance.vpc_addresses.count == 0
         raise Bosh::Clouds::CloudError, 'Cannot call `disassociate_elastic_ip` on an Instance without an attached Elastic IP'
+      else
+        @aws_instance.vpc_addresses.first.association.delete
       end
     end
 
     def source_dest_check=(state)
-      @aws_instance.source_dest_check = state
+      @aws_instance.modify_attribute({
+        source_dest_check: {
+          value: state,
+        },
+      })
     end
 
     def wait_for_running
@@ -46,7 +50,7 @@ module Bosh::AwsCloud
       # forever (until the operation is cancelled by the user).
       begin
         @logger.info("Waiting for instance to be ready...")
-        # TODO: are states symbols or strings
+        # TODO: are states symbols or strings?
         ResourceWait.for_instance(instance: @aws_instance, state: :running)
       rescue Bosh::Common::RetryCountExceeded
         message = "Timed out waiting for instance '#{@aws_instance.id}' to be running"
