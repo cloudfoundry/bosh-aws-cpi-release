@@ -35,12 +35,12 @@ end
 if_p('aws.ec2_endpoint') do |endpoint|
   params["cloud"]["properties"]["aws"]["ec2_endpoint"] = endpoint
 end
+
 if_p('aws.elb_endpoint') do |endpoint|
   params["cloud"]["properties"]["aws"]["elb_endpoint"] = endpoint
 end
-if_p('aws.region') do |region|
-  params["cloud"]["properties"]["aws"]["region"] = region
-end
+
+params["cloud"]["properties"]["aws"]["region"] = p('aws.region')
 
 agent_params = params["cloud"]["properties"]["agent"]
 

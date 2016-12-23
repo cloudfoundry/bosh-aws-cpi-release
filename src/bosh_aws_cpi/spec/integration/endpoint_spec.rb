@@ -2,6 +2,7 @@ require 'spec_helper'
 require 'logger'
 require 'cloud'
 require 'open-uri'
+require 'pry'
 
 describe Bosh::AwsCloud::Cloud do
   before(:all) do
@@ -98,6 +99,34 @@ describe Bosh::AwsCloud::Cloud do
         expect {
           cpi.has_vm?('i-010fd20eb24f606ab')
         }.to raise_error(Seahorse::Client::NetworkingError)
+      end
+    end
+
+    context 'when the endpoint is provided without a protocol' do
+      let(:cpi) do
+        Bosh::AwsCloud::Cloud.new(
+          'aws' => {
+            'ec2_endpoint' => 'ec2.sa-east-1.amazonaws.com',
+            'elb_endpoint' => 'elasticloadbalancing.sa-east-1.amazonaws.com',
+            'region' => 'sa-east-1',
+            'access_key_id' => @access_key_id,
+            'default_key_name' => 'fake-key',
+            'secret_access_key' => @secret_access_key,
+            'max_retries' => 8
+          },
+          'registry' => {
+            'endpoint' => 'fake',
+            'user' => 'fake',
+            'password' => 'fake'
+          }
+        )
+      end
+
+      it 'auto-applies a protocol and uses the given endpoint' do
+        expect {
+          binding.pry
+          cpi.has_vm?('i-010fd20eb24f606ab')
+        }.to_not raise_error
       end
     end
   end

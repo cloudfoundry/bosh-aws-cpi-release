@@ -2,7 +2,7 @@ require "spec_helper"
 
 describe Bosh::AwsCloud::AKIPicker do
   let(:picker) { Bosh::AwsCloud::AKIPicker.new(client) }
-  let(:client) { AWS::EC2.new() }
+  let(:client) { Aws::EC2::Client.new() }
   let(:akis) {
     [
       double("image-1", :root_device_name => "/dev/sda1",

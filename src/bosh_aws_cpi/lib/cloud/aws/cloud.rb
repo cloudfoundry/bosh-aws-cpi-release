@@ -1,4 +1,5 @@
 require 'cloud/aws/stemcell_finder'
+require 'uri'
 
 module Bosh::AwsCloud
   class Cloud < Bosh::Cloud
@@ -36,14 +37,12 @@ module Bosh::AwsCloud
         @aws_params[:region] = aws_properties['region']
       end
       if aws_properties['ec2_endpoint']
-        # TODO: make sure protocol is not required, if it is auto-add https://
-        @aws_params[:endpoint] = aws_properties['ec2_endpoint']
+        endpoint = aws_properties['ec2_endpoint']
+        if URI(aws_properties['ec2_endpoint']).scheme.nil?
+          endpoint = "https://#{endpoint}"
+        end
+        @aws_params[:endpoint] = endpoint
       end
-
-      # TODO: we need to address this for SDK v2; it appears we need a different object
-      # if aws_properties['elb_endpoint']
-      #   @aws_params[:elb_endpoint] = strip_protocol(aws_properties['elb_endpoint'])
-      # end
 
       if ENV.has_key?('BOSH_CA_CERT_FILE')
         @aws_params[:ssl_ca_bundle] = ENV['BOSH_CA_CERT_FILE']
@@ -54,8 +53,6 @@ module Bosh::AwsCloud
       # - if "env_or_profile", credentials are read from instance metadata
       credentials_source = aws_properties['credentials_source'] || 'static'
 
-      # TODO: remove Bosh::AwsCloud::CredentialsProvider class
-      # TODO: test env_or_profile path
       if credentials_source == 'static'
         @aws_params[:credentials] = Aws::Credentials.new(aws_properties['access_key_id'], aws_properties['secret_access_key'])
       else
@@ -77,13 +74,21 @@ module Bosh::AwsCloud
 
       initialize_registry
 
-      elb = Aws::ElasticLoadBalancing::Client.new(
-        {
-          region: @aws_params[:region],
-          credentials: @aws_params[:credentials],
-          logger: @logger,
-        }
-      )
+      elb_options = {
+        region: @aws_params[:region],
+        credentials: @aws_params[:credentials],
+        logger: @logger,
+      }
+
+      elb_endpoint = aws_properties['elb_endpoint']
+      if elb_endpoint
+        if URI(aws_properties['elb_endpoint']).scheme.nil?
+          elb_endpoint = "https://#{elb_endpoint}"
+        end
+        elb_options[:endpoint] = elb_endpoint
+      end
+
+      elb = Aws::ElasticLoadBalancing::Client.new(elb_options)
 
       security_group_mapper = SecurityGroupMapper.new(@ec2_resource)
       instance_param_mapper = InstanceParamMapper.new(security_group_mapper)
@@ -224,8 +229,11 @@ module Bosh::AwsCloud
           kms_key_arn: cloud_properties['kms_key_arn']
         )
 
-        volume_type = @ec2_client.create_volume(volume_properties.persistent_disk_config)
-        volume = Aws::EC2::Volume.new(volume_type.volume_id, @ec2_client)
+        volume_resp = @ec2_client.create_volume(volume_properties.persistent_disk_config)
+        volume = Aws::EC2::Volume.new(
+          id: volume_resp.volume_id,
+          client: @ec2_client,
+        )
 
         logger.info("Creating volume '#{volume.id}'")
         ResourceWait.for_volume(volume: volume, state: 'available')
@@ -464,7 +472,7 @@ module Bosh::AwsCloud
 
       instance = @ec2_resource.instance(vm)
 
-      # TODO: bulk update, single HTTP call
+      # TODO: bulk update, single HTTP call (tracker id: #136591893)
       metadata.each_pair do |key, value|
         TagManager.tag(instance, key, value) unless key == 'name'
       end

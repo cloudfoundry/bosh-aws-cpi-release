@@ -62,11 +62,10 @@ describe Bosh::AwsCloud::Cloud do
   before do
     begin
       ec2_client = Aws::EC2::Client.new(
-        access_key_id:     @access_key_id,
-        secret_access_key: @secret_access_key,
-        logger:            Logger.new(STDERR),
+        credentials: Aws::Credentials.new(@access_key_id, @secret_access_key),
+        logger:      Logger.new(STDERR),
       )
-      instances = Aws::EC2::Resource.new(client: ec2_client).instances({
+      Aws::EC2::Resource.new(client: ec2_client).instances({
         filters: [ { name: 'tag-key', values: ['delete_me'] } ],
       }).each(&:terminate)
     rescue Aws::EC2::Errors::InvalidInstanceIdNotFound
@@ -168,7 +167,8 @@ describe Bosh::AwsCloud::Cloud do
 
           aws_params = {
             'access_key_id' => @access_key_id,
-            'secret_access_key' => @secret_access_key
+            'secret_access_key' => @secret_access_key,
+            'region' => @region,
           }
 
           elb_client = Aws::ElasticLoadBalancing::Client.new(aws_params)
@@ -888,33 +888,32 @@ describe Bosh::AwsCloud::Cloud do
 
   def get_security_group_ids(subnet_id)
     ec2_client = Aws::EC2::Client.new(
-      access_key_id:     @access_key_id,
+      region:      @region,
+      access_key_id: @access_key_id,
       secret_access_key: @secret_access_key,
-      region:            @region,
     )
-    ec2 = Aws::EC2::Resource.new(ec2_client)
+    ec2 = Aws::EC2::Resource.new(client: ec2_client)
+
     security_groups = ec2.subnet(subnet_id).vpc.security_groups
     security_groups.map { |sg| sg.id }
   end
 
   def get_security_group_names(subnet_id)
     ec2_client = Aws::EC2::Client.new(
-      access_key_id:     @access_key_id,
-      secret_access_key: @secret_access_key,
-      region:            @region,
+      credentials: Aws::Credentials.new(@access_key_id, @secret_access_key),
+      region:      @region,
     )
-    ec2 = Aws::EC2::Resource.new(ec2_client)
+    ec2 = Aws::EC2::Resource.new(client: ec2_client)
     security_groups = ec2.subnet(subnet_id).vpc.security_groups
     security_groups.map { |sg| sg.group_name }
   end
 
   def get_ami(ami_id)
     ec2_client = Aws::EC2::Client.new(
-      access_key_id:     @access_key_id,
-      secret_access_key: @secret_access_key,
-      region:            @region,
+      credentials: Aws::Credentials.new(@access_key_id, @secret_access_key),
+      region:      @region,
     )
-    ec2 = Aws::EC2::Resource.new(ec2_client)
+    ec2 = Aws::EC2::Resource.new(client: ec2_client)
     ec2.image(ami_id)
   end
 end

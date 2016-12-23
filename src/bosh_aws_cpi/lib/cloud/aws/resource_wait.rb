@@ -20,6 +20,7 @@ module Bosh::AwsCloud
       ignored_errors = []
       if target_state == 'running'
         ignored_errors << Aws::EC2::Errors::InvalidInstanceIDNotFound
+        ignored_errors << Aws::EC2::Errors::ResourceNotFound
       end
 
       new.for_resource(resource: instance, errors: ignored_errors, target_state: target_state) do |instance_state|
@@ -43,13 +44,14 @@ module Bosh::AwsCloud
       ignored_errors = []
       if target_state == 'attached'
         ignored_errors << Aws::EC2::Errors::InvalidVolumeNotFound
+        ignored_errors << Aws::EC2::Errors::ResourceNotFound
       end
       description = "volume %s to be %s to instance %s as device %s" % [attachment.volume.id, target_state, attachment.instance.id, attachment.device]
 
-      new.for_resource(resource: attachment, target_state: target_state, description: description) do |current_state|
+      new.for_resource(resource: attachment, errors: ignored_errors, target_state: target_state, description: description) do |current_state|
         current_state == target_state
       end
-    rescue Aws::EC2::Errors::InvalidVolumeNotFound
+    rescue Aws::EC2::Errors::InvalidVolumeNotFound, Aws::EC2::Errors::ResourceNotFound
       # if an attachment is detached, AWS can reap the object and the reference is no longer found,
       # so consider this exception a success condition if we are detaching
       raise unless target_state == 'detached'
@@ -63,16 +65,14 @@ module Bosh::AwsCloud
 
       ignored_errors = []
       if target_state == 'available'
-        # TODO: is this right?
-        ignored_errors << Aws::EC2::Errors::InvalidAMIID::NotFound
+        ignored_errors << Aws::EC2::Errors::InvalidAMIIDNotFound
+        ignored_errors << Aws::EC2::Errors::ResourceNotFound
       end
 
       new.for_resource(resource: image, errors: ignored_errors, target_state: target_state) do |current_state|
         current_state == target_state
       end
-    rescue Aws::Core::Resource::NotFound # TODO: this error is definitely wrong
-      # if an AMI is deleted, AWS can reap the object and the reference is no longer found,
-      # so consider this exception a success condition if we are deleting
+    rescue Aws::EC2::Errors::InvalidAMIIDNotFound, Aws::EC2::Errors::ResourceNotFound
       raise unless target_state == 'deleted'
     end
 
@@ -82,10 +82,16 @@ module Bosh::AwsCloud
       valid_states = ['available', 'deleted']
       validate_states(valid_states, target_state)
 
+      ignored_errors = []
+      if target_state == 'available'
+        ignored_errors << Aws::EC2::Errors::InvalidVolumeNotFound
+        ignored_errors << Aws::EC2::Errors::ResourceNotFound
+      end
+
       new.for_resource(resource: volume, target_state: target_state) do |current_state|
         current_state == target_state
       end
-    rescue Aws::EC2::Errors::InvalidVolumeNotFound
+    rescue Aws::EC2::Errors::InvalidVolumeNotFound, Aws::EC2::Errors::ResourceNotFound
       # if an volume is deleted, AWS can reap the object and the reference is no longer found,
       # so consider this exception a success condition if we are deleting
       raise unless target_state == 'deleted'
