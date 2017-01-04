@@ -23,5 +23,5 @@ params:
   BAT_VCAP_PASSWORD:  ""
   PUBLIC_KEY_NAME:    ""
   STEMCELL_NAME:      ""
-  BOSH_USER:          ""
-  BOSH_PASSWORD:      ""
+  BOSH_CLIENT:        ""
+  BOSH_CLIENT_SECRET: ""

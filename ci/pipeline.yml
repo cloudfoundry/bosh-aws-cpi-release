@@ -113,8 +113,8 @@ jobs:
       - task: prepare-director
         file: bosh-cpi-src/ci/tasks/prepare-director.yml
         params:
-            BOSH_USER:              {{BOSH_USER}}
-            BOSH_PASSWORD:          {{BOSH_PASSWORD}}
+            BOSH_CLIENT:            {{BOSH_CLIENT}}
+            BOSH_CLIENT_SECRET:     {{BOSH_CLIENT_SECRET}}
             AWS_ACCESS_KEY:         {{aws_access_key__primary}}
             AWS_SECRET_KEY:         {{aws_secret_key__primary}}
             AWS_REGION_NAME:        {{aws_region__primary}}
@@ -127,8 +127,8 @@ jobs:
             file: certification/shared/tasks/deploy-director.yml
             input_mapping: {pipelines: certification}
             params:
-              BOSH_USER:     {{BOSH_USER}}
-              BOSH_PASSWORD: {{BOSH_PASSWORD}}
+              BOSH_CLIENT:        {{BOSH_CLIENT}}
+              BOSH_CLIENT_SECRET: {{BOSH_CLIENT_SECRET}}
 
           - task: prepare-manual-bats
             file: bosh-cpi-src/ci/tasks/prepare-manual-bats.yml
@@ -138,8 +138,8 @@ jobs:
               AWS_REGION_NAME:        {{aws_region__primary}}
               BAT_VCAP_PASSWORD:      {{BAT_VCAP_PASSWORD}}
               PUBLIC_KEY_NAME:        {{cpi_pipeline_public_key_name}}
-              BOSH_USER:              {{BOSH_USER}}
-              BOSH_PASSWORD:          {{BOSH_PASSWORD}}
+              BOSH_CLIENT:            {{BOSH_CLIENT}}
+              BOSH_CLIENT_SECRET:     {{BOSH_CLIENT_SECRET}}
               STEMCELL_NAME:          bosh-aws-xen-hvm-ubuntu-trusty-go_agent
 
           - task: run-bats
