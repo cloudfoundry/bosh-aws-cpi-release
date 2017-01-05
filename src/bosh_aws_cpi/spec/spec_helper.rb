@@ -71,7 +71,9 @@ def mock_cloud(options = nil)
 end
 
 def mock_ec2
-  ec2 = double(Aws::EC2::Resource)
+  client = instance_double(Aws::EC2::Client)
+  allow(Aws::EC2::Client).to receive(:new).and_return(client)
+  ec2 = double(Aws::EC2::Resource, client: client)
 
   yield ec2 if block_given?
 
