@@ -2,7 +2,6 @@ require "spec_helper"
 
 describe Bosh::AwsCloud::Cloud, "create_vm" do
   let(:registry) { double("registry") }
-  let(:ec2) { double("ec2", regions: [ double("region") ]) }
   let(:availability_zone_selector) { double("availability zone selector") }
   let(:stemcell) { double("stemcell", root_device_name: "root name", image_id: stemcell_id) }
   let(:instance_manager) { instance_double("Bosh::AwsCloud::InstanceManager") }
@@ -45,31 +44,22 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
     ops
   end
 
-  let(:cloud) do
-    cloud = described_class.new(options)
-    cloud
-  end
-
   before do
-    allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
+    @cloud = mock_cloud(options) do |_ec2|
+      @ec2 = _ec2
 
-    allow(Aws::EC2).to receive(:new).and_return(ec2)
+      allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
 
-    allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).
-        with(ec2).
-        and_return(availability_zone_selector)
+      allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).
+          with(@ec2).
+          and_return(availability_zone_selector)
 
-    allow(Bosh::AwsCloud::Stemcell).to receive(:find).with(ec2, stemcell_id).and_return(stemcell)
+      allow(Bosh::AwsCloud::Stemcell).to receive(:find).with(@ec2, stemcell_id).and_return(stemcell)
 
-    allow(Bosh::AwsCloud::InstanceManager).to receive(:new).
-      with(
-        ec2,
-        registry,
-        be_an_instance_of(Aws::ELB),
-        be_an_instance_of(Bosh::AwsCloud::InstanceParamMapper),
-        be_an_instance_of(Bosh::AwsCloud::BlockDeviceManager),
-        be_an_instance_of(Logger)
-      ).and_return(instance_manager)
+      allow(Aws::ElasticLoadBalancing).to receive(:new).with(hash_including(region: 'bar'))
+
+      allow(Bosh::AwsCloud::InstanceManager).to receive(:new).and_return(instance_manager)
+    end
 
     allow(instance_manager).to receive(:create).
       with(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment, options).
@@ -95,18 +85,18 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
       anything,
       anything,
     ).and_return([instance, block_device_agent_info])
-    expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq("fake-id")
+    expect(@cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq("fake-id")
   end
 
   it "should create an EC2 instance and return its id" do
     allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: instance, state: :running)
-    expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq("fake-id")
+    expect(@cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq("fake-id")
   end
 
   it "should configure the IP for the created instance according to the network specifications" do
     allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: instance, state: :running)
-    expect(network_configurator).to receive(:configure).with(ec2, instance)
-    cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
+    expect(network_configurator).to receive(:configure).with(@ec2, instance)
+    @cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
   end
 
   it "should update the registry settings with the new instance" do
@@ -139,7 +129,7 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
     }
     expect(registry).to receive(:update_settings).with("fake-id", agent_settings)
 
-    cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
+    @cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
   end
 
   it 'terminates instance if updating registry settings fails' do
@@ -147,7 +137,7 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
     expect(instance).to receive(:terminate)
 
     expect {
-      cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
+      @cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
     }.to raise_error(StandardError)
   end
 
@@ -156,15 +146,12 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
     expect(instance).to receive(:terminate)
 
     expect {
-      cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
+      @cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
     }.to raise_error(StandardError)
   end
 
   it 'creates elb client with correct region' do
-    expect(Bosh::AwsCloud::InstanceManager).to receive(:new) do |_, _, elb, _, _|
-      expect(elb.config.region).to eq('bar')
-    end.once.and_return(instance_manager)
 
-    cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
+    @cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
   end
 end
