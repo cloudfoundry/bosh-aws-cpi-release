@@ -6,7 +6,7 @@ module Bosh::AwsCloud
     attr_writer :root_device_name
     attr_writer :ami_block_device_names
 
-    DEFAULT_VIRTUALIZATION_TYPE = :hvm
+    DEFAULT_VIRTUALIZATION_TYPE = 'hvm'
 
     def self.default_instance_storage_disk_mapping
       { device_name: '/dev/sdb', virtual_name: 'ephemeral0' }
@@ -169,7 +169,7 @@ module Bosh::AwsCloud
       end
 
       # fallback
-      if @virtualization_type == :paravirtual
+      if @virtualization_type == 'paravirtual'
         return '/dev/sda'
       else
         return '/dev/xvda'

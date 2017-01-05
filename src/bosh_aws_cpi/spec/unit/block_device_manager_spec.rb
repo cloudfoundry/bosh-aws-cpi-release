@@ -92,7 +92,7 @@ module Bosh::AwsCloud
                   'instance_type' => 'm3.xlarge',
                   'raw_instance_storage' => true
                 }
-                manager.virtualization_type = :paravirtual
+                manager.virtualization_type = 'paravirtual'
 
                 actual_output = manager.mappings
                 expected_output = [default_root]
@@ -236,7 +236,7 @@ module Bosh::AwsCloud
                   'size' => 4000
                 }
               }
-              manager.virtualization_type = :paravirtual
+              manager.virtualization_type = 'paravirtual'
 
               expected_disks = [
                 default_root,
@@ -513,7 +513,7 @@ module Bosh::AwsCloud
               'size' => 42 * 1024.0
             }
           }
-          manager.virtualization_type = :paravirtual
+          manager.virtualization_type = 'paravirtual'
 
           expected_disks = []
 
