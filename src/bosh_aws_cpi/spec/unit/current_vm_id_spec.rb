@@ -15,22 +15,10 @@ describe Bosh::AwsCloud::Cloud do
     }
 
     let(:cloud) { described_class.new(options) }
-    let(:regions_body) do
-      '<DescribeRegionsResponse xmlns="http://ec2.amazonaws.com/doc/2015-10-01/">
-         <requestId>59dbff89-35bd-4eac-99ed-be587EXAMPLE</requestId>
-         <regionInfo>
-            <item>
-               <regionName>bar</regionName>
-               <regionEndpoint>ec2.bar.amazonaws.com</regionEndpoint>
-            </item>
-         </regionInfo>
-      </DescribeRegionsResponse>'
-    end
 
     before do
       stub_request(:post, "https://ec2.bar.amazonaws.com/").
-          with(:body => /^Action=DescribeRegions.*$/).
-          to_return(:status => 200, :body => regions_body, :headers => {})
+          to_return(:status => 200, :body => '', :headers => {})
     end
 
     let(:fake_instance_id) {"i-xxxxxxxx"}
