@@ -1,9 +1,9 @@
 module Bosh::AwsCloud
   class AvailabilityZoneSelector
-    attr_accessor :client
+    attr_accessor :resource
 
-    def initialize(client)
-      @client = client
+    def initialize(resource)
+      @resource = resource
     end
 
     def common_availability_zone(volume_az_names, vm_type_az_name, vpc_subnet_az_name)
@@ -18,7 +18,7 @@ module Bosh::AwsCloud
 
     def select_availability_zone(instance_id)
       if instance_id
-        client.instance(instance_id).placement.availability_zone
+        resource.instance(instance_id).placement.availability_zone
       else
         random_availability_zone
       end
@@ -28,7 +28,7 @@ module Bosh::AwsCloud
 
     def random_availability_zone
       zones = []
-      client.client.describe_availability_zones['availability_zones'].each { |az| zones << az['zone_name']}
+      resource.client.describe_availability_zones['availability_zones'].each { |az| zones << az['zone_name']}
       zones[Random.rand(zones.size)]
     end
   end

@@ -2,13 +2,10 @@ require "spec_helper"
 
 describe Bosh::AwsCloud::AvailabilityZoneSelector do
 
-  let(:instances) { double(Aws::EC2::InstanceCollection) }
-  let(:instance) { double(Aws::EC2::Instance, :availability_zone => 'this_zone') }
-  let(:us_east_1a) { double(Aws::EC2::AvailabilityZone, name: 'us-east-1a') }
-  let(:us_east_1b) { double(Aws::EC2::AvailabilityZone, name: 'us-east-1b') }
-  let(:zones) { [us_east_1a, us_east_1b] }
-  let(:region) { double(Aws::EC2::Region, :instances => instances, :availability_zones => zones) }
-  let(:subject) { described_class.new(region) }
+  let(:instance) { instance_double(Aws::EC2::Instance) }
+  let(:resource) { double(Aws::EC2::Resource, client: client) }
+  let(:client) { double(Aws::EC2::Client) }
+  let(:subject) { described_class.new(resource) }
 
   describe '#common_availability_zone' do
     it 'should raise an error when multiple availability zones are present and volume information is passed in' do
@@ -30,20 +27,25 @@ describe Bosh::AwsCloud::AvailabilityZoneSelector do
 
   describe '#select_availability_zone' do
     context 'without a default' do
-      let(:subject) { described_class.new(region) }
+      let(:subject) { described_class.new(resource) }
 
       context 'with a instance id' do
         it 'should return the az of the instance' do
-          allow(instances).to receive(:[]).and_return(instance)
+          allow(resource).to receive(:instance).with('fake-instance-id').and_return(instance)
+          allow(instance).to receive(:placement).and_return(double('placement', availability_zone: 'fake-vm-az'))
 
-          expect(subject.select_availability_zone(instance)).to eq('this_zone')
+          expect(subject.select_availability_zone('fake-instance-id')).to eq('fake-vm-az')
         end
       end
 
       context 'without a instance id' do
         it 'should return a random az' do
+          allow(client).to receive(:describe_availability_zones).and_return({
+            'availability_zones' => [{'zone_name' => 'fake-random-az'}],
+          })
+
           allow(Random).to receive_messages(:rand => 0)
-          expect(subject.select_availability_zone(nil)).to eq('us-east-1a')
+          expect(subject.select_availability_zone(nil)).to eq('fake-random-az')
         end
       end
     end
