@@ -37,7 +37,7 @@ describe Bosh::AwsCloud::Cloud do
   }
 
   # Use subject-bang because AWS SDK needs to be reconfigured
-  # with a current test's logger before new AWS::EC2 object is created.
+  # with a current test's logger before new Aws::EC2 object is created.
   # Reconfiguration happens via `AWS.config`.
   subject!(:cpi) do
     described_class.new(
@@ -60,11 +60,11 @@ describe Bosh::AwsCloud::Cloud do
 
   before do
     begin
-      AWS::EC2.new(
+      Aws::EC2.new(
         access_key_id:     @access_key_id,
         secret_access_key: @secret_access_key,
       ).instances.tagged('delete_me').each(&:terminate)
-    rescue AWS::EC2::Errors::InvalidInstanceID::NotFound
+    rescue Aws::EC2::Errors::InvalidInstanceID::NotFound
       # don't blow up tests if instance that we're trying to delete was not found
     end
   end
@@ -165,7 +165,7 @@ describe Bosh::AwsCloud::Cloud do
             'secret_access_key' => @secret_access_key
           }
 
-          elb_client = AWS::ELB::Client.new(aws_params)
+          elb_client = Aws::ELB::Client.new(aws_params)
           instances = elb_client.describe_load_balancers({:load_balancer_names => [@elb_id]})[:load_balancer_descriptions]
                         .first[:instances].first[:instance_id]
 
@@ -875,7 +875,7 @@ describe Bosh::AwsCloud::Cloud do
   end
 
   def get_security_group_ids(subnet_id)
-    ec2 = AWS::EC2.new(
+    ec2 = Aws::EC2.new(
       access_key_id:     @access_key_id,
       secret_access_key: @secret_access_key,
       region:            @region,
@@ -885,7 +885,7 @@ describe Bosh::AwsCloud::Cloud do
   end
 
   def get_security_group_names(subnet_id)
-    ec2 = AWS::EC2.new(
+    ec2 = Aws::EC2.new(
       access_key_id:     @access_key_id,
       secret_access_key: @secret_access_key,
       region:            @region,
@@ -895,7 +895,7 @@ describe Bosh::AwsCloud::Cloud do
   end
 
   def get_ami(ami_id)
-    ec2 = AWS::EC2.new(
+    ec2 = Aws::EC2.new(
       access_key_id:     @access_key_id,
       secret_access_key: @secret_access_key,
       region:            @region,

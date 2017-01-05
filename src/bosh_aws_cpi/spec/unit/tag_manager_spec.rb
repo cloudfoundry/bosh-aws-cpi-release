@@ -27,7 +27,7 @@ describe Bosh::AwsCloud::TagManager do
       @count ||= 0
       if @count < 2
         @count += 1
-        raise AWS::EC2::Errors::InvalidAMIID::NotFound
+        raise Aws::EC2::Errors::InvalidAMIID::NotFound
       end
     end
 

@@ -1,8 +1,8 @@
 require 'spec_helper'
 
 describe Bosh::AwsCloud::VipNetwork do
-  let(:ec2) { double(AWS::EC2) }
-  let(:instance) { double(AWS::EC2::Instance, :id => 'id') }
+  let(:ec2) { double(Aws::EC2) }
+  let(:instance) { double(Aws::EC2::Instance, :id => 'id') }
 
   it 'should require an IP' do
     vip = described_class.new('vip', {})
@@ -11,7 +11,7 @@ describe Bosh::AwsCloud::VipNetwork do
     }.to raise_error Bosh::Clouds::CloudError
   end
 
-  [AWS::EC2::Errors::IncorrectInstanceState, AWS::EC2::Errors::InvalidInstanceID].each do |error|
+  [Aws::EC2::Errors::IncorrectInstanceState, Aws::EC2::Errors::InvalidInstanceID].each do |error|
     context "when AWS returns an #{error} error" do
       it 'should retry to attach until it succeeds' do
         vip = described_class.new('vip', {'ip' => '1.2.3.4'})

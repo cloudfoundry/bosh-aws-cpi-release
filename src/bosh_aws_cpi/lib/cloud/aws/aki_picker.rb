@@ -1,7 +1,7 @@
 module Bosh::AwsCloud
   class AKIPicker
 
-    # @param [AWS::Core::ServiceInterface] client
+    # @param [Aws::Core::ServiceInterface] client
     def initialize(client)
       @client = client
     end
@@ -37,7 +37,7 @@ module Bosh::AwsCloud
       end
     end
 
-    # @param [AWS::EC2::ImageCollection] akis
+    # @param [Aws::EC2::ImageCollection] akis
     def pick_candidate(akis, root_device_name)
       candidate = nil
       major = 0

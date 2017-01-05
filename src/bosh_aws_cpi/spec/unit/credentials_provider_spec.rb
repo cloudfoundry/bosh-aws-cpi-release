@@ -13,14 +13,14 @@ module Bosh::AwsCloud
 
       it 'includes a StaticProvider' do
         matched = providers.select do |entry|
-          entry.is_a?(AWS::Core::CredentialProviders::StaticProvider)
+          entry.is_a?(Aws::Core::CredentialProviders::StaticProvider)
         end
         expect(matched.length).to eq(1)
       end
 
       it 'includes a EC2Provider with retries > 0' do
         matched = providers.select do |entry|
-          entry.is_a?(AWS::Core::CredentialProviders::EC2Provider)
+          entry.is_a?(Aws::Core::CredentialProviders::EC2Provider)
         end
         expect(matched.length).to eq(1)
         expect(matched[0].retries).to eq(CredentialsProvider::DEFAULT_RETRIES)

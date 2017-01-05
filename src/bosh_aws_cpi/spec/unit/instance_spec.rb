@@ -4,9 +4,9 @@ require 'logger'
 module Bosh::AwsCloud
   describe Instance do
     subject(:instance) { Instance.new(aws_instance, registry, elb, logger) }
-    let(:aws_instance) { instance_double('AWS::EC2::Instance', id: instance_id) }
+    let(:aws_instance) { instance_double('Aws::EC2::Instance', id: instance_id) }
     let(:registry) { instance_double('Bosh::Cpi::RegistryClient', :update_settings => nil) }
-    let(:elb) { double('AWS::ELB') }
+    let(:elb) { double('Aws::ELB') }
     let(:logger) { Logger.new('/dev/null') }
 
     let(:instance_id) { 'fake-id' }
@@ -94,7 +94,7 @@ module Bosh::AwsCloud
           # AWS returns NotFound error if instance no longer exists in AWS console
           # (This could happen when instance was deleted manually and BOSH is not aware of that)
           allow(aws_instance).to receive(:terminate).
-            with(no_args).and_raise(AWS::EC2::Errors::InvalidInstanceID::NotFound)
+            with(no_args).and_raise(Aws::EC2::Errors::InvalidInstanceID::NotFound)
         end
 
         it 'raises Bosh::Clouds::VMNotFound but still removes settings from registry' do
@@ -117,9 +117,9 @@ module Bosh::AwsCloud
           expect(registry).to receive(:delete_settings).with(instance_id)
 
           allow(aws_instance).to receive(:status).
-                                     with(no_args).and_raise(AWS::EC2::Errors::InvalidInstanceID::NotFound)
+                                     with(no_args).and_raise(Aws::EC2::Errors::InvalidInstanceID::NotFound)
 
-          expect(logger).to receive(:debug).with("Failed to find terminated instance '#{instance_id}' after deletion: #{AWS::EC2::Errors::InvalidInstanceID::NotFound.new.inspect}")
+          expect(logger).to receive(:debug).with("Failed to find terminated instance '#{instance_id}' after deletion: #{Aws::EC2::Errors::InvalidInstanceID::NotFound.new.inspect}")
 
           instance.terminate
         end
@@ -143,10 +143,10 @@ module Bosh::AwsCloud
     end
 
     describe '#update_routing_tables' do
-      let(:fake_vpc) { instance_double('AWS::EC2::VPC') }
-      let(:fake_tables) { instance_double('AWS::EC2::RouteTableCollection') }
-      let(:fake_table) { instance_double('AWS::EC2::RouteTable') }
-      let(:fake_route) { instance_double('AWS::EC2::Route') }
+      let(:fake_vpc) { instance_double('Aws::EC2::VPC') }
+      let(:fake_tables) { instance_double('Aws::EC2::RouteTableCollection') }
+      let(:fake_table) { instance_double('Aws::EC2::RouteTable') }
+      let(:fake_route) { instance_double('Aws::EC2::Route') }
       let(:fake_routes) {[ fake_route ]}
 
       before do
@@ -183,10 +183,10 @@ module Bosh::AwsCloud
     describe '#attach_to_load_balancers' do
       before { allow(elb).to receive(:load_balancers).and_return(load_balancers) }
       let(:load_balancers) { { 'fake-lb1-id' => load_balancer1, 'fake-lb2-id' => load_balancer2 } }
-      let(:load_balancer1) { instance_double('AWS::ELB::LoadBalancer', instances: lb1_instances) }
-      let(:lb1_instances) { instance_double('AWS::ELB::InstanceCollection') }
-      let(:load_balancer2) { instance_double('AWS::ELB::LoadBalancer', instances: lb2_instances) }
-      let(:lb2_instances) { instance_double('AWS::ELB::InstanceCollection') }
+      let(:load_balancer1) { instance_double('Aws::ELB::LoadBalancer', instances: lb1_instances) }
+      let(:lb1_instances) { instance_double('Aws::ELB::InstanceCollection') }
+      let(:load_balancer2) { instance_double('Aws::ELB::LoadBalancer', instances: lb2_instances) }
+      let(:lb2_instances) { instance_double('Aws::ELB::InstanceCollection') }
 
       it 'attaches the instance to the list of load balancers' do
         expect(lb1_instances).to receive(:register).with(aws_instance)
