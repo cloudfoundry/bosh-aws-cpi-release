@@ -22,7 +22,12 @@ describe Bosh::AwsCloud::Cloud do
 
       it "should return a light stemcell" do
         cloud = mock_cloud do |ec2|
-          allow(ec2).to receive_message_chain(:images, :filter).and_return([double('image', :id => "ami-xxxxxxxx")])
+          allow(ec2).to receive(:images).with({
+            filters: [{
+              name: 'image-id',
+              values: ['ami-xxxxxxxx'],
+            }],
+          }).and_return([double('image', id: 'ami-xxxxxxxx')])
         end
         expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx light")
       end
@@ -45,8 +50,8 @@ describe Bosh::AwsCloud::Cloud do
 
       it "should create a stemcell" do
         cloud = mock_cloud do |ec2|
-          allow(ec2.volumes).to receive(:[]).with("vol-xxxxxxxx").and_return(volume)
-          allow(ec2.instances).to receive(:[]).with("i-xxxxxxxx").and_return(instance)
+          allow(ec2).to receive(:volume).with("vol-xxxxxxxx").and_return(volume)
+          allow(ec2).to receive(:instance).with("i-xxxxxxxx").and_return(instance)
 
           expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
             .with(ec2, stemcell_properties)
@@ -73,8 +78,8 @@ describe Bosh::AwsCloud::Cloud do
           options = mock_cloud_options['properties']
           options['aws']['stemcell'] = {'kernel_id' => 'fake-kernel-id'}
           cloud = mock_cloud(options) do |ec2|
-            allow(ec2.volumes).to receive(:[]).with("vol-xxxxxxxx").and_return(volume)
-            allow(ec2.instances).to receive(:[]).with("i-xxxxxxxx").and_return(instance)
+            allow(ec2).to receive(:volume).with("vol-xxxxxxxx").and_return(volume)
+            allow(ec2).to receive(:instance).with("i-xxxxxxxx").and_return(instance)
 
             expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
               .with(ec2, stemcell_properties.merge('kernel_id' => 'fake-kernel-id'))

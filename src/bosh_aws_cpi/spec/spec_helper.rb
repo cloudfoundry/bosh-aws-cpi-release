@@ -65,6 +65,9 @@ def mock_cloud(options = nil)
   ec2 = mock_ec2
   allow(Aws::EC2::Resource).to receive(:new).and_return(ec2)
 
+  # called in cloud.rb initialize to verify AWS connectivity
+  allow(ec2).to receive(:subnets).and_return([double('subnet')])
+
   yield ec2 if block_given?
 
   Bosh::AwsCloud::Cloud.new(options || mock_cloud_options['properties'])
