@@ -3,11 +3,11 @@ module Bosh::AwsCloud
     include Bosh::Exec
     include Helpers
 
-    attr_reader :client, :properties
+    attr_reader :resource, :properties
     attr_reader :volume, :device_path, :image_path
 
-    def initialize(client, properties)
-      @client = client
+    def initialize(resource, properties)
+      @resource = resource
       @properties = properties
     end
 
@@ -23,12 +23,12 @@ module Bosh::AwsCloud
 
       # the top-level ec2 class' ImageCollection.create does not support the full set of params
       params = image_params(snapshot.id)
-      image = client.images[client.client.register_image(params).image_id]
+      image = resource.images[resource.client.register_image(params).image_id]
       ResourceWait.for_image(image: image, state: 'available')
 
       TagManager.tag(image, 'Name', params[:description]) if params[:description]
 
-      Stemcell.new(client, image)
+      Stemcell.new(resource, image)
     end
 
     # This method tries to execute the helper script stemcell-copy
@@ -77,7 +77,7 @@ module Bosh::AwsCloud
       params = begin
         if virtualization_type == 'paravirtual'
           root_device_name = properties["root_device_name"]
-          aki = properties['kernel_id'] || AKIPicker.new(client).pick(architecture, root_device_name)
+          aki = properties['kernel_id'] || AKIPicker.new(resource).pick(architecture, root_device_name)
           {
             :kernel_id => aki,
             :root_device_name => root_device_name,

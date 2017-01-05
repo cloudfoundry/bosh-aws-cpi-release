@@ -1,9 +1,9 @@
 module Bosh::AwsCloud
   class AKIPicker
 
-    # @param [Aws::Core::ServiceInterface] client
-    def initialize(client)
-      @client = client
+    # @param [Aws::Core::ServiceInterface] resource
+    def initialize(resource)
+      @resource = resource
     end
 
     # finds the correct aki based on architecture and root device
@@ -21,7 +21,7 @@ module Bosh::AwsCloud
     private
 
     def fetch_akis(architecture)
-      @client.images
+      @resource.images
         .filter('architecture', architecture)
         .filter('image-type', 'kernel')
         .filter('owner-alias', 'amazon')

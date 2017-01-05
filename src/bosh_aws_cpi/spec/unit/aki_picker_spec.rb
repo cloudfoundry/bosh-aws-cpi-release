@@ -1,8 +1,8 @@
 require "spec_helper"
 
 describe Bosh::AwsCloud::AKIPicker do
-  let(:picker) { Bosh::AwsCloud::AKIPicker.new(client) }
-  let(:client) { Aws::EC2::Client.new() }
+  let(:resource) { instance_double(Aws::EC2::Resource) }
+  let(:picker) { Bosh::AwsCloud::AKIPicker.new(resource) }
   let(:akis) {
     [
       double("image-1", :root_device_name => "/dev/sda1",
@@ -16,7 +16,7 @@ describe Bosh::AwsCloud::AKIPicker do
 
   before do
     allow(akis).to receive(:filter).and_return(akis)
-    allow(client).to receive(:images).and_return(akis)
+    allow(resource).to receive(:images).and_return(akis)
   end
 
   it "should pick the AKI with the highest version" do
