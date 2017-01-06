@@ -4,14 +4,14 @@ module Bosh::AwsCloud
 
     attr_reader :ami, :snapshots
 
-    def self.find(client, id)
-      image = client.image(id)
+    def self.find(resource, id)
+      image = resource.image(id)
       raise Bosh::Clouds::CloudError, "could not find AMI '#{id}'" unless image.exists?
-      new(client, image)
+      new(resource, image)
     end
 
-    def initialize(client, image)
-      @client = client
+    def initialize(resource, image)
+      @resource = resource
       @ami = image
       @snapshots = []
     end
@@ -41,12 +41,12 @@ module Bosh::AwsCloud
       ami.root_device_name
     end
 
+    private
+
     def memoize_snapshots
-      # .to_hash is used as the AWS API documentation isn't trustworthy:
-      # it says block_device_mappings retruns a Hash, but in reality it flattens it!
-      ami.block_device_mappings.to_hash.each do |device, map|
-        snapshot_id = map[:snapshot_id]
-        if id
+      ami.block_device_mappings.each do |device|
+        if id && device.ebs
+          snapshot_id = device.ebs.snapshot_id
           logger.debug("queuing snapshot '#{snapshot_id}' for deletion")
           snapshots << snapshot_id
         end
@@ -56,7 +56,7 @@ module Bosh::AwsCloud
     def delete_snapshots
       snapshots.each do |id|
         logger.info("cleaning up snapshot '#{id}'")
-        snapshot = @client.snapshot(id)
+        snapshot = @resource.snapshot(id)
         snapshot.delete
       end
     end

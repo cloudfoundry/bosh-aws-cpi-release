@@ -28,8 +28,8 @@ module Bosh::AwsCloud
 
     it "should create a real stemcell" do
       creator = described_class.new(region, properties)
-      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(snapshot: snapshot, state: :completed)
-      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(image: image, state: :available)
+      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(snapshot: snapshot, state: 'completed')
+      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(image: image, state: 'available')
       allow(SecureRandom).to receive(:uuid).and_return("fake-uuid")
       allow(region).to receive(:images).and_return({
         image_id => image,
