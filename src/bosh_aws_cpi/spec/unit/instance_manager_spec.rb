@@ -2,12 +2,12 @@ require 'spec_helper'
 
 module Bosh::AwsCloud
   describe InstanceManager do
-    let(:ec2) { instance_double(Aws::EC2) }
-    let(:aws_client) { instance_double("#{Aws::EC2::Client.new.class}") }
+    let(:ec2) { instance_double(Aws::EC2::Resource) }
+    let(:aws_client) { instance_double(Aws::EC2::Client) }
     before { allow(ec2).to receive(:client).and_return(aws_client) }
 
     let(:registry) { double('Bosh::Registry::Client', :endpoint => 'http://...', :update_settings => nil) }
-    let(:elb) { double('Aws::ELB', load_balancers: nil) }
+    let(:elb) { instance_double(Aws::ElasticLoadBalancing::Client) }
     let(:param_mapper) { instance_double(InstanceParamMapper) }
     let(:block_device_manager) { instance_double(BlockDeviceManager) }
     let(:logger) { Logger.new('/dev/null') }
@@ -53,17 +53,18 @@ module Bosh::AwsCloud
       end
       let(:block_devices) do
         [
-          {
+          double(Aws::AutoScaling::Types::BlockDeviceMapping,
             device_name: 'fake-image-root-device',
-            ebs: {
+            ebs: double(Aws::AutoScaling::Types::Ebs,
               volume_size: 17
-            }
-          }
+            )
+          )
         ]
       end
 
+      let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-instance-id') }
+
       before do
-        allow(fake_subnet_collection).to receive(:filter).and_return([fake_aws_subnet])
         allow(param_mapper).to receive(:instance_params).and_return({ fake: 'instance-params' })
         allow(param_mapper).to receive(:manifest_params=)
         allow(param_mapper).to receive(:validate)
@@ -74,20 +75,26 @@ module Bosh::AwsCloud
         allow(block_device_manager).to receive(:mappings).and_return('fake-block-device-mappings')
         allow(block_device_manager).to receive(:agent_info).and_return('fake-block-device-agent-info')
 
-        allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
+        allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: 'running')
 
-        allow(ec2).to receive(:subnets).and_return(fake_subnet_collection)
+        allow(ec2).to receive(:subnets).with({
+          filters: [{
+            name: 'subnet-id',
+            values: ['sub-default', 'sub-123456'],
+          }],
+        }).and_return([fake_aws_subnet])
+
         allow(ec2).to receive(:instances).and_return(aws_instances)
-        allow(ec2).to receive(:images).and_return({
-          stemcell_id => instance_double('Aws::EC2::Image',
-            block_devices: block_devices,
+        allow(ec2).to receive(:image).with(stemcell_id).and_return(
+          instance_double('Aws::EC2::Image',
             root_device_name: 'fake-image-root-device',
-            block_device_mappings: { 'fake-image-root-device' => {} },
+            block_device_mappings: block_devices,
             virtualization_type: :hvm
           )
-        })
+        )
 
-        allow(aws_instances).to receive(:[]).with('i-12345678').and_return(aws_instance)
+        allow(ec2).to receive(:instance).with('i-12345678').and_return(aws_instance)
+        allow(Instance).to receive(:new).and_return(instance)
       end
 
       it 'should ask AWS to create an instance in the given region, with parameters built up from the given arguments' do
@@ -117,7 +124,6 @@ module Bosh::AwsCloud
 
           # need to translate security group names to security group ids
           sg1 = instance_double('Aws::EC2::SecurityGroup', id:'sg-baz-1234')
-          allow(sg1).to receive(:name).and_return('baz')
           allow(ec2).to receive(:security_groups).and_return([sg1])
 
           # Should not receive an on-demand instance create call
@@ -142,7 +148,7 @@ module Bosh::AwsCloud
             and_return(:spot_instance_request_set => [{:state => 'active', :instance_id=>'i-12345678'}])
 
           # Should then wait for instance to be running, just like in the case of on-demand
-          expect(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
+          expect(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: 'running')
 
           # Trigger spot instance request
           instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
@@ -236,7 +242,10 @@ module Bosh::AwsCloud
           allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
           expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
-          expect(aws_instance).to receive(:source_dest_check=).with(false)
+          expect(instance).to receive(:source_dest_check=).with(false)
+          expect(instance).to receive(:wait_for_running)
+          expect(instance).to receive(:attach_to_load_balancers)
+          expect(instance).to receive(:update_routing_tables)
 
           instance_manager.create(
             agent_id,
@@ -250,12 +259,12 @@ module Bosh::AwsCloud
         end
       end
 
-      it 'should retry creating the VM when Aws::EC2::Errors::InvalidIPAddress::InUse raised' do
+      it 'should retry creating the VM when Aws::EC2::Errors::InvalidIPAddressInUse raised' do
         instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
         allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
         allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
-        expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_raise(Aws::EC2::Errors::InvalidIPAddress::InUse)
+        expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_raise(Aws::EC2::Errors::InvalidIPAddressInUse.new(nil, 'in-use'))
         expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
 
         allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
