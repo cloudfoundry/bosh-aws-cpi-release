@@ -130,7 +130,7 @@ module Bosh::AwsCloud
 
     def attach_to_load_balancers(load_balancer_ids)
       load_balancer_ids.each do |load_balancer_id|
-        lb = @elb.register_instances_with_load_balancer({
+        @elb.register_instances_with_load_balancer({
           instances: [
             {
               instance_id: @aws_instance.id

@@ -158,7 +158,10 @@ module Bosh::AwsCloud
       state = nil
       Bosh::Retryable.new(tries: tries, sleep: sleep_cb, on: errors, ensure: ensure_cb).retryer do
         resource.reload
-        state = resource.state.is_a?(String) ? resource.state : resource.state.name
+
+        s = resource.state
+        state = s.is_a?(String) ? s : s.name
+
         # check all cases where state can be error or failed
         if state == 'error' || state == 'failed'
           raise Bosh::Clouds::CloudError, "#{desc} state is #{state}, expected #{target_state}, took #{time_passed}s"

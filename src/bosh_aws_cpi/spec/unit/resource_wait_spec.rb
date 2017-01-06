@@ -7,56 +7,49 @@ module Bosh::AwsCloud
     describe '.for_instance' do
       let(:instance) { double(Aws::EC2::Instance, id: 'i-1234') }
 
+      before(:each) do
+        allow(instance).to receive(:reload)
+      end
+
       context 'deletion' do
         it 'should wait until the state is terminated' do
-          expect(instance).to receive(:status).and_return(:shutting_down)
-          expect(instance).to receive(:status).and_return(:shutting_down)
-          expect(instance).to receive(:status).and_return(:terminated)
+          expect(instance).to receive(:state).and_return('shutting_down')
+          expect(instance).to receive(:state).and_return('shutting_down')
+          expect(instance).to receive(:state).and_return('terminated')
 
-          described_class.for_instance(instance: instance, state: :terminated)
+          described_class.for_instance(instance: instance, state: 'terminated')
         end
       end
 
       context 'creation' do
         context 'when EC2 fails to find an instance' do
           it 'should wait until the state is running' do
-            expect(instance).to receive(:status).and_raise(Aws::EC2::Errors::InvalidInstanceIDNotFound)
-            expect(instance).to receive(:status).and_return(:pending)
-            expect(instance).to receive(:status).and_return(:running)
+            expect(instance).to receive(:state).and_raise(Aws::EC2::Errors::InvalidInstanceIDNotFound.new(nil, 'not-found'))
+            expect(instance).to receive(:state).and_return('pending')
+            expect(instance).to receive(:state).and_return('running')
 
-            described_class.for_instance(instance: instance, state: :running)
+            described_class.for_instance(instance: instance, state: 'running')
           end
         end
 
         context 'when resource is not found' do
           it 'should wait until the state is running' do
-            expect(instance).to receive(:status).and_raise(Aws::Core::Resource::NotFound)
-            expect(instance).to receive(:status).and_return(:pending)
-            expect(instance).to receive(:status).and_return(:running)
+            expect(instance).to receive(:state).and_raise(Aws::EC2::Errors::ResourceNotFound.new(nil, 'not-found'))
+            expect(instance).to receive(:state).and_return('pending')
+            expect(instance).to receive(:state).and_return('running')
 
-            described_class.for_instance(instance: instance, state: :running)
-          end
-        end
-
-        context 'when resource status service is not available' do
-          it 'should wait until the service is available and the state is running' do
-            expect(instance).to receive(:status).and_raise(
-              Aws::Errors::ServiceError.new('The service is unavailable. Please try again shortly.'))
-            expect(instance).to receive(:status).and_return(:pending)
-            expect(instance).to receive(:status).and_return(:running)
-
-            described_class.for_instance(instance: instance, state: :running)
+            described_class.for_instance(instance: instance, state: 'running')
           end
         end
 
         it 'should fail if AWS terminates the instance' do
-          expect(instance).to receive(:status).and_return(:pending)
-          expect(instance).to receive(:status).and_return(:pending)
-          expect(instance).to receive(:status).and_return(:terminated)
+          expect(instance).to receive(:state).and_return('pending')
+          expect(instance).to receive(:state).and_return('pending')
+          expect(instance).to receive(:state).and_return('terminated')
 
           expect(ResourceWait.logger).to receive(:error).with(/terminated while starting/)
           expect {
-            described_class.for_instance(instance: instance, state: :running)
+            described_class.for_instance(instance: instance, state: 'running')
           }.to raise_error Bosh::Clouds::VMCreationFailed, /terminated while starting/
         end
       end
@@ -65,96 +58,106 @@ module Bosh::AwsCloud
     describe '.for_attachment' do
       let(:volume) { double(Aws::EC2::Volume, id: 'vol-1234') }
       let(:instance) { double(Aws::EC2::Instance, id: 'i-5678') }
-      let(:attachment) { double(Aws::EC2::Attachment, volume: volume, instance: instance, device: '/dev/sda1') }
+      let(:attachment) { double(SdkHelpers::VolumeAttachment, volume: volume, instance: instance, device: '/dev/sda1') }
+      before (:each) do
+        allow(attachment).to receive(:reload)
+      end
 
       context 'attachment' do
         it 'should wait until the state is attached' do
-          expect(attachment).to receive(:status).and_return(:attaching)
-          expect(attachment).to receive(:status).and_return(:attached)
+          expect(attachment).to receive(:state).and_return('attaching')
+          expect(attachment).to receive(:state).and_return('attached')
 
-          described_class.for_attachment(attachment: attachment, state: :attached)
+          described_class.for_attachment(attachment: attachment, state: 'attached')
         end
 
         it 'should retry when Aws::Core::Resource::NotFound is raised' do
-          expect(attachment).to receive(:status).and_raise(Aws::Core::Resource::NotFound)
-          expect(attachment).to receive(:status).and_return(:attached)
+          expect(attachment).to receive(:state).and_raise(Aws::EC2::Errors::ResourceNotFound.new(nil, 'not-found'))
+          expect(attachment).to receive(:state).and_return('attached')
 
-          described_class.for_attachment(attachment: attachment, state: :attached)
+          described_class.for_attachment(attachment: attachment, state: 'attached')
         end
       end
 
       context 'detachment' do
         it 'should wait until the state is detached' do
-          expect(attachment).to receive(:status).and_return(:detaching)
-          expect(attachment).to receive(:status).and_return(:detached)
+          expect(attachment).to receive(:state).and_return('detaching')
+          expect(attachment).to receive(:state).and_return('detached')
 
-          described_class.for_attachment(attachment: attachment, state: :detached)
+          described_class.for_attachment(attachment: attachment, state: 'detached')
         end
 
         it 'should consider Aws::Core::Resource::NotFound to be detached' do
-          expect(attachment).to receive(:status).and_return(:detaching)
-          expect(attachment).to receive(:status).and_raise(Aws::Core::Resource::NotFound)
+          expect(attachment).to receive(:state).and_return('detaching')
+          expect(attachment).to receive(:state).and_raise(Aws::EC2::Errors::ResourceNotFound.new(nil, 'not-found'))
 
-          described_class.for_attachment(attachment: attachment, state: :detached)
+          described_class.for_attachment(attachment: attachment, state: 'detached')
         end
       end
     end
 
     describe '.for_volume' do
       let(:volume) { double(Aws::EC2::Volume, id: 'v-123') }
+      before (:each) do
+        allow(volume).to receive(:reload)
+      end
+
 
       context 'creation' do
         it 'should wait until the state is available' do
-          expect(volume).to receive(:status).and_return(:creating)
-          expect(volume).to receive(:status).and_return(:available)
+          expect(volume).to receive(:state).and_return('creating')
+          expect(volume).to receive(:state).and_return('available')
 
-          described_class.for_volume(volume: volume, state: :available)
+          described_class.for_volume(volume: volume, state: 'available')
         end
 
         it 'should raise an error on error state' do
-          expect(volume).to receive(:status).and_return(:creating)
-          expect(volume).to receive(:status).and_return(:error)
+          expect(volume).to receive(:state).and_return('creating')
+          expect(volume).to receive(:state).and_return('error')
 
           expect {
-            described_class.for_volume(volume: volume, state: :available)
+            described_class.for_volume(volume: volume, state: 'available')
           }.to raise_error Bosh::Clouds::CloudError, /state is error, expected available/
         end
       end
 
       context 'deletion' do
         it 'should wait until the state is deleted' do
-          expect(volume).to receive(:status).and_return(:deleting)
-          expect(volume).to receive(:status).and_return(:deleted)
+          expect(volume).to receive(:state).and_return('deleting')
+          expect(volume).to receive(:state).and_return('deleted')
 
-          described_class.for_volume(volume: volume, state: :deleted)
+          described_class.for_volume(volume: volume, state: 'deleted')
         end
 
         it 'should consider InvalidVolume error to mean deleted' do
-          expect(volume).to receive(:status).and_return(:deleting)
-          expect(volume).to receive(:status).and_raise(Aws::EC2::Errors::InvalidVolumeNotFound)
+          expect(volume).to receive(:state).and_return('deleting')
+          expect(volume).to receive(:state).and_raise(Aws::EC2::Errors::InvalidVolumeNotFound.new(nil, 'not-found'))
 
-          described_class.for_volume(volume: volume, state: :deleted)
+          described_class.for_volume(volume: volume, state: 'deleted')
         end
       end
     end
 
     describe '.for_snapshot' do
       let(:snapshot) { double(Aws::EC2::Snapshot, id: 'snap-123') }
+      before (:each) do
+        allow(snapshot).to receive(:reload)
+      end
 
       context 'creation' do
         it 'should wait until the state is completed' do
-          expect(snapshot).to receive(:status).and_return(:pending)
-          expect(snapshot).to receive(:status).and_return(:completed)
+          expect(snapshot).to receive(:state).and_return('pending')
+          expect(snapshot).to receive(:state).and_return('completed')
 
-          described_class.for_snapshot(snapshot: snapshot, state: :completed)
+          described_class.for_snapshot(snapshot: snapshot, state: 'completed')
         end
 
         it 'should raise an error if the state is error' do
-          expect(snapshot).to receive(:status).and_return(:pending)
-          expect(snapshot).to receive(:status).and_return(:error)
+          expect(snapshot).to receive(:state).and_return('pending')
+          expect(snapshot).to receive(:state).and_return('error')
 
           expect {
-            described_class.for_snapshot(snapshot: snapshot, state: :completed)
+            described_class.for_snapshot(snapshot: snapshot, state: 'completed')
           }.to raise_error Bosh::Clouds::CloudError, /state is error, expected completed/
         end
       end
@@ -162,52 +165,55 @@ module Bosh::AwsCloud
 
     describe '.for_image' do
       let(:image) { double(Aws::EC2::Image, id: 'ami-123') }
+      before (:each) do
+        allow(image).to receive(:reload)
+      end
 
       context 'creation' do
         it 'should wait until the state is available' do
-          expect(image).to receive(:state).and_return(:pending)
-          expect(image).to receive(:state).and_return(:available)
+          expect(image).to receive(:state).and_return('pending')
+          expect(image).to receive(:state).and_return('available')
 
-          described_class.for_image(image: image, state: :available)
+          described_class.for_image(image: image, state: 'available')
         end
 
         it 'should wait if Aws::EC2::Errors::InvalidAMIID::NotFound raised' do
-          expect(image).to receive(:state).and_raise(Aws::EC2::Errors::InvalidAMIID::NotFound)
-          expect(image).to receive(:state).and_return(:pending)
-          expect(image).to receive(:state).and_return(:available)
+          expect(image).to receive(:state).and_raise(Aws::EC2::Errors::InvalidAMIIDNotFound.new(nil, 'not-found'))
+          expect(image).to receive(:state).and_return('pending')
+          expect(image).to receive(:state).and_return('available')
 
-          described_class.for_image(image: image, state: :available)
+          described_class.for_image(image: image, state: 'available')
         end
 
         it 'should raise an error if the state is failed' do
-          expect(image).to receive(:state).and_return(:pending)
-          expect(image).to receive(:state).and_return(:failed)
+          expect(image).to receive(:state).and_return('pending')
+          expect(image).to receive(:state).and_return('failed')
 
           expect {
-            described_class.for_image(image: image, state: :available)
+            described_class.for_image(image: image, state: 'available')
           }.to raise_error Bosh::Clouds::CloudError, /state is failed, expected available/
         end
       end
 
       context 'deletion' do
         it 'should wait until the state is deleted' do
-          expect(image).to receive(:state).and_return(:available)
-          expect(image).to receive(:state).and_return(:pending)
-          expect(image).to receive(:state).and_return(:deleted)
+          expect(image).to receive(:state).and_return('available')
+          expect(image).to receive(:state).and_return('pending')
+          expect(image).to receive(:state).and_return('deleted')
 
-          described_class.for_image(image: image, state: :deleted)
+          described_class.for_image(image: image, state: 'deleted')
         end
       end
     end
 
     describe 'catching errors' do
       it 'raises an error if the retry count is exceeded' do
-        resource = double('resource', status: :bar)
+        resource = double('resource', state: 'bar')
         resource_arguments = {
           resource: resource,
           tries: 1,
           description: 'description',
-          target_state: :foo
+          target_state: 'foo'
         }
 
         expect {
@@ -242,9 +248,10 @@ module Bosh::AwsCloud
     end
 
     describe '#for_resource' do
+      let(:fake_resource) { double('fake-resource', state: 'unknown', reload: nil) }
       let(:args) do
         {
-          resource: double('fake-resource', status: nil),
+          resource: fake_resource,
           description: 'description',
           target_state: 'fake-target-state',
         }

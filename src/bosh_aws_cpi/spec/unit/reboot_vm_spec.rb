@@ -9,7 +9,8 @@ describe Bosh::AwsCloud::Cloud, "reboot_vm" do
     registry = double("registry")
     allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
 
-    allow(Aws::EC2).to receive(:new).and_return(ec2)
+    allow(Aws::EC2::Resource).to receive(:new).and_return(ec2)
+    allow(ec2).to receive(:subnets).and_return([double('subnet')])
 
     az_selector = double("availability zone selector")
     allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).
@@ -21,7 +22,7 @@ describe Bosh::AwsCloud::Cloud, "reboot_vm" do
       with(
         ec2,
         registry,
-        be_an_instance_of(Aws::ELB),
+        be_an_instance_of(Aws::ElasticLoadBalancing::Client),
         be_an_instance_of(Bosh::AwsCloud::InstanceParamMapper),
         be_an_instance_of(Bosh::AwsCloud::BlockDeviceManager),
         be_an_instance_of(Logger)
