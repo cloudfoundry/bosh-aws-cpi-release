@@ -94,7 +94,11 @@ module Bosh::AwsCloud
         )
 
         allow(ec2).to receive(:instance).with('i-12345678').and_return(aws_instance)
+
         allow(Instance).to receive(:new).and_return(instance)
+        allow(instance).to receive(:wait_for_running)
+        allow(instance).to receive(:attach_to_load_balancers)
+        allow(instance).to receive(:update_routing_tables)
       end
 
       it 'should ask AWS to create an instance in the given region, with parameters built up from the given arguments' do
@@ -146,9 +150,6 @@ module Bosh::AwsCloud
           expect(aws_client).to receive(:describe_spot_instance_requests).
             with(:spot_instance_request_ids=>['sir-12345c']).
             and_return(:spot_instance_request_set => [{:state => 'active', :instance_id=>'i-12345678'}])
-
-          # Should then wait for instance to be running, just like in the case of on-demand
-          expect(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: 'running')
 
           # Trigger spot instance request
           instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
@@ -389,7 +390,7 @@ module Bosh::AwsCloud
     end
 
     describe '#find' do
-      before { allow(ec2).to receive(:instances).and_return(instance_id => aws_instance) }
+      before { allow(ec2).to receive(:instance).with(instance_id).and_return(aws_instance) }
       let(:aws_instance) { instance_double('Aws::EC2::Instance', id: instance_id) }
       let(:instance_id) { 'fake-id' }
 
