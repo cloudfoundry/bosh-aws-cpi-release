@@ -124,7 +124,6 @@ describe Bosh::AwsCloud::Cloud do
 
       it 'auto-applies a protocol and uses the given endpoint' do
         expect {
-          binding.pry
           cpi.has_vm?('i-010fd20eb24f606ab')
         }.to_not raise_error
       end
