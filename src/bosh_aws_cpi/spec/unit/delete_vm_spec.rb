@@ -1,33 +1,25 @@
 require 'spec_helper'
 
 describe Bosh::AwsCloud::Cloud, "delete_vm" do
-  let(:cloud) { described_class.new(options) }
+  let(:instance_manager) { instance_double('Bosh::AwsCloud::InstanceManager') }
+  let(:cloud) {
+    mock_cloud do |ec2|
+      registry = double("registry")
+      allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
 
-  let(:options) { mock_cloud_options['properties'] }
+      allow(Bosh::AwsCloud::InstanceManager).to receive(:new).
+        with(
+          ec2,
+          registry,
+          be_an_instance_of(Aws::ElasticLoadBalancing::Client),
+          be_an_instance_of(Bosh::AwsCloud::InstanceParamMapper),
+          be_an_instance_of(Bosh::AwsCloud::BlockDeviceManager),
+          be_an_instance_of(Logger)
+        ).and_return(instance_manager)
+    end
+  }
 
   it 'deletes an EC2 instance' do
-    registry = double("registry")
-    allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
-
-    ec2 = double("ec2", :regions => [])
-    allow(Aws::EC2).to receive(:new).and_return(ec2)
-
-    az_selector = double("availability zone selector")
-    allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).
-      with(ec2).
-      and_return(az_selector)
-
-    instance_manager = instance_double('Bosh::AwsCloud::InstanceManager')
-    allow(Bosh::AwsCloud::InstanceManager).to receive(:new).
-      with(
-        ec2,
-        registry,
-        be_an_instance_of(Aws::ELB),
-        be_an_instance_of(Bosh::AwsCloud::InstanceParamMapper),
-        be_an_instance_of(Bosh::AwsCloud::BlockDeviceManager),
-        be_an_instance_of(Logger)
-      ).and_return(instance_manager)
-
     instance = instance_double('Bosh::AwsCloud::Instance')
     allow(instance_manager).to receive(:find).with('fake-id').and_return(instance)
 
