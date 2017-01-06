@@ -3,27 +3,28 @@ require "spec_helper"
 module Bosh::AwsCloud
   describe InstanceParamMapper do
     let(:instance_param_mapper) { InstanceParamMapper.new(security_group_mapper) }
-    let(:security_group_mapper) { SecurityGroupMapper.new(ec2_client) }
-    let(:ec2_client) { instance_double(Aws::EC2) }
+    let(:security_group_mapper) { SecurityGroupMapper.new(ec2_resource) }
+    let(:ec2_resource) { instance_double(Aws::EC2::Resource) }
     let(:security_groups) do
       [
-        instance_double(Aws::EC2::SecurityGroup, name: 'sg-1-name', id: 'sg-11111111'),
-        instance_double(Aws::EC2::SecurityGroup, name: 'sg-2-name', id: 'sg-22222222'),
-        instance_double(Aws::EC2::SecurityGroup, name: 'sg-3-name', id: 'sg-33333333'),
-        instance_double(Aws::EC2::SecurityGroup, name: 'sg-4-name', id: 'sg-44444444'),
-        instance_double(Aws::EC2::SecurityGroup, name: 'sg-5-name', id: 'sg-55555555'),
-        instance_double(Aws::EC2::SecurityGroup, name: 'sg-6-name', id: 'sg-66666666'),
-        instance_double(Aws::EC2::SecurityGroup, name: 'sg-7-name', id: 'sg-77777777')
+        instance_double(Aws::EC2::SecurityGroup, group_name: 'sg-1-name', id: 'sg-11111111'),
+        instance_double(Aws::EC2::SecurityGroup, group_name: 'sg-2-name', id: 'sg-22222222'),
+        instance_double(Aws::EC2::SecurityGroup, group_name: 'sg-3-name', id: 'sg-33333333'),
+        instance_double(Aws::EC2::SecurityGroup, group_name: 'sg-4-name', id: 'sg-44444444'),
+        instance_double(Aws::EC2::SecurityGroup, group_name: 'sg-5-name', id: 'sg-55555555'),
+        instance_double(Aws::EC2::SecurityGroup, group_name: 'sg-6-name', id: 'sg-66666666'),
+        instance_double(Aws::EC2::SecurityGroup, group_name: 'sg-7-name', id: 'sg-77777777')
       ]
     end
+    let(:dynamic_subnet_id) { 'dynamic-subnet' }
+    let(:manual_subnet_id) { 'manual-subnet' }
     let(:shared_subnet) do
       instance_double(Aws::EC2::Subnet,
-        vpc: instance_double(Aws::EC2::VPC, security_groups: security_groups))
+        vpc: instance_double(Aws::EC2::Vpc, security_groups: security_groups))
     end
-    let(:subnets) { instance_double(Aws::EC2::SubnetCollection, :[] => shared_subnet) }
 
     before do
-      allow(ec2_client).to receive(:subnets).and_return(subnets)
+      allow(ec2_resource).to receive(:subnet).with(dynamic_subnet_id).and_return(shared_subnet)
     end
 
     describe '#instance_params' do
@@ -122,7 +123,7 @@ module Bosh::AwsCloud
               networks_spec: {
                 "net1" => {
                   "cloud_properties" => {
-                    "subnet" => "dynamic-subnet",
+                    "subnet" => dynamic_subnet_id,
                   }
                 },
               },
@@ -133,7 +134,7 @@ module Bosh::AwsCloud
             {
               network_interfaces: [{
                 device_index: 0,
-                subnet_id: "dynamic-subnet",
+                subnet_id: dynamic_subnet_id,
                 groups: ["sg-11111111", "sg-22222222"]
               }]
             }
@@ -149,13 +150,13 @@ module Bosh::AwsCloud
                 "net1" => {
                   "cloud_properties" => {
                     "security_groups" => ["sg-11111111", "sg-2-name"],
-                    "subnet" => "dynamic-subnet",
+                    "subnet" => dynamic_subnet_id,
                   }
                 },
                 "net2" => {
                   "cloud_properties" => {
                     "security_groups" => "sg-33333333",
-                    "subnet" => "dynamic-subnet",
+                    "subnet" => dynamic_subnet_id,
                   }
                 }
               },
@@ -166,7 +167,7 @@ module Bosh::AwsCloud
             {
               network_interfaces: [{
                 device_index: 0,
-                subnet_id: "dynamic-subnet",
+                subnet_id: dynamic_subnet_id,
                 groups: ["sg-11111111", "sg-22222222", "sg-33333333"]
               }]
             }
@@ -183,13 +184,13 @@ module Bosh::AwsCloud
                 "net1" => {
                   "cloud_properties" => {
                     "security_groups" => ["sg-33333333", "sg-4-name"],
-                    "subnet" => "dynamic-subnet",
+                    "subnet" => dynamic_subnet_id,
                   }
                 },
                 "net2" => {
                   "cloud_properties" => {
                     "security_groups" => "sg-55555555",
-                    "subnet" => "dynamic-subnet",
+                    "subnet" => dynamic_subnet_id,
                   }
                 }
               },
@@ -200,7 +201,7 @@ module Bosh::AwsCloud
             {
               network_interfaces: [{
                 device_index: 0,
-                subnet_id: "dynamic-subnet",
+                subnet_id: dynamic_subnet_id,
                 groups: ["sg-11111111", "sg-22222222"]
               }]
             }
@@ -334,11 +335,11 @@ module Bosh::AwsCloud
                   "cloud_properties" => { "subnet" => "vip-subnet" }
                 },
                 "net2" => {
-                  "cloud_properties" => { "subnet" => "manual-subnet" }
+                  "cloud_properties" => { "subnet" => manual_subnet_id }
                 }
               },
               subnet_az_mapping: {
-                "manual-subnet" => "region-1b"
+                manual_subnet_id => "region-1b"
               }
             }
           end
@@ -346,7 +347,7 @@ module Bosh::AwsCloud
             {
               network_interfaces: [
                 {
-                  subnet_id: "manual-subnet",
+                  subnet_id: manual_subnet_id,
                   device_index: 0
                 }
               ],
@@ -365,16 +366,16 @@ module Bosh::AwsCloud
               networks_spec: {
                 "net1" => {
                   "type" => "dynamic",
-                  "cloud_properties" => { "subnet" => "dynamic-subnet" }
+                  "cloud_properties" => { "subnet" => dynamic_subnet_id }
                 },
                 "net2" => {
                   "type" => "manual",
-                  "cloud_properties" => { "subnet" => "manual-subnet" }
+                  "cloud_properties" => { "subnet" => manual_subnet_id }
                 }
               },
               subnet_az_mapping: {
-                "dynamic-subnet" => "region-1a",
-                "manual-subnet" => "region-1b"
+                dynamic_subnet_id => "region-1a",
+                manual_subnet_id => "region-1b"
               }
             }
           end
@@ -385,7 +386,7 @@ module Bosh::AwsCloud
               },
               network_interfaces: [
                 {
-                  subnet_id: 'dynamic-subnet',
+                  subnet_id: dynamic_subnet_id,
                   device_index: 0
                 }
               ]
@@ -416,11 +417,11 @@ module Bosh::AwsCloud
               networks_spec: {
                 "net1" => {
                   "type" => "dynamic",
-                  "cloud_properties" => { "subnet" => "dynamic-subnet" }
+                  "cloud_properties" => { "subnet" => dynamic_subnet_id }
                 },
               },
               subnet_az_mapping: {
-                "dynamic-subnet" => "region-1a"
+                dynamic_subnet_id => "region-1a"
               }
             }
           end
@@ -431,7 +432,7 @@ module Bosh::AwsCloud
               },
               network_interfaces: [
                 {
-                  subnet_id: 'dynamic-subnet',
+                  subnet_id: dynamic_subnet_id,
                   device_index: 0
                 }
               ]
@@ -453,11 +454,11 @@ module Bosh::AwsCloud
               networks_spec: {
                 "net1" => {
                   "type" => "dynamic",
-                  "cloud_properties" => { "subnet" => "dynamic-subnet" }
+                  "cloud_properties" => { "subnet" => dynamic_subnet_id }
                 }
               },
               subnet_az_mapping: {
-                "dynamic-subnet" => "region-1a"
+                dynamic_subnet_id => "region-1a"
               }
             }
           end
@@ -468,7 +469,7 @@ module Bosh::AwsCloud
               },
               network_interfaces: [
                 {
-                  subnet_id: 'dynamic-subnet',
+                  subnet_id: dynamic_subnet_id,
                   device_index: 0
                 }
               ]
@@ -508,11 +509,11 @@ module Bosh::AwsCloud
                   "type" => "manual",
                   "ip" => "1.1.1.1",
                   "dns" => "8.8.8.8",
-                  "cloud_properties" => { "subnet" => "manual-subnet" }
+                  "cloud_properties" => { "subnet" => manual_subnet_id }
                 }
               },
               subnet_az_mapping: {
-                "dynamic-subnet" => "region-1a"
+                dynamic_subnet_id => "region-1a"
               },
               volume_zones: ["region-1a", "region-1a"],
               registry_endpoint: "example.com",
@@ -531,7 +532,7 @@ module Bosh::AwsCloud
               iam_instance_profile: { name: "fake-iam-profile" },
               network_interfaces: [
                 {
-                  subnet_id: "manual-subnet",
+                  subnet_id: manual_subnet_id,
                   private_ip_address: "1.1.1.1",
                   device_index: 0,
                   groups: ["sg-12345678", "sg-23456789"],
@@ -578,11 +579,11 @@ module Bosh::AwsCloud
           networks_spec: {
             "net1" => {
               "type" => "dynamic",
-              "cloud_properties" => { "subnet" => "dynamic-subnet" }
+              "cloud_properties" => { "subnet" => dynamic_subnet_id }
             }
           },
           subnet_az_mapping: {
-            "dynamic-subnet" => "region-1b"
+            dynamic_subnet_id => "region-1b"
           }
         }
         expect {
@@ -604,7 +605,7 @@ module Bosh::AwsCloud
           networks_spec: {
             "net1" => {
               "type" => "dynamic",
-              "cloud_properties" => { "subnet" => "dynamic-subnet" }
+              "cloud_properties" => { "subnet" => dynamic_subnet_id }
             }
           },
           registry_endpoint: "example.com",
@@ -624,7 +625,7 @@ module Bosh::AwsCloud
           networks_spec: {
             "net1" => {
               "type" => "dynamic",
-              "cloud_properties" => { "subnet" => "dynamic-subnet" }
+              "cloud_properties" => { "subnet" => dynamic_subnet_id }
             }
           },
           registry_endpoint: "example.com",
@@ -643,7 +644,7 @@ module Bosh::AwsCloud
 
     def mapping(input)
       instance_param_mapper.manifest_params = input
-      instance_params = instance_param_mapper.instance_params
+      instance_param_mapper.instance_params
     end
   end
 end
