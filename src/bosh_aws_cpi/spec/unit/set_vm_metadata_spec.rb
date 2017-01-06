@@ -5,7 +5,7 @@ describe Bosh::AwsCloud::Cloud, '#set_vm_metadata' do
 
   before :each do
     @cloud = mock_cloud do |ec2|
-      allow(ec2.instances).to receive(:[]).with('i-foobar').and_return(instance)
+      allow(ec2).to receive(:instance).with('i-foobar').and_return(instance)
     end
   end
 
