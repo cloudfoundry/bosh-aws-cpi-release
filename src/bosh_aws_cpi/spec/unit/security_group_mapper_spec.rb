@@ -2,25 +2,24 @@ require "spec_helper"
 
 module Bosh::AwsCloud
   describe SecurityGroupMapper do
-    let(:security_group_mapper) { SecurityGroupMapper.new(ec2_client) }
-    let(:ec2_client) { instance_double(Aws::EC2) }
+    let(:security_group_mapper) { SecurityGroupMapper.new(ec2_resource) }
+    let(:ec2_resource) { instance_double(Aws::EC2::Resource) }
     let(:security_groups) do
       [
-        instance_double(Aws::EC2::SecurityGroup, name: 'valid-sg0', id: 'sg-00000000'),
-        instance_double(Aws::EC2::SecurityGroup, name: 'valid-sg1', id: 'sg-11111111')
+        instance_double(Aws::EC2::SecurityGroup, group_name: 'valid-sg0', id: 'sg-00000000'),
+        instance_double(Aws::EC2::SecurityGroup, group_name: 'valid-sg1', id: 'sg-11111111')
       ]
     end
     let(:target_subnet_id) { 'fake-subnet-id' }
-    let(:subnets) do
-      {
-        target_subnet_id => instance_double(Aws::EC2::Subnet,
-          id: target_subnet_id,
-          vpc: instance_double(Aws::EC2::VPC, security_groups: security_groups))
-      }
+    let(:subnet) do
+      instance_double(Aws::EC2::Subnet,
+        id: target_subnet_id,
+        vpc: instance_double(Aws::EC2::Vpc, security_groups: security_groups),
+      )
     end
 
     before do
-      allow(ec2_client).to receive(:subnets).and_return(subnets)
+      allow(ec2_resource).to receive(:subnet).with(target_subnet_id).and_return(subnet)
     end
 
     describe '#map' do
@@ -38,7 +37,7 @@ module Bosh::AwsCloud
 
       context 'given input as a list of security groups as IDs' do
         it 'returns the security group IDs' do
-          expect(ec2_client).to_not receive(:subnets)
+          expect(ec2_resource).to_not receive(:subnets)
           expect(security_group_mapper.map_to_ids(['sg-00000000', 'sg-11111111'], target_subnet_id))
             .to eq(['sg-00000000', 'sg-11111111'])
         end
