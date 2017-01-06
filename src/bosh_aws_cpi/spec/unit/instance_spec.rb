@@ -8,7 +8,7 @@ module Bosh::AwsCloud
     let(:registry) { instance_double('Bosh::Cpi::RegistryClient', :update_settings => nil) }
     let(:elb) { double('Aws::ELB') }
     let(:logger) { Logger.new('/dev/null') }
-
+    let(:elastic_ip) { instance_double(Aws::EC2::VpcAddress, public_ip: 'fake-ip') }
     let(:instance_id) { 'fake-id' }
 
     describe '#id' do
@@ -17,21 +17,25 @@ module Bosh::AwsCloud
 
     describe '#elastic_ip' do
       it 'returns elastic IP' do
-        expect(aws_instance).to receive(:elastic_ip).and_return('fake-ip')
+        expect(aws_instance).to receive(:vpc_addresses).and_return([elastic_ip])
         expect(instance.elastic_ip).to eq('fake-ip')
       end
     end
 
     describe '#associate_elastic_ip' do
       it 'propagates associate_elastic_ip' do
-        expect(aws_instance).to receive(:associate_elastic_ip).with('fake-new-ip')
+        new_ip = instance_double(Aws::EC2::VpcAddress, public_ip: 'fake-ip')
+        expect(Aws::EC2::VpcAddress).to receive(:new).with('fake-new-ip').and_return(new_ip)
+        expect(new_ip).to receive(:associate).with(instance_id: instance_id)
+
         instance.associate_elastic_ip('fake-new-ip')
       end
     end
 
     describe '#disassociate_elastic_ip' do
       it 'propagates disassociate_elastic_ip' do
-        expect(aws_instance).to receive(:disassociate_elastic_ip)
+        expect(aws_instance).to receive(:vpc_addresses).and_return([elastic_ip])
+        expect(elastic_ip).to receive_message_chain("association.delete")
         instance.disassociate_elastic_ip
       end
     end
@@ -44,13 +48,13 @@ module Bosh::AwsCloud
 
       it 'returns true if instance does exist' do
         expect(aws_instance).to receive(:exists?).and_return(true)
-        expect(aws_instance).to receive(:status).and_return(:running)
+        expect(aws_instance).to receive_message_chain('state.name').and_return('running')
         expect(instance.exists?).to be(true)
       end
 
       it 'returns false if instance exists but is terminated' do
         expect(aws_instance).to receive(:exists?).and_return(true)
-        expect(aws_instance).to receive(:status).and_return(:terminated)
+        expect(aws_instance).to receive_message_chain('state.name').and_return('terminated')
         expect(instance.exists?).to be(false)
       end
     end
@@ -59,7 +63,7 @@ module Bosh::AwsCloud
       it 'waits for instance state to be running' do
         expect(ResourceWait).to receive(:for_instance).with(
           instance: aws_instance,
-          state: :running,
+          state: 'running',
         )
         instance.wait_for_running
       end
@@ -84,7 +88,7 @@ module Bosh::AwsCloud
         expect(registry).to receive(:delete_settings).with(instance_id).ordered
 
         expect(ResourceWait).to receive(:for_instance).
-          with(instance: aws_instance, state: :terminated).ordered
+          with(instance: aws_instance, state: 'terminated').ordered
 
         instance.terminate
       end
@@ -94,7 +98,7 @@ module Bosh::AwsCloud
           # AWS returns NotFound error if instance no longer exists in AWS console
           # (This could happen when instance was deleted manually and BOSH is not aware of that)
           allow(aws_instance).to receive(:terminate).
-            with(no_args).and_raise(Aws::EC2::Errors::InvalidInstanceIDNotFound)
+            with(no_args).and_raise(Aws::EC2::Errors::InvalidInstanceIDNotFound.new(nil, 'not-found'))
         end
 
         it 'raises Bosh::Clouds::VMNotFound but still removes settings from registry' do
@@ -115,11 +119,13 @@ module Bosh::AwsCloud
 
         it 'logs a message and considers the instance to be terminated' do
           expect(registry).to receive(:delete_settings).with(instance_id)
+          expect(aws_instance).to receive(:reload)
 
-          allow(aws_instance).to receive(:status).
-                                     with(no_args).and_raise(Aws::EC2::Errors::InvalidInstanceIDNotFound)
+          err = Aws::EC2::Errors::InvalidInstanceIDNotFound.new(nil, 'not-found')
+          allow(aws_instance).to receive(:state).
+            with(no_args).and_raise(err)
 
-          expect(logger).to receive(:debug).with("Failed to find terminated instance '#{instance_id}' after deletion: #{Aws::EC2::Errors::InvalidInstanceIDNotFound.new.inspect}")
+          expect(logger).to receive(:debug).with("Failed to find terminated instance '#{instance_id}' after deletion: #{err.inspect}")
 
           instance.terminate
         end
@@ -144,53 +150,54 @@ module Bosh::AwsCloud
 
     describe '#update_routing_tables' do
       let(:fake_vpc) { instance_double('Aws::EC2::VPC') }
-      let(:fake_tables) { instance_double('Aws::EC2::RouteTableCollection') }
-      let(:fake_table) { instance_double('Aws::EC2::RouteTable') }
+      let(:fake_table) { instance_double('Aws::EC2::RouteTable', id: 'r-12345') }
       let(:fake_route) { instance_double('Aws::EC2::Route') }
       let(:fake_routes) {[ fake_route ]}
 
       before do
         allow(aws_instance).to receive(:vpc).and_return(fake_vpc)
-        allow(fake_vpc).to receive(:route_tables).and_return(fake_tables)
-        allow(fake_tables).to receive(:[]).with('r-12345').and_return(fake_table)
+        allow(fake_vpc).to receive(:route_tables).and_return([fake_table])
         allow(fake_table).to receive(:routes).and_return(fake_routes)
         allow(fake_route).to receive(:destination_cidr_block).and_return("10.0.0.0/16")
       end
       it 'updates the routing table entry with the instance ID when finding an existing route' do
           destination = "10.0.0.0/16"
-          expect(fake_table).to receive(:replace_route).with(destination, { :instance => aws_instance })
+          expect(fake_route).to receive(:replace).with(instance_id: instance_id)
           instance.update_routing_tables [{ "table_id" => "r-12345", "destination" => destination }]
       end
       it 'creates a routing table entry with the instance ID when the route does not exist' do
           destination = "10.5.0.0/16"
-          expect(fake_table).to receive(:create_route).with(destination, { :instance => aws_instance })
+          expect(fake_table).to receive(:create_route).with(destination_cidr_block: destination, instance_id: instance_id)
           instance.update_routing_tables [{ "table_id" => "r-12345", "destination" => destination }]
       end
     end
 
     describe '#source_dest_check=' do
       it 'propagates source_dest_check= true' do
-        expect(aws_instance).to receive(:source_dest_check=).with(false)
+        expect(aws_instance).to receive(:modify_attribute).with(source_dest_check: {value: false})
         instance.source_dest_check = false
       end
 
       it 'propagates source_dest_check= false' do
-        expect(aws_instance).to receive(:source_dest_check=).with(true)
+        expect(aws_instance).to receive(:modify_attribute).with(source_dest_check: {value: true})
         instance.source_dest_check = true
       end
     end
 
     describe '#attach_to_load_balancers' do
-      before { allow(elb).to receive(:load_balancers).and_return(load_balancers) }
-      let(:load_balancers) { { 'fake-lb1-id' => load_balancer1, 'fake-lb2-id' => load_balancer2 } }
-      let(:load_balancer1) { instance_double('Aws::ELB::LoadBalancer', instances: lb1_instances) }
-      let(:lb1_instances) { instance_double('Aws::ELB::InstanceCollection') }
-      let(:load_balancer2) { instance_double('Aws::ELB::LoadBalancer', instances: lb2_instances) }
-      let(:lb2_instances) { instance_double('Aws::ELB::InstanceCollection') }
-
       it 'attaches the instance to the list of load balancers' do
-        expect(lb1_instances).to receive(:register).with(aws_instance)
-        expect(lb2_instances).to receive(:register).with(aws_instance)
+        expect(elb).to receive(:register_instances_with_load_balancer).with({
+          instances: [
+            instance_id: instance_id,
+          ],
+          load_balancer_name: 'fake-lb1-id',
+        })
+        expect(elb).to receive(:register_instances_with_load_balancer).with({
+          instances: [
+            instance_id: instance_id,
+          ],
+          load_balancer_name: 'fake-lb2-id',
+        })
         instance.attach_to_load_balancers(%w(fake-lb1-id fake-lb2-id))
       end
     end

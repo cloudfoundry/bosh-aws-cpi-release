@@ -787,11 +787,10 @@ describe Bosh::AwsCloud::Cloud do
           found_route = route_table.routes.any? { |r| r.destination_cidr_block == route_destination && r.instance_id == original_instance_id }
           expect(found_route).to be(true), "Expected to find route with destination '#{route_destination}', but did not"
 
-          vm_type['advertised_routes'].first['destination'] = '7.7.7.7/32'
           vm_lifecycle do |instance_id|
             route_table.reload
-            found_route = route_table.routes.any? { |r| r.destination_cidr_block == '7.7.7.7/32' && r.instance_id == instance_id }
-            expect(found_route).to be(true), "Expected to find route with destination '7.7.7.7/32', but did not"
+            found_route = route_table.routes.any? { |r| r.destination_cidr_block == route_destination && r.instance_id == instance_id }
+            expect(found_route).to be(true), "Expected to find route with destination '#{route_destination}', but did not"
           end
         end
       end

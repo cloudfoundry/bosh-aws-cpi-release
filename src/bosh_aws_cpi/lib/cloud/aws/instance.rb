@@ -14,10 +14,11 @@ module Bosh::AwsCloud
     end
 
     def elastic_ip
-      if @aws_instance.vpc_addresses.count == 0
+      addresses = @aws_instance.vpc_addresses
+      if addresses.count == 0
         nil
       else
-        @aws_instance.vpc_addresses.first.public_ip
+        addresses.first.public_ip
       end
     end
 
@@ -29,10 +30,11 @@ module Bosh::AwsCloud
     end
 
     def disassociate_elastic_ip
-      if @aws_instance.vpc_addresses.count == 0
+      addresses = @aws_instance.vpc_addresses
+      if addresses.count == 0
         raise Bosh::Clouds::CloudError, 'Cannot call `disassociate_elastic_ip` on an Instance without an attached Elastic IP'
       else
-        @aws_instance.vpc_addresses.first.association.delete
+        addresses.first.association.delete
       end
     end
 
@@ -111,9 +113,9 @@ module Bosh::AwsCloud
           table = tables.find { |t| t.id == definition['table_id'] }
           @logger.debug("Sending traffic for '#{definition['destination']}' to '#{@aws_instance.id}' in '#{definition['table_id']}'")
 
-          if table.routes.any? {|route| route.destination_cidr_block == definition['destination'] }
-            table.replace_route({
-              destination_cidr_block: definition['destination'],
+          existing_route = table.routes.find {|route| route.destination_cidr_block == definition['destination'] }
+          if existing_route
+            existing_route.replace({
               instance_id: @aws_instance.id,
             })
           else
