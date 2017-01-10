@@ -60,7 +60,7 @@ module Bosh::AwsCloud
     def self.for_image(args)
       image = args.fetch(:image) { raise ArgumentError, 'image object required' }
       target_state = args.fetch(:state) { raise ArgumentError, 'state symbol required' }
-      valid_states = ['available', 'deleted']
+      valid_states = ['available', 'deregistered']
       validate_states(valid_states, target_state)
 
       ignored_errors = []
@@ -73,7 +73,7 @@ module Bosh::AwsCloud
         current_state == target_state
       end
     rescue Aws::EC2::Errors::InvalidAMIIDNotFound, Aws::EC2::Errors::ResourceNotFound
-      raise unless target_state == 'deleted'
+      raise unless target_state == 'deregistered'
     end
 
     def self.for_volume(args)
@@ -158,6 +158,10 @@ module Bosh::AwsCloud
       state = nil
       Bosh::Retryable.new(tries: tries, sleep: sleep_cb, on: errors, ensure: ensure_cb).retryer do
         resource.reload
+
+        if resource.data.nil?
+          raise Aws::EC2::Errors::ResourceNotFound.new(nil, "Waiting for #{desc} to be #{target_state}") unless resource.exists?
+        end
 
         s = resource.state
         state = s.is_a?(String) ? s : s.name

@@ -136,8 +136,8 @@ describe Bosh::AwsCloud::Cloud do
       let(:endpoint_configured_cpi) do
         described_class.new(
           'aws' => {
-            'ec2_endpoint' => 'https://ec2.us-east-1.amazonaws.com',
-            'elb_endpoint' => 'https://elasticloadbalancing.us-east-1.amazonaws.com',
+            'ec2_endpoint' => "https://ec2.#{@region}.amazonaws.com",
+            'elb_endpoint' => "https://elasticloadbalancing.#{@region}.amazonaws.com",
             'default_key_name' => default_key_name,
             'default_security_groups' => security_groups,
             'fast_path_delete' => 'yes',
@@ -156,7 +156,7 @@ describe Bosh::AwsCloud::Cloud do
 
       it 'registers new instance with elb' do
         begin
-          stemcell_id = endpoint_configured_cpi.create_stemcell('/not/a/real/path', {'ami' => {'us-east-1' => ami}})
+          stemcell_id = endpoint_configured_cpi.create_stemcell('/not/a/real/path', {'ami' => {@region => ami}})
           vm_id = endpoint_configured_cpi.create_vm(
             nil,
             stemcell_id,
@@ -166,9 +166,9 @@ describe Bosh::AwsCloud::Cloud do
           )
 
           aws_params = {
-            'access_key_id' => @access_key_id,
-            'secret_access_key' => @secret_access_key,
-            'region' => @region,
+            access_key_id: @access_key_id,
+            secret_access_key: @secret_access_key,
+            region: @region,
           }
 
           elb_client = Aws::ElasticLoadBalancing::Client.new(aws_params)
@@ -662,7 +662,7 @@ describe Bosh::AwsCloud::Cloud do
     context 'when vm with attached disk is removed' do
       it 'should wait for 10 mins to attach disk/delete disk ignoring VolumeInUse error' do
         begin
-          stemcell_id = cpi.create_stemcell('/not/a/real/path', {'ami' => {'us-east-1' => ami}})
+          stemcell_id = cpi.create_stemcell('/not/a/real/path', {'ami' => {@region => ami}})
           vm_id = cpi.create_vm(
             nil,
             stemcell_id,

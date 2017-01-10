@@ -605,7 +605,7 @@ module Bosh::AwsCloud
         raise e
       ensure
         if instance && volume
-          detach_ebs_volume(instance, volume, true)
+          detach_ebs_volume(instance.reload, volume, true)
           delete_disk(volume.id)
         end
       end

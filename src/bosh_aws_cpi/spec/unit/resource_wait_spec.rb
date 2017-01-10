@@ -5,7 +5,7 @@ module Bosh::AwsCloud
     before { allow(Kernel).to receive(:sleep) }
 
     describe '.for_instance' do
-      let(:instance) { double(Aws::EC2::Instance, id: 'i-1234') }
+      let(:instance) { double(Aws::EC2::Instance, id: 'i-1234', data: 'some-data', exists?: true) }
 
       before(:each) do
         allow(instance).to receive(:reload)
@@ -56,9 +56,9 @@ module Bosh::AwsCloud
     end
 
     describe '.for_attachment' do
-      let(:volume) { double(Aws::EC2::Volume, id: 'vol-1234') }
-      let(:instance) { double(Aws::EC2::Instance, id: 'i-5678') }
-      let(:attachment) { double(SdkHelpers::VolumeAttachment, volume: volume, instance: instance, device: '/dev/sda1') }
+      let(:volume) { double(Aws::EC2::Volume, id: 'vol-1234', data: 'some-data', exists?: true) }
+      let(:instance) { double(Aws::EC2::Instance, id: 'i-5678', data: 'some-data', exists?: true) }
+      let(:attachment) { double(SdkHelpers::VolumeAttachment, volume: volume, instance: instance, device: '/dev/sda1', data: 'some-data', exists?: true) }
       before (:each) do
         allow(attachment).to receive(:reload)
       end
@@ -97,7 +97,7 @@ module Bosh::AwsCloud
     end
 
     describe '.for_volume' do
-      let(:volume) { double(Aws::EC2::Volume, id: 'v-123') }
+      let(:volume) { double(Aws::EC2::Volume, id: 'v-123', data: 'some-data', exists?: true) }
       before (:each) do
         allow(volume).to receive(:reload)
       end
@@ -139,7 +139,7 @@ module Bosh::AwsCloud
     end
 
     describe '.for_snapshot' do
-      let(:snapshot) { double(Aws::EC2::Snapshot, id: 'snap-123') }
+      let(:snapshot) { double(Aws::EC2::Snapshot, id: 'snap-123', data: 'some-data', exists?: true) }
       before (:each) do
         allow(snapshot).to receive(:reload)
       end
@@ -164,7 +164,7 @@ module Bosh::AwsCloud
     end
 
     describe '.for_image' do
-      let(:image) { double(Aws::EC2::Image, id: 'ami-123') }
+      let(:image) { double(Aws::EC2::Image, id: 'ami-123', data: 'some-data', exists?: true) }
       before (:each) do
         allow(image).to receive(:reload)
       end
@@ -196,19 +196,19 @@ module Bosh::AwsCloud
       end
 
       context 'deletion' do
-        it 'should wait until the state is deleted' do
+        it 'should wait until the state is deregistered' do
           expect(image).to receive(:state).and_return('available')
           expect(image).to receive(:state).and_return('pending')
-          expect(image).to receive(:state).and_return('deleted')
+          expect(image).to receive(:state).and_return('deregistered')
 
-          described_class.for_image(image: image, state: 'deleted')
+          described_class.for_image(image: image, state: 'deregistered')
         end
       end
     end
 
     describe 'catching errors' do
       it 'raises an error if the retry count is exceeded' do
-        resource = double('resource', state: 'bar')
+        resource = double('resource', state: 'bar', data: 'some-data', exists?: true)
         resource_arguments = {
           resource: resource,
           tries: 1,
@@ -248,7 +248,7 @@ module Bosh::AwsCloud
     end
 
     describe '#for_resource' do
-      let(:fake_resource) { double('fake-resource', state: 'unknown', reload: nil) }
+      let(:fake_resource) { double('fake-resource', state: 'unknown', reload: nil, data: 'some_data', exists?: true) }
       let(:args) do
         {
           resource: fake_resource,
@@ -268,6 +268,14 @@ module Bosh::AwsCloud
           .and_return(retryable)
 
         subject.for_resource(args)
+      end
+
+      context 'when the resource asynchronously ceases to exist' do
+        let(:fake_resource) { double('fake-resource', state: 'unknown', reload: nil, data: nil, exists?: false) }
+
+        it 'raises a ResourceNotFound error' do
+          expect { subject.for_resource(args) }.to raise_error(Aws::EC2::Errors::ResourceNotFound)
+        end
       end
 
       context 'when tries option is passed' do

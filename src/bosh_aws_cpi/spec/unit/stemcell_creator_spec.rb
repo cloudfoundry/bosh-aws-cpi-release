@@ -31,9 +31,7 @@ module Bosh::AwsCloud
       allow(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(snapshot: snapshot, state: 'completed')
       allow(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(image: image, state: 'available')
       allow(SecureRandom).to receive(:uuid).and_return("fake-uuid")
-      allow(region).to receive(:images).and_return({
-        image_id => image,
-      })
+      allow(region).to receive(:images).and_return(double(Aws::Resources::Collection, first: image))
       allow(region).to receive_message_chain(:client, :register_image).and_return(double("object", :image_id => image_id))
 
       expect(creator).to receive(:copy_root_image)

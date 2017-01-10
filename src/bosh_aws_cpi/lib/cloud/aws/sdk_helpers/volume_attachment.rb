@@ -16,16 +16,25 @@ module Bosh::AwsCloud::SdkHelpers
     end
 
     def state
-      target_attachment = @volume.attachments.find { |a| a.device == @device && a.instance_id == @instance.id }
-      if target_attachment.nil?
-        raise Aws::EC2::Errors::InvalidVolumeNotFound.new(nil, "Unable to find disk attachment '#{@device}' with volume '#{@volume.id}' and instance '#{@instance.id}'")
-      end
-
       target_attachment.state
     end
 
     def reload
       @volume.reload
+    end
+
+    def data
+      @volume.data
+    end
+
+    private
+
+    def target_attachment
+      attachment = @volume.attachments.find { |a| a.device == @device && a.instance_id == @instance.id }
+      if attachment.nil?
+        raise Aws::EC2::Errors::InvalidVolumeNotFound.new(nil, "Unable to find disk attachment '#{@device}' with volume '#{@volume.id}' and instance '#{@instance.id}'")
+      end
+      attachment
     end
   end
 end

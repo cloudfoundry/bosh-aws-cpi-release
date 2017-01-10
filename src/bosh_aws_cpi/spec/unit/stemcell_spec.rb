@@ -55,7 +55,7 @@ describe Bosh::AwsCloud::Stemcell do
         stemcell = described_class.new(resource, fake_aws_ami)
 
         expect(fake_aws_ami).to receive(:deregister).ordered
-        allow(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(image: fake_aws_ami, state: 'deleted')
+        allow(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(image: fake_aws_ami, state: 'deregistered')
         expect(fake_snapshot).to receive(:delete).ordered
 
         stemcell.delete
@@ -80,7 +80,7 @@ describe Bosh::AwsCloud::Stemcell do
         expect(fake_aws_ami).to receive(:deregister).ordered
 
         allow(Bosh::AwsCloud::ResourceWait).to receive(:for_image)
-          .with(image: fake_aws_ami, state: 'deleted')
+          .with(image: fake_aws_ami, state: 'deregistered')
           .and_return(Aws::EC2::Errors::ResourceNotFound.new(nil, 'not-found'))
 
         expect(fake_snapshot).to receive(:delete).ordered

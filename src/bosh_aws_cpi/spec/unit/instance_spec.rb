@@ -4,7 +4,7 @@ require 'logger'
 module Bosh::AwsCloud
   describe Instance do
     subject(:instance) { Instance.new(aws_instance, registry, elb, logger) }
-    let(:aws_instance) { instance_double('Aws::EC2::Instance', id: instance_id) }
+    let(:aws_instance) { instance_double('Aws::EC2::Instance', id: instance_id, data: 'some-data') }
     let(:registry) { instance_double('Bosh::Cpi::RegistryClient', :update_settings => nil) }
     let(:elb) { double('Aws::ELB') }
     let(:logger) { Logger.new('/dev/null') }

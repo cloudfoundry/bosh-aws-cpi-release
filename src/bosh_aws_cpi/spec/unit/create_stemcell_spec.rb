@@ -59,6 +59,7 @@ describe Bosh::AwsCloud::Cloud do
         end
 
         allow(instance).to receive(:exists?).and_return(true)
+        allow(instance).to receive(:reload).and_return(instance)
         allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
 
         expect(cloud).to receive(:create_disk).with(2048, {}, "i-xxxxxxxx").and_return("vol-xxxxxxxx")
@@ -87,6 +88,7 @@ describe Bosh::AwsCloud::Cloud do
           end
 
           allow(instance).to receive(:exists?).and_return(true)
+          allow(instance).to receive(:reload).and_return(instance)
           allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
 
           expect(cloud).to receive(:create_disk).with(2048, {}, "i-xxxxxxxx").and_return("vol-xxxxxxxx")

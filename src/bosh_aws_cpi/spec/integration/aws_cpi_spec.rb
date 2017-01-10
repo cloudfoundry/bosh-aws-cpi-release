@@ -1,6 +1,7 @@
 require 'spec_helper'
 require 'json'
 require 'tempfile'
+require 'yaml'
 
 describe "the aws_cpi executable" do
 
@@ -124,7 +125,7 @@ describe "the aws_cpi executable" do
       }
     }
     it 'merges the context into the cloud_properties' do
-      result = run_cpi({'method'=>'has_vm', 'arguments'=>['fake-vm-id'], 'context'=> context})
+      result = run_cpi({'method'=>'has_vm', 'arguments'=>['i-01f73de98ab33ad2f'], 'context'=> context})
 
       expect(result.keys).to eq(%w(result error log))
 
