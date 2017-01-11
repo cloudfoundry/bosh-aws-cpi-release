@@ -14,22 +14,22 @@ module Bosh::AwsCloud
       raise ArgumentError, "args should be a Hash, but `#{args.class}' given" unless args.is_a?(Hash)
       instance = args.fetch(:instance) { raise ArgumentError, 'instance object required' }
       target_state = args.fetch(:state) { raise ArgumentError, 'state symbol required' }
-      valid_states = [:running, :terminated]
+      valid_states = ['running', 'terminated']
       validate_states(valid_states, target_state)
 
       ignored_errors = []
-      if target_state == :running
+      if target_state == 'running'
         ignored_errors << Aws::EC2::Errors::InvalidInstanceIDNotFound
       end
 
       new.for_resource(resource: instance, errors: ignored_errors, target_state: target_state) do |instance_state|
-        current_state = instance_state.name
-        if target_state == :running && current_state == :terminated.to_s
+        current_state = instance_state
+        if target_state == 'running' && current_state == 'terminated'
           message = "Instance '#{instance.id}' terminated while starting"
           logger.error(message)
           raise Bosh::Clouds::VMCreationFailed.new(true), message
         else
-          current_state == target_state.to_s
+          current_state == target_state
         end
       end
     end
@@ -37,32 +37,32 @@ module Bosh::AwsCloud
     def self.for_attachment(args)
       attachment = args.fetch(:attachment) { raise ArgumentError, 'attachment object required' }
       target_state = args.fetch(:state) { raise ArgumentError, 'state symbol required' }
-      valid_states = [:attached, :detached]
+      valid_states = ['attached', 'detached']
       validate_states(valid_states, target_state)
 
       ignored_errors = []
-      if target_state == :attached
+      if target_state == 'attached'
         ignored_errors << Aws::EC2::Errors::InvalidVolumeNotFound
       end
       description = "volume %s to be %s to instance %s as device %s" % [attachment.volume.id, target_state, attachment.instance.id, attachment.device]
 
       new.for_resource(resource: attachment, target_state: target_state, description: description) do |current_state|
-        current_state == target_state.to_s
+        current_state == target_state
       end
     rescue Aws::EC2::Errors::InvalidVolumeNotFound
       # if an attachment is detached, AWS can reap the object and the reference is no longer found,
       # so consider this exception a success condition if we are detaching
-      raise unless target_state == :detached
+      raise unless target_state == 'detached'
     end
 
     def self.for_image(args)
       image = args.fetch(:image) { raise ArgumentError, 'image object required' }
       target_state = args.fetch(:state) { raise ArgumentError, 'state symbol required' }
-      valid_states = [:available, :deleted]
+      valid_states = ['available', 'deleted']
       validate_states(valid_states, target_state)
 
       ignored_errors = []
-      if target_state == :available
+      if target_state == 'available'
         # TODO: is this right?
         ignored_errors << Aws::EC2::Errors::InvalidAMIID::NotFound
       end
@@ -73,57 +73,31 @@ module Bosh::AwsCloud
     rescue Aws::Core::Resource::NotFound # TODO: this error is definitely wrong
       # if an AMI is deleted, AWS can reap the object and the reference is no longer found,
       # so consider this exception a success condition if we are deleting
-      raise unless target_state == :deleted
+      raise unless target_state == 'deleted'
     end
 
     def self.for_volume(args)
       volume = args.fetch(:volume) { raise ArgumentError, 'volume object required' }
       target_state = args.fetch(:state) { raise ArgumentError, 'state symbol required' }
-      valid_states = [:available, :deleted]
+      valid_states = ['available', 'deleted']
       validate_states(valid_states, target_state)
 
       new.for_resource(resource: volume, target_state: target_state) do |current_state|
-        current_state == target_state.to_s
+        current_state == target_state
       end
     rescue Aws::EC2::Errors::InvalidVolumeNotFound
       # if an volume is deleted, AWS can reap the object and the reference is no longer found,
       # so consider this exception a success condition if we are deleting
-      raise unless target_state == :deleted
+      raise unless target_state == 'deleted'
     end
 
     def self.for_snapshot(args)
       snapshot = args.fetch(:snapshot) { raise ArgumentError, 'snapshot object required' }
       target_state = args.fetch(:state) { raise ArgumentError, 'state symbol required' }
-      valid_states = [:completed]
+      valid_states = ['completed']
       validate_states(valid_states, target_state)
 
       new.for_resource(resource: snapshot, target_state: target_state) do |current_state|
-        current_state == target_state.to_s
-      end
-    end
-
-    # TODO: is this ever used?
-    def self.for_subnet(args)
-      subnet = args.fetch(:subnet) { raise ArgumentError, 'subnet object required' }
-      target_state = args.fetch(:state) { raise ArgumentError, 'state symbol required' }
-      valid_states = [:available]
-      validate_states(valid_states, target_state)
-
-      ignored_errors = [Aws::EC2::Errors::InvalidSubnetID::NotFound]
-
-      new.for_resource(resource: subnet, target_state: target_state, errors: ignored_errors, state_method: :state) do |current_state|
-        current_state == target_state
-      end
-    end
-
-    # TODO: is this ever used?
-    def self.for_sgroup(args)
-      sgroup = args.fetch(:sgroup) { raise ArgumentError, 'sgroup object required' }
-      target_state = args.fetch(:state) { raise ArgumentError, 'state symbol required' }
-      valid_states = [true, false]
-      validate_states(valid_states, target_state)
-
-      new.for_resource(resource: sgroup, target_state: true, state_method: :exists?) do |current_state|
         current_state == target_state
       end
     end
@@ -162,7 +136,6 @@ module Bosh::AwsCloud
 
     def for_resource(args, &blk)
       resource = args.fetch(:resource)
-      state_method = args.fetch(:state_method, :state)
       errors = args.fetch(:errors, [])
       desc = args.fetch(:description) { resource.id }
       tries = args.fetch(:tries, DEFAULT_TRIES).to_i
@@ -178,10 +151,10 @@ module Bosh::AwsCloud
 
       state = nil
       Bosh::Retryable.new(tries: tries, sleep: sleep_cb, on: errors, ensure: ensure_cb).retryer do
-        state = resource.method(state_method).call
         resource.reload
+        state = resource.state.is_a?(String) ? resource.state : resource.state.name
         # check all cases where state can be error or failed
-        if state == :error || state == :failed
+        if state == 'error' || state == 'failed'
           raise Bosh::Clouds::CloudError, "#{desc} state is #{state}, expected #{target_state}, took #{time_passed}s"
         end
 

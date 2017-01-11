@@ -18,6 +18,7 @@ describe Bosh::AwsCloud::Cloud do
         'aws' => {
           'ec2_endpoint' => 'https://ec2.sa-east-1.amazonaws.com',
           'elb_endpoint' => 'https://elasticloadbalancing.sa-east-1.amazonaws.com',
+          'region' => 'sa-east-1',
           'access_key_id' => @access_key_id,
           'default_key_name' => 'fake-key',
           'secret_access_key' => @secret_access_key,
@@ -33,7 +34,7 @@ describe Bosh::AwsCloud::Cloud do
 
     it 'uses the given endpoint' do
       expect {
-        cpi.has_vm?('i-nope')
+        cpi.has_vm?('i-010fd20eb24f606ab')
       }.to_not raise_error
     end
   end
@@ -81,7 +82,7 @@ describe Bosh::AwsCloud::Cloud do
           ENV['BOSH_CA_CERT_FILE'] = valid_bundle.path
 
           expect {
-            cpi.has_vm?('i-nope')
+            cpi.has_vm?('i-010fd20eb24f606ab')
           }.to_not raise_error
         ensure
           File.delete(valid_bundle.path)
@@ -95,8 +96,8 @@ describe Bosh::AwsCloud::Cloud do
         ENV['BOSH_CA_CERT_FILE'] = asset('invalid-cert.pem')
 
         expect {
-          cpi.has_vm?('i-nope')
-        }.to raise_error(OpenSSL::SSL::SSLError)
+          cpi.has_vm?('i-010fd20eb24f606ab')
+        }.to raise_error(Seahorse::Client::NetworkingError)
       end
     end
   end

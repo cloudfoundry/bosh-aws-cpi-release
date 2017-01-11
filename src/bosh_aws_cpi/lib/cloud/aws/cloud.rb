@@ -7,8 +7,6 @@ module Bosh::AwsCloud
     METADATA_TIMEOUT = 5 # in seconds
     DEVICE_POLL_TIMEOUT = 60 # in seconds
 
-    # TODO: should we remove ec2_client reader to encourage use of Resources only? (ec2_resource.client)
-    attr_reader :ec2_client
     attr_reader :ec2_resource
     attr_reader :registry
     attr_reader :options
@@ -48,7 +46,7 @@ module Bosh::AwsCloud
       # end
 
       if ENV.has_key?('BOSH_CA_CERT_FILE')
-        @aws_params[:ssl_ca_file] = ENV['BOSH_CA_CERT_FILE']
+        @aws_params[:ssl_ca_bundle] = ENV['BOSH_CA_CERT_FILE']
       end
 
       # credentials_source could be static (default) or env_or_profile
@@ -230,7 +228,7 @@ module Bosh::AwsCloud
         volume = Aws::EC2::Volume.new(volume_type.volume_id, @ec2_client)
 
         logger.info("Creating volume '#{volume.id}'")
-        ResourceWait.for_volume(volume: volume, state: :available)
+        ResourceWait.for_volume(volume: volume, state: 'available')
 
         volume.id
       end
@@ -298,7 +296,7 @@ module Bosh::AwsCloud
           return
         end
 
-        ResourceWait.for_volume(volume: volume, state: :deleted)
+        ResourceWait.for_volume(volume: volume, state: 'deleted')
 
         logger.info("Volume `#{disk_id}' has been deleted")
       end
@@ -383,7 +381,7 @@ module Bosh::AwsCloud
         TagManager.tag(snapshot, 'device', devices.first) unless devices.empty?
         TagManager.tag(snapshot, 'Name', name.join('/'))
 
-        ResourceWait.for_snapshot(snapshot: snapshot, state: :completed)
+        ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
         snapshot.id
       end
     end
@@ -643,7 +641,7 @@ module Bosh::AwsCloud
       end
 
       attachment = SdkHelpers::VolumeAttachment.new(attachment_resp, @ec2_resource)
-      ResourceWait.for_attachment(attachment: attachment, state: :attached)
+      ResourceWait.for_attachment(attachment: attachment, state: 'attached')
 
       device_name = attachment.device
       logger.info("Attached '#{volume.id}' to '#{instance.id}' as '#{device_name}'")
@@ -678,7 +676,7 @@ module Bosh::AwsCloud
       logger.info("Detaching `#{volume.id}' from `#{instance.id}'")
 
       attachment = SdkHelpers::VolumeAttachment.new(attachment_resp, @ec2_resource)
-      ResourceWait.for_attachment(attachment: attachment, state: :detached)
+      ResourceWait.for_attachment(attachment: attachment, state: 'detached')
     end
 
     ##
@@ -785,7 +783,7 @@ module Bosh::AwsCloud
       # make an arbitrary HTTP request to ensure we can connect and creds are valid
       @ec2_resource.subnets.first
       true
-    rescue Net::OpenTimeout => e
+    rescue Net::OpenTimeout
       false
     end
   end

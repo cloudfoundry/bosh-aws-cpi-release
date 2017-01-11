@@ -50,8 +50,7 @@ module Bosh::AwsCloud
       # forever (until the operation is cancelled by the user).
       begin
         @logger.info("Waiting for instance to be ready...")
-        # TODO: are states symbols or strings?
-        ResourceWait.for_instance(instance: @aws_instance, state: :running)
+        ResourceWait.for_instance(instance: @aws_instance, state: 'running')
       rescue Bosh::Common::RetryCountExceeded
         message = "Timed out waiting for instance '#{@aws_instance.id}' to be running"
         @logger.warn(message)
@@ -91,7 +90,7 @@ module Bosh::AwsCloud
 
       begin
         @logger.info("Deleting instance '#{@aws_instance.id}'")
-        ResourceWait.for_instance(instance: @aws_instance, state: :terminated)
+        ResourceWait.for_instance(instance: @aws_instance, state: 'terminated')
       rescue Aws::EC2::Errors::InvalidInstanceIDNotFound => e
         @logger.debug("Failed to find terminated instance '#{@aws_instance.id}' after deletion: #{e.inspect}")
         # It's OK, just means that instance has already been deleted
@@ -100,7 +99,7 @@ module Bosh::AwsCloud
 
     # Determines if the instance exists.
     def exists?
-      @aws_instance.exists? && @aws_instance.state.name != :terminated
+      @aws_instance.exists? && @aws_instance.state.name != 'terminated'
     end
 
     def update_routing_tables(route_definitions)

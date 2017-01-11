@@ -19,12 +19,12 @@ module Bosh::AwsCloud
       copy_root_image
 
       snapshot = volume.create_snapshot
-      ResourceWait.for_snapshot(snapshot: snapshot, state: :completed)
+      ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
 
       # the top-level ec2 class' ImageCollection.create does not support the full set of params
       params = image_params(snapshot.id)
       image = client.images[client.client.register_image(params).image_id]
-      ResourceWait.for_image(image: image, state: :available)
+      ResourceWait.for_image(image: image, state: 'available')
 
       TagManager.tag(image, 'Name', params[:description]) if params[:description]
 

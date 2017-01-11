@@ -64,6 +64,7 @@ describe Bosh::AwsCloud::Cloud do
       ec2_client = Aws::EC2::Client.new(
         access_key_id:     @access_key_id,
         secret_access_key: @secret_access_key,
+        logger:            Logger.new(STDERR),
       )
       instances = Aws::EC2::Resource.new(client: ec2_client).instances({
         filters: [ { name: 'tag-key', values: ['delete_me'] } ],
@@ -232,10 +233,10 @@ describe Bosh::AwsCloud::Cloud do
           ensure
             cpi.delete_snapshot(snapshot_id) if snapshot_id
             Bosh::Common.retryable(tries: 20, on: Bosh::Clouds::DiskNotAttached, sleep: lambda { |n, _| [2**(n-1), 30].min }) do
-              cpi.detach_disk(instance_id, volume_id)
+              cpi.detach_disk(instance_id, volume_id) if instance_id && volume_id
               true
             end
-            cpi.delete_disk(volume_id)
+            cpi.delete_disk(volume_id) if volume_id
           end
         end
       end

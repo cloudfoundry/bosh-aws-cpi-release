@@ -200,19 +200,6 @@ module Bosh::AwsCloud
       end
     end
 
-    describe '.for_subnet' do
-      let(:subnet) { double(Aws::EC2::Subnet, id: 'subnet-123') }
-
-      context 'creation' do
-        it 'should wait until the state is completed' do
-          expect(subnet).to receive(:state).and_return(:pending)
-          expect(subnet).to receive(:state).and_return(:available)
-
-          described_class.for_subnet(subnet: subnet, state: :available)
-        end
-      end
-    end
-
     describe 'catching errors' do
       it 'raises an error if the retry count is exceeded' do
         resource = double('resource', status: :bar)
