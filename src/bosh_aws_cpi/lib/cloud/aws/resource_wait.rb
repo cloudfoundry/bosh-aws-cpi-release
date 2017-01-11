@@ -17,16 +17,9 @@ module Bosh::AwsCloud
       valid_states = [:running, :terminated]
       validate_states(valid_states, target_state)
 
-      ignored_errors = [
-          Bosh::Retryable::ErrorMatcher.new(
-              Aws::Errors::ServiceError,
-              /The service is unavailable. Please try again shortly./,
-          ),
-      ]
-
+      ignored_errors = []
       if target_state == :running
         ignored_errors << Aws::EC2::Errors::InvalidInstanceIDNotFound
-        # ignored_errors << Aws::Core::Resource::NotFound TODO find the right class for this error in v2
       end
 
       new.for_resource(resource: instance, errors: ignored_errors, target_state: target_state) do |instance_state|
@@ -42,36 +35,21 @@ module Bosh::AwsCloud
     end
 
     def self.for_attachment(args)
-      volume = args.fetch(:volume) { raise ArgumentError, 'volume object required' }
-      device = args.fetch(:device) { raise ArgumentError, 'device name required' }
+      attachment = args.fetch(:attachment) { raise ArgumentError, 'attachment object required' }
       target_state = args.fetch(:state) { raise ArgumentError, 'state symbol required' }
       valid_states = [:attached, :detached]
-      instance_id = args.fetch(:instance_id)
       validate_states(valid_states, target_state)
 
       ignored_errors = []
       if target_state == :attached
-        # ignored_errors << Aws::Core::Resource::NotFound TODO find the right class for this error in v2
+        ignored_errors << Aws::EC2::Errors::InvalidVolumeNotFound
       end
-      description = "volume %s to be %s to instance %s as device %s" % [volume.id, target_state, instance_id, device]
+      description = "volume %s to be %s to instance %s as device %s" % [attachment.volume.id, target_state, attachment.instance.id, attachment.device]
 
-      new.for_resource(
-        resource: volume,
-        errors: ignored_errors,
-        target_state: target_state,
-        description: description,
-        state_method: :attachments
-      ) do |attachments|
-        my_attachment = attachments.select { |a| a.device == device}.first
-        if my_attachment.nil?
-          # TODO: sanity check this
-          # my_attachment is nil on detach success since is not part of the volume attachments anymore
-          volume.state == 'available'
-        else
-          my_attachment.state == target_state.to_s
-        end
+      new.for_resource(resource: attachment, target_state: target_state, description: description) do |current_state|
+        current_state == target_state.to_s
       end
-    rescue Aws::Core::Resource::NotFound
+    rescue Aws::EC2::Errors::InvalidVolumeNotFound
       # if an attachment is detached, AWS can reap the object and the reference is no longer found,
       # so consider this exception a success condition if we are detaching
       raise unless target_state == :detached
@@ -85,13 +63,14 @@ module Bosh::AwsCloud
 
       ignored_errors = []
       if target_state == :available
-        ignored_errors = [Aws::EC2::Errors::InvalidAMIID::NotFound]
+        # TODO: is this right?
+        ignored_errors << Aws::EC2::Errors::InvalidAMIID::NotFound
       end
 
       new.for_resource(resource: image, errors: ignored_errors, target_state: target_state) do |current_state|
         current_state == target_state
       end
-    rescue Aws::Core::Resource::NotFound
+    rescue Aws::Core::Resource::NotFound # TODO: this error is definitely wrong
       # if an AMI is deleted, AWS can reap the object and the reference is no longer found,
       # so consider this exception a success condition if we are deleting
       raise unless target_state == :deleted
@@ -109,7 +88,6 @@ module Bosh::AwsCloud
     rescue Aws::EC2::Errors::InvalidVolumeNotFound
       # if an volume is deleted, AWS can reap the object and the reference is no longer found,
       # so consider this exception a success condition if we are deleting
-      binding.pry
       raise unless target_state == :deleted
     end
 
@@ -124,6 +102,7 @@ module Bosh::AwsCloud
       end
     end
 
+    # TODO: is this ever used?
     def self.for_subnet(args)
       subnet = args.fetch(:subnet) { raise ArgumentError, 'subnet object required' }
       target_state = args.fetch(:state) { raise ArgumentError, 'state symbol required' }
@@ -137,6 +116,7 @@ module Bosh::AwsCloud
       end
     end
 
+    # TODO: is this ever used?
     def self.for_sgroup(args)
       sgroup = args.fetch(:sgroup) { raise ArgumentError, 'sgroup object required' }
       target_state = args.fetch(:state) { raise ArgumentError, 'state symbol required' }

@@ -613,7 +613,7 @@ module Bosh::AwsCloud
       # even tough we don't call attach_disk until the disk is ready,
       # AWS might still lie and say that the disk isn't ready yet, so
       # we try again just to be really sure it is telling the truth
-      attachment = nil
+      attachment_resp = nil
 
       logger.debug("Attaching '#{volume.id}' to '#{instance.id}' as '#{device_name}'")
 
@@ -636,13 +636,14 @@ module Bosh::AwsCloud
           cloud_error("Failed to attach disk: #{error.message}")
         end
 
-        attachment = volume.attach_to_instance({
+        attachment_resp = volume.attach_to_instance({
           instance_id: instance.id,
           device: device_name,
         })
       end
 
-      ResourceWait.for_attachment(volume: volume, device: attachment.device, state: :attached, instance_id: attachment.instance_id)
+      attachment = SdkHelpers::VolumeAttachment.new(attachment_resp, @ec2_resource)
+      ResourceWait.for_attachment(attachment: attachment, state: :attached)
 
       device_name = attachment.device
       logger.info("Attached '#{volume.id}' to '#{instance.id}' as '#{device_name}'")
@@ -669,14 +670,15 @@ module Bosh::AwsCloud
           "Disk `#{volume.id}' is not attached to instance `#{instance.id}'"
       end
 
-      attachment = volume.detach_from_instance({
+      attachment_resp = volume.detach_from_instance({
         instance_id: instance.id,
         device: device_mapping.device_name,
         force: force,
       })
       logger.info("Detaching `#{volume.id}' from `#{instance.id}'")
 
-      ResourceWait.for_attachment(volume: volume, device: attachment.device, state: :detached, instance_id: attachment.instance_id)
+      attachment = SdkHelpers::VolumeAttachment.new(attachment_resp, @ec2_resource)
+      ResourceWait.for_attachment(attachment: attachment, state: :detached)
     end
 
     ##

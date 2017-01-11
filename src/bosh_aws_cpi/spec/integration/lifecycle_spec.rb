@@ -230,7 +230,7 @@ describe Bosh::AwsCloud::Cloud do
             expect(snapshot_tags['Name']).to eq 'deployment/cpi_spec/0/sdf'
 
           ensure
-            cpi.delete_snapshot(snapshot_id)
+            cpi.delete_snapshot(snapshot_id) if snapshot_id
             Bosh::Common.retryable(tries: 20, on: Bosh::Clouds::DiskNotAttached, sleep: lambda { |n, _| [2**(n-1), 30].min }) do
               cpi.detach_disk(instance_id, volume_id)
               true
