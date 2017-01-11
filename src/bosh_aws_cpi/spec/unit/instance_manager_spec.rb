@@ -122,6 +122,22 @@ module Bosh::AwsCloud
           # NB: The spot_bid_price param should trigger spot instance creation
           {'spot_bid_price'=>0.15, 'instance_type' => 'm1.small', 'key_name' => 'bar', 'availability_zone' => 'us-east-1a'}
         end
+        let(:request_spot_instances_result) {
+          instance_double(Aws::EC2::Types::RequestSpotInstancesResult, spot_instance_requests: spot_instance_requests)
+        }
+        let(:spot_instance_requests) {
+          [
+          instance_double(
+            Aws::EC2::Types::SpotInstanceRequest,
+            spot_instance_request_id: 'sir-12345c',
+            state: 'active',
+            instance_id: 'i-12345678',
+          ),
+          ]
+        }
+        let(:describe_spot_instance_requests_result) {
+          instance_double(Aws::EC2::Types::DescribeSpotInstanceRequestsResult, spot_instance_requests: spot_instance_requests)
+        }
 
         it 'should ask AWS to create a SPOT instance in the given region, when vm_type includes spot_bid_price' do
           allow(ec2).to receive(:client).and_return(aws_client)
@@ -140,16 +156,13 @@ module Bosh::AwsCloud
             expect(spot_request[:launch_specification]).to eq({ fake: 'instance-params' })
 
             # return
-            {
-              :spot_instance_request_set => [ { :spot_instance_request_id=>'sir-12345c', :other_params_here => 'which are not used' }],
-              :request_id => 'request-id-12345'
-            }
+            request_spot_instances_result
           end
 
           # Should poll the spot instance request until state is active
           expect(aws_client).to receive(:describe_spot_instance_requests).
             with(:spot_instance_request_ids=>['sir-12345c']).
-            and_return(:spot_instance_request_set => [{:state => 'active', :instance_id=>'i-12345678'}])
+              and_return(describe_spot_instance_requests_result)
 
           # Trigger spot instance request
           instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
@@ -195,11 +208,12 @@ module Bosh::AwsCloud
                 'availability_zone' => 'us-east-1a'
               }
             end
+            let(:message) { 'bid-price-too-low' }
 
             before do
               allow(aws_client).to receive(:run_instances)
               allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
-              expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false))
+              expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false), message)
             end
 
             it 'creates an on demand instance' do
@@ -217,8 +231,11 @@ module Bosh::AwsCloud
               )
             end
 
-            it 'does not log a warning' do
+            it 'does not log a warn but logs an info' do
               expect(logger).to_not receive(:warn)
+              allow(logger).to receive(:info)
+              expect(logger).to receive(:info).exactly(1)
+                .with("Spot instance creation failed with this message: #{message}; will create ondemand instance because `spot_ondemand_fallback` is set.")
 
               instance_manager.create(
                 agent_id,

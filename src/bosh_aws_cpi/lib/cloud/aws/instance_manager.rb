@@ -95,6 +95,8 @@ module Bosh::AwsCloud
             message = "Spot instance creation failed: #{e.inspect}"
             @logger.warn(message)
             raise e, message
+          else
+            @logger.info("Spot instance creation failed with this message: #{e.message}; will create ondemand instance because `spot_ondemand_fallback` is set.")
           end
         end
       end

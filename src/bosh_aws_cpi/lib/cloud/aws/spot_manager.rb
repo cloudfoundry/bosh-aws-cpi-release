@@ -52,22 +52,22 @@ module Bosh::AwsCloud
         @logger.warn("Retrying after expected error: #{error}") if error
 
         status = spot_instance_request_status
-        case status[:state]
+        case status.state
           when 'failed'
             fail_spot_creation("VM spot instance creation failed: #{status.inspect}")
           when 'open'
-            if status[:status] != nil && status[:status][:code] == 'price-too-low'
-              fail_spot_creation("Cannot create VM spot instance because bid price is too low: #{status.inspect}. Reverting to creating ondemand instance")
+            if status.status != nil && status.status.code == 'price-too-low'
+              fail_spot_creation("Cannot create VM spot instance because bid price is too low: #{status.status.message}.")
             end
           when 'active'
             @logger.info("Spot request instances fulfilled: #{status.inspect}")
-            instance = @ec2.instance(status[:instance_id])
+            instance = @ec2.instance(status.instance_id)
         end
       end
 
       instance
     rescue Bosh::Common::RetryCountExceeded
-      fail_spot_creation("Timed out waiting for spot request #{@spot_instance_requests.inspect} to be fulfilled. Reverting to creating ondemand instance")
+      fail_spot_creation("Timed out waiting for spot request #{@spot_instance_requests.inspect} to be fulfilled.")
     end
 
     def spot_instance_request_status
@@ -75,7 +75,7 @@ module Bosh::AwsCloud
       response = @ec2.client.describe_spot_instance_requests(
         spot_instance_request_ids: spot_instance_request_ids
       )
-      status = response[:spot_instance_request_set][0] # There is only ever 1
+      status = response.spot_instance_requests[0] # There is only ever 1
       @logger.debug("Spot instance request status: #{status.inspect}")
       status
     end
@@ -87,7 +87,7 @@ module Bosh::AwsCloud
     end
 
     def spot_instance_request_ids
-      @spot_instance_requests[:spot_instance_request_set].map { |r| r[:spot_instance_request_id] }
+      @spot_instance_requests.spot_instance_requests.map { |r| r.spot_instance_request_id }
     end
 
     def cancel_pending_spot_requests
