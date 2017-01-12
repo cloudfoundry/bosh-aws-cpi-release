@@ -774,8 +774,7 @@ describe Bosh::AwsCloud::Cloud do
         expect(route_table).to_not be_nil, "Could not found route table with id '#{route_table_id}'"
 
         vm_lifecycle do |instance_id|
-          found_route = route_table.routes.any? { |r| r.destination_cidr_block == route_destination && r.instance_id == instance_id }
-          expect(found_route).to be(true), "Expected to find route with destination '#{route_destination}', but did not"
+          expect(route_exists?(route_table, route_destination, instance_id)).to be(true), "Expected to find route with destination '#{route_destination}', but did not"
         end
       end
 
@@ -784,13 +783,10 @@ describe Bosh::AwsCloud::Cloud do
         expect(route_table).to_not be_nil, "Could not found route table with id '#{route_table_id}'"
 
         vm_lifecycle do |original_instance_id|
-          found_route = route_table.routes.any? { |r| r.destination_cidr_block == route_destination && r.instance_id == original_instance_id }
-          expect(found_route).to be(true), "Expected to find route with destination '#{route_destination}', but did not"
+          expect(route_exists?(route_table, route_destination, original_instance_id)).to be(true), "Expected to find route with destination '#{route_destination}', but did not"\
 
           vm_lifecycle do |instance_id|
-            route_table.reload
-            found_route = route_table.routes.any? { |r| r.destination_cidr_block == route_destination && r.instance_id == instance_id }
-            expect(found_route).to be(true), "Expected to find route with destination '#{route_destination}', but did not"
+            expect(route_exists?(route_table, route_destination, instance_id)).to be(true), "Expected to find route with destination '#{route_destination}', but did not"
           end
         end
       end
@@ -914,6 +910,16 @@ describe Bosh::AwsCloud::Cloud do
     )
     ec2 = Aws::EC2::Resource.new(client: ec2_client)
     ec2.image(ami_id)
+  end
+
+  def route_exists?(route_table, expected_cidr, instance_id)
+    4.times do
+      route_table.reload
+      found_route = route_table.routes.any? { |r| r.destination_cidr_block == expected_cidr && r.instance_id == instance_id }
+      return true if found_route
+      sleep 0.5
+    end
+    return false
   end
 end
 
