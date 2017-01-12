@@ -383,11 +383,14 @@ module Bosh::AwsCloud
         snapshot = volume.create_snapshot(name.join('/'))
         logger.info("snapshot '#{snapshot.id}' of volume '#{disk_id}' created")
 
+
+        tags = {}
         ['agent_id', 'instance_id', 'director_name', 'director_uuid'].each do |key|
-          TagManager.tag(snapshot, key, metadata[key])
+          tags[key] = metadata[key]
         end
-        TagManager.tag(snapshot, 'device', devices.first) unless devices.empty?
-        TagManager.tag(snapshot, 'Name', name.join('/'))
+        tags['device'] = devices.first unless devices.empty?
+        tags['Name'] = name.join('/')
+        TagManager.tags(snapshot, tags)
 
         ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
         snapshot.id
@@ -472,26 +475,18 @@ module Bosh::AwsCloud
 
       instance = @ec2_resource.instance(vm)
 
-      # TODO: bulk update, single HTTP call (tracker id: #136591893)
-      metadata.each_pair do |key, value|
-        TagManager.tag(instance, key, value) unless key == 'name'
-      end
-
-      name = metadata['name']
-      if name
-        TagManager.tag(instance, "Name", name)
-        return
-      end
-
       job = metadata['job']
       index = metadata['index']
 
-      if job && index
-        name = "#{job}/#{index}"
+      if metadata['name']
+        metadata['Name'] = metadata.delete('name')
+      elsif job && index
+        metadata['Name'] = "#{job}/#{index}"
       elsif metadata['compiling']
-        name = "compiling/#{metadata['compiling']}"
+        metadata['Name'] = "compiling/#{metadata['compiling']}"
       end
-      TagManager.tag(instance, "Name", name) if name
+
+      TagManager.tags(instance, metadata)
     rescue Aws::EC2::Errors::TagLimitExceeded => e
       logger.error("could not tag #{instance.id}: #{e.message}")
     end

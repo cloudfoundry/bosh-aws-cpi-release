@@ -35,6 +35,30 @@ describe Bosh::AwsCloud::TagManager do
     Bosh::AwsCloud::TagManager.tag(instance, 'key', 'value')
   end
 
+  it 'should create all tags' do
+    expect(instance).to receive(:create_tags).with(
+      tags: [{ key: 'key1', value: 'value1'}, {key: 'key2', value: 'value2' }]
+    )
+
+    Bosh::AwsCloud::TagManager.tags(instance, { 'key1' => 'value1', 'key2' => 'value2' })
+  end
+
+  it 'should create all tags that has non nil keys' do
+    expect(instance).to receive(:create_tags).with(
+      tags: [{key: 'key2', value: 'value2' }]
+    )
+
+    Bosh::AwsCloud::TagManager.tags(instance, { nil => 'value1', 'key2' => 'value2' })
+  end
+
+  it 'should create all tags that has non nil values' do
+    expect(instance).to receive(:create_tags).with(
+      tags: [{key: 'key2', value: 'value2' }]
+    )
+
+    Bosh::AwsCloud::TagManager.tags(instance, { 'key1' => nil, 'key2' => 'value2' })
+  end
+
   it 'should do nothing if key is nil' do
     expect(instance).not_to receive(:create_tag)
     Bosh::AwsCloud::TagManager.tag(instance, nil, 'value')
