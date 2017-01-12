@@ -791,6 +791,9 @@ module Bosh::AwsCloud
       # make an arbitrary HTTP request to ensure we can connect and creds are valid
       @ec2_resource.subnets.first
       true
+    rescue Seahorse::Client::NetworkingError => e
+      logger.error("Failed to connect to AWS: #{e.inspect}\n#{e.backtrace.join("\n")}")
+      cloud_error("Unable to create a connection to AWS; please check your region or EC2 endpoint.\nIaaS Error: #{e.inspect}")
     rescue Net::OpenTimeout
       false
     end
