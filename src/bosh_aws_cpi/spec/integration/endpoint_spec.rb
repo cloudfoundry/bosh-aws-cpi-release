@@ -12,6 +12,7 @@ describe Bosh::AwsCloud::Cloud do
 
   before { allow(Bosh::Clouds::Config).to receive_messages(logger: logger) }
   let(:logger) { Logger.new(STDERR) }
+  let(:non_existent_vm_id) { 'i-010fd20eb24f606ab' }
 
   describe 'specifying ec2 endpoint instead of region' do
     let(:cpi) do
@@ -35,7 +36,7 @@ describe Bosh::AwsCloud::Cloud do
 
     it 'uses the given endpoint' do
       expect {
-        cpi.has_vm?('i-010fd20eb24f606ab')
+        cpi.has_vm?(non_existent_vm_id)
       }.to_not raise_error
     end
   end
@@ -83,7 +84,7 @@ describe Bosh::AwsCloud::Cloud do
           ENV['BOSH_CA_CERT_FILE'] = valid_bundle.path
 
           expect {
-            cpi.has_vm?('i-010fd20eb24f606ab')
+            cpi.has_vm?(non_existent_vm_id)
           }.to_not raise_error
         ensure
           File.delete(valid_bundle.path)
@@ -97,8 +98,8 @@ describe Bosh::AwsCloud::Cloud do
         ENV['BOSH_CA_CERT_FILE'] = asset('invalid-cert.pem')
 
         expect {
-          cpi.has_vm?('i-010fd20eb24f606ab')
-        }.to raise_error(Seahorse::Client::NetworkingError)
+          cpi.has_vm?(non_existent_vm_id)
+        }.to raise_error /endpoint/
       end
     end
 
@@ -124,7 +125,7 @@ describe Bosh::AwsCloud::Cloud do
 
       it 'auto-applies a protocol and uses the given endpoint' do
         expect {
-          cpi.has_vm?('i-010fd20eb24f606ab')
+          cpi.has_vm?(non_existent_vm_id)
         }.to_not raise_error
       end
     end
