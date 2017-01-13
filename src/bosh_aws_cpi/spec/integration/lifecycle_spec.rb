@@ -25,6 +25,36 @@ describe Bosh::AwsCloud::Cloud do
   let(:network_spec) { {} }
   let(:vm_type) { { 'instance_type' => instance_type, 'availability_zone' => @subnet_zone } }
   let(:security_groups) { get_security_group_ids }
+  let(:registry) { instance_double(Bosh::Cpi::RegistryClient).as_null_object }
+  let(:security_groups) { get_security_group_ids(@subnet_id) }
+
+  before {
+    allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
+    allow(registry).to receive(:read_settings).and_return({})
+  }
+
+  # Use subject-bang because AWS SDK needs to be reconfigured
+  # with a current test's logger before new Aws::EC2 object is created.
+  # Reconfiguration happens via `AWS.config`.
+  subject!(:cpi) do
+    described_class.new(
+      'aws' => {
+        'region' => @region,
+        'default_key_name' => default_key_name,
+        'default_security_groups' => security_groups,
+        'fast_path_delete' => 'yes',
+        'access_key_id' => @access_key_id,
+        'secret_access_key' => @secret_access_key,
+        'max_retries' => 8,
+        'request_id' => '419877'
+      },
+      'registry' => {
+        'endpoint' => 'fake',
+        'user' => 'fake',
+        'password' => 'fake'
+      }
+    )
+  end
 
   before do
     begin
@@ -35,6 +65,11 @@ describe Bosh::AwsCloud::Cloud do
       # don't blow up tests if instance that we're trying to delete was not found
     end
   end
+
+  before { allow(Bosh::Clouds::Config).to receive_messages(logger: logger) }
+  let(:logs) { STDOUT }
+  let(:logger) { Logger.new(logs) }
+
 
   extend Bosh::Cpi::CompatibilityHelpers
 
@@ -83,6 +118,76 @@ describe Bosh::AwsCloud::Cloud do
         }
 
       }
+    end
+
+    describe 'logging request_id' do
+      let(:logs) { StringIO.new('') }
+      let(:logger) { Logger.new(logs) }
+
+      context 'when request_id is present in the context' do
+        let(:endpoint_configured_cpi) do
+          Bosh::AwsCloud::Cloud.new(
+              'aws' => {
+                  'region' => @region,
+                  'ec2_endpoint' => 'https://ec2.us-east-1.amazonaws.com',
+                  'elb_endpoint' => 'https://elasticloadbalancing.us-east-1.amazonaws.com',
+                  'default_key_name' => default_key_name,
+                  'default_security_groups' => security_groups,
+                  'fast_path_delete' => 'yes',
+                  'access_key_id' => @access_key_id,
+                  'secret_access_key' => @secret_access_key,
+                  'max_retries' => 8,
+                  'request_id' => '419877'
+              },
+              'registry' => {
+                  'endpoint' => 'fake',
+                  'user' => 'fake',
+                  'password' => 'fake'
+              }
+          )
+        end
+
+        it 'logs request_id' do
+          begin
+            stemcell_id = endpoint_configured_cpi.create_stemcell('/not/a/real/path', {'ami' => {'us-east-1' => ami}})
+            expect(logs.string).to include('req_id 419877')
+          ensure
+            endpoint_configured_cpi.delete_stemcell(stemcell_id) if stemcell_id
+          end
+        end
+      end
+
+      context 'when request_id is NOT present in the context' do
+        let(:endpoint_configured_cpi) do
+          Bosh::AwsCloud::Cloud.new(
+              'aws' => {
+                  'region' => @region,
+                  'ec2_endpoint' => 'https://ec2.us-east-1.amazonaws.com',
+                  'elb_endpoint' => 'https://elasticloadbalancing.us-east-1.amazonaws.com',
+                  'default_key_name' => default_key_name,
+                  'default_security_groups' => security_groups,
+                  'fast_path_delete' => 'yes',
+                  'access_key_id' => @access_key_id,
+                  'secret_access_key' => @secret_access_key,
+                  'max_retries' => 8
+              },
+              'registry' => {
+                  'endpoint' => 'fake',
+                  'user' => 'fake',
+                  'password' => 'fake'
+              }
+          )
+        end
+
+        it 'logs request_id' do
+          begin
+            stemcell_id = endpoint_configured_cpi.create_stemcell('/not/a/real/path', {'ami' => {'us-east-1' => ami}})
+            expect(logs.string).to_not include('req_id: 419877')
+          ensure
+            endpoint_configured_cpi.delete_stemcell(stemcell_id) if stemcell_id
+          end
+        end
+      end
     end
 
     context 'vm_type specifies elb for instance' do

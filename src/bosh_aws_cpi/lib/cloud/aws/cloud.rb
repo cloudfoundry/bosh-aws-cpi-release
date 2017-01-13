@@ -27,6 +27,14 @@ module Bosh::AwsCloud
       @logger = Bosh::Clouds::Config.logger
       aws_logger = @logger
 
+      request_id = options['aws']['request_id']
+      if request_id
+        original_formatter = Logger::Formatter.new
+        @logger.formatter = proc { |severity, datetime, progname, msg|
+          original_formatter.call(severity, datetime, "[req_id #{request_id}]#{progname}", msg)
+        }
+      end
+
       @aws_params = {
         retry_limit: aws_properties['max_retries'],
         logger: aws_logger,
