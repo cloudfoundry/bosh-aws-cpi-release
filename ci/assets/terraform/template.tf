@@ -12,6 +12,8 @@ provider "aws" {
   region = "${var.region}"
 }
 
+data "aws_availability_zones" "available" {}
+
 # Create a VPC to launch our instances into
 resource "aws_vpc" "default" {
   cidr_block = "10.0.0.0/16"
@@ -54,7 +56,7 @@ resource "aws_subnet" "default" {
   vpc_id = "${aws_vpc.default.id}"
   cidr_block = "${cidrsubnet(aws_vpc.default.cidr_block, 8, 0)}"
   depends_on = ["aws_internet_gateway.default"]
-  availability_zone = "${var.region}a"
+  availability_zone = "${data.aws_availability_zones.available.names[0]}"
 
   tags {
     Name = "${var.env_name}"
@@ -65,7 +67,7 @@ resource "aws_subnet" "backup" {
   vpc_id = "${aws_vpc.default.id}"
   cidr_block = "${cidrsubnet(aws_vpc.default.cidr_block, 8, 1)}"
   depends_on = ["aws_internet_gateway.default"]
-  availability_zone = "${var.region}b"
+  availability_zone = "${data.aws_availability_zones.available.names[1]}"
 
   tags {
     Name = "${var.env_name}"
