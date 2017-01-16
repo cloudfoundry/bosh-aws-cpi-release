@@ -7,7 +7,6 @@ module Bosh::AwsCloud
     before { allow(ec2).to receive(:client).and_return(aws_client) }
 
     let(:registry) { double('Bosh::Registry::Client', :endpoint => 'http://...', :update_settings => nil) }
-    let(:elb) { instance_double(Aws::ElasticLoadBalancing::Client) }
     let(:param_mapper) { instance_double(InstanceParamMapper) }
     let(:block_device_manager) { instance_double(BlockDeviceManager) }
     let(:logger) { Logger.new('/dev/null') }
@@ -97,12 +96,11 @@ module Bosh::AwsCloud
 
         allow(Instance).to receive(:new).and_return(instance)
         allow(instance).to receive(:wait_for_running)
-        allow(instance).to receive(:attach_to_load_balancers)
         allow(instance).to receive(:update_routing_tables)
       end
 
       it 'should ask AWS to create an instance in the given region, with parameters built up from the given arguments' do
-        instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+        instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
         allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
         expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
@@ -165,7 +163,7 @@ module Bosh::AwsCloud
               and_return(describe_spot_instance_requests_result)
 
           # Trigger spot instance request
-          instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+          instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
           instance_manager.create(
             agent_id,
             stemcell_id,
@@ -179,7 +177,7 @@ module Bosh::AwsCloud
 
         context 'when spot creation fails' do
           it 'raises and logs an error' do
-            instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+            instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
             expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false))
             expect(logger).to receive(:warn).with(/Spot instance creation failed/)
 
@@ -198,7 +196,7 @@ module Bosh::AwsCloud
           end
 
           context 'and spot_ondemand_fallback is configured' do
-            let(:instance_manager) { InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger) }
+            let(:instance_manager) { InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger) }
             let(:vm_type) do
               {
                 'spot_bid_price' => 0.15,
@@ -256,14 +254,12 @@ module Bosh::AwsCloud
           vm_type['source_dest_check'] = false
         end
         it 'disables source_dest_check on the instance' do
-          instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+          instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
           allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
           expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
           expect(instance).to receive(:source_dest_check=).with(false)
           expect(instance).to receive(:wait_for_running)
-          expect(instance).to receive(:attach_to_load_balancers)
-          expect(instance).to receive(:update_routing_tables)
 
           instance_manager.create(
             agent_id,
@@ -278,7 +274,7 @@ module Bosh::AwsCloud
       end
 
       it 'should retry creating the VM when Aws::EC2::Errors::InvalidIPAddressInUse raised' do
-        instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+        instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
         allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
         allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
@@ -306,7 +302,7 @@ module Bosh::AwsCloud
         before { allow(Instance).to receive(:new).and_return(instance) }
 
         it 'terminates created instance and re-raises the error' do
-          instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+          instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
           allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
           expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
@@ -331,7 +327,7 @@ module Bosh::AwsCloud
           before { allow(instance).to receive(:terminate).and_raise(StandardError.new('fake-terminate-err')) }
 
           it 're-raises creation error' do
-            instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+            instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
             allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
             expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
@@ -351,59 +347,6 @@ module Bosh::AwsCloud
           end
         end
       end
-
-      context 'when attaching instance to load balancers fails' do
-        let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-instance-id', wait_for_running: nil) }
-        let(:lb_err) { StandardError.new('fake-err') }
-
-        before { allow(Instance).to receive(:new).and_return(instance) }
-
-        it 'terminates created instance and re-raises the error' do
-          instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
-          allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
-
-          expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
-          expect(instance).to receive(:attach_to_load_balancers).and_raise(lb_err)
-
-          expect(instance).to receive(:terminate).with(no_args)
-
-          expect {
-            instance_manager.create(
-              agent_id,
-              stemcell_id,
-              vm_type,
-              networks_spec,
-              disk_locality,
-              environment,
-              default_options
-            )
-          }.to raise_error(lb_err)
-        end
-
-        context 'when termination of created instance fails' do
-          before { allow(instance).to receive(:terminate).and_raise(StandardError.new('fake-terminate-err')) }
-
-          it 're-raises creation error' do
-            instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
-            allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
-
-            expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
-            expect(instance).to receive(:attach_to_load_balancers).and_raise(lb_err)
-
-            expect {
-              instance_manager.create(
-                agent_id,
-                stemcell_id,
-                vm_type,
-                networks_spec,
-                disk_locality,
-                environment,
-                default_options
-              )
-            }.to raise_error(lb_err)
-          end
-        end
-      end
     end
 
     describe '#find' do
@@ -415,10 +358,10 @@ module Bosh::AwsCloud
         instance = instance_double('Bosh::AwsCloud::Instance')
 
         allow(Instance).to receive(:new).
-          with(aws_instance, registry, elb, logger).
+          with(aws_instance, registry, logger).
           and_return(instance)
 
-        instance_manager = InstanceManager.new(ec2, registry, elb, param_mapper, block_device_manager, logger)
+        instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
         expect(instance_manager.find(instance_id)).to eq(instance)
       end
     end

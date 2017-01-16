@@ -2,10 +2,9 @@ module Bosh::AwsCloud
   class Instance
     include Helpers
 
-    def initialize(aws_instance, registry, elb, logger)
+    def initialize(aws_instance, registry, logger)
       @aws_instance = aws_instance
       @registry = registry
-      @elb = elb
       @logger = logger
     end
 
@@ -125,19 +124,6 @@ module Bosh::AwsCloud
             })
           end
         end
-      end
-    end
-
-    def attach_to_load_balancers(load_balancer_ids)
-      load_balancer_ids.each do |load_balancer_id|
-        @elb.register_instances_with_load_balancer({
-          instances: [
-            {
-              instance_id: @aws_instance.id
-            }
-          ],
-          load_balancer_name: load_balancer_id,
-        })
       end
     end
   end

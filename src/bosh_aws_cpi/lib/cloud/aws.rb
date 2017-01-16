@@ -39,6 +39,8 @@ require "cloud/aws/instance_param_mapper"
 require "cloud/aws/security_group_mapper"
 require "cloud/aws/block_device_manager"
 require "cloud/aws/instance_type_mapper"
+require "cloud/aws/classic_lb"
+require "cloud/aws/lb_target_group"
 require "cloud/aws/sdk_helpers/volume_attachment"
 
 module Bosh

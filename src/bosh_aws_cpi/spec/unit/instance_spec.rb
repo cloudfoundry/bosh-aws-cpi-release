@@ -3,10 +3,9 @@ require 'logger'
 
 module Bosh::AwsCloud
   describe Instance do
-    subject(:instance) { Instance.new(aws_instance, registry, elb, logger) }
+    subject(:instance) { Instance.new(aws_instance, registry, logger) }
     let(:aws_instance) { instance_double('Aws::EC2::Instance', id: instance_id, data: 'some-data') }
     let(:registry) { instance_double('Bosh::Cpi::RegistryClient', :update_settings => nil) }
-    let(:elb) { double('Aws::ELB') }
     let(:logger) { Logger.new('/dev/null') }
     let(:elastic_ip) { instance_double(Aws::EC2::VpcAddress, public_ip: 'fake-ip') }
     let(:instance_id) { 'fake-id' }
@@ -181,24 +180,6 @@ module Bosh::AwsCloud
       it 'propagates source_dest_check= false' do
         expect(aws_instance).to receive(:modify_attribute).with(source_dest_check: {value: true})
         instance.source_dest_check = true
-      end
-    end
-
-    describe '#attach_to_load_balancers' do
-      it 'attaches the instance to the list of load balancers' do
-        expect(elb).to receive(:register_instances_with_load_balancer).with({
-          instances: [
-            instance_id: instance_id,
-          ],
-          load_balancer_name: 'fake-lb1-id',
-        })
-        expect(elb).to receive(:register_instances_with_load_balancer).with({
-          instances: [
-            instance_id: instance_id,
-          ],
-          load_balancer_name: 'fake-lb2-id',
-        })
-        instance.attach_to_load_balancers(%w(fake-lb1-id fake-lb2-id))
       end
     end
   end

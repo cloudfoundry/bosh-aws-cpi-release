@@ -5,10 +5,9 @@ module Bosh::AwsCloud
   class InstanceManager
     include Helpers
 
-    def initialize(ec2, registry, elb, param_mapper, block_device_manager, logger)
+    def initialize(ec2, registry, param_mapper, block_device_manager, logger)
       @ec2 = ec2
       @registry = registry
-      @elb = elb
       @param_mapper = param_mapper
       @block_device_manager = block_device_manager
       @logger = logger
@@ -29,13 +28,12 @@ module Bosh::AwsCloud
 
       aws_instance = create_aws_instance(instance_params, vm_type)
 
-      instance = Instance.new(aws_instance, @registry, @elb, @logger)
+      instance = Instance.new(aws_instance, @registry, @logger)
 
       begin
         # We need to wait here for the instance to be running, as if we are going to
         # attach to a load balancer, the instance must be running.
         instance.wait_for_running
-        instance.attach_to_load_balancers(vm_type['elbs'] || [])
         instance.update_routing_tables(vm_type['advertised_routes'] || [])
         if vm_type['source_dest_check'].to_s == 'false'
           instance.source_dest_check = false
@@ -55,7 +53,7 @@ module Bosh::AwsCloud
 
     # @param [String] instance_id EC2 instance id
     def find(instance_id)
-      Instance.new(@ec2.instance(instance_id), @registry, @elb, @logger)
+      Instance.new(@ec2.instance(instance_id), @registry, @logger)
     end
 
     private

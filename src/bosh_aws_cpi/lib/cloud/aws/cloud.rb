@@ -88,12 +88,13 @@ module Bosh::AwsCloud
         elb_options[:endpoint] = elb_endpoint
       end
 
-      elb = Aws::ElasticLoadBalancing::Client.new(elb_options)
+      @elb_client = Aws::ElasticLoadBalancing::Client.new(elb_options)
+      @alb_client = Aws::ElasticLoadBalancingV2::Client.new(elb_options)
 
       security_group_mapper = SecurityGroupMapper.new(@ec2_resource)
       instance_param_mapper = InstanceParamMapper.new(security_group_mapper)
       block_device_manager = BlockDeviceManager.new(@logger)
-      @instance_manager = InstanceManager.new(@ec2_resource, registry, elb, instance_param_mapper, block_device_manager, @logger)
+      @instance_manager = InstanceManager.new(@ec2_resource, registry, instance_param_mapper, block_device_manager, @logger)
 
       @instance_type_mapper = InstanceTypeMapper.new
 
@@ -147,6 +148,17 @@ module Bosh::AwsCloud
     def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = nil, environment = nil)
       with_thread_name("create_vm(#{agent_id}, ...)") do
         # do this early to fail fast
+
+        target_groups = vm_type.fetch('lb_target_groups', [])
+        if target_groups.length > 0
+          alb_accessible?
+        end
+
+        requested_elbs = vm_type.fetch('elbs', [])
+        if requested_elbs.length > 0
+          elb_accessible?
+        end
+
         stemcell = StemcellFinder.find_by_id(@ec2_resource, stemcell_id)
 
         begin
@@ -159,6 +171,16 @@ module Bosh::AwsCloud
             environment,
             options,
           )
+
+          target_groups.each do |target_group_name|
+            target_group = LBTargetGroup.new(client: @alb_client, group_name: target_group_name)
+            target_group.register(instance.id)
+          end
+
+          requested_elbs.each do |requested_elb_name|
+            requested_elb = ClassicLB.new(client: @elb_client, elb_name: requested_elb_name)
+            requested_elb.register(instance.id)
+          end
 
           logger.info("Creating new instance '#{instance.id}'")
 
@@ -789,6 +811,28 @@ module Bosh::AwsCloud
     rescue Seahorse::Client::NetworkingError => e
       logger.error("Failed to connect to AWS: #{e.inspect}\n#{e.backtrace.join("\n")}")
       cloud_error("Unable to create a connection to AWS; please check your region or EC2 endpoint.\nIaaS Error: #{e.inspect}")
+    rescue Net::OpenTimeout
+      false
+    end
+
+    def alb_accessible?
+      # make an arbitrary HTTP request to ensure we can connect and creds are valid
+      @alb_client.describe_load_balancers(page_size: 1)
+      true
+    rescue Seahorse::Client::NetworkingError => e
+      logger.error("Failed to connect to AWS Application Load Balancer endpoint: #{e.inspect}\n#{e.backtrace.join("\n")}")
+      cloud_error("Unable to create a connection to AWS; please check your region or ELB endpoint.\nIaaS Error: #{e.inspect}")
+    rescue Net::OpenTimeout
+      false
+    end
+
+    def elb_accessible?
+      # make an arbitrary HTTP request to ensure we can connect and creds are valid
+      @elb_client.describe_load_balancers(page_size: 1)
+      true
+    rescue Seahorse::Client::NetworkingError => e
+      logger.error("Failed to connect to AWS Elastic Load Balancer endpoint: #{e.inspect}\n#{e.backtrace.join("\n")}")
+      cloud_error("Unable to create a connection to AWS; please check your region or ELB endpoint.\nIaaS Error: #{e.inspect}")
     rescue Net::OpenTimeout
       false
     end

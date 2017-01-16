@@ -11,7 +11,6 @@ describe Bosh::AwsCloud::Cloud, "delete_vm" do
         with(
           ec2,
           registry,
-          be_an_instance_of(Aws::ElasticLoadBalancing::Client),
           be_an_instance_of(Bosh::AwsCloud::InstanceParamMapper),
           be_an_instance_of(Bosh::AwsCloud::BlockDeviceManager),
           be_an_instance_of(Logger)
