@@ -54,7 +54,7 @@ resource "aws_subnet" "default" {
   vpc_id = "${aws_vpc.default.id}"
   cidr_block = "${cidrsubnet(aws_vpc.default.cidr_block, 8, 0)}"
   depends_on = ["aws_internet_gateway.default"]
-  availability_zone = "${aws_vpc.default.region}a"
+  availability_zone = "${var.region}a"
 
   tags {
     Name = "${var.env_name}"
@@ -65,7 +65,7 @@ resource "aws_subnet" "backup" {
   vpc_id = "${aws_vpc.default.id}"
   cidr_block = "${cidrsubnet(aws_vpc.default.cidr_block, 8, 1)}"
   depends_on = ["aws_internet_gateway.default"]
-  availability_zone = "${aws_vpc.default.region}b"
+  availability_zone = "${var.region}b"
 
   tags {
     Name = "${var.env_name}"
