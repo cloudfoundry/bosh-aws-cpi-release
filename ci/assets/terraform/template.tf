@@ -45,9 +45,25 @@ resource "aws_route_table_association" "a" {
   route_table_id = "${aws_route_table.default.id}"
 }
 
+resource "aws_route_table_association" "b" {
+  subnet_id = "${aws_subnet.backup.id}"
+  route_table_id = "${aws_route_table.default.id}"
+}
+
 resource "aws_subnet" "default" {
   vpc_id = "${aws_vpc.default.id}"
-  cidr_block = "${aws_vpc.default.cidr_block}"
+  cidr_block = "${cidrsubnet(aws_vpc.default.cidr_block, 8, 0)}"
+  depends_on = ["aws_internet_gateway.default"]
+
+  tags {
+    Name = "${var.env_name}"
+  }
+}
+
+resource "aws_subnet" "backup" {
+  vpc_id = "${aws_vpc.default.id}"
+
+  cidr_block = "${cidrsubnet(aws_vpc.default.cidr_block, 8, 1)}"
   depends_on = ["aws_internet_gateway.default"]
 
   tags {
@@ -57,7 +73,7 @@ resource "aws_subnet" "default" {
 
 resource "aws_network_acl" "allow_all" {
   vpc_id = "${aws_vpc.default.id}"
-  subnet_ids = ["${aws_subnet.default.id}"]
+  subnet_ids = ["${aws_subnet.default.id}", "${aws_subnet.backup.id}"]
   egress {
     protocol = "-1"
     rule_no = 2
@@ -131,7 +147,7 @@ resource "aws_elb" "default" {
 
 # Create a new application load balancer
 resource "aws_alb" "default" {
-  subnets = ["${aws_subnet.default.id}"]
+  subnets = ["${aws_subnet.default.id}", "${aws_subnet.backup.id}"]
 
   tags {
     Name = "${var.env_name}"
