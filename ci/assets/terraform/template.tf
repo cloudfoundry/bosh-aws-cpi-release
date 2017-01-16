@@ -113,7 +113,7 @@ resource "aws_eip" "deployment" {
   vpc = true
 }
 
-# Create a new load balancer
+# Create a new classic load balancer
 resource "aws_elb" "default" {
   listener {
     instance_port = 80
@@ -127,6 +127,36 @@ resource "aws_elb" "default" {
   tags {
     Name = "${var.env_name}"
   }
+}
+
+# Create a new application load balancer
+resource "aws_alb" "default" {
+  subnets = ["${aws_subnet.default.id}"]
+
+  tags {
+    Name = "${var.env_name}"
+  }
+}
+
+resource "aws_alb_target_group" "default" {
+  name = "${var.env_name}"
+  port = "80"
+  protocol = "HTTP"
+  vpc_id = "${aws_vpc.default.id}"
+  tags {
+    Name = "${var.env_name}"
+  }
+}
+
+resource "aws_alb_listener" "default" {
+   load_balancer_arn = "${aws_alb.default.arn}"
+   port = "80"
+   protocol = "HTTP"
+
+   default_action {
+     target_group_arn = "${aws_alb_target_group.default.arn}"
+     type = "forward"
+   }
 }
 
 resource "aws_vpc_endpoint" "private-s3" {
@@ -200,8 +230,12 @@ output "ELB" {
   value = "${aws_elb.default.id}"
 }
 
-output "ELBEndpoint" {
-  value = "${aws_elb.default.dns_name}"
+output "ALB" {
+  value = "${aws_alb.default.id}"
+}
+
+output "ALBTargetGroup" {
+  value = "${aws_alb_target_group.default.name}"
 }
 
 output "BlobstoreBucket" {
