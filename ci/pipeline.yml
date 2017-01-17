@@ -185,7 +185,7 @@ resources:
     source:
       regexp: bosh-aws-cpi-(\d+\.\d+\.\d+)\.tgz
       bucket: {{s3_aws_cpi_pipeline_bucket}}
-      region_name: {{aws_region__primary}}
+      region_name: {{s3_aws_cpi_pipeline_bucket_region}}
       access_key_id: {{aws_access_key__primary}}
       secret_access_key: {{aws_secret_key__primary}}
 
