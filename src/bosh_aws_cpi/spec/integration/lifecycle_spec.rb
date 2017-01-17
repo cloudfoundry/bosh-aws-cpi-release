@@ -16,9 +16,9 @@ describe Bosh::AwsCloud::Cloud do
   let(:instance_type_with_ephemeral)    { ENV.fetch('BOSH_AWS_INSTANCE_TYPE', 'm3.medium') }
   let(:instance_type_without_ephemeral) { ENV.fetch('BOSH_AWS_INSTANCE_TYPE_WITHOUT_EPHEMERAL', 't2.small') }
   let(:ami)                             { hvm_ami }
-  let(:hvm_ami)                         { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-145a7603') }
-  let(:pv_ami)                          { ENV.fetch('BOSH_AWS_PV_IMAGE_ID', 'ami-d4c6e2c3') }
-  let(:windows_ami)                     { ENV.fetch('BOSH_AWS_WINDOWS_IMAGE_ID', 'ami-8927779e') }
+  let(:hvm_ami)                         { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-866d3ee6') }
+  let(:pv_ami)                          { ENV.fetch('BOSH_AWS_PV_IMAGE_ID', 'ami-3f71225f') }
+  let(:windows_ami)                     { ENV.fetch('BOSH_AWS_WINDOWS_IMAGE_ID', 'ami-9be0a8fb') }
   let(:instance_type) { instance_type_with_ephemeral }
   let(:vm_metadata) { { deployment: 'deployment', job: 'cpi_spec', index: '0', delete_me: 'please' } }
   let(:disks) { [] }

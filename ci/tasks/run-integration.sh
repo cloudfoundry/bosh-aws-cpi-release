@@ -26,6 +26,7 @@ export BOSH_AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
 export BOSH_AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
 export BOSH_AWS_DEFAULT_KEY_NAME=${AWS_PUBLIC_KEY_NAME}
 export BOSH_AWS_KMS_KEY_ARN=${AWS_KMS_KEY_ARN}
+export BOSH_AWS_REGION=$(echo ${metadata} | jq -e --raw-output ".Region")
 export BOSH_AWS_SUBNET_ID=$(echo ${metadata} | jq -e --raw-output ".PublicSubnetID")
 export BOSH_AWS_SUBNET_ZONE=$(echo ${metadata} | jq -e --raw-output ".AvailabilityZone")
 export BOSH_AWS_LIFECYCLE_MANUAL_IP=$(echo ${metadata} | jq -e --raw-output ".DirectorStaticIP")

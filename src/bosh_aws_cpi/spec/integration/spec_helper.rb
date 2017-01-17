@@ -9,9 +9,9 @@ RSpec.configure do |rspec_config|
     @secret_access_key  = ENV['BOSH_AWS_SECRET_ACCESS_KEY']   || raise('Missing BOSH_AWS_SECRET_ACCESS_KEY')
     @subnet_id          = ENV['BOSH_AWS_SUBNET_ID']           || raise('Missing BOSH_AWS_SUBNET_ID')
     @subnet_zone        = ENV['BOSH_AWS_SUBNET_ZONE']         || raise('Missing BOSH_AWS_SUBNET_ZONE')
-    @region             = ENV.fetch('BOSH_AWS_REGION', 'us-east-1')
+    @region             = ENV.fetch('BOSH_AWS_REGION', 'us-west-1')
     @default_key_name   = ENV.fetch('BOSH_AWS_DEFAULT_KEY_NAME', 'bosh')
-    @ami                = ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-145a7603')
+    @ami                = ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-866d3ee6')
 
     logger = Logger.new(STDERR)
     ec2_client = Aws::EC2::Client.new(

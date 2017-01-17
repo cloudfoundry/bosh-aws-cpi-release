@@ -8,6 +8,7 @@ describe Bosh::AwsCloud::Cloud do
   before(:all) do
     @access_key_id     = ENV['BOSH_AWS_ACCESS_KEY_ID']       || raise("Missing BOSH_AWS_ACCESS_KEY_ID")
     @secret_access_key = ENV['BOSH_AWS_SECRET_ACCESS_KEY']   || raise("Missing BOSH_AWS_SECRET_ACCESS_KEY")
+    @region            = ENV['BOSH_AWS_REGION']              || 'us-west-1'
   end
 
   before { allow(Bosh::Clouds::Config).to receive_messages(logger: logger) }
@@ -135,7 +136,7 @@ describe Bosh::AwsCloud::Cloud do
     let(:cpi) do
       Bosh::AwsCloud::Cloud.new(
         'aws' => {
-          'region' => 'us-east-1',
+          'region' => @region,
           'default_key_name' => 'fake-key',
           'access_key_id' => @access_key_id,
           'secret_access_key' => @secret_access_key,

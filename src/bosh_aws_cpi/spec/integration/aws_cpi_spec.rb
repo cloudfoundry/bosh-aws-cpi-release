@@ -8,6 +8,7 @@ describe "the aws_cpi executable" do
   before(:all) do
     @access_key_id     = ENV['BOSH_AWS_ACCESS_KEY_ID']       || raise('Missing BOSH_AWS_ACCESS_KEY_ID')
     @secret_access_key = ENV['BOSH_AWS_SECRET_ACCESS_KEY']   || raise('Missing BOSH_AWS_SECRET_ACCESS_KEY')
+    @region            = ENV['BOSH_AWS_REGION']              || 'us-west-1'
   end
 
   before(:each) do
@@ -24,7 +25,7 @@ describe "the aws_cpi executable" do
           'aws' => {
             'access_key_id' => @access_key_id,
             'secret_access_key' => @secret_access_key,
-            'region' => 'us-east-1',
+            'region' => @region,
             'default_key_name' => 'default_key_name',
             'fast_path_delete' => 'yes',
             'max_retries' => 0
@@ -118,7 +119,7 @@ describe "the aws_cpi executable" do
         'director_uuid' => 'abc123',
         'access_key_id' => @access_key_id,
         'secret_access_key' => @secret_access_key,
-        'region' => 'us-east-1',
+        'region' => @region,
         'default_key_name' => 'default_key_name',
         'fast_path_delete' => 'yes',
         'max_retries' => 0
