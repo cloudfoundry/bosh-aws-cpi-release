@@ -42,7 +42,7 @@ module ConsoleHelpers
   end
 end
 
-cloud_config = OpenStruct.new(:logger => Logger.new(STDOUT))
+cloud_config = OpenStruct.new(:logger => Bosh::Cpi::Logger.new(STDOUT))
 
 Bosh::Clouds::Config.configure(cloud_config)
 

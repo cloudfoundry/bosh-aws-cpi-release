@@ -12,7 +12,7 @@ describe Bosh::AwsCloud::Cloud do
   end
 
   before { allow(Bosh::Clouds::Config).to receive_messages(logger: logger) }
-  let(:logger) { Logger.new(STDERR) }
+  let(:logger) { Bosh::Cpi::Logger.new(STDERR) }
   let(:non_existent_vm_id) { 'i-010fd20eb24f606ab' }
 
   describe 'specifying ec2 endpoint instead of region' do

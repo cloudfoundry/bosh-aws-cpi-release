@@ -29,10 +29,7 @@ module Bosh::AwsCloud
 
       request_id = options['aws']['request_id']
       if request_id
-        original_formatter = Logger::Formatter.new
-        @logger.formatter = proc { |severity, datetime, progname, msg|
-          original_formatter.call(severity, datetime, "[req_id #{request_id}]#{progname}", msg)
-        }
+        @logger.set_request_id(request_id)
       end
 
       @aws_params = {

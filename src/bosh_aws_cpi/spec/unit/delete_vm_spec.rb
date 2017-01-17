@@ -13,7 +13,7 @@ describe Bosh::AwsCloud::Cloud, "delete_vm" do
           registry,
           be_an_instance_of(Bosh::AwsCloud::InstanceParamMapper),
           be_an_instance_of(Bosh::AwsCloud::BlockDeviceManager),
-          be_an_instance_of(Logger)
+          be_an_instance_of(Bosh::Cpi::Logger)
         ).and_return(instance_manager)
     end
   }

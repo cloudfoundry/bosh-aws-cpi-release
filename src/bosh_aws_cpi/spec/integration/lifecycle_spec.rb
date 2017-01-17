@@ -1,7 +1,7 @@
 require 'integration/spec_helper'
 require 'bosh/cpi/compatibility_helpers/delete_vm'
 require 'tempfile'
-require 'logger'
+require 'bosh/cpi/logger'
 require 'cloud'
 require 'pry-byebug'
 
@@ -68,7 +68,7 @@ describe Bosh::AwsCloud::Cloud do
 
   before { allow(Bosh::Clouds::Config).to receive_messages(logger: logger) }
   let(:logs) { STDOUT }
-  let(:logger) { Logger.new(logs) }
+  let(:logger) {Bosh::Cpi::Logger.new(logs) }
 
 
   extend Bosh::Cpi::CompatibilityHelpers
@@ -122,7 +122,7 @@ describe Bosh::AwsCloud::Cloud do
 
     describe 'logging request_id' do
       let(:logs) { StringIO.new('') }
-      let(:logger) { Logger.new(logs) }
+      let(:logger) { Bosh::Cpi::Logger.new(logs) }
 
       context 'when request_id is present in the context' do
         let(:endpoint_configured_cpi) do
@@ -179,7 +179,7 @@ describe Bosh::AwsCloud::Cloud do
           )
         end
 
-        it 'logs request_id' do
+        it 'does NOT log request_id' do
           begin
             stemcell_id = endpoint_configured_cpi.create_stemcell('/not/a/real/path', {'ami' => {'us-east-1' => ami}})
             expect(logs.string).to_not include('req_id: 419877')

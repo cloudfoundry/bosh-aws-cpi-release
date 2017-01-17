@@ -13,7 +13,7 @@ RSpec.configure do |rspec_config|
     @default_key_name   = ENV.fetch('BOSH_AWS_DEFAULT_KEY_NAME', 'bosh')
     @ami                = ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-866d3ee6')
 
-    logger = Logger.new(STDERR)
+    logger = Bosh::Cpi::Logger.new(STDERR)
     ec2_client = Aws::EC2::Client.new(
       region:      @region,
       access_key_id: @access_key_id,

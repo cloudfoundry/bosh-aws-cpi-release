@@ -121,7 +121,7 @@ end
 
 RSpec.configure do |config|
   config.before do
-    logger = Logger.new('/dev/null')
+    logger = Bosh::Cpi::Logger.new('/dev/null')
     allow(Bosh::Clouds::Config).to receive(:logger).and_return(logger)
   end
 end
