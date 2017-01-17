@@ -238,13 +238,11 @@ resource "aws_iam_role" "e2e" {
       "ec2:DescribeImages",
       "ec2:RegisterImage"
     ],
-    "Effect": "Allow",
-    "Resource": "*"
+    "Effect": "Allow"
   },
   {
     "Effect": "Allow",
-    "Action": "elasticloadbalancing:*",
-    "Resource": "*"
+    "Action": "elasticloadbalancing:*"
   }]
 }
 EOF
