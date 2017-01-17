@@ -3,7 +3,6 @@ require 'bosh/cpi/compatibility_helpers/delete_vm'
 require 'tempfile'
 require 'bosh/cpi/logger'
 require 'cloud'
-require 'pry-byebug'
 
 describe Bosh::AwsCloud::Cloud do
   before(:all) do
@@ -26,35 +25,12 @@ describe Bosh::AwsCloud::Cloud do
   let(:vm_type) { { 'instance_type' => instance_type, 'availability_zone' => @subnet_zone } }
   let(:security_groups) { get_security_group_ids }
   let(:registry) { instance_double(Bosh::Cpi::RegistryClient).as_null_object }
-  let(:security_groups) { get_security_group_ids(@subnet_id) }
+  let(:security_groups) { get_security_group_ids }
 
   before {
     allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
     allow(registry).to receive(:read_settings).and_return({})
   }
-
-  # Use subject-bang because AWS SDK needs to be reconfigured
-  # with a current test's logger before new Aws::EC2 object is created.
-  # Reconfiguration happens via `AWS.config`.
-  subject!(:cpi) do
-    described_class.new(
-      'aws' => {
-        'region' => @region,
-        'default_key_name' => default_key_name,
-        'default_security_groups' => security_groups,
-        'fast_path_delete' => 'yes',
-        'access_key_id' => @access_key_id,
-        'secret_access_key' => @secret_access_key,
-        'max_retries' => 8,
-        'request_id' => '419877'
-      },
-      'registry' => {
-        'endpoint' => 'fake',
-        'user' => 'fake',
-        'password' => 'fake'
-      }
-    )
-  end
 
   before do
     begin
@@ -129,9 +105,9 @@ describe Bosh::AwsCloud::Cloud do
           Bosh::AwsCloud::Cloud.new(
               'aws' => {
                   'region' => @region,
-                  'ec2_endpoint' => 'https://ec2.us-east-1.amazonaws.com',
-                  'elb_endpoint' => 'https://elasticloadbalancing.us-east-1.amazonaws.com',
-                  'default_key_name' => default_key_name,
+                  'ec2_endpoint' => "https://ec2.#{@region}.amazonaws.com",
+                  'elb_endpoint' => "https://elasticloadbalancing.#{@region}.amazonaws.com",
+                  'default_key_name' => @default_key_name,
                   'default_security_groups' => security_groups,
                   'fast_path_delete' => 'yes',
                   'access_key_id' => @access_key_id,
@@ -162,9 +138,9 @@ describe Bosh::AwsCloud::Cloud do
           Bosh::AwsCloud::Cloud.new(
               'aws' => {
                   'region' => @region,
-                  'ec2_endpoint' => 'https://ec2.us-east-1.amazonaws.com',
-                  'elb_endpoint' => 'https://elasticloadbalancing.us-east-1.amazonaws.com',
-                  'default_key_name' => default_key_name,
+                  'ec2_endpoint' => "https://ec2.#{@region}.amazonaws.com",
+                  'elb_endpoint' => "https://elasticloadbalancing.#{@region}.amazonaws.com",
+                  'default_key_name' => @default_key_name,
                   'default_security_groups' => security_groups,
                   'fast_path_delete' => 'yes',
                   'access_key_id' => @access_key_id,
