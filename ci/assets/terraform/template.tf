@@ -214,6 +214,10 @@ output "DirectorStaticIP" {
   value = "${cidrhost(aws_vpc.default.cidr_block, 6)}"
 }
 
+output "Region" {
+  value = "${var.region}"
+}
+
 output "AvailabilityZone" {
   value = "${aws_subnet.default.availability_zone}"
 }
