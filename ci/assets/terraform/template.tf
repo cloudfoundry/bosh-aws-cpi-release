@@ -239,12 +239,16 @@ resource "aws_iam_role" "e2e" {
       "ec2:RegisterImage"
     ],
     "Effect": "Allow",
-    "Principal": "*"
+    "Principal": {
+      "Service": "ec2.${var.region}.amazonaws.com"
+    }
   },
   {
     "Effect": "Allow",
     "Action": "elasticloadbalancing:*",
-    "Principal": "*"
+    "Principal": {
+      "Service": "elasticloadbalancing.${var.region}.amazonaws.com"
+    }
   }]
 }
 EOF
