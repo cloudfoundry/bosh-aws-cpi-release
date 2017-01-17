@@ -74,7 +74,7 @@ module Bosh::AwsCloud
 
       initialize_registry
 
-      elb_options = {
+      @elb_params = {
         region: @aws_params[:region],
         credentials: @aws_params[:credentials],
         logger: @logger,
@@ -85,11 +85,11 @@ module Bosh::AwsCloud
         if URI(aws_properties['elb_endpoint']).scheme.nil?
           elb_endpoint = "https://#{elb_endpoint}"
         end
-        elb_options[:endpoint] = elb_endpoint
+        @elb_params[:endpoint] = elb_endpoint
       end
 
-      @elb_client = Aws::ElasticLoadBalancing::Client.new(elb_options)
-      @alb_client = Aws::ElasticLoadBalancingV2::Client.new(elb_options)
+      @elb_client = Aws::ElasticLoadBalancing::Client.new(@elb_params)
+      @alb_client = Aws::ElasticLoadBalancingV2::Client.new(@elb_params)
 
       security_group_mapper = SecurityGroupMapper.new(@ec2_resource)
       instance_param_mapper = InstanceParamMapper.new(security_group_mapper)
@@ -810,7 +810,8 @@ module Bosh::AwsCloud
       true
     rescue Seahorse::Client::NetworkingError => e
       logger.error("Failed to connect to AWS: #{e.inspect}\n#{e.backtrace.join("\n")}")
-      cloud_error("Unable to create a connection to AWS; please check your region or EC2 endpoint.\nIaaS Error: #{e.inspect}")
+      err = "Unable to create a connection to AWS. Please check your provided settings: Region '#{@aws_params[:region] || 'Not provided'}', Endpoint '#{@aws_params[:endpoint] || 'Not provided'}'."
+      cloud_error("#{err}\nIaaS Error: #{e.inspect}")
     rescue Net::OpenTimeout
       false
     end
@@ -821,7 +822,8 @@ module Bosh::AwsCloud
       true
     rescue Seahorse::Client::NetworkingError => e
       logger.error("Failed to connect to AWS Application Load Balancer endpoint: #{e.inspect}\n#{e.backtrace.join("\n")}")
-      cloud_error("Unable to create a connection to AWS; please check your region or ELB endpoint.\nIaaS Error: #{e.inspect}")
+      err = "Unable to create a connection to AWS. Please check your provided settings: Region '#{@elb_params[:region] || 'Not provided'}', Endpoint '#{@elb_params[:endpoint] || 'Not provided'}'."
+      cloud_error("#{err}\nIaaS Error: #{e.inspect}")
     rescue Net::OpenTimeout
       false
     end
@@ -832,7 +834,8 @@ module Bosh::AwsCloud
       true
     rescue Seahorse::Client::NetworkingError => e
       logger.error("Failed to connect to AWS Elastic Load Balancer endpoint: #{e.inspect}\n#{e.backtrace.join("\n")}")
-      cloud_error("Unable to create a connection to AWS; please check your region or ELB endpoint.\nIaaS Error: #{e.inspect}")
+      err = "Unable to create a connection to AWS. Please check your provided settings: Region '#{@elb_params[:region] || 'Not provided'}', Endpoint '#{@elb_params[:endpoint] || 'Not provided'}'."
+      cloud_error("#{err}\nIaaS Error: #{e.inspect}")
     rescue Net::OpenTimeout
       false
     end

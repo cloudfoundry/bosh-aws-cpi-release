@@ -189,7 +189,7 @@ describe Bosh::AwsCloud::Cloud do
 
         expect {
           cpi.has_vm?(non_existent_vm_id)
-        }.to raise_error(/endpoint/)
+        }.to raise_error(/endpoint/i)
       end
     end
 

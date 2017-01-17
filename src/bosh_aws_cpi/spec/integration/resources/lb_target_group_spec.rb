@@ -48,7 +48,7 @@ describe Bosh::AwsCloud::LBTargetGroup do
 
   def wait_for_target_state(target_group_name:, target_state:, target_id:)
     health_state = nil
-    30.times do
+    20.times do
       health_description = elb_v2_client.describe_target_health(
         {
           target_group_arn: get_target_group_arn(target_group_name),
@@ -59,7 +59,7 @@ describe Bosh::AwsCloud::LBTargetGroup do
       expect(health_description.target.id).to eq(target_id)
       health_state = health_description.target_health.state
       break if health_state == target_state
-      sleep(1)
+      sleep(3)
     end
     expect(health_state).to eq(target_state)
   end

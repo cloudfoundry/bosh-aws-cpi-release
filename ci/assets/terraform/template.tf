@@ -162,6 +162,11 @@ resource "aws_alb_target_group" "default" {
   port = "80"
   protocol = "HTTP"
   vpc_id = "${aws_vpc.default.id}"
+  health_check = {
+    interval = 5
+    timeout = 4
+  }
+
   tags {
     Name = "${var.env_name}"
   }
