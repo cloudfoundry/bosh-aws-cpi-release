@@ -1,0 +1,26 @@
+---
+platform: linux
+
+image_resource:
+  type: docker-image
+  source: {repository: boshcpi/aws-cpi-release}
+
+inputs:
+  - name: bosh-cpi-src
+  - name: stemcell
+  - name: heavy-stemcell
+  - name: bosh-cli
+  - name: environment
+
+run:
+  path: bosh-cpi-src/ci/tasks/run-e2e.sh
+
+params:
+  BOSH_DEBUG_LEVEL:    info
+  AWS_ACCESS_KEY:      ""
+  AWS_SECRET_KEY:      ""
+  AWS_REGION_NAME:     ""
+  BOSH_CLIENT:         ""
+  BOSH_CLIENT_SECRET:  ""
+  STEMCELL_NAME:       ""
+  HEAVY_STEMCELL_NAME: ""

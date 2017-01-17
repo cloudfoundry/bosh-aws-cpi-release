@@ -6,7 +6,7 @@ groups:
       - destroy-environment
       - build-candidate
       - integration
-      - bats
+      - bats+e2e
       - promote-candidate
 
 jobs:
@@ -94,17 +94,18 @@ jobs:
               params:
                 release: environment
 
-  - name: bats
+  - name: bats+e2e
     serial: true
     plan:
       - aggregate:
-        - {get: cpi-release,   trigger: true,  resource: bosh-cpi-dev-artifacts, passed: [build-candidate]}
-        - {get: bosh-release,  trigger: false, resource: precompiled-bosh-release}
-        - {get: bosh-cpi-src,  trigger: false, resource: bosh-cpi-src-in, passed: [build-candidate]}
-        - {get: stemcell,      trigger: false, resource: precompiled-stemcell}
-        - {get: certification, trigger: false}
-        - {get: bosh-cli,      trigger: false}
-        - {get: bats,          trigger: false}
+        - {get: cpi-release,    trigger: true,  resource: bosh-cpi-dev-artifacts, passed: [build-candidate]}
+        - {get: bosh-release,   trigger: false, resource: precompiled-bosh-release}
+        - {get: bosh-cpi-src,   trigger: false, resource: bosh-cpi-src-in, passed: [build-candidate]}
+        - {get: stemcell,       trigger: false, resource: precompiled-stemcell}
+        - {get: heavy-stemcell, trigger: false, resource: heavy-ubuntu-stemcell}
+        - {get: certification,  trigger: false}
+        - {get: bosh-cli,       trigger: false}
+        - {get: bats,           trigger: false}
 
       - put: environment
         params:
@@ -142,9 +143,21 @@ jobs:
               BOSH_CLIENT_SECRET:     {{BOSH_CLIENT_SECRET}}
               STEMCELL_NAME:          bosh-aws-xen-hvm-ubuntu-trusty-go_agent
 
-          - task: run-bats
-            file: certification/shared/tasks/run-bats.yml
-            input_mapping: {pipelines: certification}
+          - aggregate:
+            - task: run-bats
+              file: certification/shared/tasks/run-bats.yml
+              input_mapping: {pipelines: certification}
+
+            - task: run-e2e
+              file: pipelines/aws/tasks/run-e2e.yml
+              params: &run-e2e-params
+                AWS_ACCESS_KEY:      {{aws_access_key__primary}}
+                AWS_SECRET_KEY:      {{aws_secret_key__primary}}
+                AWS_REGION_NAME:     {{aws_region__primary}}
+                BOSH_CLIENT:         {{BOSH_CLIENT}}
+                BOSH_CLIENT_SECRET:  {{BOSH_CLIENT_SECRET}}
+                STEMCELL_NAME:       bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+                HEAVY_STEMCELL_NAME: *heavy-ubuntu-stemcell
 
         ensure:
           do:
@@ -157,8 +170,8 @@ jobs:
   - name: promote-candidate
     plan:
       - aggregate:
-        - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts, passed: [integration, bats]}
-        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in, passed: [integration, bats]}
+        - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts, passed: [integration, bats+e2e]}
+        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in, passed: [integration, bats+e2e]}
         - {trigger: false, get: release-version-semver, params: {bump: major}}
 
       - task: promote
@@ -268,6 +281,12 @@ resources:
       bucket: bosh-aws-light-stemcells
       regexp: light-bosh-stemcell-(3309)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
       region_name: us-east-1
+
+  - name: heavy-ubuntu-stemcell
+    type: bosh-io-stemcell
+    source:
+      name: &heavy-ubuntu-stemcell bosh-aws-xen-ubuntu-trusty-go_agent
+      force_regular: true
 
   - name: bats
     type: git

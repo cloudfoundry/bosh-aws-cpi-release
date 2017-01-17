@@ -148,6 +148,22 @@ resource "aws_elb" "default" {
   }
 }
 
+# Create a new classic load balancer
+resource "aws_elb" "e2e" {
+  listener {
+    instance_port = 80
+    instance_protocol = "http"
+    lb_port = 80
+    lb_protocol = "http"
+  }
+
+  subnets = ["${aws_subnet.default.id}"]
+
+  tags {
+    Name = "${var.env_name}-e2e"
+  }
+}
+
 # Create a new application load balancer
 resource "aws_alb" "default" {
   subnets = ["${aws_subnet.default.id}", "${aws_subnet.backup.id}"]
@@ -192,6 +208,46 @@ resource "aws_vpc_endpoint" "private-s3" {
 resource "aws_s3_bucket" "blobstore" {
   bucket = "cpi-pipeline-blobstore-${var.env_name}"
   force_destroy = true
+}
+
+resource "aws_iam_instance_profile" "e2e" {
+    roles = ["${aws_iam_role.e2e.name}"]
+}
+
+resource "aws_iam_role" "e2e" {
+    path = "/"
+    assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Action": [
+      "ec2:AssociateAddress",
+      "ec2:AttachVolume",
+      "ec2:CreateVolume",
+      "ec2:DeleteSnapshot",
+      "ec2:DeleteVolume",
+      "ec2:Describe*",
+      "ec2:DetachVolume",
+      "ec2:CreateSnapshot",
+      "ec2:CreateTags",
+      "ec2:RunInstances",
+      "ec2:TerminateInstances",
+      "ec2:RequestSpotInstances",
+      "ec2:CancelSpotInstanceRequests",
+      "ec2:DeregisterImage",
+      "ec2:DescribeImages",
+      "ec2:RegisterImage"
+    ],
+    "Effect": "Allow",
+    "Resource": "*"
+  },
+  {
+    "Effect": "Allow",
+    "Action": "elasticloadbalancing:*",
+    "Resource": "*"
+  }]
+}
+EOF
 }
 
 output "VPCID" {
@@ -258,6 +314,10 @@ output "ELB" {
   value = "${aws_elb.default.id}"
 }
 
+output "ELB-e2e" {
+  value = "${aws_elb.e2e.id}"
+}
+
 output "ALB" {
   value = "${aws_alb.default.id}"
 }
@@ -268,4 +328,8 @@ output "ALBTargetGroup" {
 
 output "BlobstoreBucket" {
   value = "${aws_s3_bucket.blobstore.id}"
+}
+
+output "IAMInstanceProfile" {
+  value = "${aws_iam_instance_profile.e2e.name}"
 }
