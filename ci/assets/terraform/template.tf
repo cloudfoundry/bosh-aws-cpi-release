@@ -211,7 +211,7 @@ resource "aws_s3_bucket" "blobstore" {
 }
 
 resource "aws_iam_role_policy" "e2e" {
-    name = "e2e-ci-policy"
+    name = "${var.env_name}-policy"
     role = "${aws_iam_role.e2e.id}"
     policy = <<EOF
 {
@@ -248,6 +248,7 @@ EOF
 }
 
 resource "aws_iam_role" "e2e" {
+    name_prefix = "${var.env_name}"
     assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
