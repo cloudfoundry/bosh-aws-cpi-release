@@ -210,13 +210,10 @@ resource "aws_s3_bucket" "blobstore" {
   force_destroy = true
 }
 
-resource "aws_iam_instance_profile" "e2e" {
-    roles = ["${aws_iam_role.e2e.name}"]
-}
-
-resource "aws_iam_role" "e2e" {
-    path = "/"
-    assume_role_policy = <<EOF
+resource "aws_iam_role_policy" "e2e" {
+    name = "e2e-ci-policy"
+    role = "${aws_iam_role.e2e.id}"
+    policy = <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [{
@@ -239,17 +236,31 @@ resource "aws_iam_role" "e2e" {
       "ec2:RegisterImage"
     ],
     "Effect": "Allow",
-    "Principal": {
-      "Service": "ec2.${var.region}.amazonaws.com"
-    }
+		"Resource": "*"
   },
   {
     "Effect": "Allow",
     "Action": "elasticloadbalancing:*",
-    "Principal": {
-      "Service": "elasticloadbalancing.${var.region}.amazonaws.com"
-    }
+		"Resource": "*"
   }]
+}
+EOF
+}
+
+resource "aws_iam_role" "e2e" {
+    assume_role_policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:AssumeRole",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Effect": "Allow",
+      "Sid": ""
+    }
+  ]
 }
 EOF
 }
@@ -335,5 +346,5 @@ output "BlobstoreBucket" {
 }
 
 output "IAMInstanceProfile" {
-  value = "${aws_iam_instance_profile.e2e.name}"
+  value = "${aws_iam_role.e2e.name}"
 }
