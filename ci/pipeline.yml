@@ -149,7 +149,8 @@ jobs:
               input_mapping: {pipelines: certification}
 
             - task: run-e2e
-              file: pipelines/aws/tasks/run-e2e.yml
+              file: bosh-cpi-src/ci/tasks/run-e2e.yml
+              input_mapping: {pipelines: certification}
               params: &run-e2e-params
                 AWS_ACCESS_KEY:      {{aws_access_key__primary}}
                 AWS_SECRET_KEY:      {{aws_secret_key__primary}}

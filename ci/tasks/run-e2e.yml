@@ -7,6 +7,7 @@ image_resource:
 
 inputs:
   - name: bosh-cpi-src
+  - name: pipelines
   - name: stemcell
   - name: heavy-stemcell
   - name: bosh-cli
