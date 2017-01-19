@@ -22,11 +22,11 @@ e2e_release="$(realpath pipelines/aws/assets/e2e-test-release)"
 bosh_cli=$(realpath bosh-cli/bosh-cli-*)
 chmod +x $bosh_cli
 
-export SUBNET_ID=$(echo ${metadata} | jq -e --raw-output ".PublicSubnetID")
-export AVAILABILITY_ZONE=$(echo ${metadata} | jq -e --raw-output ".AvailabilityZone")
-export DIRECTOR_IP=$(echo ${metadata} | jq -e --raw-output ".DirectorEIP")
-export IAM_INSTANCE_PROFILE=$(echo ${metadata} | jq -e --raw-output ".IAMInstanceProfile")
-export ELB_NAME=$(echo ${metadata} | jq -e --raw-output ".ELB-e2e")
+export SUBNET_ID=$(jq -e --raw-output ".PublicSubnetID" "${METADATA_FILE}")
+export AVAILABILITY_ZONE=$(jq -e --raw-output ".AvailabilityZone" "${METADATA_FILE}")
+export DIRECTOR_IP=$(jq -e --raw-output ".DirectorEIP" "${METADATA_FILE}")
+export IAM_INSTANCE_PROFILE=$(jq -e --raw-output ".IAMInstanceProfile" "${METADATA_FILE}")
+export ELB_NAME=$(jq -e --raw-output ".ELB-e2e" "${METADATA_FILE}")
 export BOSH_ENVIRONMENT="${DIRECTOR_IP//./-}.sslip.io"
 
 e2e_deployment_name=e2e-test

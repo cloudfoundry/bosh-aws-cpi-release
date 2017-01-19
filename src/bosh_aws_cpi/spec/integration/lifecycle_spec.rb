@@ -374,7 +374,10 @@ describe Bosh::AwsCloud::Cloud do
 
         it 'creates an encrypted persistent disk' do
           begin
+            # NOTE: if provided KMS key does not exist, this method will throw Aws::EC2::Errors::InvalidVolumeNotFound
+            # https://www.pivotaltracker.com/story/show/137931593
             volume_id = @cpi.create_disk(2048, cloud_properties)
+
             expect(volume_id).not_to be_nil
             expect(@cpi.has_disk?(volume_id)).to be(true)
 
