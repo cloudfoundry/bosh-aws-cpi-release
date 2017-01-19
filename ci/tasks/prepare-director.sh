@@ -26,6 +26,7 @@ ci_output_dir="${workspace_dir}/director-config"
 : ${BOSH_RELEASE_PATH:=}
 : ${CPI_RELEASE_PATH:=}
 : ${STEMCELL_PATH:=}
+: ${ENABLE_IAM_INSTANCE_PROFILE:=""}
 : ${METADATA_FILE:=${ci_environment_dir}/metadata}
 : ${OUTPUT_DIR:=${ci_output_dir}}
 red='\033[0;31m'
@@ -98,7 +99,15 @@ stemcell_uri="file://${STEMCELL_PATH/*stemcell\//stemcell/}"
 : ${BLOBSTORE_BUCKET_NAME:=$(echo ${metadata} | jq --raw-output ".BlobstoreBucket" )}
 : ${STATIC_RANGE:=$(         echo ${metadata} | jq --raw-output ".StaticRange" )}
 : ${RESERVED_RANGE:=$(       echo ${metadata} | jq --raw-output ".ReservedRange" )}
-: ${IAM_INSTANCE_PROFILE:=$( echo ${metadata} | jq --raw-output ".IAMInstanceProfile" )}
+
+if [ -z "${ENABLE_IAM_INSTANCE_PROFILE}" ]; then
+  DEFAULT_IAM_INSTANCE_PROFILE_SETTING=""
+  IAM_INSTANCE_PROFILE_SETTING=""
+else
+  : ${IAM_INSTANCE_PROFILE:=$( echo ${metadata} | jq --raw-output ".IAMInstanceProfile" )}
+  DEFAULT_IAM_INSTANCE_PROFILE_SETTING="default_iam_instance_profile: ${IAM_INSTANCE_PROFILE}"
+  IAM_INSTANCE_PROFILE_SETTING="iam_instance_profile: ${IAM_INSTANCE_PROFILE}"
+fi
 
 # keys
 shared_key="shared.pem"
@@ -130,7 +139,7 @@ resource_pools:
     stemcell:
       url: ${stemcell_uri}
     cloud_properties:
-      iam_instance_profile: ${IAM_INSTANCE_PROFILE}
+      ${IAM_INSTANCE_PROFILE_SETTING}
       instance_type: m3.medium
       availability_zone: ${AVAILABILITY_ZONE}
       ephemeral_disk:
@@ -243,7 +252,7 @@ jobs:
         region: "${AWS_REGION_NAME}"
         access_key_id: ${AWS_ACCESS_KEY}
         secret_access_key: ${AWS_SECRET_KEY}
-        default_iam_instance_profile: ${IAM_INSTANCE_PROFILE}
+        ${DEFAULT_IAM_INSTANCE_PROFILE_SETTING}
 
 cloud_provider:
   template: {name: aws_cpi, release: bosh-aws-cpi}

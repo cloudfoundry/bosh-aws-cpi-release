@@ -175,15 +175,16 @@ jobs:
       - task: prepare-director
         file: bosh-cpi-src/ci/tasks/prepare-director.yml
         params:
-            BOSH_CLIENT:            {{BOSH_CLIENT}}
-            BOSH_CLIENT_SECRET:     {{BOSH_CLIENT_SECRET}}
-            AWS_ACCESS_KEY:         {{aws_access_key__primary}}
-            AWS_SECRET_KEY:         {{aws_secret_key__primary}}
-            AWS_REGION_NAME:        {{aws_region__primary}}
-            PUBLIC_KEY_NAME:        {{cpi_pipeline_public_key_name}}
-            PRIVATE_KEY_DATA:       {{cpi_pipeline_private_key}}
-            SSLIP_IO_CERT:          {{sslip_io_cert}}
-            SSLIP_IO_KEY:           {{sslip_io_key}}
+            BOSH_CLIENT:                 {{BOSH_CLIENT}}
+            BOSH_CLIENT_SECRET:          {{BOSH_CLIENT_SECRET}}
+            AWS_ACCESS_KEY:              {{aws_access_key__primary}}
+            AWS_SECRET_KEY:              {{aws_secret_key__primary}}
+            AWS_REGION_NAME:             {{aws_region__primary}}
+            PUBLIC_KEY_NAME:             {{cpi_pipeline_public_key_name}}
+            PRIVATE_KEY_DATA:            {{cpi_pipeline_private_key}}
+            SSLIP_IO_CERT:               {{sslip_io_cert}}
+            SSLIP_IO_KEY:                {{sslip_io_key}}
+            ENABLE_IAM_INSTANCE_PROFILE: true
 
       - do:
           - task: deploy-director
