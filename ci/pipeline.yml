@@ -132,6 +132,14 @@ jobs:
               BOSH_CLIENT:        {{BOSH_CLIENT}}
               BOSH_CLIENT_SECRET: {{BOSH_CLIENT_SECRET}}
 
+          - task: upload-stemcells
+            file: bosh-cpi-src/ci/tasks/upload-stemcells.yml
+            params:
+              BOSH_CLIENT:         {{BOSH_CLIENT}}
+              BOSH_CLIENT_SECRET:  {{BOSH_CLIENT_SECRET}}
+              STEMCELL_NAME:       bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+              HEAVY_STEMCELL_NAME: *heavy-ubuntu-stemcell
+
           - task: prepare-manual-bats
             file: bosh-cpi-src/ci/tasks/prepare-manual-bats.yml
             params:

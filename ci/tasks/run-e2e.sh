@@ -16,8 +16,6 @@ export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_KEY}
 export AWS_DEFAULT_REGION=${AWS_REGION_NAME}
 
 # inputs
-stemcell_path="$(realpath stemcell/*.tgz)"
-heavy_stemcell_path="$(realpath heavy-stemcell/*.tgz)"
 e2e_release="$(realpath pipelines/aws/assets/e2e-test-release)"
 bosh_cli=$(realpath bosh-cli/bosh-cli-*)
 chmod +x $bosh_cli
@@ -39,9 +37,6 @@ pushd ${e2e_release_home}
   time $bosh_cli -n create-release --force --name ${e2e_deployment_name} --version ${e2e_release_version}
   time $bosh_cli -n upload-release
 popd
-
-time $bosh_cli -n upload-stemcell "${stemcell_path}"
-time $bosh_cli -n upload-stemcell "${heavy_stemcell_path}"
 
 e2e_manifest_filename=e2e-manifest.yml
 e2e_cloud_config_filename=e2e-cloud-config.yml
