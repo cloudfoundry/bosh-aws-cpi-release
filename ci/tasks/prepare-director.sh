@@ -98,6 +98,7 @@ stemcell_uri="file://${STEMCELL_PATH/*stemcell\//stemcell/}"
 : ${BLOBSTORE_BUCKET_NAME:=$(echo ${metadata} | jq --raw-output ".BlobstoreBucket" )}
 : ${STATIC_RANGE:=$(         echo ${metadata} | jq --raw-output ".StaticRange" )}
 : ${RESERVED_RANGE:=$(       echo ${metadata} | jq --raw-output ".ReservedRange" )}
+: ${IAM_INSTANCE_PROFILE:=$( echo ${metadata} | jq --raw-output ".IAMInstanceProfile" )}
 
 # keys
 shared_key="shared.pem"
@@ -129,6 +130,7 @@ resource_pools:
     stemcell:
       url: ${stemcell_uri}
     cloud_properties:
+      iam_instance_profile: ${IAM_INSTANCE_PROFILE}
       instance_type: m3.medium
       availability_zone: ${AVAILABILITY_ZONE}
       ephemeral_disk:
@@ -241,6 +243,7 @@ jobs:
         region: "${AWS_REGION_NAME}"
         access_key_id: ${AWS_ACCESS_KEY}
         secret_access_key: ${AWS_SECRET_KEY}
+        default_iam_instance_profile: ${IAM_INSTANCE_PROFILE}
 
 cloud_provider:
   template: {name: aws_cpi, release: bosh-aws-cpi}
