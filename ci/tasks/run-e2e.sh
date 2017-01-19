@@ -24,7 +24,7 @@ export SUBNET_ID=$(jq -e --raw-output ".PublicSubnetID" "${METADATA_FILE}")
 export AVAILABILITY_ZONE=$(jq -e --raw-output ".AvailabilityZone" "${METADATA_FILE}")
 export DIRECTOR_IP=$(jq -e --raw-output ".DirectorEIP" "${METADATA_FILE}")
 export IAM_INSTANCE_PROFILE=$(jq -e --raw-output ".IAMInstanceProfile" "${METADATA_FILE}")
-export ELB_NAME=$(jq -e --raw-output ".ELB-e2e" "${METADATA_FILE}")
+export ELB_NAME=$(jq -e --raw-output ".ELB_e2e" "${METADATA_FILE}")
 export BOSH_ENVIRONMENT="${DIRECTOR_IP//./-}.sslip.io"
 
 e2e_deployment_name=e2e-test

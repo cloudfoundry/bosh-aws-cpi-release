@@ -247,6 +247,10 @@ resource "aws_iam_role_policy" "e2e" {
 EOF
 }
 
+resource "aws_iam_instance_profile" "e2e" {
+    roles = ["${aws_iam_role.e2e.name}"]
+}
+
 resource "aws_iam_role" "e2e" {
     name_prefix = "${var.env_name}"
     assume_role_policy = <<EOF
@@ -330,7 +334,7 @@ output "ELB" {
   value = "${aws_elb.default.id}"
 }
 
-output "ELB-e2e" {
+output "ELB_e2e" {
   value = "${aws_elb.e2e.id}"
 }
 
@@ -347,5 +351,5 @@ output "BlobstoreBucket" {
 }
 
 output "IAMInstanceProfile" {
-  value = "${aws_iam_role.e2e.name}"
+  value = "${aws_iam_instance_profile.e2e.name}"
 }
