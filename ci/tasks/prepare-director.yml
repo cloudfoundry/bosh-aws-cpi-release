@@ -26,3 +26,5 @@ params:
   BOSH_CLIENT_SECRET:     ""
   PUBLIC_KEY_NAME:        ""
   PRIVATE_KEY_DATA:       ""
+  SSLIP_IO_CERT:          ""
+  SSLIP_IO_KEY:           ""

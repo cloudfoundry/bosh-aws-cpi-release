@@ -21,6 +21,8 @@ ci_output_dir="${workspace_dir}/director-config"
 : ${AWS_REGION_NAME:?}
 : ${PUBLIC_KEY_NAME:?}
 : ${PRIVATE_KEY_DATA:?}
+: ${SSLIP_IO_CERT:?}
+: ${SSLIP_IO_KEY:?}
 : ${BOSH_RELEASE_PATH:=}
 : ${CPI_RELEASE_PATH:=}
 : ${STEMCELL_PATH:=}
@@ -214,6 +216,9 @@ jobs:
           local:
             users:
               - {name: ${BOSH_CLIENT}, password: ${BOSH_CLIENT_SECRET}}
+        ssl:
+          key: "$(sed 's/$/\\n/g' <<< "${SSLIP_IO_KEY}" | tr -d '\n')"
+          cert: "$(sed 's/$/\\n/g' <<< "${SSLIP_IO_CERT}" | tr -d '\n')"
 
       hm:
         http: {user: hm, password: hm-password}
