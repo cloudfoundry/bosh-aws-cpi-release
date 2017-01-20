@@ -61,6 +61,8 @@ resource "aws_subnet" "default" {
   tags {
     Name = "${var.env_name}"
   }
+
+  map_public_ip_on_launch = true
 }
 
 resource "aws_subnet" "backup" {
