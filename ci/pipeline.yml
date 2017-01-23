@@ -80,9 +80,12 @@ jobs:
         params:
           terraform_source: bosh-cpi-src/ci/assets/terraform
           delete_on_failure: true
+          generate_random_name: true
 
       - task: test
         file: bosh-cpi-src/ci/tasks/run-integration.yml
+        input_mapping:
+          environment: terraform
         params:
           AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
           AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
@@ -94,6 +97,8 @@ jobs:
         ensure:
           do:
             - task: ensure-terminated
+              input_mapping:
+                environment: terraform
               file: bosh-cpi-src/ci/tasks/ensure-terminated.yml
               params:
                 AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}

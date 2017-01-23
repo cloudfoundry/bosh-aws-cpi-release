@@ -14,4 +14,3 @@ params:
   AWS_DEFAULT_REGION:    ""
   AWS_PUBLIC_KEY_NAME:   ""
   AWS_KMS_KEY_ARN:       ""
-  TERRAFORM_PATH:        environment

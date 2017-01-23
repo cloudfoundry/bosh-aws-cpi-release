@@ -5,9 +5,8 @@ set -e
 : ${AWS_ACCESS_KEY_ID:?}
 : ${AWS_SECRET_ACCESS_KEY:?}
 : ${AWS_DEFAULT_REGION:?}
-: ${TERRAFORM_PATH:?}
 
-metadata=$(cat ${TERRAFORM_PATH}/metadata)
+metadata=$(cat environment/metadata)
 vpc_id=$(echo ${metadata} | jq --raw-output ".VPCID")
 
 if [ ! -z "${vpc_id}" ] ; then

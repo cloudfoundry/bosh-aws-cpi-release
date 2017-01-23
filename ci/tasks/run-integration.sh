@@ -7,12 +7,11 @@ set -e
 : ${AWS_DEFAULT_REGION:?}
 : ${AWS_PUBLIC_KEY_NAME:?}
 : ${AWS_KMS_KEY_ARN:?}
-: ${TERRAFORM_PATH:?}
 
 # NOTE: To run with specific line numbers, set:
 # RSPEC_ARGUMENTS="spec/integration/lifecycle_spec.rb:mm:nn"
 : ${RSPEC_ARGUMENTS:=spec/integration}
-: ${METADATA_FILE:=${TERRAFORM_PATH}/metadata}
+: ${METADATA_FILE:=environment/metadata}
 
 release_dir="$( cd $(dirname $0) && cd ../.. && pwd )"
 
