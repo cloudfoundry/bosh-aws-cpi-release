@@ -76,9 +76,10 @@ jobs:
         - {trigger: true,  passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
         - {trigger: false, passed: [build-candidate], get: bosh-cpi-src, resource: bosh-cpi-src-in}
 
-      - put: environment
+      - put: terraform
         params:
-          acquire: true
+          terraform_source: bosh-cpi-src/ci/assets/terraform
+          delete_on_failure: true
 
       - task: test
         file: bosh-cpi-src/ci/tasks/run-integration.yml
@@ -88,12 +89,24 @@ jobs:
           AWS_DEFAULT_REGION:    {{aws_region__primary}}
           AWS_PUBLIC_KEY_NAME:   {{cpi_pipeline_public_key_name}}
           AWS_KMS_KEY_ARN:       {{aws_kms_key_arn}}
+          TERRAFORM_PATH:        terraform
 
         ensure:
           do:
-            - put: environment
+            - task: ensure-terminated
+              file: bosh-cpi-src/ci/tasks/ensure-terminated.yml
               params:
-                release: environment
+                AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
+                AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
+                AWS_DEFAULT_REGION:    {{aws_region__primary}}
+
+            - put: terraform
+              params:
+                terraform_source: bosh-cpi-src/ci/assets/terraform
+                env_name_file: terraform/name
+                action: destroy
+              get_params:
+                action: destroy
 
   - name: bats
     serial: true
