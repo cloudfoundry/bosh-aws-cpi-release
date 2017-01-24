@@ -92,7 +92,6 @@ jobs:
           AWS_DEFAULT_REGION:    {{aws_region__primary}}
           AWS_PUBLIC_KEY_NAME:   {{cpi_pipeline_public_key_name}}
           AWS_KMS_KEY_ARN:       {{aws_kms_key_arn}}
-          TERRAFORM_PATH:        terraform
 
         ensure:
           do:
@@ -125,12 +124,16 @@ jobs:
         - {get: bosh-cli,       trigger: false}
         - {get: bats,           trigger: false}
 
-      - put: environment
+      - put: terraform
         params:
-          acquire: true
+          terraform_source: bosh-cpi-src/ci/assets/terraform
+          delete_on_failure: true
+          generate_random_name: true
 
       - task: prepare-director
         file: bosh-cpi-src/ci/tasks/prepare-director.yml
+        input_mapping:
+          environment: terraform
         params:
             BOSH_CLIENT:            {{BOSH_CLIENT}}
             BOSH_CLIENT_SECRET:     {{BOSH_CLIENT_SECRET}}
@@ -145,13 +148,18 @@ jobs:
       - do:
           - task: deploy-director
             file: certification/shared/tasks/deploy-director.yml
-            input_mapping: {pipelines: certification}
+            input_mapping:
+              pipelines: certification
+              environment: terraform
             params:
               BOSH_CLIENT:        {{BOSH_CLIENT}}
               BOSH_CLIENT_SECRET: {{BOSH_CLIENT_SECRET}}
 
           - task: prepare-manual-bats
             file: bosh-cpi-src/ci/tasks/prepare-manual-bats.yml
+            input_mapping:
+              pipelines: certification
+              environment: terraform
             params:
               AWS_ACCESS_KEY:         {{aws_access_key__primary}}
               AWS_SECRET_KEY:         {{aws_secret_key__primary}}
@@ -164,15 +172,33 @@ jobs:
 
           - task: run-bats
             file: certification/shared/tasks/run-bats.yml
-            input_mapping: {pipelines: certification}
+            input_mapping:
+              pipelines: certification
+              environment: terraform
 
         ensure:
           do:
             - task: teardown
+              input_mapping:
+                environment: terraform
               file: bosh-cpi-src/ci/tasks/teardown.yml
-            - put: environment
+
+            - task: ensure-terminated
+              input_mapping:
+                environment: terraform
+              file: bosh-cpi-src/ci/tasks/ensure-terminated.yml
               params:
-                release: environment
+                AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
+                AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
+                AWS_DEFAULT_REGION:    {{aws_region__primary}}
+
+            - put: terraform
+              params:
+                terraform_source: bosh-cpi-src/ci/assets/terraform
+                env_name_file: terraform/name
+                action: destroy
+              get_params:
+                action: destroy
 
   - name: end-2-end
     serial: true
@@ -186,12 +212,16 @@ jobs:
         - {get: certification,  trigger: false}
         - {get: bosh-cli,       trigger: false}
 
-      - put: environment
+      - put: terraform
         params:
-          acquire: true
+          terraform_source: bosh-cpi-src/ci/assets/terraform
+          delete_on_failure: true
+          generate_random_name: true
 
       - task: prepare-director
         file: bosh-cpi-src/ci/tasks/prepare-director.yml
+        input_mapping:
+          environment: terraform
         params:
             BOSH_CLIENT:                 {{BOSH_CLIENT}}
             BOSH_CLIENT_SECRET:          {{BOSH_CLIENT_SECRET}}
@@ -207,14 +237,18 @@ jobs:
       - do:
           - task: deploy-director
             file: certification/shared/tasks/deploy-director.yml
-            input_mapping: {pipelines: certification}
+            input_mapping:
+              pipelines: certification
+              environment: terraform
             params:
               BOSH_CLIENT:        {{BOSH_CLIENT}}
               BOSH_CLIENT_SECRET: {{BOSH_CLIENT_SECRET}}
 
           - task: run-e2e
             file: bosh-cpi-src/ci/tasks/run-e2e.yml
-            input_mapping: {pipelines: certification}
+            input_mapping:
+              pipelines: certification
+              environment: terraform
             params: &run-e2e-params
               AWS_ACCESS_KEY:      {{aws_access_key__primary}}
               AWS_SECRET_KEY:      {{aws_secret_key__primary}}
@@ -227,10 +261,26 @@ jobs:
         ensure:
           do:
             - task: teardown
+              input_mapping:
+                environment: terraform
               file: bosh-cpi-src/ci/tasks/teardown.yml
-            - put: environment
+
+            - task: ensure-terminated
+              input_mapping:
+                environment: terraform
+              file: bosh-cpi-src/ci/tasks/ensure-terminated.yml
               params:
-                release: environment
+                AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
+                AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
+                AWS_DEFAULT_REGION:    {{aws_region__primary}}
+
+            - put: terraform
+              params:
+                terraform_source: bosh-cpi-src/ci/assets/terraform
+                env_name_file: terraform/name
+                action: destroy
+              get_params:
+                action: destroy
 
   - name: promote-candidate
     plan:
