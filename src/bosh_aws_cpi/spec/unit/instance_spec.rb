@@ -56,12 +56,6 @@ module Bosh::AwsCloud
         expect(aws_instance).to receive_message_chain('state.name').and_return('terminated')
         expect(instance.exists?).to be(false)
       end
-
-      it 'returns false if the instance exists but is shutting-down' do
-        expect(aws_instance).to receive(:exists?).and_return(true)
-        expect(aws_instance).to receive_message_chain('state.name').and_return('shutting-down')
-        expect(instance.exists?).to be(false)
-      end
     end
 
     describe '#wait_for_running' do
@@ -93,7 +87,7 @@ module Bosh::AwsCloud
         expect(registry).to receive(:delete_settings).with(instance_id).ordered
 
         expect(ResourceWait).to receive(:for_instance).
-          with(instance: aws_instance, state: 'shutting-down').ordered
+          with(instance: aws_instance, state: 'terminated').ordered
 
         instance.terminate
       end
@@ -133,6 +127,15 @@ module Bosh::AwsCloud
           expect(logger).to receive(:debug).with("Failed to find terminated instance '#{instance_id}' after deletion: #{err.inspect}")
 
           instance.terminate
+        end
+      end
+
+      describe 'fast path deletion' do
+        it 'deletes the instance without waiting for confirmation of termination' do
+          allow(aws_instance).to receive(:terminate).ordered
+          allow(registry).to receive(:delete_settings).ordered
+          expect(TagManager).to receive(:tag).with(aws_instance, "Name", "to be deleted").ordered
+          instance.terminate(true)
         end
       end
     end

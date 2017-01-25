@@ -35,10 +35,10 @@ describe Bosh::AwsCloud::Cloud do
   before do
     begin
       @ec2.instances({
-       filters: [
-         { name: 'tag-key', values: ['delete_me'] },
-         { name: 'instance-state-name', values: %w(stopped stopping running pending) }
-       ]
+        filters: [
+          { name: 'tag-key', values: ['delete_me'] },
+          { name: 'instance-state-name', values: %w(stopped stopping running pending) }
+        ]
       }).each(&:terminate)
     rescue Aws::EC2::Errors::InvalidInstanceIdNotFound
       # don't blow up tests if instance that we're trying to delete was not found

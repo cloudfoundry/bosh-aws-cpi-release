@@ -22,7 +22,7 @@ describe Bosh::AwsCloud::Cloud, "delete_vm" do
     instance = instance_double('Bosh::AwsCloud::Instance')
     allow(instance_manager).to receive(:find).with('fake-id').and_return(instance)
 
-    expect(instance).to receive(:terminate)
+    expect(instance).to receive(:terminate).with(false)
 
     cloud.delete_vm('fake-id')
   end

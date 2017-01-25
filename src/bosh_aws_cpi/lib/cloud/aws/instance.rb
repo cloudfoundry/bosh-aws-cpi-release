@@ -72,7 +72,7 @@ module Bosh::AwsCloud
       @aws_instance.reboot
     end
 
-    def terminate
+    def terminate(fast=false)
       begin
         @aws_instance.terminate
       rescue Aws::EC2::Errors::InvalidInstanceIDNotFound => e
@@ -83,9 +83,15 @@ module Bosh::AwsCloud
         @registry.delete_settings(@aws_instance.id)
       end
 
+      if fast
+        TagManager.tag(@aws_instance, "Name", "to be deleted")
+        @logger.info("Instance #{@aws_instance.id} marked to deletion")
+        return
+      end
+
       begin
         @logger.info("Deleting instance '#{@aws_instance.id}'")
-        ResourceWait.for_instance(instance: @aws_instance, state: 'shutting-down')
+        ResourceWait.for_instance(instance: @aws_instance, state: 'terminated')
       rescue Aws::EC2::Errors::InvalidInstanceIDNotFound => e
         @logger.debug("Failed to find terminated instance '#{@aws_instance.id}' after deletion: #{e.inspect}")
         # It's OK, just means that instance has already been deleted
@@ -94,7 +100,7 @@ module Bosh::AwsCloud
 
     # Determines if the instance exists.
     def exists?
-      @aws_instance.exists? && !%w(terminated shutting-down).include?(@aws_instance.state.name)
+      @aws_instance.exists? && @aws_instance.state.name != 'terminated'
     end
 
     def update_routing_tables(route_definitions)

@@ -12,12 +12,12 @@ module Bosh::AwsCloud
       end
 
       context 'deletion' do
-        it 'should wait until the state is `shutting-down`' do
-          expect(instance).to receive(:state).and_return('pending')
-          expect(instance).to receive(:state).and_return('pending')
-          expect(instance).to receive(:state).and_return('shutting-down')
+        it 'should wait until the state is terminated' do
+          expect(instance).to receive(:state).and_return('shutting_down')
+          expect(instance).to receive(:state).and_return('shutting_down')
+          expect(instance).to receive(:state).and_return('terminated')
 
-          described_class.for_instance(instance: instance, state: 'shutting-down')
+          described_class.for_instance(instance: instance, state: 'terminated')
         end
       end
 
@@ -46,17 +46,6 @@ module Bosh::AwsCloud
           expect(instance).to receive(:state).and_return('pending')
           expect(instance).to receive(:state).and_return('pending')
           expect(instance).to receive(:state).and_return('terminated')
-
-          expect(ResourceWait.logger).to receive(:error).with(/terminated while starting/)
-          expect {
-            described_class.for_instance(instance: instance, state: 'running')
-          }.to raise_error Bosh::Clouds::VMCreationFailed, /terminated while starting/
-        end
-
-        it 'should fail if AWS starts shutting-down the instance' do
-          expect(instance).to receive(:state).and_return('pending')
-          expect(instance).to receive(:state).and_return('pending')
-          expect(instance).to receive(:state).and_return('shutting-down')
 
           expect(ResourceWait.logger).to receive(:error).with(/terminated while starting/)
           expect {

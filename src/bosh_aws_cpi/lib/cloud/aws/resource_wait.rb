@@ -14,7 +14,7 @@ module Bosh::AwsCloud
       raise ArgumentError, "args should be a Hash, but `#{args.class}' given" unless args.is_a?(Hash)
       instance = args.fetch(:instance) { raise ArgumentError, 'instance object required' }
       target_state = args.fetch(:state) { raise ArgumentError, 'state symbol required' }
-      valid_states = ['running', 'shutting-down']
+      valid_states = ['running', 'terminated']
       validate_states(valid_states, target_state)
 
       ignored_errors = []
@@ -25,7 +25,7 @@ module Bosh::AwsCloud
 
       new.for_resource(resource: instance, errors: ignored_errors, target_state: target_state) do |instance_state|
         current_state = instance_state
-        if target_state == 'running' && (current_state == 'terminated' || current_state == 'shutting-down')
+        if target_state == 'running' && current_state == 'terminated'
           message = "Instance '#{instance.id}' terminated while starting"
           logger.error(message)
           raise Bosh::Clouds::VMCreationFailed.new(true), message
