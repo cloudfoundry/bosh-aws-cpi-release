@@ -19,7 +19,6 @@ module Bosh::AwsCloud
       let(:aws_instances) { instance_double('Aws::EC2::InstanceCollection') }
       let(:aws_instance) { instance_double('Aws::EC2::Instance', id: 'i-12345678') }
 
-      let(:agent_id) { 'agent-id' }
       let(:stemcell_id) { 'stemcell-id' }
       let(:vm_type) { {
         'instance_type' => 'm1.small',
@@ -40,7 +39,6 @@ module Bosh::AwsCloud
         }
       end
       let(:disk_locality) { nil }
-      let(:environment) { nil }
       let(:default_options) do
         {
           'aws' => {
@@ -105,12 +103,10 @@ module Bosh::AwsCloud
 
         expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
         instance_manager.create(
-          agent_id,
           stemcell_id,
           vm_type,
           networks_spec,
           disk_locality,
-          environment,
           default_options
         )
       end
@@ -165,12 +161,10 @@ module Bosh::AwsCloud
           # Trigger spot instance request
           instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
           instance_manager.create(
-            agent_id,
             stemcell_id,
             vm_type,
             networks_spec,
             disk_locality,
-            environment,
             default_options
           )
         end
@@ -183,12 +177,10 @@ module Bosh::AwsCloud
 
             expect {
               instance_manager.create(
-                agent_id,
                 stemcell_id,
                 vm_type,
                 networks_spec,
                 disk_locality,
-                environment,
                 default_options
               )
             }.to raise_error(Bosh::Clouds::VMCreationFailed, /Spot instance creation failed/)
@@ -219,12 +211,10 @@ module Bosh::AwsCloud
                 .with({ fake: 'instance-params', min_count: 1, max_count: 1 })
 
               instance_manager.create(
-                agent_id,
                 stemcell_id,
                 vm_type,
                 networks_spec,
                 disk_locality,
-                environment,
                 default_options
               )
             end
@@ -236,12 +226,10 @@ module Bosh::AwsCloud
                 .with("Spot instance creation failed with this message: #{message}; will create ondemand instance because `spot_ondemand_fallback` is set.")
 
               instance_manager.create(
-                agent_id,
                 stemcell_id,
                 vm_type,
                 networks_spec,
                 disk_locality,
-                environment,
                 default_options
               )
             end
@@ -262,12 +250,10 @@ module Bosh::AwsCloud
           expect(instance).to receive(:wait_for_running)
 
           instance_manager.create(
-            agent_id,
             stemcell_id,
             vm_type,
             networks_spec,
             disk_locality,
-            environment,
             default_options
           )
         end
@@ -285,12 +271,10 @@ module Bosh::AwsCloud
         expect(logger).to receive(:warn).with(/IP address was in use/).once
 
         instance_manager.create(
-          agent_id,
           stemcell_id,
           vm_type,
           networks_spec,
           disk_locality,
-          environment,
           default_options
         )
       end
@@ -312,12 +296,10 @@ module Bosh::AwsCloud
 
           expect {
             instance_manager.create(
-              agent_id,
               stemcell_id,
               vm_type,
               networks_spec,
               disk_locality,
-              environment,
               default_options
             )
           }.to raise_error(create_err)
@@ -335,12 +317,10 @@ module Bosh::AwsCloud
 
             expect {
               instance_manager.create(
-                agent_id,
                 stemcell_id,
                 vm_type,
                 networks_spec,
                 disk_locality,
-                environment,
                 default_options
               )
             }.to raise_error(create_err)

@@ -168,12 +168,10 @@ module Bosh::AwsCloud
 
         begin
           instance, block_device_agent_info = @instance_manager.create(
-            agent_id,
             stemcell.image_id,
             vm_type,
             network_spec,
             (disk_locality || []),
-            environment,
             options,
           )
 

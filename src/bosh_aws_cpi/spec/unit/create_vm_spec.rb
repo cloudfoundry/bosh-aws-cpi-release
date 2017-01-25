@@ -62,7 +62,7 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
     end
 
     allow(instance_manager).to receive(:create).
-      with(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment, options).
+      with(stemcell_id, vm_type, networks_spec, disk_locality, options).
       and_return([instance, block_device_agent_info])
 
     allow(Bosh::AwsCloud::NetworkConfigurator).to receive(:new).
@@ -77,9 +77,7 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
   it 'passes the image_id of the stemcell to an InstanceManager in order to create a VM' do
     expect(stemcell).to receive(:image_id).with(no_args).and_return('ami-1234')
     expect(instance_manager).to receive(:create).with(
-      anything,
       'ami-1234',
-      anything,
       anything,
       anything,
       anything,

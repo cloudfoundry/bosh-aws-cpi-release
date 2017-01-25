@@ -13,7 +13,7 @@ module Bosh::AwsCloud
       @logger = logger
     end
 
-    def create(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment, options)
+    def create(stemcell_id, vm_type, networks_spec, disk_locality, options)
       ami = @ec2.image(stemcell_id)
       @block_device_manager.vm_type = vm_type
       @block_device_manager.virtualization_type = ami.virtualization_type
