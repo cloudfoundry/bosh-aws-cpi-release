@@ -201,7 +201,7 @@ module Bosh::AwsCloud
           instance.id
         rescue => e # is this rescuing too much?
           logger.error(%Q[Failed to create instance: #{e.message}\n#{e.backtrace.join("\n")}])
-          instance.terminate(fast_path_delete?) if instance
+          instance.terminate if instance
           raise e
         end
       end
@@ -209,12 +209,12 @@ module Bosh::AwsCloud
 
     ##
     # Delete EC2 instance ("terminate" in AWS language) and wait until
-    # it reports as terminated
+    # it reports as shutting-down
     # @param [String] instance_id EC2 instance id
     def delete_vm(instance_id)
       with_thread_name("delete_vm(#{instance_id})") do
         logger.info("Deleting instance '#{instance_id}'")
-        @instance_manager.find(instance_id).terminate(fast_path_delete?)
+        @instance_manager.find(instance_id).terminate
       end
     end
 
