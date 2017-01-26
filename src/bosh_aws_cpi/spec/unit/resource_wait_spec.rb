@@ -46,11 +46,12 @@ module Bosh::AwsCloud
           expect(instance).to receive(:state).and_return('pending')
           expect(instance).to receive(:state).and_return('pending')
           expect(instance).to receive(:state).and_return('terminated')
+          expect(instance).to receive(:state_reason).and_return(double("state_reason", message: 'bad things are afoot'))
 
           expect(ResourceWait.logger).to receive(:error).with(/terminated while starting/)
           expect {
             described_class.for_instance(instance: instance, state: 'running')
-          }.to raise_error Bosh::Clouds::VMCreationFailed, /terminated while starting/
+          }.to raise_error Bosh::Clouds::VMCreationFailed, /terminated while starting because bad things are afoot/
         end
       end
     end
