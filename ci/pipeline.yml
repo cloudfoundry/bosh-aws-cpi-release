@@ -71,6 +71,7 @@ jobs:
         params: {file: candidate/*.tgz}
 
   - name: integration
+    serial: true
     plan:
       - aggregate:
         - {trigger: true,  passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
