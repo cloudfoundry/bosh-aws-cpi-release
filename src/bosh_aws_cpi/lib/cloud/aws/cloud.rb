@@ -537,6 +537,12 @@ module Bosh::AwsCloud
       }
     end
 
+    # Information about AWS CPI, currently supported stemcell formats
+    # @return [Hash] AWS CPI properties
+    def info
+      {'stemcell_formats' => ['aws-raw', 'aws-light']}
+    end
+
     def find_device_path_by_name(sd_name)
       xvd_name = sd_name.gsub(/^\/dev\/sd/, "/dev/xvd")
 

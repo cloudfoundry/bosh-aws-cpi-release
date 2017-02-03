@@ -166,6 +166,12 @@ describe Bosh::AwsCloud::Cloud do
         end
       end
 
+      describe '#info' do
+        it 'returns correct info' do
+          expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light']})
+        end
+      end
+
       context 'when disk type is not provided' do
         let(:cloud_properties) { {} }
         let(:disk_size) { 1025 }

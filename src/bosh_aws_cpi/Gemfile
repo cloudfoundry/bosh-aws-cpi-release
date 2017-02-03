@@ -3,7 +3,7 @@ source 'https://rubygems.org'
 gem 'aws-sdk',    '2.6.32'
 gem 'httpclient', '=2.7.1'
 gem 'bosh_common', '1.3262.24.0'
-gem 'bosh_cpi', '2.0.5'
+gem 'bosh_cpi', '2.0.6'
 
 group :development, :test do
   gem 'pry-byebug'
