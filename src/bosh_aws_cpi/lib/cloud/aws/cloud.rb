@@ -73,7 +73,7 @@ module Bosh::AwsCloud
       @ec2_client = Aws::EC2::Client.new(@aws_params)
       @ec2_resource = Aws::EC2::Resource.new(client: @ec2_client)
 
-      cloud_error("Please make sure the CPI has proper network access to AWS.") unless aws_accessible?
+      cloud_error('Please make sure the CPI has proper network access to AWS.') unless aws_accessible?
 
       @az_selector = AvailabilityZoneSelector.new(@ec2_resource)
 
@@ -118,11 +118,11 @@ module Bosh::AwsCloud
         http_client.connect_timeout = METADATA_TIMEOUT
         # Using 169.254.169.254 is an EC2 convention for getting
         # instance metadata
-        uri = "http://169.254.169.254/latest/meta-data/instance-id/"
+        uri = 'http://169.254.169.254/latest/meta-data/instance-id/'
 
         response = http_client.get(uri)
         unless response.status == 200
-          cloud_error("Instance metadata endpoint returned " \
+          cloud_error('Instance metadata endpoint returned ' \
                       "HTTP #{response.status}")
         end
 
@@ -130,8 +130,8 @@ module Bosh::AwsCloud
       end
 
     rescue HTTPClient::TimeoutError
-      cloud_error("Timed out reading instance metadata, " \
-                  "please make sure CPI is running on EC2 instance")
+      cloud_error('Timed out reading instance metadata, ' \
+                  'please make sure CPI is running on EC2 instance')
     end
 
     ##
@@ -320,7 +320,7 @@ module Bosh::AwsCloud
 
         if fast_path_delete?
           begin
-            TagManager.tag(volume, "Name", "to be deleted")
+            TagManager.tag(volume, 'Name', 'to be deleted')
             logger.info("Volume `#{disk_id}' has been marked for deletion")
           rescue Aws::EC2::Errors::InvalidVolumeNotFound
             # Once in a blue moon AWS if actually fast enough that the volume is already gone
@@ -346,9 +346,9 @@ module Bosh::AwsCloud
         device_name = attach_ebs_volume(instance, volume)
 
         update_agent_settings(instance) do |settings|
-          settings["disks"] ||= {}
-          settings["disks"]["persistent"] ||= {}
-          settings["disks"]["persistent"][disk_id] = device_name
+          settings['disks'] ||= {}
+          settings['disks']['persistent'] ||= {}
+          settings['disks']['persistent'][disk_id] = device_name
         end
         logger.info("Attached `#{disk_id}' to `#{instance_id}'")
       end
@@ -372,9 +372,9 @@ module Bosh::AwsCloud
         end
 
         update_agent_settings(instance) do |settings|
-          settings["disks"] ||= {}
-          settings["disks"]["persistent"] ||= {}
-          settings["disks"]["persistent"].delete(disk_id)
+          settings['disks'] ||= {}
+          settings['disks']['persistent'] ||= {}
+          settings['disks']['persistent'].delete(disk_id)
         end
 
         logger.info("Detached `#{disk_id}' from `#{instance_id}'")
@@ -437,7 +437,7 @@ module Bosh::AwsCloud
     # @param [Hash] network_spec network properties
     # @raise [Bosh::Clouds:NotSupported] configure_networks is no longer supported
     def configure_networks(instance_id, network_spec)
-      raise Bosh::Clouds::NotSupported, "configure_networks is no longer supported"
+      raise Bosh::Clouds::NotSupported, 'configure_networks is no longer supported'
     end
 
     ##
@@ -544,7 +544,7 @@ module Bosh::AwsCloud
     end
 
     def find_device_path_by_name(sd_name)
-      xvd_name = sd_name.gsub(/^\/dev\/sd/, "/dev/xvd")
+      xvd_name = sd_name.gsub(/^\/dev\/sd/, '/dev/xvd')
 
       DEVICE_POLL_TIMEOUT.times do
         if File.blockdev?(sd_name)
@@ -555,7 +555,7 @@ module Bosh::AwsCloud
         sleep(1)
       end
 
-      cloud_error("Cannot find EBS volume on current instance")
+      cloud_error('Cannot find EBS volume on current instance')
     end
 
     private
@@ -594,7 +594,7 @@ module Bosh::AwsCloud
 
     def update_agent_settings(instance)
       unless block_given?
-        raise ArgumentError, "block is not provided"
+        raise ArgumentError, 'block is not provided'
       end
 
       settings = registry.read_settings(instance.id)
@@ -613,12 +613,19 @@ module Bosh::AwsCloud
         unless instance.exists?
           cloud_error(
             "Could not locate the current VM with id '#{current_vm_id}'." +
-            "Ensure that the current VM is located in the same region as configured in the manifest."
+                'Ensure that the current VM is located in the same region as configured in the manifest.'
           )
         end
 
-        disk_size = stemcell_properties["disk"] || 2048
-        volume_id = create_disk(disk_size, {}, current_vm_id)
+        disk_size = stemcell_properties['disk'] || 2048
+        volume_id = create_disk(
+          disk_size,
+          {
+            'encrypted' => stemcell_properties['encrypted'],
+            'kms_key_arn' => stemcell_properties['kms_key_arn']
+          },
+          current_vm_id
+        )
         volume = @ec2_resource.volume(volume_id)
 
         sd_name = attach_ebs_volume(instance, volume)
@@ -719,8 +726,8 @@ module Bosh::AwsCloud
     #
     def validate_options
       required_keys = {
-        "aws" => ["default_key_name", "max_retries"],
-        "registry" => ["endpoint", "user", "password"],
+          'aws' => ['default_key_name', 'max_retries'],
+          'registry' => ['endpoint', 'user', 'password'],
       }
 
       missing_keys = []
@@ -736,7 +743,7 @@ module Bosh::AwsCloud
       raise ArgumentError, "missing configuration parameters > #{missing_keys.join(', ')}" unless missing_keys.empty?
 
       if !options['aws'].has_key?('region') && ! (options['aws'].has_key?('ec2_endpoint') && options['aws'].has_key?('elb_endpoint'))
-        raise ArgumentError, "missing configuration parameters > aws:region, or aws:ec2_endpoint and aws:elb_endpoint"
+        raise ArgumentError, 'missing configuration parameters > aws:region, or aws:ec2_endpoint and aws:elb_endpoint'
       end
     end
 
@@ -753,7 +760,7 @@ module Bosh::AwsCloud
 
       if credentials_source == 'static'
         if options['aws']['access_key_id'].nil? || options['aws']['secret_access_key'].nil?
-          raise ArgumentError, "Must use access_key_id and secret_access_key with static credentials_source"
+          raise ArgumentError, 'Must use access_key_id and secret_access_key with static credentials_source'
         end
       end
 
@@ -783,27 +790,27 @@ module Bosh::AwsCloud
     # @return [Hash]
     def initial_agent_settings(agent_id, network_spec, environment, root_device_name, block_device_agent_info)
       settings = {
-        "vm" => {
-          "name" => "vm-#{SecureRandom.uuid}"
+          'vm' => {
+              'name' => "vm-#{SecureRandom.uuid}"
         },
-        "agent_id" => agent_id,
-        "networks" => agent_network_spec(network_spec),
-        "disks" => {
-          "system" => root_device_name,
-          "persistent" => {}
+          'agent_id' => agent_id,
+          'networks' => agent_network_spec(network_spec),
+          'disks' => {
+            'system' => root_device_name,
+            'persistent' => {}
         }
       }
 
-      settings["disks"].merge!(block_device_agent_info)
-      settings["disks"]["ephemeral"] = settings["disks"]["ephemeral"][0]["path"]
+      settings['disks'].merge!(block_device_agent_info)
+      settings['disks']['ephemeral'] = settings['disks']['ephemeral'][0]['path']
 
-      settings["env"] = environment if environment
+      settings['env'] = environment if environment
       settings.merge(agent_properties)
     end
 
     def agent_network_spec(network_spec)
       spec = network_spec.map do |name, settings|
-        settings["use_dhcp"] = true
+        settings['use_dhcp'] = true
         [name, settings]
       end
       Hash[spec]
