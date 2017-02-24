@@ -617,13 +617,16 @@ module Bosh::AwsCloud
           )
         end
 
+        encrypted_disk_properties_hash = {}
+        if stemcell_properties['encrypted']
+          encrypted_disk_properties_hash['encrypted'] = stemcell_properties['encrypted']
+          encrypted_disk_properties_hash['kms_key_arn'] = stemcell_properties['kms_key_arn']
+        end
+
         disk_size = stemcell_properties['disk'] || 2048
         volume_id = create_disk(
           disk_size,
-          {
-            'encrypted' => stemcell_properties['encrypted'],
-            'kms_key_arn' => stemcell_properties['kms_key_arn']
-          },
+          encrypted_disk_properties_hash,
           current_vm_id
         )
         volume = @ec2_resource.volume(volume_id)
