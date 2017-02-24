@@ -10,6 +10,7 @@ set -e
 : ${STEMCELL_NAME:?}
 : ${HEAVY_STEMCELL_NAME:?}
 : ${METADATA_FILE:=environment/metadata}
+: ${AWS_KMS_KEY_ARN:?}
 
 export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY}
 export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_KEY}
@@ -42,6 +43,15 @@ popd
 
 time $bosh_cli -n upload-stemcell "${stemcell_path}"
 time $bosh_cli -n upload-stemcell "${heavy_stemcell_path}"
+
+time $bosh_cli repack-stemcell \
+  --name e2e-encrypted-heavy-stemcell \
+  --version 0.1 \
+  --cloud-properties "{\"encrypted\": true, \"kms_key_arn\": \"${AWS_KMS_KEY_ARN}\"}" \
+  "${heavy_stemcell_path}" \
+  /tmp/e2e-encrypted-heavy-stemcell.tgz
+time $bosh_cli -n upload-stemcell /tmp/e2e-encrypted-heavy-stemcell.tgz
+ami_id="$( $bosh_cli stemcells | grep e2e-encrypted-heavy-stemcell | awk '{print $NF;}' )"
 
 e2e_manifest_filename=e2e-manifest.yml
 e2e_cloud_config_filename=e2e-cloud-config.yml
@@ -172,6 +182,21 @@ instance_groups:
     networks:
       - name: private
         default: [dns, gateway]
+  - name: encrypted-heavy-stemcell-test
+    jobs:
+      - name: encrypted-heavy-stemcell-test
+        release: ${e2e_deployment_name}
+        properties:
+          aws_region: ${AWS_REGION_NAME}
+          aws_kms_key_arn: ${AWS_KMS_KEY_ARN}
+          aws_ami_cid: ${ami_id}
+    stemcell: heavy-stemcell
+    lifecycle: errand
+    instances: 1
+    vm_type: default
+    networks:
+      - name: private
+        default: [dns, gateway]
 EOF
 
 time $bosh_cli -n update-cloud-config "${e2e_cloud_config_filename}"
@@ -185,6 +210,8 @@ time $bosh_cli -n run-errand -d ${e2e_deployment_name} raw-ephemeral-disk-test
 time $bosh_cli -n run-errand -d ${e2e_deployment_name} elb-registration-test
 
 time $bosh_cli -n run-errand -d ${e2e_deployment_name} heavy-stemcell-test
+
+time $bosh_cli -n run-errand -d ${e2e_deployment_name} encrypted-heavy-stemcell-test
 
 # spot instances do not work in China
 if [ "${AWS_REGION_NAME}" != "cn-north-1" ]; then

@@ -258,6 +258,7 @@ jobs:
               BOSH_CLIENT_SECRET:  {{BOSH_CLIENT_SECRET}}
               STEMCELL_NAME:       bosh-aws-xen-hvm-ubuntu-trusty-go_agent
               HEAVY_STEMCELL_NAME: *heavy-ubuntu-stemcell
+              AWS_KMS_KEY_ARN:     {{aws_kms_key_arn}}
 
         ensure:
           do:
