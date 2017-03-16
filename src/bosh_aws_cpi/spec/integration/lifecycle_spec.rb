@@ -912,6 +912,35 @@ describe Bosh::AwsCloud::Cloud do
     end
   end
 
+  context 'set_disk_metadata' do
+    before(:each) do
+      @volume_id = @cpi.create_disk(2048, {})
+    end
+
+    after (:each) do
+      @cpi.delete_disk(@volume_id) if @volume_id
+    end
+
+    let(:disk_metadata) do
+      {
+          'deployment' => 'deployment',
+          'job' => 'cpi_spec',
+          'index' => '0',
+          'delete_me' => 'please'
+      }
+    end
+
+    it 'sets the disk metadata accordingly' do
+      volume = @cpi.ec2_resource.volume(@volume_id)
+      expect(array_key_value_to_hash(volume.tags)).not_to include(disk_metadata)
+
+      @cpi.set_disk_metadata(@volume_id, disk_metadata)
+
+      volume = @cpi.ec2_resource.volume(@volume_id)
+      expect(array_key_value_to_hash(volume.tags)).to include(disk_metadata)
+    end
+  end
+
   def vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: @cpi)
     stemcell_id = cpi.create_stemcell('/not/a/real/path', { 'ami' => { @region => ami_id } })
     expect(stemcell_id).to end_with(' light')

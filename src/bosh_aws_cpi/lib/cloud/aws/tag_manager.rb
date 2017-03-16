@@ -17,7 +17,8 @@ module Bosh::AwsCloud
     rescue Aws::EC2::Errors::InvalidParameterValue => e
       logger.error("could not tag #{taggable.id}: #{e.message}")
     rescue Aws::EC2::Errors::InvalidAMIIDNotFound,
-      Aws::EC2::Errors::InvalidInstanceIDNotFound=> e
+      Aws::EC2::Errors::InvalidInstanceIDNotFound,
+      Aws::EC2::Errors::InvalidVolumeNotFound=> e
       # Due to the AWS eventual consistency, the taggable might not
       # be there, even though we previous have waited until it is,
       # so we wait again...
