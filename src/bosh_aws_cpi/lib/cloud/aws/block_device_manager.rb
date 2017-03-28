@@ -227,11 +227,19 @@ module Bosh::AwsCloud
         'i2.4xlarge' => [800, 4],
         'i2.8xlarge' => [800, 8],
 
+        'i3.large' => [475, 1],
+        'i3.xlarge' => [950, 1],
+        'i3.2xlarge' => [1900, 1],
+        'i3.4xlarge' => [1900, 2],
+        'i3.8xlarge' => [1900, 4],
+        'i3.16xlarge' => [1900, 8],
+
         'd2.xlarge' => [2000, 3],
         'd2.2xlarge' => [2000, 6],
         'd2.4xlarge' => [2000, 12],
         'd2.8xlarge' => [2000, 24],
 
+        'x1.16xlarge' => [1920, 1],
         'x1.32xlarge' => [1920, 2],
       }
 
