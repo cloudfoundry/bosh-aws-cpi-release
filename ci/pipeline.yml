@@ -76,6 +76,7 @@ jobs:
       - aggregate:
         - {trigger: true,  passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
         - {trigger: false, passed: [build-candidate], get: bosh-cpi-src, resource: bosh-cpi-src-in}
+        - {get: 2h,             trigger: true}
 
       - put: terraform
         params:
@@ -124,6 +125,7 @@ jobs:
         - {get: certification,  trigger: false}
         - {get: bosh-cli,       trigger: false}
         - {get: bats,           trigger: false}
+        - {get: 2h,             trigger: true}
 
       - put: terraform
         params:
@@ -212,6 +214,7 @@ jobs:
         - {get: heavy-stemcell, trigger: false, resource: heavy-ubuntu-stemcell}
         - {get: certification,  trigger: false}
         - {get: bosh-cli,       trigger: false}
+        - {get: 2h,             trigger: true}
 
       - put: terraform
         params:
@@ -310,6 +313,10 @@ resource_types:
       repository: ljfranklin/terraform-resource
 
 resources:
+  - name: 2h
+    type: time
+    source: {interval: 2h}
+
   - name: bosh-cpi-dev-artifacts
     type: s3
     source:
@@ -390,13 +397,14 @@ resources:
     type: s3
     source:
       bucket: bosh-compiled-release-tarballs
-      regexp: release-bosh-(260)-on-ubuntu-trusty-stemcell-3309-20161111043646.tgz
+      regexp: bosh-(261.4)-ubuntu-trusty-3363.12-20170314-180914-459312188-20170314180920.tgz
+      # regexp: release-bosh-(260)-on-ubuntu-trusty-stemcell-3309-20161111043646.tgz
 
   - name: precompiled-stemcell
     type: s3
     source:
       bucket: bosh-aws-light-stemcells
-      regexp: light-bosh-stemcell-(3309)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
+      regexp: light-bosh-stemcell-(3363.12)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
       region_name: us-east-1
 
   - name: heavy-ubuntu-stemcell
