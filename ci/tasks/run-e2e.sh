@@ -84,6 +84,7 @@ vm_types:
   - name: spot_instance_pool
     cloud_properties:
       <<: *default_cloud_properties
+      instance_type: m4.large
       spot_bid_price: 0.10 # 10x the normal bid price
 
 compilation:
