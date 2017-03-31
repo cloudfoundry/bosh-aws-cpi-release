@@ -74,7 +74,7 @@ vm_types:
       iam_instance_profile: ${IAM_INSTANCE_PROFILE}
   - name: raw_ephemeral_pool
     cloud_properties:
-      instance_type: i3.large
+      instance_type: m3.medium
       availability_zone: ${AVAILABILITY_ZONE}
       raw_instance_storage: true
   - name: elb_registration_pool
