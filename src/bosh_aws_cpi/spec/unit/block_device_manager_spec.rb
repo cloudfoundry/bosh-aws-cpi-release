@@ -47,14 +47,18 @@ module Bosh::AwsCloud
           end
 
           context 'when raw_instance_storage is true' do
-            it 'returns an ebs volume with size 10GB and disks for each instance storage disk' do
-              manager = BlockDeviceManager.new(logger)
-              manager.vm_type = {
+            let (:manager) { BlockDeviceManager.new(logger) }
+            let (:manager_vm_type) do
+              {
                 'key_name' => 'bar',
                 'availability_zone' => 'us-east-1a',
-                'instance_type' => 'm3.xlarge',
+                'instance_type' => instance_type,
                 'raw_instance_storage' => true
               }
+            end
+            let (:instance_type) { 'm3.xlarge' }
+            it 'returns an ebs volume with size 10GB and disks for each instance storage disk' do
+              manager.vm_type = manager_vm_type
 
               actual_output = manager.mappings
               expected_output = [default_root]
@@ -80,6 +84,29 @@ module Bosh::AwsCloud
               }
               expected_output << ebs_disk
               expect(actual_output).to match_array(expected_output)
+            end
+
+            context 'and NVMe storage types' do
+              let (:instance_type) { 'i3.large' }
+
+              it 'returns an ebs volume with size 10GB and NO disks NVMe instance storage' do
+                manager.vm_type = manager_vm_type
+                actual_output = manager.mappings
+                expected_output = [default_root]
+                instance_storage_disks = []
+                expected_output += instance_storage_disks
+
+                ebs_disk = {
+                  device_name: '/dev/sdb',
+                  ebs: {
+                    volume_size: 10,
+                    volume_type: 'gp2',
+                    delete_on_termination: true,
+                  }
+                }
+                expected_output << ebs_disk
+                expect(actual_output).to match_array(expected_output)
+              end
             end
 
             context 'when the instance is paravirtual' do
@@ -583,19 +610,34 @@ module Bosh::AwsCloud
       end
 
       context 'when raw_instance_storage is true' do
-        it 'returns information about a managed EBS disk and the raw ephemeral instance disks' do
-          manager = BlockDeviceManager.new(logger)
-          manager.vm_type = {
+        let (:manager) { BlockDeviceManager.new(logger) }
+        let (:manager_vm_type) do
+          {
             'key_name' => 'bar',
             'availability_zone' => 'us-east-1a',
-            'instance_type' => 'm3.xlarge',
+            'instance_type' => instance_type,
             'raw_instance_storage' => true
           }
+        end
+        let (:instance_type) { 'm3.xlarge' }
+        it 'returns information about a managed EBS disk and the raw ephemeral instance disks' do
+          manager.vm_type = manager_vm_type
 
           expect(manager.agent_info).to eq({
                                              'ephemeral' => [{'path' => '/dev/sdb'}],
                                              'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}],
                                            })
+        end
+        context 'and the instance type uses NVMe SSD' do
+          let (:instance_type) { 'i3.4xlarge' }
+          it 'returns information about a managed EBS disk and the raw ephemeral instance disks' do
+            manager.vm_type = manager_vm_type
+            expect(manager.agent_info).to eq({
+              'ephemeral' => [{'path' => '/dev/sdb'}],
+              'raw_ephemeral' => [{'path' => '/dev/nvme0n1'}, {'path' => '/dev/nvme1n1'}],
+            })
+
+          end
         end
       end
 

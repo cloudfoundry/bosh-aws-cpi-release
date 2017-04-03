@@ -12,12 +12,13 @@ describe Bosh::AwsCloud::Cloud do
     @target_group_name  = ENV['BOSH_AWS_TARGET_GROUP_NAME']   || raise('Missing BOSH_AWS_TARGET_GROUP_NAME')
   end
 
-  let(:instance_type_with_ephemeral)    { ENV.fetch('BOSH_AWS_INSTANCE_TYPE', 'm3.medium') }
-  let(:instance_type_without_ephemeral) { ENV.fetch('BOSH_AWS_INSTANCE_TYPE_WITHOUT_EPHEMERAL', 't2.small') }
-  let(:ami)                             { hvm_ami }
-  let(:hvm_ami)                         { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-866d3ee6') }
-  let(:pv_ami)                          { ENV.fetch('BOSH_AWS_PV_IMAGE_ID', 'ami-3f71225f') }
-  let(:windows_ami)                     { ENV.fetch('BOSH_AWS_WINDOWS_IMAGE_ID', 'ami-9be0a8fb') }
+  let(:instance_type_with_ephemeral)      { ENV.fetch('BOSH_AWS_INSTANCE_TYPE', 'm3.medium') }
+  let(:instance_type_with_ephemeral_nvme) { ENV.fetch('BOSH_AWS_INSTANCE_TYPE_EPHEMERAL_NVME', 'i3.large') }
+  let(:instance_type_without_ephemeral)   { ENV.fetch('BOSH_AWS_INSTANCE_TYPE_WITHOUT_EPHEMERAL', 't2.small') }
+  let(:ami)                               { hvm_ami }
+  let(:hvm_ami)                           { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-866d3ee6') }
+  let(:pv_ami)                            { ENV.fetch('BOSH_AWS_PV_IMAGE_ID', 'ami-3f71225f') }
+  let(:windows_ami)                       { ENV.fetch('BOSH_AWS_WINDOWS_IMAGE_ID', 'ami-9be0a8fb') }
   let(:instance_type) { instance_type_with_ephemeral }
   let(:vm_metadata) { { deployment: 'deployment', job: 'cpi_spec', index: '0', delete_me: 'please' } }
   let(:disks) { [] }
@@ -540,6 +541,23 @@ describe Bosh::AwsCloud::Cloud do
                     'raw_ephemeral' => [{'path' => '/dev/xvdba'}]
                 }
             }))
+        end
+      end
+
+
+      context 'when instance has NVMe SSD' do
+        let(:instance_type) { instance_type_with_ephemeral_nvme }
+        it 'uses the correct device file name for the raw ephemeral disk in the registry' do
+          vm_lifecycle do |instance_id|
+            expect(@registry).to have_received(:update_settings).with(instance_id, hash_including({
+              'disks' => {
+                'system' => '/dev/xvda',
+                'persistent' => {},
+                'ephemeral' => '/dev/sdb',
+                'raw_ephemeral' => [{ 'path' => '/dev/nvme0n1' }]
+              }
+            }))
+          end
         end
       end
 

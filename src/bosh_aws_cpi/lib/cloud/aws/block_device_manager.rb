@@ -1,4 +1,3 @@
-
 module Bosh::AwsCloud
   class BlockDeviceManager
     attr_writer :vm_type
@@ -21,8 +20,14 @@ module Bosh::AwsCloud
       if @info.nil?
         @info = build_info
       end
+      info = @info
 
-      @info.map { |entry| entry.reject { |k| k == :bosh_type } }
+      instance_type = @vm_type.fetch('instance_type', 'unspecified')
+      if instance_type =~ /^i3./
+        info = @info.reject {|device| device[:bosh_type] == "raw_ephemeral" }
+      end
+
+      info.map { |entry| entry.reject { |k| k == :bosh_type } }
     end
 
     def agent_info
@@ -105,9 +110,15 @@ module Bosh::AwsCloud
     end
 
     def first_raw_ephemeral_device
+      instance_type = @vm_type.fetch('instance_type', 'unspecified')
       case @virtualization_type
+
         when 'hvm'
-          '/dev/xvdba'
+          if instance_type =~ /^i3\./
+            '/dev/nvme0n1'
+          else
+            '/dev/xvdba'
+          end
         when 'paravirtual'
           '/dev/sdc'
         else
@@ -128,7 +139,7 @@ module Bosh::AwsCloud
           device_name: next_device,
           bosh_type: "raw_ephemeral",
         }
-        next_device = next_device.next
+        next_device = next_raw_ephemeral_disk(next_device)
         result
       end
     end
@@ -173,6 +184,16 @@ module Bosh::AwsCloud
         return '/dev/sda'
       else
         return '/dev/xvda'
+      end
+    end
+
+    def next_raw_ephemeral_disk(current_disk)
+      if current_disk =~ /^\/dev\/nvme/
+        disk_id = /^\/dev\/nvme(\d+)n.*/.match(current_disk)[1]
+        disk_id = disk_id.next
+        "/dev/nvme#{disk_id}n1"
+      else
+        current_disk.next
       end
     end
 
