@@ -516,6 +516,17 @@ module Bosh::AwsCloud
       logger.error("could not tag #{instance.id}: #{e.message}")
     end
 
+    def set_disk_metadata(disk_id, metadata)
+      with_thread_name("set_disk_metadata(#{disk_id}, ...)") do
+        begin
+          volume = @ec2_resource.volume(disk_id)
+          TagManager.tags(volume, metadata)
+        rescue Aws::EC2::Errors::TagLimitExceeded => e
+          logger.error("could not tag #{volume.id}: #{e.message}")
+        end
+      end
+    end
+
     # Map a set of cloud agnostic VM properties (cpu, ram, ephemeral_disk_size) to
     # a set of AWS specific cloud_properties
     # @param [Hash] vm_properties requested cpu, ram, and ephemeral_disk_size
