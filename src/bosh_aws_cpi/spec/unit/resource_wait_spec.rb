@@ -42,16 +42,27 @@ module Bosh::AwsCloud
           end
         end
 
-        it 'should fail if AWS terminates the instance' do
-          expect(instance).to receive(:state).and_return('pending')
-          expect(instance).to receive(:state).and_return('pending')
-          expect(instance).to receive(:state).and_return('terminated')
-          expect(instance).to receive(:state_reason).and_return(double("state_reason", message: 'bad things are afoot'))
+        context 'AWS terminates the instance' do
+          it 'should fail if it wasn\'t terminated with /some matcher/' do
+            expect(instance).to receive(:state).and_return('pending')
+            expect(instance).to receive(:state).and_return('pending')
+            expect(instance).to receive(:state).and_return('terminated')
+            expect(instance).to receive(:state_reason).and_return(double("state_reason", message: 'bad things are afoot'))
 
-          expect(ResourceWait.logger).to receive(:error).with(/state changed from 'starting' to 'terminated'/)
-          expect {
-            described_class.for_instance(instance: instance, state: 'running')
-          }.to raise_error Bosh::Clouds::VMCreationFailed, /failed to create: state changed from 'starting' to 'terminated' with reason: 'bad things are afoot'/
+            expect(ResourceWait.logger).to receive(:error).with(/state changed from 'starting' to 'terminated'/)
+            expect {
+              described_class.for_instance(instance: instance, state: 'running')
+            }.to raise_error Bosh::Clouds::VMCreationFailed, /failed to create: state changed from 'starting' to 'terminated' with reason: 'bad things are afoot'/
+          end
+
+          it 'should raise Bosh::AwsCloud::AbruptlyTerminated' do
+            expect(instance).to receive(:state).and_return('terminated')
+            expect(instance).to receive(:state_reason).and_return(double("state_reason", message: 'Server.InternalError: Internal error on launch'))
+
+            expect {
+              described_class.for_instance(instance: instance, state: 'running')
+            }.to raise_error Bosh::AwsCloud::AbruptlyTerminated, /Server.InternalError: Internal error on launch/
+          end
         end
       end
     end

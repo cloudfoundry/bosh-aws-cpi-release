@@ -26,7 +26,11 @@ module Bosh::AwsCloud
       new.for_resource(resource: instance, errors: ignored_errors, target_state: target_state) do |instance_state|
         current_state = instance_state
         if target_state == 'running' && current_state == 'terminated'
-          message = "Instance '#{instance.id}' failed to create: state changed from 'starting' to 'terminated' with reason: '#{instance.state_reason.message}'"
+        state_change_message = instance.state_reason.message
+          if state_change_message == 'Server.InternalError: Internal error on launch'
+            raise Bosh::AwsCloud::AbruptlyTerminated.new(true), state_change_message
+          end
+          message = "Instance '#{instance.id}' failed to create: state changed from 'starting' to 'terminated' with reason: '#{state_change_message}'"
           logger.error(message)
           raise Bosh::Clouds::VMCreationFailed.new(true), message
         else

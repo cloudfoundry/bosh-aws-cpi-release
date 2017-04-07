@@ -305,6 +305,28 @@ module Bosh::AwsCloud
           }.to raise_error(create_err)
         end
 
+        it 'should retry creating the VM twice then give up when Bosh::Clouds::AbruptlyTerminated is raised' do
+          instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
+          allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
+
+          expect(Instance).to receive(:new).exactly(3).times
+
+          expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response").exactly(3).times
+          expect(instance).to receive(:wait_for_running).and_raise(Bosh::AwsCloud::AbruptlyTerminated, "Server.InternalError: Internal error on launch").exactly(3).times
+          expect(logger).to receive(:warn).with(/Failed to configure instance 'fake-instance-id'/).exactly(3).times
+          expect(logger).to receive(:warn).with(/'fake-instance-id' was abruptly terminated, attempting to re-create/).twice
+
+          expect {
+            instance_manager.create(
+              stemcell_id,
+              vm_type,
+              networks_spec,
+              disk_locality,
+              default_options
+            )
+          }.to raise_error(Bosh::AwsCloud::AbruptlyTerminated)
+        end
+
         context 'when termination of created instance fails' do
           before { allow(instance).to receive(:terminate).and_raise(StandardError.new('fake-terminate-err')) }
 

@@ -2,6 +2,7 @@ require "common/common"
 require "time"
 
 module Bosh::AwsCloud
+  class AbruptlyTerminated < Bosh::Clouds::CloudError; end
   class InstanceManager
     include Helpers
 
@@ -22,28 +23,25 @@ module Bosh::AwsCloud
       block_device_info = @block_device_manager.mappings
       block_device_agent_info = @block_device_manager.agent_info
 
-      instance_params = build_instance_params(stemcell_id, vm_type, networks_spec, block_device_info, disk_locality, options)
-
-      @logger.info("Creating new instance with: #{instance_params.inspect}")
-
-      aws_instance = create_aws_instance(instance_params, vm_type)
-
-      instance = Instance.new(aws_instance, @registry, @logger)
-
+      abruptly_terminated_retries = 2
       begin
-        # We need to wait here for the instance to be running, as if we are going to
-        # attach to a load balancer, the instance must be running.
-        instance.wait_for_running
-        instance.update_routing_tables(vm_type['advertised_routes'] || [])
-        if vm_type['source_dest_check'].to_s == 'false'
-          instance.source_dest_check = false
-        end
+        instance_params = build_instance_params(stemcell_id, vm_type, networks_spec, block_device_info, disk_locality, options)
+
+        @logger.info("Creating new instance with: #{instance_params.inspect}")
+
+        aws_instance = create_aws_instance(instance_params, vm_type)
+
+        instance = Instance.new(aws_instance, @registry, @logger)
+
+        babysit_instance_creation(instance, vm_type)
+
       rescue => e
-        @logger.warn("Failed to configure instance '#{instance.id}': #{e.inspect}")
-        begin
-          instance.terminate
-        rescue => e
-          @logger.error("Failed to terminate mis-configured instance '#{instance.id}': #{e.inspect}")
+        if e.is_a?(Bosh::AwsCloud::AbruptlyTerminated)
+          @logger.warn("Failed to configure instance '#{instance.id}': #{e.inspect}")
+          if (abruptly_terminated_retries -= 1) >= 0
+            @logger.warn("Instance '#{instance.id}' was abruptly terminated, attempting to re-create': #{e.inspect}")
+            retry
+          end
         end
         raise
       end
@@ -57,6 +55,30 @@ module Bosh::AwsCloud
     end
 
     private
+
+    def babysit_instance_creation(instance, vm_type)
+      begin
+        # We need to wait here for the instance to be running, as if we are going to
+        # attach to a load balancer, the instance must be running.
+        instance.wait_for_running
+        instance.update_routing_tables(vm_type['advertised_routes'] || [])
+        if vm_type['source_dest_check'].to_s == 'false'
+          instance.source_dest_check = false
+        end
+      rescue => e
+        if e.is_a?(Bosh::AwsCloud::AbruptlyTerminated)
+          raise
+        else
+          @logger.warn("Failed to configure instance '#{instance.id}': #{e.inspect}")
+          begin
+            instance.terminate
+          rescue => e
+            @logger.error("Failed to terminate mis-configured instance '#{instance.id}': #{e.inspect}")
+          end
+          raise
+        end
+      end
+    end
 
     def build_instance_params(stemcell_id, vm_type, networks_spec, block_device_mappings, disk_locality = [], options = {})
       volume_zones = (disk_locality || []).map { |volume_id| @ec2.volume(volume_id).availability_zone }
