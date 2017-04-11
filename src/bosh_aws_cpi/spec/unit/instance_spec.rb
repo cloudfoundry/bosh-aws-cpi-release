@@ -82,7 +82,7 @@ module Bosh::AwsCloud
 
     describe '#terminate' do
       it 'should terminate an instance given the id' do
-        allow(instance).to receive(:remove_from_load_balancers).ordered
+        allow(instance).to receive(:remove_from_load_balancers)
         expect(aws_instance).to receive(:terminate).with(no_args).ordered
         expect(registry).to receive(:delete_settings).with(instance_id).ordered
 
@@ -113,7 +113,7 @@ module Bosh::AwsCloud
         before do
           # AWS returns NotFound error if instance no longer exists in AWS console
           # (This could happen when instance was deleted very quickly and BOSH didn't catch the terminated state)
-          allow(aws_instance).to receive(:terminate).with(no_args).ordered
+          expect(aws_instance).to receive(:terminate).with(no_args).ordered
         end
 
         it 'logs a message and considers the instance to be terminated' do
@@ -132,8 +132,8 @@ module Bosh::AwsCloud
 
       describe 'fast path deletion' do
         it 'deletes the instance without waiting for confirmation of termination' do
-          allow(aws_instance).to receive(:terminate).ordered
-          allow(registry).to receive(:delete_settings).ordered
+          expect(aws_instance).to receive(:terminate).ordered
+          expect(registry).to receive(:delete_settings).ordered
           expect(TagManager).to receive(:tag).with(aws_instance, "Name", "to be deleted").ordered
           instance.terminate(true)
         end

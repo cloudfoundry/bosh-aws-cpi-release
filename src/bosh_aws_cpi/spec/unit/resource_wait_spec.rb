@@ -297,7 +297,7 @@ module Bosh::AwsCloud
           actual_attempts = 0
           expect {
             subject.for_resource(args) { actual_attempts += 1; false }
-          }.to raise_error
+          }.to raise_error(/Timed out waiting for description/)
           expect(actual_attempts).to eq(5)
         end
       end
@@ -307,7 +307,7 @@ module Bosh::AwsCloud
           actual_attempts = 0
           expect {
             subject.for_resource(args) { actual_attempts += 1; false }
-          }.to raise_error
+          }.to raise_error(/Timed out waiting for description/)
           expect(actual_attempts).to eq(54)
         end
       end
