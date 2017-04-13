@@ -150,11 +150,11 @@ describe Bosh::AwsCloud::Cloud do
       )
     end
 
-    before(:all) do
+    before(:example) do
       @original_cert_file = ENV['BOSH_CA_CERT_FILE']
     end
 
-    after(:all) do
+    after(:example) do
       if @original_cert_file.nil?
         ENV.delete('BOSH_CA_CERT_FILE')
       else
