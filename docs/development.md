@@ -20,31 +20,42 @@ bosh create release --force
 
 The release is now ready for use. If everything works, commit the changes including the updated gems.
 
-### Manually deploy bosh director
-
-1. Claim env from pool
-  1. `cd ~/workspace/bosh-cpi-environments`
-  1. `git mv aws/unclaimed/SOME_ENV aws/claimed/`
-  1. `git ci -m "manually claiming SOME_ENV for testing on #STORY_ID"`
-  1. `git push`
-1. Create a file containing necessary environment variables in `~/scratch`
-  1. `source ~/scratch/YOUR_ENV_FILE`
-1. Generate bosh-init manifest and Artifacts
-  1. `METADATA_FILE=~/workspace/bosh-cpi-environments/aws/claimed/SOME_ENV \
-       OUTPUT_DIR=~/scratch/OUTPUT_DIR \
-       ./ci/tasks/prepare-director.sh`
-1. Deploy with bosh-init
-  1. `cd ~/scratch/OUTPUT_DIR`
-  1. `bosh-init deploy director.yml`
-
 ### Manually run lifecycle tests
 
-1. Claim env from pool
-1. Create a file containing necessary environment variables in `~/scratch`
+Our script uses terraform to prepare an environment on ec2 for lifecycle tests.
+You must provide the proper access credentials as well as a KMS Key and Key
+Pair fixture. Terraform will create all other required resources and destroy
+them at the end of a successful test run. If tests fail, terraform will leave
+the environment as is for debugging.
+
+1. Create a `lifecycle.env` file containing the 4 required environment variables. The key
+pair name must exist in the ec2 console; however, you do not need to have a copy
+of it on your local system.
+  ```bash
+  export AWS_ACCESS_KEY_ID=AKIAINSxxxxxxxxxxxxx
+  export AWS_SECRET_ACCESS_KEY=LvgQOmCtjL1yhcxxxxxxxxxxxxxxxxxxxxxxxxxx
+  export AWS_KMS_KEY_ARN="arn:aws:kms:us-west-1:088499999999:key/944e4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  export AWS_PUBLIC_KEY_NAME=dev_aws.pem
+  # optional
+  # export AWS_DEFAULT_REGION=us-west-1
+  ```
+1. source your `lifecycle.env` file
+  ```bash
+  . ~/scratch/aws/lifecycle.env
+  ```
 1. Run tests
-  1. `RSPEC_ARGUMENTS=spec/integration/lifecycle_spec.rb \
-        METADATA_FILE=~/workspace/bosh-cpi-environments/aws/claimed/SOME_ENV \
-        ./ci/tasks/run-integration.sh`
+  ```bash
+  src/bosh_aws_cpi/bin/test-integration
+  ```
+  * Use `RSPEC_ARGUMENTS` to run a subset of tests
+    ```bash
+    RSPEC_ARGUMENTS=spec/integration/lifecycle_spec.rb:247 src/bosh_aws_cpi/bin/test-integration
+    ```
+
+This script will only terraform one environment per workstation. For example,
+if your workstation was named `moncada`, it would create a VPC named
+`moncada-local-integration` and associated resources.
+
 
 ### Rubymine support
 

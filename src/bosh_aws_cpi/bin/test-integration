@@ -1,0 +1,42 @@
+#!/bin/bash
+
+set -e
+
+: ${AWS_ACCESS_KEY_ID:?}
+: ${AWS_SECRET_ACCESS_KEY:?}
+: ${AWS_DEFAULT_REGION:=us-west-1}
+: ${AWS_PUBLIC_KEY_NAME:?}
+: ${AWS_KMS_KEY_ARN:?}
+
+export AWS_DEFAULT_REGION
+export STATE_FILE=/tmp/integration-terraform-state.tfstate
+export METADATA_FILE=/tmp/integration-terraform-metadata.$$.json
+
+echo "#######################################################"
+echo "Applying terraform. Metadata file at $METADATA_FILE"
+echo "#######################################################"
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+RELEASE_DIR="$( cd ${DIR}/../../.. && pwd )"
+
+task_script="${RELEASE_DIR}/ci/tasks/run-integration.sh"
+
+terraform apply -state="${STATE_FILE}" \
+  -var "access_key=${AWS_ACCESS_KEY_ID}" \
+  -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
+  -var "region=${AWS_DEFAULT_REGION}" \
+  -var "env_name=$(hostname)-local-integration" \
+  "${RELEASE_DIR}/ci/assets/terraform"
+
+jq -e --raw-output '.modules[0].outputs | map_values(.value)' "$STATE_FILE" > $METADATA_FILE
+
+${RELEASE_DIR}/ci/tasks/run-integration.sh
+
+terraform destroy -force -state="${STATE_FILE}" \
+  -var "access_key=${AWS_ACCESS_KEY_ID}" \
+  -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
+  -var "region=${AWS_DEFAULT_REGION}" \
+  -var "env_name=$(hostname)-local-integration" \
+  "${RELEASE_DIR}/ci/assets/terraform"
+
