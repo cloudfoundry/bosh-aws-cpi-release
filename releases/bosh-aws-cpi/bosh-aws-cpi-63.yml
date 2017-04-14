@@ -19,7 +19,7 @@ jobs:
 license:
   version: a1bb90f042781e6ec397504f9aa7511dd2993e65
   fingerprint: a1bb90f042781e6ec397504f9aa7511dd2993e65
-  sha1: 1958282656e6d67b3e51cc8b72dd1e8aa9cc7416
+  sha1: 623ae9b4bd03c0ff825e9fa97c5f1eb0b198d5b1
 commit_hash: d3d406a8
 uncommitted_changes: false
 name: bosh-aws-cpi
