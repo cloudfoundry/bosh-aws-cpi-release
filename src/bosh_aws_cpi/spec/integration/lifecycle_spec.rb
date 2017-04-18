@@ -96,7 +96,6 @@ describe Bosh::AwsCloud::Cloud do
           'ip' => @manual_ip, # use different IP to avoid race condition
           'cloud_properties' => { 'subnet' => @subnet_id }
         }
-
       }
     end
 
@@ -900,6 +899,27 @@ describe Bosh::AwsCloud::Cloud do
       it 'can exercise the vm lifecycle' do
         vm_lifecycle(cpi: sg_name_cpi)
       end
+    end
+  end
+
+  context 'vip networking' do
+    let(:network_spec) do
+      {
+          'default' => {
+              'type' => 'manual',
+              'ip' => @manual_ip, # use different IP to avoid race condition
+              'cloud_properties' => { 'subnet' => @subnet_id }
+          },
+          'elastic' => {
+              'type' => 'vip',
+              # 'ip' => '52.53.110.47' # us-west-1
+              'ip' => '34.198.137.45' # us-east-1
+          }
+      }
+    end
+
+    it 'can exercise the vm lifecycle' do
+      vm_lifecycle
     end
   end
 

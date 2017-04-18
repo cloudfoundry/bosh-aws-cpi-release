@@ -3,7 +3,7 @@ require 'json'
 require 'tempfile'
 require 'yaml'
 
-describe "the aws_cpi executable" do
+describe 'the aws_cpi executable' do
 
   before(:all) do
     @access_key_id     = ENV['BOSH_AWS_ACCESS_KEY_ID']       || raise('Missing BOSH_AWS_ACCESS_KEY_ID')
