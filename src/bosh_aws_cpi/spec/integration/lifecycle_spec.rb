@@ -19,6 +19,7 @@ describe Bosh::AwsCloud::Cloud do
   let(:hvm_ami)                           { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-866d3ee6') }
   let(:pv_ami)                            { ENV.fetch('BOSH_AWS_PV_IMAGE_ID', 'ami-3f71225f') }
   let(:windows_ami)                       { ENV.fetch('BOSH_AWS_WINDOWS_IMAGE_ID', 'ami-9be0a8fb') }
+  let(:eip)                               { ENV.fetch('BOSH_AWS_ELASTIC_IP') }
   let(:instance_type) { instance_type_with_ephemeral }
   let(:vm_metadata) { { deployment: 'deployment', job: 'cpi_spec', index: '0', delete_me: 'please' } }
   let(:disks) { [] }
@@ -905,16 +906,15 @@ describe Bosh::AwsCloud::Cloud do
   context 'vip networking' do
     let(:network_spec) do
       {
-          'default' => {
-              'type' => 'manual',
-              'ip' => @manual_ip, # use different IP to avoid race condition
-              'cloud_properties' => { 'subnet' => @subnet_id }
-          },
-          'elastic' => {
-              'type' => 'vip',
-              # 'ip' => '52.53.110.47' # us-west-1
-              'ip' => '34.198.137.45' # us-east-1
-          }
+        'default' => {
+          'type' => 'manual',
+          'ip' => @manual_ip, # use different IP to avoid race condition
+          'cloud_properties' => { 'subnet' => @subnet_id }
+        },
+        'elastic' => {
+          'type' => 'vip',
+          'ip' => eip
+        }
       }
     end
 

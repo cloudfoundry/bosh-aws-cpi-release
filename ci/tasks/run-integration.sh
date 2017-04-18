@@ -32,6 +32,7 @@ export BOSH_AWS_SUBNET_ZONE=$(echo ${metadata} | jq -e --raw-output ".Availabili
 export BOSH_AWS_LIFECYCLE_MANUAL_IP=$(echo ${metadata} | jq -e --raw-output ".DirectorStaticIP")
 export BOSH_AWS_ELB_ID=$(echo ${metadata} | jq -e --raw-output ".ELB")
 export BOSH_AWS_TARGET_GROUP_NAME=$(echo ${metadata} | jq -e --raw-output ".ALBTargetGroup")
+export BOSH_AWS_ELASTIC_IP=$(echo ${metadata} | jq -e --raw-output ".DeploymentEIP")
 
 export BOSH_CLI_SILENCE_SLOW_LOAD_WARNING=true
 
