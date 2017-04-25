@@ -2,8 +2,8 @@
 
 | Concourse Job      | Status                                                                                                                                                                                                                               |
 | ---                | ---                                                                                                                                                                                                                                  |
-| BATS               | [![bosh-cpi.ci.cf-app.com](https://bosh-cpi.ci.cf-app.com/api/v1/teams/main/pipelines/bosh-aws-cpi/jobs/bats/badge)](https://bosh-cpi.ci.cf-app.com/teams/main/pipelines/bosh-aws-cpi/jobs/bats)                             |
-| integration        | [![bosh-cpi.ci.cf-app.com](https://bosh-cpi.ci.cf-app.com/api/v1/teams/main/pipelines/bosh-aws-cpi/jobs/integration/badge)](https://bosh-cpi.ci.cf-app.com/teams/main/pipelines/bosh-aws-cpi/jobs/integration)           |
+| BATS               | [![bosh-cpi.ci.cf-app.com](https://bosh-cpi.ci.cf-app.com/api/v1/teams/pivotal/pipelines/bosh-aws-cpi/jobs/bats/badge)](https://bosh-cpi.ci.cf-app.com/teams/pivotal/pipelines/bosh-aws-cpi/jobs/bats)                             |
+| integration        | [![bosh-cpi.ci.cf-app.com](https://bosh-cpi.ci.cf-app.com/api/v1/teams/pivotal/pipelines/bosh-aws-cpi/jobs/integration/badge)](https://bosh-cpi.ci.cf-app.com/teams/pivotal/pipelines/bosh-aws-cpi/jobs/integration)           |
 
 * Documentation: [bosh.io/docs](https://bosh.io/docs)
 * IRC: [`#bosh` on freenode](https://webchat.freenode.net/?channels=bosh)
