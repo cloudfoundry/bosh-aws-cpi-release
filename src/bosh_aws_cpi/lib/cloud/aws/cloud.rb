@@ -427,7 +427,11 @@ module Bosh::AwsCloud
     def delete_snapshot(snapshot_id)
       with_thread_name("delete_snapshot(#{snapshot_id})") do
         snapshot = @ec2_resource.snapshot(snapshot_id)
-        snapshot.delete
+        begin
+          snapshot.delete
+        rescue Aws::EC2::Errors::InvalidSnapshotNotFound => e
+          logger.info("snapshot '#{snapshot_id}' not found")
+        end
         logger.info("snapshot '#{snapshot_id}' deleted")
       end
     end

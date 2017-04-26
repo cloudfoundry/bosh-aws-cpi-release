@@ -979,6 +979,14 @@ describe Bosh::AwsCloud::Cloud do
     end
   end
 
+  context 'delete_snapshot' do
+    it 'should NOT fail if snapshot does not exist' do
+      expect {
+        @cpi.delete_snapshot("snap-078df69092d3eb2cb")
+      }.to_not raise_error
+    end
+  end
+
   def vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: @cpi)
     stemcell_id = cpi.create_stemcell('/not/a/real/path', { 'ami' => { @region => ami_id } })
     expect(stemcell_id).to end_with(' light')
