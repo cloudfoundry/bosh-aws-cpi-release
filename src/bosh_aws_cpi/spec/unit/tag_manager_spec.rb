@@ -21,29 +21,38 @@ describe Bosh::AwsCloud::TagManager do
     Bosh::AwsCloud::TagManager.tag(instance, :key, 8)
   end
 
-  it 'should retry tagging when the tagged object is not found' do
-    allow(Bosh::AwsCloud::TagManager).to receive(:sleep)
-    stub_taggable_to_throw_exception_two_times(instance, Aws::EC2::Errors::InvalidAMIIDNotFound.new(nil, 'not-found'))
-
-    Bosh::AwsCloud::TagManager.tag(instance, 'key', 'value')
-
-    expect(instance).to have_received(:create_tags).exactly(3).times
-  end
-
-  context 'when volume' do
-    let(:volume) { double("volume", id: 'vol-foo') }
+  context 'taggable not found' do
     before(:each) do
       allow(Bosh::AwsCloud::TagManager).to receive(:sleep)
+      allow(Bosh::Clouds::Config.logger).to receive(:warn)
     end
 
-    it 'should retry tagging when volume is not found' do
-      allow(Bosh::Clouds::Config.logger).to receive(:warn)
-      stub_taggable_to_throw_exception_two_times(volume, Aws::EC2::Errors::InvalidVolumeNotFound.new(nil, 'not-found'))
+    context 'when instance' do
+      it 'should retry tagging' do
+        expect(instance).to receive(:create_tags).
+          and_raise(Aws::EC2::Errors::InvalidAMIIDNotFound.new(nil, 'not-found'))
+        expect(instance).to receive(:create_tags).
+          and_return({})
 
-      Bosh::AwsCloud::TagManager.tags(volume, { 'key1' => 'value1', 'key2' => 'value2' })
+        expect(Bosh::Clouds::Config.logger).to receive(:info).with("attempting to tag object: i-xxxxxxx").twice
 
-      expect(Bosh::Clouds::Config.logger).to have_received(:warn).with("tagged object doesn't exist: vol-foo").twice
-      expect(volume).to have_received(:create_tags).exactly(3).times
+        Bosh::AwsCloud::TagManager.tag(instance, 'key', 'value')
+      end
+    end
+
+    context 'when volume' do
+      let(:volume) { double("volume", id: 'vol-foo') }
+
+      it 'should retry tagging' do
+        expect(volume).to receive(:create_tags).
+          and_raise(Aws::EC2::Errors::InvalidVolumeNotFound.new(nil, 'not-found'))
+        expect(volume).to receive(:create_tags).
+          and_return({})
+
+        expect(Bosh::Clouds::Config.logger).to receive(:info).with("attempting to tag object: vol-foo").twice
+
+        Bosh::AwsCloud::TagManager.tags(volume, { 'key1' => 'value1', 'key2' => 'value2' })
+      end
     end
   end
 
@@ -79,15 +88,5 @@ describe Bosh::AwsCloud::TagManager do
   it 'should do nothing if value is nil' do
     expect(instance).not_to receive(:create_tag)
     Bosh::AwsCloud::TagManager.tag(instance, 'key', nil)
-  end
-
-  def stub_taggable_to_throw_exception_two_times(taggable, exception)
-    allow(taggable).to receive(:create_tags) do
-      @count ||= 0
-      if @count < 2
-        @count +=1
-        raise exception
-      end
-    end
   end
 end

@@ -264,8 +264,13 @@ module Bosh::AwsCloud
         allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
         allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
-        expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_raise(Aws::EC2::Errors::InvalidIPAddressInUse.new(nil, 'in-use'))
-        expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
+        expect(aws_client).to receive(:run_instances).
+          with({ fake: 'instance-params', min_count: 1, max_count: 1 }).
+          and_raise(Aws::EC2::Errors::InvalidIPAddressInUse.new(nil, 'in-use'))
+
+        expect(aws_client).to receive(:run_instances).
+          with({ fake: 'instance-params', min_count: 1, max_count: 1 }).
+          and_return("run-instances-response")
 
         allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
         expect(logger).to receive(:warn).with(/IP address was in use/).once
