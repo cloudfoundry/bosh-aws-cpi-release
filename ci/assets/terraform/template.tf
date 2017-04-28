@@ -208,7 +208,7 @@ resource "aws_vpc_endpoint" "private-s3" {
 }
 
 resource "aws_s3_bucket" "blobstore" {
-  bucket = "cpi-pipeline-blobstore-${var.env_name}"
+  bucket = "cpi-pipeline-blobstore-${var.env_name}-${var.region}"
   force_destroy = true
 }
 
