@@ -476,7 +476,7 @@ module Bosh::AwsCloud
               }]
             }
           ).first
-          raise Bosh::Clouds::CloudError, "Stemcell does not contain an AMI at endpoint (#{@ec2_resource.client.endpoint})" unless available_image
+          raise Bosh::Clouds::CloudError, "Stemcell does not contain an AMI in region #{aws_region}" unless available_image
 
           "#{available_image.id} light"
         else
