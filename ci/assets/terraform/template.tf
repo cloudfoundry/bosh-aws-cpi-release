@@ -16,6 +16,7 @@ data "aws_availability_zones" "available" {}
 
 # Create a VPC to launch our instances into
 resource "aws_vpc" "default" {
+  assign_generated_ipv6_cidr_block = true
   cidr_block = "10.0.0.0/16"
   tags {
     Name = "${var.env_name}"
@@ -55,6 +56,7 @@ resource "aws_route_table_association" "b" {
 resource "aws_subnet" "default" {
   vpc_id = "${aws_vpc.default.id}"
   cidr_block = "${cidrsubnet(aws_vpc.default.cidr_block, 8, 0)}"
+  ipv6_cidr_block = "${cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 0)}"
   depends_on = ["aws_internet_gateway.default"]
   availability_zone = "${data.aws_availability_zones.available.names[0]}"
 
@@ -68,6 +70,7 @@ resource "aws_subnet" "default" {
 resource "aws_subnet" "backup" {
   vpc_id = "${aws_vpc.default.id}"
   cidr_block = "${cidrsubnet(aws_vpc.default.cidr_block, 8, 1)}"
+  ipv6_cidr_block = "${cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 1)}"
   depends_on = ["aws_internet_gateway.default"]
   availability_zone = "${data.aws_availability_zones.available.names[1]}"
 
@@ -250,7 +253,7 @@ EOF
 }
 
 resource "aws_iam_instance_profile" "e2e" {
-    roles = ["${aws_iam_role.e2e.name}"]
+    role = "${aws_iam_role.e2e.name}"
 }
 
 resource "aws_iam_role" "e2e" {
