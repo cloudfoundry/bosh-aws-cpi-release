@@ -248,9 +248,9 @@ module Bosh::AwsCloud
           {
             user_data: Base64.encode64(JSON.dump(
               "networks" => {
-                "net1" => {"use_dhcp": true},
-                "net2" => {"ip" => "1.1.1.1", "use_dhcp": true},
-                "net3" => {"ip" => "2006::1", "use_dhcp": true},
+                "net1" => {"use_dhcp" => true},
+                "net2" => {"ip" => "1.1.1.1", "use_dhcp" => true},
+                "net3" => {"ip" => "2006::1", "use_dhcp" => true},
               }
             )).strip
           }
