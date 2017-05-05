@@ -1,4 +1,5 @@
 require "spec_helper"
+require "base64"
 
 module Bosh::AwsCloud
   describe InstanceParamMapper do
@@ -233,6 +234,33 @@ module Bosh::AwsCloud
         it 'maps to Base64 encoded user_data.dns, from the first matching network' do expect(mapping(input)).to eq(output) end
       end
 
+      context 'when IPv6 network address is present' do
+        let(:input) do
+          {
+            networks_spec: {
+              "net1" => {},
+              "net2" => {"ip" => "1.1.1.1"},
+              "net3" => {"ip" => "2006::1"}
+            }
+          }
+        end
+        let(:output) do
+          {
+            user_data: Base64.encode64(JSON.dump(
+              "networks" => {
+                "net1" => {"use_dhcp": true},
+                "net2" => {"ip" => "1.1.1.1", "use_dhcp": true},
+                "net3" => {"ip" => "2006::1", "use_dhcp": true},
+              }
+            )).strip
+          }
+        end
+
+        it 'maps to Base64 encoded user_data.networks' do
+          expect(mapping(input)).to eq(output)
+        end
+      end
+
       describe 'IP address options' do
         context 'when an IP address is provided for explicitly specified manual networks in networks_spec' do
           let(:input) do
@@ -320,6 +348,37 @@ module Bosh::AwsCloud
             }
           end
           it 'adds the option to the output' do
+            expect(mapping(input)).to eq(output)
+          end
+        end
+
+        context 'when the one manual network address is IPv6' do
+          let(:input) do
+            {
+              networks_spec: {
+                "net1" => {
+                  "type" => "dynamic"
+                },
+                "net2" => {
+                  "type" => "manual",
+                  "ip" => "2006::1"
+                }
+              }
+            }
+          end
+          let(:output) do
+            {
+              network_interfaces: [
+                {
+                  ipv_6_addresses: [{ipv_6_address: "2006::1"}],
+                  device_index: 0
+                }
+              ],
+              user_data: Base64.encode64('{"networks":{"net1":{"type":"dynamic","use_dhcp":true},"net2":{"type":"manual","ip":"2006::1","use_dhcp":true}}}').strip
+            }
+          end
+
+          it 'maps the first (explicit) manual network IP address to ipv_6_addresses' do
             expect(mapping(input)).to eq(output)
           end
         end

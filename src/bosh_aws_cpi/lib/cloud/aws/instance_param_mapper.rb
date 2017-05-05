@@ -77,7 +77,16 @@ module Bosh::AwsCloud
       nic = {}
       nic[:groups] = sg unless sg.nil? || sg.empty?
       nic[:subnet_id] = subnet_id if subnet_id
-      nic[:private_ip_address] = private_ip_address if private_ip_address
+
+      # Only supporting one IP address for now (either IPv4 or IPv6)
+      if private_ip_address
+        if ipv6_address?(private_ip_address)
+          nic[:ipv_6_addresses] = [{ipv_6_address: private_ip_address}]
+        else
+          nic[:private_ip_address] = private_ip_address
+        end
+      end
+
       nic[:associate_public_ip_address] = vm_type['auto_assign_public_ip'] if vm_type['auto_assign_public_ip']
 
       nic[:device_index] = 0 unless nic.empty?
@@ -127,9 +136,27 @@ module Bosh::AwsCloud
       user_data[:registry] = { endpoint: @manifest_params[:registry_endpoint] } if @manifest_params[:registry_endpoint]
 
       spec_with_dns = networks_spec.values.select { |spec| spec.has_key? "dns" }.first
+
       user_data[:dns] = {nameserver: spec_with_dns["dns"]} if spec_with_dns
 
+      # If IPv6 network is present then send network setting up front so that agent can reconfigure networking stack
+      if networks_spec.find { |_, net| ipv6_address?(net["ip"]) }
+        user_data[:networks] = agent_network_spec(networks_spec)
+      end
+
       Base64.encode64(user_data.to_json).strip unless user_data.empty?
+    end
+
+    def agent_network_spec(network_spec)
+      spec = network_spec.map do |name, settings|
+        settings["use_dhcp"] = true
+        [name, settings]
+      end
+      Hash[spec]
+    end
+
+    def ipv6_address?(addr)
+      addr.to_s.include?(":")
     end
 
     def private_ip_address
