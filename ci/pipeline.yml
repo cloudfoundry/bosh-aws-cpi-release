@@ -301,8 +301,8 @@ jobs:
   - name: promote-candidate
     plan:
       - aggregate:
-        - {trigger: false, get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts, passed: [delivery]}
-        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src-in, passed: [delivery]}
+        - {get: cpi-release,    trigger: false,  resource: bosh-cpi-dev-artifacts, passed: [end-2-end, bats, integration]}
+        - {get: bosh-cpi-src,   trigger: false, resource: bosh-cpi-src-in, passed: [end-2-end, bats, integration]}
         - {trigger: false, get: release-version-semver, params: {bump: major}}
 
       - task: promote
