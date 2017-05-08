@@ -112,7 +112,7 @@ module Bosh::AwsCloud
           table = tables.find { |t| t.id == definition['table_id'] }
           @logger.debug("Sending traffic for '#{definition['destination']}' to '#{@aws_instance.id}' in '#{definition['table_id']}'")
 
-          existing_route = table.routes.find {|route| route.destination_cidr_block == definition['destination'] }
+          existing_route = table.routes.find {|route| !route.nil? && route.destination_cidr_block == definition['destination'] }
           if existing_route
             existing_route.replace({
               instance_id: @aws_instance.id,
