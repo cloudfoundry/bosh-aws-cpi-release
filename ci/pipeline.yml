@@ -16,13 +16,11 @@ jobs:
     plan:
       - get: bosh-cpi-src
         resource: bosh-cpi-src-in
-
       - put: terraform
         params:
           terraform_source: bosh-cpi-src/ci/assets/terraform
           delete_on_failure: true
           generate_random_name: true
-
       - put: environment
         params:
           add: terraform
@@ -31,18 +29,15 @@ jobs:
     plan:
       - get: bosh-cpi-src
         resource: bosh-cpi-src-in
-
       - put: environment
         params:
           acquire: true
-
       - task: ensure-terminated
         file: bosh-cpi-src/ci/tasks/ensure-terminated.yml
         params:
           AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
           AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
           AWS_DEFAULT_REGION:    {{aws_region__primary}}
-
       - put: terraform
         params:
           terraform_source: bosh-cpi-src/ci/assets/terraform
@@ -50,7 +45,6 @@ jobs:
           action: destroy
         get_params:
           action: destroy
-
       - put: environment
         params:
           remove: environment
@@ -61,13 +55,10 @@ jobs:
       - aggregate:
         - {trigger: true, get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {trigger: false, get: version-semver, params: {bump: patch}}
-
       - put: version-semver
         params: {file: version-semver/number}
-
       - task: build
         file: bosh-cpi-src/ci/tasks/build-candidate.yml
-
       - put: bosh-cpi-dev-artifacts
         params: {file: candidate/*.tgz}
 
@@ -78,13 +69,11 @@ jobs:
         - {trigger: true,  passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
         - {trigger: false, passed: [build-candidate], get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {get: 2h,             trigger: true}
-
       - put: terraform
         params:
           terraform_source: bosh-cpi-src/ci/assets/terraform
           delete_on_failure: true
           generate_random_name: true
-
       - task: test
         file: bosh-cpi-src/ci/tasks/run-integration.yml
         input_mapping:
@@ -95,7 +84,6 @@ jobs:
           AWS_DEFAULT_REGION:    {{aws_region__primary}}
           AWS_PUBLIC_KEY_NAME:   {{cpi_pipeline_public_key_name}}
           AWS_KMS_KEY_ARN:       {{aws_kms_key_arn}}
-
         ensure:
           do:
             - task: ensure-terminated
@@ -106,7 +94,6 @@ jobs:
                 AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
                 AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
                 AWS_DEFAULT_REGION:    {{aws_region__primary}}
-
             - put: terraform
               params:
                 terraform_source: bosh-cpi-src/ci/assets/terraform
@@ -127,13 +114,11 @@ jobs:
         - {get: bosh-cli,       trigger: false}
         - {get: bats,           trigger: false}
         - {get: 2h,             trigger: true}
-
       - put: terraform
         params:
           terraform_source: bosh-cpi-src/ci/assets/terraform
           delete_on_failure: true
           generate_random_name: true
-
       - task: prepare-director
         file: bosh-cpi-src/ci/tasks/prepare-director.yml
         input_mapping:
@@ -148,7 +133,6 @@ jobs:
             PRIVATE_KEY_DATA:       {{cpi_pipeline_private_key}}
             SSLIP_IO_CERT:          {{sslip_io_cert}}
             SSLIP_IO_KEY:           {{sslip_io_key}}
-
       - do:
           - task: deploy-director
             file: certification/shared/tasks/deploy-director.yml
@@ -158,7 +142,6 @@ jobs:
             params:
               BOSH_CLIENT:        {{BOSH_CLIENT}}
               BOSH_CLIENT_SECRET: {{BOSH_CLIENT_SECRET}}
-
           - task: prepare-manual-bats
             file: bosh-cpi-src/ci/tasks/prepare-manual-bats.yml
             input_mapping:
@@ -173,20 +156,17 @@ jobs:
               BOSH_CLIENT:            {{BOSH_CLIENT}}
               BOSH_CLIENT_SECRET:     {{BOSH_CLIENT_SECRET}}
               STEMCELL_NAME:          bosh-aws-xen-hvm-ubuntu-trusty-go_agent
-
           - task: run-bats
             file: certification/shared/tasks/run-bats.yml
             input_mapping:
               pipelines: certification
               environment: terraform
-
         ensure:
           do:
             - task: teardown
               input_mapping:
                 environment: terraform
               file: bosh-cpi-src/ci/tasks/teardown.yml
-
             - task: ensure-terminated
               input_mapping:
                 environment: terraform
@@ -195,7 +175,6 @@ jobs:
                 AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
                 AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
                 AWS_DEFAULT_REGION:    {{aws_region__primary}}
-
             - put: terraform
               params:
                 terraform_source: bosh-cpi-src/ci/assets/terraform
@@ -216,13 +195,11 @@ jobs:
         - {get: certification,  trigger: false}
         - {get: bosh-cli,       trigger: false}
         - {get: 2h,             trigger: true}
-
       - put: terraform
         params:
           terraform_source: bosh-cpi-src/ci/assets/terraform
           delete_on_failure: true
           generate_random_name: true
-
       - task: prepare-director
         file: bosh-cpi-src/ci/tasks/prepare-director.yml
         input_mapping:
@@ -238,7 +215,6 @@ jobs:
             SSLIP_IO_CERT:               {{sslip_io_cert}}
             SSLIP_IO_KEY:                {{sslip_io_key}}
             ENABLE_IAM_INSTANCE_PROFILE: true
-
       - do:
           - task: deploy-director
             file: certification/shared/tasks/deploy-director.yml
@@ -248,7 +224,6 @@ jobs:
             params:
               BOSH_CLIENT:        {{BOSH_CLIENT}}
               BOSH_CLIENT_SECRET: {{BOSH_CLIENT_SECRET}}
-
           - task: run-e2e
             file: bosh-cpi-src/ci/tasks/run-e2e.yml
             input_mapping:
@@ -263,14 +238,12 @@ jobs:
               STEMCELL_NAME:       bosh-aws-xen-hvm-ubuntu-trusty-go_agent
               HEAVY_STEMCELL_NAME: *heavy-ubuntu-stemcell
               AWS_KMS_KEY_ARN:     {{aws_kms_key_arn}}
-
         ensure:
           do:
             - task: teardown
               input_mapping:
                 environment: terraform
               file: bosh-cpi-src/ci/tasks/teardown.yml
-
             - task: ensure-terminated
               input_mapping:
                 environment: terraform
@@ -279,7 +252,6 @@ jobs:
                 AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
                 AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
                 AWS_DEFAULT_REGION:    {{aws_region__primary}}
-
             - put: terraform
               params:
                 terraform_source: bosh-cpi-src/ci/assets/terraform
@@ -304,16 +276,13 @@ jobs:
         - {get: cpi-release,    trigger: false,  resource: bosh-cpi-dev-artifacts, passed: [end-2-end, bats, integration]}
         - {get: bosh-cpi-src,   trigger: false, resource: bosh-cpi-src-in, passed: [end-2-end, bats, integration]}
         - {trigger: false, get: release-version-semver, params: {bump: major}}
-
       - task: promote
         file: bosh-cpi-src/ci/tasks/promote-candidate.yml
         params:
           AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
           AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
-
       - put: bosh-cpi-src-out
         params: {repository: promoted/repo, rebase: true, tag_prefix: "v", tag: promoted/integer_version}
-
       - put: release-version-semver
         params: {file: release-version-semver/number}
 
@@ -327,7 +296,6 @@ resources:
   - name: 2h
     type: time
     source: {interval: 2h}
-
   - name: bosh-cpi-dev-artifacts
     type: s3
     source:
@@ -336,7 +304,6 @@ resources:
       region_name: {{s3_aws_cpi_pipeline_bucket_region}}
       access_key_id: {{aws_access_key__primary}}
       secret_access_key: {{aws_secret_key__primary}}
-
   - name: bosh-cpi-src-in
     type: git
     source:
@@ -345,14 +312,12 @@ resources:
       ignore_paths:
         - .final_builds/**/*.yml
         - releases/**/*.yml
-
   - name: bosh-cpi-src-out
     type: git
     source:
       uri: git@github.com:cloudfoundry-incubator/bosh-aws-cpi-release.git
       branch: master
       private_key: {{github_deployment_key__bosh-aws-cpi-release}}
-
   - name: version-semver
     type: semver
     source:
@@ -360,7 +325,6 @@ resources:
       bucket:            {{s3_aws_cpi_pipeline_bucket}}
       access_key_id:     {{aws_access_key__primary}}
       secret_access_key: {{aws_secret_key__primary}}
-
   - name: release-version-semver
     type: semver
     source:
@@ -368,7 +332,6 @@ resources:
       bucket:            {{s3_aws_cpi_pipeline_bucket}}
       access_key_id:     {{aws_access_key__primary}}
       secret_access_key: {{aws_secret_key__primary}}
-
   - name: environment
     type: pool
     source:
@@ -376,7 +339,6 @@ resources:
       branch: master
       pool: aws
       private_key: {{github_deployment_key__bosh-cpi-environments}}
-
   - name: terraform
     type: terraform_type
     source:
@@ -389,20 +351,17 @@ resources:
         access_key: {{aws_access_key__primary}}
         secret_key: {{aws_secret_key__primary}}
         region:     {{aws_region__primary}}
-
   - name: bosh-cli
     type: s3
     source:
       regexp: bosh-cli-([0-9.]+)-linux-amd64
       bucket: bosh-cli-artifacts
       region_name: us-east-1
-
   - name: certification
     type: git
     source:
       uri: https://github.com/cloudfoundry-incubator/bosh-cpi-certification
       branch: master
-
   # Remember to update these every once in a while
   - name: precompiled-bosh-release
     type: s3
@@ -410,30 +369,25 @@ resources:
       bucket: bosh-compiled-release-tarballs
       regexp: bosh-(261.4)-ubuntu-trusty-3363.12-20170314-180914-459312188-20170314180920.tgz
       # regexp: release-bosh-(260)-on-ubuntu-trusty-stemcell-3309-20161111043646.tgz
-
   - name: precompiled-stemcell
     type: s3
     source:
       bucket: bosh-aws-light-stemcells
       regexp: light-bosh-stemcell-(3363.12)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
       region_name: us-east-1
-
   - name: heavy-ubuntu-stemcell
     type: bosh-io-stemcell
     source:
       name: &heavy-ubuntu-stemcell bosh-aws-xen-ubuntu-trusty-go_agent
       force_regular: true
-
   - name: bats
     type: git
     source:
       uri: https://github.com/cloudfoundry/bosh-acceptance-tests.git
       branch: master
-
   - name: tracker-output
     type: tracker
     source:
       token: {{tracker_api_token}}
       project_id: {{tracker_project_id}}
       tracker_url: https://www.pivotaltracker.com
-
