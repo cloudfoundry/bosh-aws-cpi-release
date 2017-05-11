@@ -5,87 +5,41 @@ set -e
 # inputs
 release_dir="$( cd $(dirname $0) && cd ../.. && pwd )"
 workspace_dir="$( cd ${release_dir} && cd .. && pwd )"
-ci_bosh_dir="${workspace_dir}/bosh-release"
-ci_cpi_dir="${workspace_dir}/cpi-release"
-ci_stemcell_dir="${workspace_dir}/stemcell"
 ci_environment_dir="${workspace_dir}/environment"
+bosh_deployment="${workspace_dir}/bosh-deployment"
+certification="${workspace_dir}/certification"
+bosh_cli="${workspace_dir}/bosh-cli/*bosh-cli-*"
+chmod +x $bosh_cli
 
 # outputs
 ci_output_dir="${workspace_dir}/director-config"
 
 # environment
-: ${BOSH_CLIENT:?}
-: ${BOSH_CLIENT_SECRET:?}
 : ${AWS_ACCESS_KEY:?}
 : ${AWS_SECRET_KEY:?}
 : ${AWS_REGION_NAME:?}
+: ${BOSH_CLIENT_SECRET:?}
+: ${ENABLE_IAM_INSTANCE_PROFILE:=""}
 : ${PUBLIC_KEY_NAME:?}
 : ${PRIVATE_KEY_DATA:?}
-: ${SSLIP_IO_CERT:?}
-: ${SSLIP_IO_KEY:?}
-: ${BOSH_RELEASE_PATH:=}
-: ${CPI_RELEASE_PATH:=}
-: ${STEMCELL_PATH:=}
-: ${ENABLE_IAM_INSTANCE_PROFILE:=""}
 : ${METADATA_FILE:=${ci_environment_dir}/metadata}
 : ${OUTPUT_DIR:=${ci_output_dir}}
-red='\033[0;31m'
-green='\033[0;32m'
-yellow='\033[0;33m'
-nc='\033[0m'
 
 if [ ! -d ${OUTPUT_DIR} ]; then
-  echo -e "${red}OUTPUT_DIR '${OUTPUT_DIR}' does not exist${nc}"
+  echo -e "OUTPUT_DIR '${OUTPUT_DIR}' does not exist"
   exit 1
 fi
 if [ ! -f ${METADATA_FILE} ]; then
-  echo -e "${red}METADATA_FILE '${METADATA_FILE}' does not exist${nc}"
+  echo -e "METADATA_FILE '${METADATA_FILE}' does not exist"
   exit 1
 fi
 
 metadata="$( cat ${METADATA_FILE} )"
-
 tmpdir="$(mktemp -d /tmp/bosh-director-artifacts.XXXXXXXXXX)"
 
-if [ -z "$BOSH_RELEASE_PATH" ]; then
-  if [ -f ${ci_bosh_dir}/*.tgz ]; then
-    BOSH_RELEASE_PATH="$( ls ${ci_bosh_dir}/*.tgz )"
-    echo -e "${yellow}Using local bosh-release from ${BOSH_RELEASE_PATH}${nc}"
-  else
-    download_url="https://bosh.io/d/github.com/cloudfoundry/bosh"
-    echo -e "${yellow}Downloading remote bosh-release from ${download_url}${nc}"
-    BOSH_RELEASE_PATH="${tmpdir}/bosh.tgz"
-    wget -O "${BOSH_RELEASE_PATH}" "${download_url}"
-  fi
-fi
-# use relative paths: paths will be resolved in a separate task
-bosh_release_uri="file://${BOSH_RELEASE_PATH/*bosh-release/bosh-release}"
-
-if [ -z "$CPI_RELEASE_PATH" ]; then
-  if [ -f ${ci_cpi_dir}/*.tgz ]; then
-    CPI_RELEASE_PATH="$( ls ${ci_cpi_dir}/*.tgz )"
-    echo -e "${yellow}Using local cpi-release from ${CPI_RELEASE_PATH}${nc}"
-  else
-    download_url="https://bosh.io/d/github.com/cloudfoundry-incubator/bosh-aws-cpi-release"
-    echo -e "${yellow}Downloading remote cpi-release from ${download_url}${nc}"
-    CPI_RELEASE_PATH="${tmpdir}/bosh-cpi.tgz"
-    wget -O "${CPI_RELEASE_PATH}" "${download_url}"
-  fi
-fi
-cpi_release_uri="file://${CPI_RELEASE_PATH/*cpi-release/cpi-release}"
-
-if [ -z "$STEMCELL_PATH" ]; then
-  if [ -f ${ci_stemcell_dir}/*.tgz ]; then
-    STEMCELL_PATH="$( ls ${ci_stemcell_dir}/*.tgz )"
-    echo -e "${yellow}Using local stemcell from ${STEMCELL_PATH}${nc}"
-  else
-    download_url="https://bosh.io/d/stemcells/bosh-aws-xen-hvm-ubuntu-trusty-go_agent"
-    echo -e "${yellow}Downloading remote stemcell from ${download_url}${nc}"
-    STEMCELL_PATH="${tmpdir}/stemcell.tgz"
-    wget -O "${STEMCELL_PATH}" "${download_url}"
-  fi
-fi
-stemcell_uri="file://${STEMCELL_PATH/*stemcell\//stemcell/}"
+BOSH_RELEASE_URI="file://$( echo bosh-release/*.tgz )"
+CPI_RELEASE_URI="file://$( echo cpi-release/*.tgz )"
+STEMCELL_URI="file://$( echo stemcell/*.tgz )"
 
 # configuration
 : ${SECURITY_GROUP:=$(       echo ${metadata} | jq --raw-output ".SecurityGroupID" )}
@@ -96,17 +50,24 @@ stemcell_uri="file://${STEMCELL_PATH/*stemcell\//stemcell/}"
 : ${AWS_NETWORK_GATEWAY:=$(  echo ${metadata} | jq --raw-output ".PublicGateway" )}
 : ${AWS_NETWORK_DNS:=$(      echo ${metadata} | jq --raw-output ".DNS" )}
 : ${DIRECTOR_STATIC_IP:=$(   echo ${metadata} | jq --raw-output ".DirectorStaticIP" )}
-: ${BLOBSTORE_BUCKET_NAME:=$(echo ${metadata} | jq --raw-output ".BlobstoreBucket" )}
 : ${STATIC_RANGE:=$(         echo ${metadata} | jq --raw-output ".StaticRange" )}
 : ${RESERVED_RANGE:=$(       echo ${metadata} | jq --raw-output ".ReservedRange" )}
 
-if [ -z "${ENABLE_IAM_INSTANCE_PROFILE}" ]; then
-  DEFAULT_IAM_INSTANCE_PROFILE_SETTING=""
-  IAM_INSTANCE_PROFILE_SETTING=""
-else
+iam_instance_profile_ops=""
+if [ "${ENABLE_IAM_INSTANCE_PROFILE}" == true ]; then
+  iam_instance_profile_ops="--ops-file /tmp/iam-instance-profile-ops.yml"
+
   : ${IAM_INSTANCE_PROFILE:=$( echo ${metadata} | jq --raw-output ".IAMInstanceProfile" )}
-  DEFAULT_IAM_INSTANCE_PROFILE_SETTING="default_iam_instance_profile: ${IAM_INSTANCE_PROFILE}"
-  IAM_INSTANCE_PROFILE_SETTING="iam_instance_profile: ${IAM_INSTANCE_PROFILE}"
+  cat > /tmp/iam-instance-profile-ops.yml <<EOF
+---
+- type: replace
+  path: /resource_pools/name=vms/cloud_properties/iam_instance_profile?
+  value: ((iam_instance_profile))
+
+- type: replace
+  path: /instance_groups/name=bosh/properties/aws/default_iam_instance_profile?
+  value: ((iam_instance_profile))
+EOF
 fi
 
 # keys
@@ -118,164 +79,27 @@ cat > "${OUTPUT_DIR}/director.env" <<EOF
 #!/usr/bin/env bash
 
 export BOSH_DIRECTOR_IP=${DIRECTOR_EIP}
-export BOSH_CLIENT=${BOSH_CLIENT}
+export BOSH_CLIENT=admin
 export BOSH_CLIENT_SECRET=${BOSH_CLIENT_SECRET}
 EOF
 
-# manifest generation
-cat > "${OUTPUT_DIR}/director.yml" <<EOF
+cat > /tmp/aws_creds.yml <<EOF
 ---
-name: certification-director
-
-releases:
-  - name: bosh
-    url: ${bosh_release_uri}
-  - name: bosh-aws-cpi
-    url: ${cpi_release_uri}
-
-resource_pools:
-  - name: default
-    network: private
-    stemcell:
-      url: ${stemcell_uri}
-    cloud_properties:
-      ${IAM_INSTANCE_PROFILE_SETTING}
-      instance_type: t2.medium
-      availability_zone: ${AVAILABILITY_ZONE}
-      ephemeral_disk:
-        size: 25000
-
-disk_pools:
-  - name: default
-    disk_size: 25_000
-    cloud_properties: {}
-
-networks:
-  - name: private
-    type: manual
-    subnets:
-    - range:    ${AWS_NETWORK_CIDR}
-      gateway:  ${AWS_NETWORK_GATEWAY}
-      dns:      [8.8.8.8]
-      cloud_properties: {subnet: ${SUBNET_ID}}
-  - name: public
-    type: vip
-
-jobs:
-  - name: bosh
-    instances: 1
-
-    templates:
-      - {name: nats, release: bosh}
-      - {name: postgres, release: bosh}
-      - {name: blobstore, release: bosh}
-      - {name: director, release: bosh}
-      - {name: health_monitor, release: bosh}
-      - {name: powerdns, release: bosh}
-      - {name: registry, release: bosh}
-      - {name: aws_cpi, release: bosh-aws-cpi}
-
-    resource_pool: default
-    persistent_disk_pool: default
-
-    networks:
-      - name: private
-        static_ips: [${DIRECTOR_STATIC_IP}]
-        default: [dns, gateway]
-      - name: public
-        static_ips: [${DIRECTOR_EIP}]
-
-    properties:
-      nats:
-        address: 127.0.0.1
-        user: nats
-        password: nats-password
-
-      postgres: &db
-        host: 127.0.0.1
-        user: postgres
-        password: postgres-password
-        database: bosh
-        adapter: postgres
-
-      registry:
-        address: ${DIRECTOR_STATIC_IP}
-        host: ${DIRECTOR_STATIC_IP}
-        db: *db
-        http: {user: ${BOSH_CLIENT}, password: ${BOSH_CLIENT_SECRET}, port: 25777}
-        username: ${BOSH_CLIENT}
-        password: ${BOSH_CLIENT_SECRET}
-        port: 25777
-
-      blobstore:
-        director: {user: director, password: director-password}
-        agent: {user: agent, password: agent-password}
-        provider: s3
-        s3_region: ${AWS_REGION_NAME}
-        bucket_name: ${BLOBSTORE_BUCKET_NAME}
-        s3_signature_version: '4'
-        access_key_id: ${AWS_ACCESS_KEY}
-        secret_access_key: ${AWS_SECRET_KEY}
-
-      director:
-        address: 127.0.0.1
-        name: bats-director
-        db: *db
-        cpi_job: aws_cpi
-        user_management:
-          provider: local
-          local:
-            users:
-              - {name: ${BOSH_CLIENT}, password: ${BOSH_CLIENT_SECRET}}
-        ssl:
-          key: "$(sed 's/$/\\n/g' <<< "${SSLIP_IO_KEY}" | tr -d '\n')"
-          cert: "$(sed 's/$/\\n/g' <<< "${SSLIP_IO_CERT}" | tr -d '\n')"
-
-      hm:
-        http: {user: hm, password: hm-password}
-        director_account: {user: ${BOSH_CLIENT}, password: ${BOSH_CLIENT_SECRET}}
-
-      dns:
-        recursor: 10.0.0.2
-        address: 127.0.0.1
-        db: *db
-
-      agent: {mbus: "nats://nats:nats-password@${DIRECTOR_STATIC_IP}:4222"}
-
-      ntp: &ntp
-        - 0.north-america.pool.ntp.org
-        - 1.north-america.pool.ntp.org
-
-      aws: &aws-config
-        default_key_name: ${PUBLIC_KEY_NAME}
-        default_security_groups: ["${SECURITY_GROUP}"]
-        region: "${AWS_REGION_NAME}"
-        access_key_id: ${AWS_ACCESS_KEY}
-        secret_access_key: ${AWS_SECRET_KEY}
-        ${DEFAULT_IAM_INSTANCE_PROFILE_SETTING}
-
-cloud_provider:
-  template: {name: aws_cpi, release: bosh-aws-cpi}
-
-  ssh_tunnel:
-    host: ${DIRECTOR_EIP}
-    port: 22
-    user: vcap
-    private_key: ${shared_key}
-
-  mbus: "https://mbus:mbus-password@${DIRECTOR_EIP}:6868"
-
-  properties:
-    aws: *aws-config
-
-    # Tells CPI how agent should listen for requests
-    agent: {mbus: "https://mbus:mbus-password@0.0.0.0:6868"}
-
-    blobstore:
-      provider: local
-      path: /var/vcap/micro_bosh/data/cache
-
-    ntp: *ntp
+iam_instance_profile: ${IAM_INSTANCE_PROFILE}
+private_key: ${shared_key}
+access_key_id: ${AWS_ACCESS_KEY}
+secret_access_key: ${AWS_SECRET_KEY}
+default_key_name: ${PUBLIC_KEY_NAME}
+default_security_groups: [${SECURITY_GROUP}]
+region: ${AWS_REGION_NAME}
+az: ${AVAILABILITY_ZONE}
+external_ip: ${DIRECTOR_EIP}
+internal_gw: ${AWS_NETWORK_GATEWAY}
+internal_ip: ${DIRECTOR_STATIC_IP}
+internal_cidr: ${AWS_NETWORK_CIDR}
+subnet_id: ${SUBNET_ID}
+admin_password: ${BOSH_CLIENT_SECRET}
+dns_recursor_ip: 10.0.0.2
 EOF
 
 cat > "${OUTPUT_DIR}/cloud-config.yml" <<EOF
@@ -316,8 +140,22 @@ compilation:
   network: default
 EOF
 
-echo -e "${green}Successfully generated manifest!${nc}"
-echo -e "${green}Manifest:    ${OUTPUT_DIR}/director.yml${nc}"
-echo -e "${green}Env:         ${OUTPUT_DIR}/director.env${nc}"
-echo -e "${green}CloudConfig: ${OUTPUT_DIR}/cloud-config.yml${nc}"
-echo -e "${green}Artifacts:   ${tmpdir}/${nc}"
+${bosh_cli} interpolate \
+  --ops-file ${bosh_deployment}/aws/cpi.yml \
+  --ops-file ${bosh_deployment}/powerdns.yml \
+  --ops-file ${certification}/shared/assets/ops/custom-releases.yml \
+  --ops-file ${certification}/aws/assets/ops/custom-releases.yml \
+  --ops-file ${certification}/aws/assets/ops/networking.yml \
+  $(echo ${iam_instance_profile_ops}) \
+  -v bosh_release_uri="${BOSH_RELEASE_URI}" \
+  -v cpi_release_uri="${CPI_RELEASE_URI}" \
+  -v stemcell_uri="${STEMCELL_URI}" \
+  -l /tmp/aws_creds.yml \
+  ${bosh_deployment}/bosh.yml > "${OUTPUT_DIR}/director.yml"
+
+
+echo -e "Successfully generated manifest!"
+echo -e "Manifest:    ${OUTPUT_DIR}/director.yml"
+echo -e "Env:         ${OUTPUT_DIR}/director.env"
+echo -e "CloudConfig: ${OUTPUT_DIR}/cloud-config.yml"
+echo -e "Artifacts:   ${tmpdir}/"

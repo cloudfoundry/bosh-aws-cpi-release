@@ -12,6 +12,7 @@ inputs:
   - name: heavy-stemcell
   - name: bosh-cli
   - name: environment
+  - name: director-state
 
 run:
   path: bosh-cpi-src/ci/tasks/run-e2e.sh
@@ -21,7 +22,6 @@ params:
   AWS_ACCESS_KEY:      ""
   AWS_SECRET_KEY:      ""
   AWS_REGION_NAME:     ""
-  BOSH_CLIENT:         ""
   BOSH_CLIENT_SECRET:  ""
   STEMCELL_NAME:       ""
   HEAVY_STEMCELL_NAME: ""

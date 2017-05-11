@@ -22,5 +22,5 @@ fi
 
 pushd ${input_dir} > /dev/null
   echo "deleting existing BOSH Director VM..."
-  $bosh_cli -n delete-env director.yml
+  $bosh_cli -n delete-env --vars-store "${input_dir}/creds.yml" -v director_name=bosh director.yml
 popd

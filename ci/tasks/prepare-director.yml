@@ -6,10 +6,13 @@ image_resource:
 
 inputs:
   - name: bosh-cpi-src
+  - name: bosh-cli
   - name: bosh-release
   - name: cpi-release
   - name: stemcell
   - name: environment
+  - name: certification
+  - name: bosh-deployment
 
 outputs:
   - name: director-config
@@ -21,11 +24,7 @@ params:
   AWS_ACCESS_KEY:              ""
   AWS_SECRET_KEY:              ""
   AWS_REGION_NAME:             ""
-  AWS_STACK_NAME:              ""
-  BOSH_CLIENT:                 ""
   BOSH_CLIENT_SECRET:          ""
+  ENABLE_IAM_INSTANCE_PROFILE: ""
   PUBLIC_KEY_NAME:             ""
   PRIVATE_KEY_DATA:            ""
-  SSLIP_IO_CERT:               ""
-  SSLIP_IO_KEY:                ""
-  ENABLE_IAM_INSTANCE_PROFILE: ""

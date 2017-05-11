@@ -5,7 +5,6 @@ set -e
 : ${AWS_ACCESS_KEY:?}
 : ${AWS_SECRET_KEY:?}
 : ${AWS_REGION_NAME:?}
-: ${BOSH_CLIENT:?}
 : ${BOSH_CLIENT_SECRET:?}
 : ${STEMCELL_NAME:?}
 : ${HEAVY_STEMCELL_NAME:?}
@@ -20,6 +19,7 @@ export AWS_DEFAULT_REGION=${AWS_REGION_NAME}
 stemcell_path="$(realpath stemcell/*.tgz)"
 heavy_stemcell_path="$(realpath heavy-stemcell/*.tgz)"
 e2e_release="$(realpath pipelines/aws/assets/e2e-test-release)"
+director_state=$(realpath director-state)
 bosh_cli=$(realpath bosh-cli/bosh-cli-*)
 chmod +x $bosh_cli
 
@@ -28,7 +28,9 @@ export AVAILABILITY_ZONE=$(jq -e --raw-output ".AvailabilityZone" "${METADATA_FI
 export DIRECTOR_IP=$(jq -e --raw-output ".DirectorEIP" "${METADATA_FILE}")
 export IAM_INSTANCE_PROFILE=$(jq -e --raw-output ".IAMInstanceProfile" "${METADATA_FILE}")
 export ELB_NAME=$(jq -e --raw-output ".ELB_e2e" "${METADATA_FILE}")
-export BOSH_ENVIRONMENT="${DIRECTOR_IP//./-}.sslip.io"
+export BOSH_ENVIRONMENT="${DIRECTOR_IP}"
+export BOSH_CLIENT=admin
+export BOSH_CA_CERT="${director_state}/ca_cert.pem"
 
 e2e_deployment_name=e2e-test
 e2e_release_version=1.0.0
