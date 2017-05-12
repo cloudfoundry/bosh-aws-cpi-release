@@ -2,8 +2,6 @@
 groups:
   - name: bosh-aws-cpi
     jobs:
-      - create-environment
-      - destroy-environment
       - build-candidate
       - integration
       - bats
@@ -12,43 +10,6 @@ groups:
       - promote-candidate
 
 jobs:
-  - name: create-environment
-    plan:
-      - get: bosh-cpi-src
-        resource: bosh-cpi-src-in
-      - put: terraform
-        params:
-          terraform_source: bosh-cpi-src/ci/assets/terraform
-          delete_on_failure: true
-          generate_random_name: true
-      - put: environment
-        params:
-          add: terraform
-
-  - name: destroy-environment
-    plan:
-      - get: bosh-cpi-src
-        resource: bosh-cpi-src-in
-      - put: environment
-        params:
-          acquire: true
-      - task: ensure-terminated
-        file: bosh-cpi-src/ci/tasks/ensure-terminated.yml
-        params:
-          AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
-          AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
-          AWS_DEFAULT_REGION:    {{aws_region__primary}}
-      - put: terraform
-        params:
-          terraform_source: bosh-cpi-src/ci/assets/terraform
-          env_name_file: environment/name
-          action: destroy
-        get_params:
-          action: destroy
-      - put: environment
-        params:
-          remove: environment
-
   - name: build-candidate
     serial: true
     plan:
@@ -303,7 +264,7 @@ resources:
     type: git
     source:
       uri: https://github.com/cloudfoundry-incubator/bosh-aws-cpi-release.git
-      branch: remove-sslip-io
+      branch: master
       ignore_paths:
         - .final_builds/**/*.yml
         - releases/**/*.yml
@@ -327,13 +288,6 @@ resources:
       bucket:            {{s3_aws_cpi_pipeline_bucket}}
       access_key_id:     {{aws_access_key__primary}}
       secret_access_key: {{aws_secret_key__primary}}
-  - name: environment
-    type: pool
-    source:
-      uri: git@github.com:cloudfoundry/bosh-cpi-environments.git
-      branch: master
-      pool: aws
-      private_key: {{github_deployment_key__bosh-cpi-environments}}
   - name: terraform
     type: terraform_type
     source:
