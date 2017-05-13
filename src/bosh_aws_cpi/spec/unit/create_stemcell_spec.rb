@@ -8,6 +8,8 @@ describe Bosh::AwsCloud::Cloud do
     let(:creator) { double(Bosh::AwsCloud::StemcellCreator) }
 
     context 'light stemcell' do
+      let(:ami_id) { 'ami-xxxxxxxx' }
+      let(:encrypted_ami) { instance_double(Aws::EC2::Image, state: 'available') }
       let(:stemcell_properties) do
         {
           'root_device_name' => '/dev/sda1',
@@ -15,21 +17,130 @@ describe Bosh::AwsCloud::Cloud do
           'name' => 'stemcell-name',
           'version' => '1.2.3',
           'ami' => {
-            'us-east-1' => 'ami-xxxxxxxx'
+            'us-east-1' => ami_id
           }
         }
       end
 
       it 'should return a light stemcell' do
         cloud = mock_cloud do |ec2|
-          allow(ec2).to receive(:images).with({
+          expect(ec2).to receive(:images).with(
             filters: [{
               name: 'image-id',
-              values: ['ami-xxxxxxxx'],
+              values: [ami_id],
             }],
-          }).and_return([double('image', id: 'ami-xxxxxxxx')])
+          ).and_return([double('image', id: ami_id)])
         end
-        expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq('ami-xxxxxxxx light')
+        expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq("#{ami_id} light")
+      end
+
+      context 'when encrypted flag is true' do
+        let(:kms_key_arn) { nil }
+        let(:stemcell_properties) do
+          {
+            'encrypted' => true,
+            'ami' => {
+                'us-east-1' => ami_id
+            }
+          }
+        end
+
+        it 'should copy ami' do
+          cloud = mock_cloud do |ec2|
+            expect(ec2).to receive(:images).with(
+              filters: [{
+                name: 'image-id',
+                values: [ami_id],
+              }],
+            ).and_return([double('image', id: ami_id)])
+
+            expect(ec2.client).to receive(:copy_image).with(
+              source_region: 'us-east-1',
+              source_image_id: ami_id,
+              name: "Copied from SourceAMI #{ami_id}",
+              encrypted: true,
+              kms_key_id: kms_key_arn
+            ).and_return(double('copy_image_result', image_id: 'ami-newami'))
+
+            expect(ec2).to receive(:image).with('ami-newami').and_return(encrypted_ami)
+
+            expect(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(
+              image: encrypted_ami,
+              state: 'available'
+            )
+          end
+
+          cloud.create_stemcell('/tmp/foo', stemcell_properties)
+        end
+
+        it 'should return stemcell id (not light stemcell id)' do
+          cloud = mock_cloud do |ec2, client|
+            expect(ec2).to receive(:images).with(
+              filters: [{
+                name: 'image-id',
+                values: [ami_id],
+              }],
+            ).and_return([double('image', id: ami_id)])
+
+            expect(ec2.client).to receive(:copy_image).with(
+              source_region: 'us-east-1',
+              source_image_id: ami_id,
+              name: "Copied from SourceAMI #{ami_id}",
+              encrypted: true,
+              kms_key_id: kms_key_arn
+            ).and_return(double('copy_image_result', image_id: 'ami-newami'))
+
+            expect(ec2).to receive(:image).with('ami-newami').and_return(encrypted_ami)
+
+            expect(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(
+              image: encrypted_ami,
+              state: 'available'
+            )
+          end
+
+          expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq('ami-newami')
+        end
+      end
+
+      context 'and kms_key_arn is given' do
+        let(:kms_key_arn) { 'arn:aws:kms:us-east-1:12345678:key/guid' }
+        let(:stemcell_properties) do
+          {
+            'encrypted' => true,
+            'kms_key_arn' => kms_key_arn,
+            'ami' => {
+                'us-east-1' => ami_id
+            }
+          }
+        end
+
+        it 'should encrypt ami with given kms_key_arn' do
+          cloud = mock_cloud do |ec2, client|
+            expect(ec2).to receive(:images).with(
+              filters: [{
+                name: 'image-id',
+                values: [ami_id],
+              }],
+            ).and_return([double('image', id: ami_id)])
+
+            expect(ec2.client).to receive(:copy_image).with(
+              source_region: 'us-east-1',
+              source_image_id: ami_id,
+              name: "Copied from SourceAMI #{ami_id}",
+              encrypted: true,
+              kms_key_id: kms_key_arn
+            ).and_return(double('copy_image_result', image_id: 'ami-newami'))
+
+            expect(ec2).to receive(:image).with('ami-newami').and_return(encrypted_ami)
+
+            expect(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(
+              image: encrypted_ami,
+              state: 'available'
+            )
+          end
+
+          cloud.create_stemcell('/tmp/foo', stemcell_properties)
+        end
       end
 
       context 'when ami does NOT exist' do
@@ -52,14 +163,13 @@ describe Bosh::AwsCloud::Cloud do
     context 'heavy stemcell' do
       let(:stemcell_properties) do
         {
-            'root_device_name' => '/dev/sda1',
-            'architecture' => 'x86_64',
-            'name' => 'stemcell-name',
-            'version' => '1.2.3',
-            'virtualization_type' => 'paravirtual'
+          'root_device_name' => '/dev/sda1',
+          'architecture' => 'x86_64',
+          'name' => 'stemcell-name',
+          'version' => '1.2.3',
+          'virtualization_type' => 'paravirtual'
         }
       end
-
       let(:volume) { double('volume', :id => 'vol-xxxxxxxx') }
       let(:stemcell) { double('stemcell', :id => 'ami-xxxxxxxx') }
       let(:instance) { double('instance') }
@@ -125,13 +235,13 @@ describe Bosh::AwsCloud::Cloud do
         context 'and kms_key_arn is provided' do
           let(:stemcell_properties) do
             {
-                'root_device_name' => '/dev/sda1',
-                'architecture' => 'x86_64',
-                'name' => 'stemcell-name',
-                'version' => '1.2.3',
-                'virtualization_type' => 'paravirtual',
-                'encrypted' => true,
-                'kms_key_arn' => 'arn:aws:kms:us-east-1:ID:key/GUID'
+              'root_device_name' => '/dev/sda1',
+              'architecture' => 'x86_64',
+              'name' => 'stemcell-name',
+              'version' => '1.2.3',
+              'virtualization_type' => 'paravirtual',
+              'encrypted' => true,
+              'kms_key_arn' => 'arn:aws:kms:us-east-1:ID:key/GUID'
             }
           end
 
@@ -165,12 +275,12 @@ describe Bosh::AwsCloud::Cloud do
         context 'and kms_key_arn is NOT provided' do
           let(:stemcell_properties) do
             {
-                'root_device_name' => '/dev/sda1',
-                'architecture' => 'x86_64',
-                'name' => 'stemcell-name',
-                'version' => '1.2.3',
-                'virtualization_type' => 'paravirtual',
-                'encrypted' => true,
+              'root_device_name' => '/dev/sda1',
+              'architecture' => 'x86_64',
+              'name' => 'stemcell-name',
+              'version' => '1.2.3',
+              'virtualization_type' => 'paravirtual',
+              'encrypted' => true,
             }
           end
 
@@ -232,13 +342,13 @@ describe Bosh::AwsCloud::Cloud do
         context 'when `encrypted` is false and kms_key_arn is provided' do
           let(:stemcell_properties) do
             {
-                'root_device_name' => '/dev/sda1',
-                'architecture' => 'x86_64',
-                'name' => 'stemcell-name',
-                'version' => '1.2.3',
-                'virtualization_type' => 'paravirtual',
-                'encrypted' => false,
-                'kms_key_arn' => 'arn:aws:kms:us-east-1:ID:key/GUID'
+              'root_device_name' => '/dev/sda1',
+              'architecture' => 'x86_64',
+              'name' => 'stemcell-name',
+              'version' => '1.2.3',
+              'virtualization_type' => 'paravirtual',
+              'encrypted' => false,
+              'kms_key_arn' => 'arn:aws:kms:us-east-1:ID:key/GUID'
             }
           end
 
@@ -250,12 +360,12 @@ describe Bosh::AwsCloud::Cloud do
         context 'when `encrypted` is missing and kms_key_arn is provided' do
           let(:stemcell_properties) do
             {
-                'root_device_name' => '/dev/sda1',
-                'architecture' => 'x86_64',
-                'name' => 'stemcell-name',
-                'version' => '1.2.3',
-                'virtualization_type' => 'paravirtual',
-                'kms_key_arn' => 'arn:aws:kms:us-east-1:ID:key/GUID'
+              'root_device_name' => '/dev/sda1',
+              'architecture' => 'x86_64',
+              'name' => 'stemcell-name',
+              'version' => '1.2.3',
+              'virtualization_type' => 'paravirtual',
+              'kms_key_arn' => 'arn:aws:kms:us-east-1:ID:key/GUID'
             }
           end
 

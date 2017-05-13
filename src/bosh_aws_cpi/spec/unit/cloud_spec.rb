@@ -17,8 +17,8 @@ describe Bosh::AwsCloud::Cloud do
       context 'when required options are missing' do
         let(:options) do
           {
-              'plugin' => 'aws',
-              'properties' => {}
+            'plugin' => 'aws',
+            'properties' => {}
           }
         end
 
@@ -56,11 +56,9 @@ describe Bosh::AwsCloud::Cloud do
       context 'when optional and required properties are provided' do
         let(:options) do
           mock_cloud_properties_merge(
-              {
-                  'aws' => {
-                      'region' => 'fake-region'
-                  }
-              }
+            'aws' => {
+              'region' => 'fake-region'
+            }
           )
         end
 
@@ -110,10 +108,10 @@ describe Bosh::AwsCloud::Cloud do
                 encrypted: false
               ).and_return(volume_resp)
 
-              allow(Aws::EC2::Volume).to receive(:new).with({
+              allow(Aws::EC2::Volume).to receive(:new).with(
                 id: 'fake-volume-id',
                 client: ec2_client,
-              }).and_return(volume)
+              ).and_return(volume)
               cloud.create_disk(disk_size, cloud_properties, 42)
             end
           end
@@ -131,10 +129,10 @@ describe Bosh::AwsCloud::Cloud do
                 encrypted: false
               ).and_return(volume_resp)
 
-              allow(Aws::EC2::Volume).to receive(:new).with({
+              allow(Aws::EC2::Volume).to receive(:new).with(
                 id: 'fake-volume-id',
                 client: ec2_client,
-              }).and_return(volume)
+              ).and_return(volume)
 
               cloud.create_disk(disk_size, cloud_properties, 42)
             end
@@ -155,10 +153,10 @@ describe Bosh::AwsCloud::Cloud do
                 encrypted: false
               ).and_return(volume_resp)
 
-              allow(Aws::EC2::Volume).to receive(:new).with({
+              allow(Aws::EC2::Volume).to receive(:new).with(
                 id: 'fake-volume-id',
                 client: ec2_client,
-              }).and_return(volume)
+              ).and_return(volume)
 
               cloud.create_disk(disk_size, cloud_properties, 42)
             end
@@ -184,10 +182,10 @@ describe Bosh::AwsCloud::Cloud do
             encrypted: false
           ).and_return(volume_resp)
 
-          allow(Aws::EC2::Volume).to receive(:new).with({
+          allow(Aws::EC2::Volume).to receive(:new).with(
             id: 'fake-volume-id',
             client: ec2_client,
-          }).and_return(volume)
+          ).and_return(volume)
 
           cloud.create_disk(disk_size, cloud_properties, 42)
         end
@@ -201,13 +199,11 @@ describe Bosh::AwsCloud::Cloud do
       context 'when access_key_id and secret_access_key are omitted' do
         let(:options) do
           mock_cloud_properties_merge(
-              {
-                  'aws' => {
-                      'credentials_source' => 'static',
-                      'access_key_id' => nil,
-                      'secret_access_key' => nil
-                  }
-              }
+            'aws' => {
+              'credentials_source' => 'static',
+              'access_key_id' => nil,
+              'secret_access_key' => nil
+            }
           )
         end
         it 'raises an error' do
@@ -222,13 +218,11 @@ describe Bosh::AwsCloud::Cloud do
     context 'when credentials_source is set to env_or_profile' do
       let(:options) do
         mock_cloud_properties_merge(
-            {
-                'aws' => {
-                    'credentials_source' => 'env_or_profile',
-                    'access_key_id' => nil,
-                    'secret_access_key' => nil
-                }
-            }
+          'aws' => {
+            'credentials_source' => 'env_or_profile',
+            'access_key_id' => nil,
+            'secret_access_key' => nil
+          }
         )
       end
 
@@ -244,12 +238,10 @@ describe Bosh::AwsCloud::Cloud do
     context 'when credentials_source is set to env_or_profile and access_key_id is provided' do
       let(:options) do
         mock_cloud_properties_merge(
-            {
-                'aws' => {
-                    'credentials_source' => 'env_or_profile',
-                    'access_key_id' => 'some access key'
-                }
-            }
+          'aws' => {
+            'credentials_source' => 'env_or_profile',
+            'access_key_id' => 'some access key'
+          }
         )
       end
       it 'raises an error' do
@@ -263,11 +255,9 @@ describe Bosh::AwsCloud::Cloud do
     context 'when an unknown credentails_source is set' do
       let(:options) do
         mock_cloud_properties_merge(
-            {
-                'aws' => {
-                    'credentials_source' => 'NotACredentialsSource'
-                }
-            }
+          'aws' => {
+            'credentials_source' => 'NotACredentialsSource'
+          }
         )
       end
 
@@ -283,7 +273,7 @@ describe Bosh::AwsCloud::Cloud do
   describe '#configure_networks' do
     it 'raises a NotSupported exception' do
       expect {
-        cloud.configure_networks("i-foobar", {})
+        cloud.configure_networks('i-foobar', {})
       }.to raise_error Bosh::Clouds::NotSupported
     end
   end

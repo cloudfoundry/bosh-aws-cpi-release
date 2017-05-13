@@ -469,14 +469,28 @@ module Bosh::AwsCloud
 
           # select the correct image for the configured ec2 client
           available_image = @ec2_resource.images(
-            {
-              filters: [{
-                name: 'image-id',
-                values: all_ami_ids
-              }]
-            }
+            filters: [{
+              name: 'image-id',
+              values: all_ami_ids
+            }]
           ).first
           raise Bosh::Clouds::CloudError, "Stemcell does not contain an AMI in region #{aws_region}" unless available_image
+
+          if stemcell_properties['encrypted'] == true
+            copy_image_result = @ec2_client.copy_image(
+              source_region: aws_region,
+              source_image_id: stemcell_properties['ami'][aws_region],
+              name: "Copied from SourceAMI #{stemcell_properties['ami'][aws_region]}",
+              encrypted: stemcell_properties['encrypted'],
+              kms_key_id: stemcell_properties['kms_key_arn']
+            )
+
+            encrypted_image_id = copy_image_result.image_id
+            encrypted_image = @ec2_resource.image(encrypted_image_id)
+            ResourceWait.for_image(image: encrypted_image, state: 'available')
+
+            return "#{encrypted_image_id}"
+          end
 
           "#{available_image.id} light"
         else

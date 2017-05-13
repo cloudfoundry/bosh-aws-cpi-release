@@ -16,7 +16,7 @@ describe Bosh::AwsCloud::Cloud do
   let(:instance_type_with_ephemeral_nvme) { ENV.fetch('BOSH_AWS_INSTANCE_TYPE_EPHEMERAL_NVME', 'i3.large') }
   let(:instance_type_without_ephemeral)   { ENV.fetch('BOSH_AWS_INSTANCE_TYPE_WITHOUT_EPHEMERAL', 't2.small') }
   let(:ami)                               { hvm_ami }
-  let(:hvm_ami)                           { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-866d3ee6') }
+  let(:hvm_ami)                           { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-9c91b7fc') }
   let(:pv_ami)                            { ENV.fetch('BOSH_AWS_PV_IMAGE_ID', 'ami-3f71225f') }
   let(:windows_ami)                       { ENV.fetch('BOSH_AWS_WINDOWS_IMAGE_ID', 'ami-9be0a8fb') }
   let(:eip)                               { ENV.fetch('BOSH_AWS_ELASTIC_IP') }
@@ -709,12 +709,6 @@ describe Bosh::AwsCloud::Cloud do
             end
           end
         end
-
-        def get_root_block_device(root_device_name, block_devices)
-          block_devices.find do |device|
-            root_device_name.start_with?(device.device_name)
-          end
-        end
       end
     end
 
@@ -987,6 +981,81 @@ describe Bosh::AwsCloud::Cloud do
     end
   end
 
+  context 'create_stemcell for light-stemcell' do
+    let(:stemcell_properties) do
+      {
+        'ami' => {
+          @region => ami
+        }
+      }
+    end
+
+    context 'when encrypted is false' do
+      it 'should NOT copy the AMI' do
+        stemcell_id = @cpi.create_stemcell('/not/a/real/path', stemcell_properties)
+        expect(stemcell_id).to end_with(' light')
+        expect(stemcell_id).to eq("#{ami} light")
+      end
+    end
+
+    context 'when encrypted is true and kms_key_arn is NOT provided' do
+      let(:stemcell_properties) do
+        {
+          'encrypted' => true,
+          'ami' => {
+            @region => ami
+          }
+        }
+      end
+
+      it 'should encrypt root disk' do
+        begin
+          stemcell_id = @cpi.create_stemcell('/not/a/real/path', stemcell_properties)
+          expect(stemcell_id).to_not end_with(' light')
+          expect(stemcell_id).not_to eq("#{ami}")
+
+          encrypted_ami = get_ami(stemcell_id.split[0])
+          expect(encrypted_ami).not_to be_nil
+
+          root_block_device = get_root_block_device(encrypted_ami.root_device_name, encrypted_ami.block_device_mappings)
+          expect(root_block_device.ebs.encrypted).to be(true)
+        ensure
+          @cpi.delete_stemcell(stemcell_id) if stemcell_id
+        end
+      end
+    end
+
+    context 'when encrypted is true and kms_key_arn is provided' do
+      let(:stemcell_properties) do
+        {
+          'encrypted' => true,
+          'kms_key_arn' => @kms_key_arn,
+          'ami' => {
+            @region => ami
+          }
+        }
+      end
+
+      it 'should encrypt root disk with provided kms_key_arn' do
+        begin
+          stemcell_id = @cpi.create_stemcell('/not/a/real/path', stemcell_properties)
+          expect(stemcell_id).to_not end_with(' light')
+          expect(stemcell_id).not_to eq("#{ami}")
+
+          encrypted_ami = get_ami(stemcell_id.split[0])
+          expect(encrypted_ami).to_not be_nil
+
+          root_block_device = get_root_block_device(encrypted_ami.root_device_name, encrypted_ami.block_device_mappings)
+          encrypted_snapshot = @ec2.snapshot(root_block_device.ebs.snapshot_id)
+          expect(encrypted_snapshot.encrypted).to be(true)
+          expect(encrypted_snapshot.kms_key_id).to eq(@kms_key_arn)
+        ensure
+          @cpi.delete_stemcell(stemcell_id) if stemcell_id
+        end
+      end
+    end
+  end
+
   def vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: @cpi)
     stemcell_id = cpi.create_stemcell('/not/a/real/path', { 'ami' => { @region => ami_id } })
     expect(stemcell_id).to end_with(' light')
@@ -1019,6 +1088,12 @@ describe Bosh::AwsCloud::Cloud do
 
   def get_ami(ami_id)
     @ec2.image(ami_id)
+  end
+
+  def get_root_block_device(root_device_name, block_devices)
+    block_devices.find do |device|
+      root_device_name.start_with?(device.device_name)
+    end
   end
 
   def get_target_group_arn(name)
