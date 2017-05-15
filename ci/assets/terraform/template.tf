@@ -56,8 +56,9 @@ resource "aws_route_table_association" "b" {
 resource "aws_subnet" "default" {
   vpc_id = "${aws_vpc.default.id}"
   cidr_block = "${cidrsubnet(aws_vpc.default.cidr_block, 8, 0)}"
-  ipv6_cidr_block = "${cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 0)}"
-  depends_on = ["aws_internet_gateway.default"]
+  ipv6_cidr_block = "${cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 1)}"
+  depends_on = [
+    "aws_internet_gateway.default"]
   availability_zone = "${data.aws_availability_zones.available.names[0]}"
 
   tags {
@@ -70,8 +71,9 @@ resource "aws_subnet" "default" {
 resource "aws_subnet" "backup" {
   vpc_id = "${aws_vpc.default.id}"
   cidr_block = "${cidrsubnet(aws_vpc.default.cidr_block, 8, 1)}"
-  ipv6_cidr_block = "${cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 1)}"
-  depends_on = ["aws_internet_gateway.default"]
+  ipv6_cidr_block = "${cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 2)}"
+  depends_on = [
+    "aws_internet_gateway.default"]
   availability_zone = "${data.aws_availability_zones.available.names[1]}"
 
   tags {
@@ -81,12 +83,14 @@ resource "aws_subnet" "backup" {
 
 resource "aws_network_acl" "allow_all" {
   vpc_id = "${aws_vpc.default.id}"
-  subnet_ids = ["${aws_subnet.default.id}", "${aws_subnet.backup.id}"]
+  subnet_ids = [
+    "${aws_subnet.default.id}",
+    "${aws_subnet.backup.id}"]
   egress {
     protocol = "-1"
     rule_no = 2
     action = "allow"
-    cidr_block =  "0.0.0.0/0"
+    cidr_block = "0.0.0.0/0"
     from_port = 0
     to_port = 0
   }
@@ -95,13 +99,13 @@ resource "aws_network_acl" "allow_all" {
     protocol = "-1"
     rule_no = 1
     action = "allow"
-    cidr_block =  "0.0.0.0/0"
+    cidr_block = "0.0.0.0/0"
     from_port = 0
     to_port = 0
   }
 
   tags {
-      Name = "${var.env_name}"
+    Name = "${var.env_name}"
   }
 }
 
@@ -114,14 +118,16 @@ resource "aws_security_group" "allow_all" {
     from_port = 0
     to_port = 0
     protocol = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [
+      "0.0.0.0/0"]
   }
 
   egress {
     from_port = 0
     to_port = 0
     protocol = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = [
+      "0.0.0.0/0"]
   }
 
   tags {
@@ -146,7 +152,8 @@ resource "aws_elb" "default" {
     lb_protocol = "http"
   }
 
-  subnets = ["${aws_subnet.default.id}"]
+  subnets = [
+    "${aws_subnet.default.id}"]
 
   tags {
     Name = "${var.env_name}"
@@ -162,7 +169,8 @@ resource "aws_elb" "e2e" {
     lb_protocol = "http"
   }
 
-  subnets = ["${aws_subnet.default.id}"]
+  subnets = [
+    "${aws_subnet.default.id}"]
 
   tags {
     Name = "${var.env_name}-e2e"
@@ -171,7 +179,9 @@ resource "aws_elb" "e2e" {
 
 # Create a new application load balancer
 resource "aws_alb" "default" {
-  subnets = ["${aws_subnet.default.id}", "${aws_subnet.backup.id}"]
+  subnets = [
+    "${aws_subnet.default.id}",
+    "${aws_subnet.backup.id}"]
 
   tags {
     Name = "${var.env_name}"
@@ -194,20 +204,21 @@ resource "aws_alb_target_group" "default" {
 }
 
 resource "aws_alb_listener" "default" {
-   load_balancer_arn = "${aws_alb.default.arn}"
-   port = "80"
-   protocol = "HTTP"
+  load_balancer_arn = "${aws_alb.default.arn}"
+  port = "80"
+  protocol = "HTTP"
 
-   default_action {
-     target_group_arn = "${aws_alb_target_group.default.arn}"
-     type = "forward"
-   }
+  default_action {
+    target_group_arn = "${aws_alb_target_group.default.arn}"
+    type = "forward"
+  }
 }
 
 resource "aws_vpc_endpoint" "private-s3" {
-    vpc_id = "${aws_vpc.default.id}"
-    service_name = "com.amazonaws.${var.region}.s3"
-    route_table_ids = ["${aws_route_table.default.id}"]
+  vpc_id = "${aws_vpc.default.id}"
+  service_name = "com.amazonaws.${var.region}.s3"
+  route_table_ids = [
+    "${aws_route_table.default.id}"]
 }
 
 resource "aws_s3_bucket" "blobstore" {
@@ -216,9 +227,9 @@ resource "aws_s3_bucket" "blobstore" {
 }
 
 resource "aws_iam_role_policy" "e2e" {
-    name = "${var.env_name}-policy"
-    role = "${aws_iam_role.e2e.id}"
-    policy = <<EOF
+  name = "${var.env_name}-policy"
+  role = "${aws_iam_role.e2e.id}"
+  policy = <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [{
@@ -253,12 +264,12 @@ EOF
 }
 
 resource "aws_iam_instance_profile" "e2e" {
-    role = "${aws_iam_role.e2e.name}"
+  role = "${aws_iam_role.e2e.name}"
 }
 
 resource "aws_iam_role" "e2e" {
-    name_prefix = "${var.env_name}"
-    assume_role_policy = <<EOF
+  name_prefix = "${var.env_name}"
+  assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -333,6 +344,11 @@ output "StaticIP1" {
 
 output "StaticIP2" {
   value = "${cidrhost(aws_vpc.default.cidr_block, 30)}"
+}
+
+output "StaticIPv6" {
+  # workaround: v0.9.5 cidrhost() does not work correctly for IPv6
+  value = "${format("%s4", cidrhost(aws_subnet.default.ipv6_cidr_block, 0))}"
 }
 
 output "ELB" {

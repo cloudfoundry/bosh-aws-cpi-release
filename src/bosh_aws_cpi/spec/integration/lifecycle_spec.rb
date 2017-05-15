@@ -15,11 +15,13 @@ describe Bosh::AwsCloud::Cloud do
   let(:instance_type_with_ephemeral)      { ENV.fetch('BOSH_AWS_INSTANCE_TYPE', 'm3.medium') }
   let(:instance_type_with_ephemeral_nvme) { ENV.fetch('BOSH_AWS_INSTANCE_TYPE_EPHEMERAL_NVME', 'i3.large') }
   let(:instance_type_without_ephemeral)   { ENV.fetch('BOSH_AWS_INSTANCE_TYPE_WITHOUT_EPHEMERAL', 't2.small') }
+  let(:instance_type_ipv6)                { 't2.small' } # "IPv6 is not supported for the instance type 'm3.medium'"
   let(:ami)                               { hvm_ami }
   let(:hvm_ami)                           { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-866d3ee6') }
   let(:pv_ami)                            { ENV.fetch('BOSH_AWS_PV_IMAGE_ID', 'ami-3f71225f') }
   let(:windows_ami)                       { ENV.fetch('BOSH_AWS_WINDOWS_IMAGE_ID', 'ami-9be0a8fb') }
   let(:eip)                               { ENV.fetch('BOSH_AWS_ELASTIC_IP') }
+  let(:ipv6_ip)                           { ENV.fetch('BOSH_AWS_IPV6_IP') }
   let(:instance_type) { instance_type_with_ephemeral }
   let(:vm_metadata) { { deployment: 'deployment', job: 'cpi_spec', index: '0', delete_me: 'please' } }
   let(:disks) { [] }
@@ -98,6 +100,27 @@ describe Bosh::AwsCloud::Cloud do
           'cloud_properties' => { 'subnet' => @subnet_id }
         }
       }
+    end
+
+    context 'with IPv6 address' do
+      let(:instance_type) { instance_type_ipv6 }
+      let(:network_spec) do
+        {
+          'ipv6' => {
+            'type' => 'manual',
+            'ip' => ipv6_ip,
+            'cloud_properties' => {'subnet' => @subnet_id}
+          }
+        }
+      end
+
+      it 'is configured with the expected IPv6 address' do
+        vm_lifecycle do |vm_id|
+          resp = @cpi.ec2_resource.client.describe_instances({filters: [ {name: 'instance-id', values: [vm_id]}]})
+          expect(resp.reservations[0].instances[0].network_interfaces[0].ipv_6_addresses[0].ipv_6_address).to eq(ipv6_ip)
+        end
+      end
+
     end
 
     describe 'logging request_id' do
