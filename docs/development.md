@@ -57,6 +57,23 @@ if your workstation was named `moncada`, it would create a VPC named
 `moncada-local-integration` and associated resources.
 
 
+### Ad-hoc testing
+
+When you need to terraform a VPC but don't need to run tests (e.g. you're deploying a BOSH director for tests), do the following:
+
+* comment-out the last two lines in `src/bosh_aws_cpi/bin/test-integration` (run tests & destroy environment)
+
+```bash
+. ~/scratch/aws/lifecycle.env
+src/bosh_aws_cpi/bin/test-integration
+bosh2 create-env ~/scratch/aws/bosh-minimal.yml \
+  -v PublicSubnetID=$(jq -r '.modules[0].outputs.PublicSubnetID.value' < /tmp/integration-terraform-state-us-west-1.tfstate) \
+  -v DeploymentEIP=$(jq -r '.modules[0].outputs.DeploymentEIP.value' < /tmp/integration-terraform-state-us-west-1.tfstate) \
+  -v access_key_id=$AWS_ACCESS_KEY_ID \
+  -v secret_access_key=$AWS_SECRET_ACCESS_KEY
+```
+* run `src/bosh_aws_cpi/bin/test-integration`
+
 ### Rubymine support
 
 Given the `Bosh Release` nature of this project, the ruby project content is under `src/bosh_aws_cpi` which does not
