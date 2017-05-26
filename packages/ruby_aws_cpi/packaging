@@ -32,4 +32,4 @@ pushd rubygems-2.6.2
   ${BOSH_INSTALL_TARGET}/bin/ruby setup.rb
 popd > /dev/null
 
-${BOSH_INSTALL_TARGET}/bin/gem install ruby_aws_cpi/bundler-1.11.2.gem --local --no-ri --no-rdoc
+${BOSH_INSTALL_TARGET}/bin/gem install ruby_aws_cpi/bundler-1.15.0.gem --local --no-ri --no-rdoc
