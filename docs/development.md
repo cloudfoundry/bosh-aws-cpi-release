@@ -1,6 +1,6 @@
 ## Development
 
-The release requires the Ruby gem Bundler (used by the vendoring script):
+The release requires Ruby version 2.1.2 and the Ruby gem Bundler (used by the vendoring script):
 
 ```
 gem install bundler

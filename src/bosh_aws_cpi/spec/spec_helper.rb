@@ -6,6 +6,7 @@ require 'cloud/aws'
 
 MOCK_AWS_ACCESS_KEY_ID = 'foo'
 MOCK_AWS_SECRET_ACCESS_KEY = 'bar'
+PROJECT_RUBY_VERSION = ENV['PROJECT_RUBY_VERSION']
 
 def mock_cloud_options
   {
@@ -123,5 +124,6 @@ RSpec.configure do |config|
   config.before do
     logger = Bosh::Cpi::Logger.new('/dev/null')
     allow(Bosh::Clouds::Config).to receive(:logger).and_return(logger)
+    expect(RUBY_VERSION).to eq(PROJECT_RUBY_VERSION)
   end
 end

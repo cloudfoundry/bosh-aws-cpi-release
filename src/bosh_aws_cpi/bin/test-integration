@@ -7,49 +7,48 @@ set -e
 : ${AWS_DEFAULT_REGION:=us-west-1}
 : ${AWS_PUBLIC_KEY_NAME:?}
 : ${AWS_KMS_KEY_ARN:?}
-
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-RELEASE_DIR="$( cd ${DIR}/../../.. && pwd )"
+: ${PROJECT_RUBY_VERSION:?}
 
 function destroy_env() {
-    terraform destroy -force -state="${STATE_FILE}" \
-      -var "access_key=${AWS_ACCESS_KEY_ID}" \
-      -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
-      -var "region=${AWS_DEFAULT_REGION}" \
-      -var "env_name=$(hostname)-local-integration" \
-  "${RELEASE_DIR}/ci/assets/terraform"
+  terraform destroy -force -state="${STATE_FILE}" \
+    -var "access_key=${AWS_ACCESS_KEY_ID}" \
+    -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
+    -var "region=${AWS_DEFAULT_REGION}" \
+    -var "env_name=$(hostname)-local-integration" \
+    "${RELEASE_DIR}/ci/assets/terraform"
+}
+
+function create_env() {
+  terraform apply -state="${STATE_FILE}" \
+    -var "access_key=${AWS_ACCESS_KEY_ID}" \
+    -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
+    -var "region=${AWS_DEFAULT_REGION}" \
+    -var "env_name=$(hostname)-local-integration" \
+    "${RELEASE_DIR}/ci/assets/terraform"
+
+  jq -e --raw-output '.modules[0].outputs | map_values(.value)' "$STATE_FILE" > $METADATA_FILE
 }
 
 export AWS_DEFAULT_REGION
 export STATE_FILE=/tmp/integration-terraform-state-"${AWS_DEFAULT_REGION}".tfstate
 export METADATA_FILE=/tmp/integration-terraform-metadata.$$.json
 
-echo "#######################################################"
+echo "###################################################################################"
 echo "Applying terraform. Metadata file at $METADATA_FILE"
-echo "#######################################################"
+echo "###################################################################################"
 
 option=$1
 if [ "$option" = "destroy" ]; then
     destroy_env
     exit
 fi
+echo "  Note: You can also use the command 'destroy' to destroy a previously created environment."
 
-echo "#######################################################"
-echo "Note: You can also use the command 'destroy' to destroy"
-echo "a previously created environment."
-echo "#######################################################"
+# make sure correct ruby version is installed
+pushd $SRC_DIR
+  . bin/check-ruby-version
+popd
 
-terraform apply -state="${STATE_FILE}" \
-  -var "access_key=${AWS_ACCESS_KEY_ID}" \
-  -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
-  -var "region=${AWS_DEFAULT_REGION}" \
-  -var "env_name=$(hostname)-local-integration" \
-  "${RELEASE_DIR}/ci/assets/terraform"
-
-jq -e --raw-output '.modules[0].outputs | map_values(.value)' "$STATE_FILE" > $METADATA_FILE
-
+create_env
 ${RELEASE_DIR}/ci/tasks/run-integration.sh
-
 destroy_env
-
