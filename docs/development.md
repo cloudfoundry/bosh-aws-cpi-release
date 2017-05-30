@@ -51,6 +51,15 @@ of it on your local system.
     ```bash
     RSPEC_ARGUMENTS=spec/integration/lifecycle_spec.rb:247 src/bosh_aws_cpi/bin/test-integration
     ```
+  * Use the `keep-alive` option to keep the terraform environment around even if tests are successful
+    ```bash
+    src/bosh_aws_cpi/bin/test-integration keep-alive
+    ```
+  * Use the `destroy` option to destroy the terraform environment without running tests
+    ```bash
+    src/bosh_aws_cpi/bin/test-integration destroy
+    ```
+
 
 This script will only terraform one environment per workstation. For example,
 if your workstation was named `moncada`, it would create a VPC named

@@ -51,4 +51,8 @@ popd
 
 create_env
 ${RELEASE_DIR}/ci/tasks/run-integration.sh
+
+if [ "$option" = "keep-alive" ]; then
+  exit
+fi
 destroy_env
