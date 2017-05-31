@@ -21,6 +21,12 @@ if [ -d "${input_dir}/.bosh" ]; then
 fi
 
 pushd ${input_dir} > /dev/null
+  source director.env
+  : ${BOSH_ENVIRONMENT:?}
+  : ${BOSH_CLIENT:?}
+  : ${BOSH_CLIENT_SECRET:?}
+  export BOSH_CA_CERT="${input_dir}/ca_cert.pem"
+
   echo "cleaning up bosh BOSH Director..."
   $bosh_cli -n clean-up --all
   echo "deleting existing BOSH Director VM..."
