@@ -78,7 +78,7 @@ echo "${PRIVATE_KEY_DATA}" > "${OUTPUT_DIR}/${shared_key}"
 cat > "${OUTPUT_DIR}/director.env" <<EOF
 #!/usr/bin/env bash
 
-export BOSH_DIRECTOR_IP=${DIRECTOR_EIP}
+export BOSH_ENVIRONMENT=${DIRECTOR_EIP}
 export BOSH_CLIENT=admin
 export BOSH_CLIENT_SECRET=${BOSH_CLIENT_SECRET}
 EOF
