@@ -27,6 +27,8 @@ pushd ${input_dir} > /dev/null
   : ${BOSH_CLIENT_SECRET:?}
   export BOSH_CA_CERT="${input_dir}/ca_cert.pem"
 
+  echo "deleting all deployments"
+  $bosh_cli deployments | awk '{print $1}' | xargs -n 1 $bosh_cli -n delete-deployment --force -d
   echo "cleaning up bosh BOSH Director..."
   $bosh_cli -n clean-up --all
   echo "deleting existing BOSH Director VM..."
