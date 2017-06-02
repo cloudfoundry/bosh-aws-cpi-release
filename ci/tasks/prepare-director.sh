@@ -143,7 +143,7 @@ EOF
 ${bosh_cli} interpolate \
   --ops-file ${bosh_deployment}/aws/cpi.yml \
   --ops-file ${bosh_deployment}/powerdns.yml \
-  --ops-file ${bosh_deployment}/external-ip-not-recommended.yml \
+  --ops-file ${bosh_deployment}/external-ip-with-registry-not-recommended.yml \
   --ops-file ${certification}/shared/assets/ops/custom-releases.yml \
   --ops-file ${certification}/aws/assets/ops/custom-releases.yml \
   $(echo ${iam_instance_profile_ops}) \

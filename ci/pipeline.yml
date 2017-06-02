@@ -316,7 +316,7 @@ resources:
     type: s3
     source:
       bucket: bosh-compiled-release-tarballs
-      regexp: bosh-(261.4)-ubuntu-trusty-3363.12-20170314-180914-459312188-20170314180920.tgz
+      regexp: bosh-(262)-ubuntu-trusty-3421.3-20170601-224719-625105306-20170601224724.tgz
       # regexp: release-bosh-(260)-on-ubuntu-trusty-stemcell-3309-20161111043646.tgz
   - name: precompiled-stemcell
     type: s3
