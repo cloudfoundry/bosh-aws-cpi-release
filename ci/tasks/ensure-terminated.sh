@@ -7,7 +7,7 @@ set -e
 : ${AWS_DEFAULT_REGION:?}
 
 metadata=$(cat environment/metadata)
-vpc_id=$(echo ${metadata} | jq --raw-output ".VPCID")
+vpc_id=$(echo ${metadata} | jq --raw-output ".vpc_id")
 
 if [ ! -z "${vpc_id}" ] ; then
   instances=$(aws ec2 describe-instances --query "Reservations[*].Instances[*].InstanceId[]" --filters "Name=vpc-id,Values=${vpc_id}" | jq '.[]' --raw-output)

@@ -102,25 +102,16 @@ jobs:
             params:
               BOSH_CLIENT:        admin
               BOSH_CLIENT_SECRET: {{BOSH_CLIENT_SECRET}}
-          - task: prepare-manual-bats
-            file: bosh-cpi-src/ci/tasks/prepare-manual-bats.yml
-            input_mapping:
-              pipelines: certification
-              environment: terraform
-            params:
-              AWS_ACCESS_KEY:         {{aws_access_key__primary}}
-              AWS_SECRET_KEY:         {{aws_secret_key__primary}}
-              AWS_REGION_NAME:        {{aws_region__primary}}
-              BAT_VCAP_PASSWORD:      {{BAT_VCAP_PASSWORD}}
-              PUBLIC_KEY_NAME:        {{cpi_pipeline_public_key_name}}
-              BOSH_CLIENT:            admin
-              BOSH_CLIENT_SECRET:     {{BOSH_CLIENT_SECRET}}
-              STEMCELL_NAME:          bosh-aws-xen-hvm-ubuntu-trusty-go_agent
           - task: run-bats
             file: certification/shared/tasks/run-bats.yml
             input_mapping:
               pipelines: certification
               environment: terraform
+            params:
+              BAT_VCAP_PASSWORD:  {{BAT_VCAP_PASSWORD}}
+              BOSH_CLIENT_SECRET: {{BOSH_CLIENT_SECRET}}
+              INFRASTRUCTURE:     aws
+              STEMCELL_NAME:      bosh-aws-xen-hvm-ubuntu-trusty-go_agent
         ensure:
           do:
             - task: teardown
@@ -300,6 +291,7 @@ resources:
         access_key: {{aws_access_key__primary}}
         secret_key: {{aws_secret_key__primary}}
         region:     {{aws_region__primary}}
+        public_key: {{cpi_pipeline_public_key}}
   - name: bosh-cli
     type: s3
     source:

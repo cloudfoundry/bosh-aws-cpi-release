@@ -23,11 +23,11 @@ director_state=$(realpath director-state)
 bosh_cli=$(realpath bosh-cli/bosh-cli-*)
 chmod +x $bosh_cli
 
-export SUBNET_ID=$(jq -e --raw-output ".PublicSubnetID" "${METADATA_FILE}")
-export AVAILABILITY_ZONE=$(jq -e --raw-output ".AvailabilityZone" "${METADATA_FILE}")
-export DIRECTOR_IP=$(jq -e --raw-output ".DirectorEIP" "${METADATA_FILE}")
-export IAM_INSTANCE_PROFILE=$(jq -e --raw-output ".IAMInstanceProfile" "${METADATA_FILE}")
-export ELB_NAME=$(jq -e --raw-output ".ELB_e2e" "${METADATA_FILE}")
+export SUBNET_ID=$(jq -e --raw-output ".subnet_id" "${METADATA_FILE}")
+export AVAILABILITY_ZONE=$(jq -e --raw-output ".availability_zone" "${METADATA_FILE}")
+export DIRECTOR_IP=$(jq -e --raw-output ".director_eip" "${METADATA_FILE}")
+export IAM_INSTANCE_PROFILE=$(jq -e --raw-output ".iam_instance_profile" "${METADATA_FILE}")
+export ELB_NAME=$(jq -e --raw-output ".elb_e2e" "${METADATA_FILE}")
 export BOSH_ENVIRONMENT="${DIRECTOR_IP}"
 export BOSH_CLIENT=admin
 export BOSH_CA_CERT="${director_state}/ca_cert.pem"

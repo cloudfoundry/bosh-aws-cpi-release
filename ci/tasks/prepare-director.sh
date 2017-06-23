@@ -42,22 +42,22 @@ CPI_RELEASE_URI="file://$( echo cpi-release/*.tgz )"
 STEMCELL_URI="file://$( echo stemcell/*.tgz )"
 
 # configuration
-: ${SECURITY_GROUP:=$(       echo ${metadata} | jq --raw-output ".SecurityGroupID" )}
-: ${DIRECTOR_EIP:=$(         echo ${metadata} | jq --raw-output ".DirectorEIP" )}
-: ${SUBNET_ID:=$(            echo ${metadata} | jq --raw-output ".PublicSubnetID" )}
-: ${AVAILABILITY_ZONE:=$(    echo ${metadata} | jq --raw-output ".AvailabilityZone" )}
-: ${AWS_NETWORK_CIDR:=$(     echo ${metadata} | jq --raw-output ".PublicCIDR" )}
-: ${AWS_NETWORK_GATEWAY:=$(  echo ${metadata} | jq --raw-output ".PublicGateway" )}
-: ${AWS_NETWORK_DNS:=$(      echo ${metadata} | jq --raw-output ".DNS" )}
-: ${DIRECTOR_STATIC_IP:=$(   echo ${metadata} | jq --raw-output ".DirectorStaticIP" )}
-: ${STATIC_RANGE:=$(         echo ${metadata} | jq --raw-output ".StaticRange" )}
-: ${RESERVED_RANGE:=$(       echo ${metadata} | jq --raw-output ".ReservedRange" )}
+: ${SECURITY_GROUP:=$(       echo ${metadata} | jq --raw-output ".security_group_name" )}
+: ${DIRECTOR_EIP:=$(         echo ${metadata} | jq --raw-output ".director_eip" )}
+: ${SUBNET_ID:=$(            echo ${metadata} | jq --raw-output ".subnet_id" )}
+: ${AVAILABILITY_ZONE:=$(    echo ${metadata} | jq --raw-output ".availability_zone" )}
+: ${AWS_NETWORK_CIDR:=$(     echo ${metadata} | jq --raw-output ".network_cidr" )}
+: ${AWS_NETWORK_GATEWAY:=$(  echo ${metadata} | jq --raw-output ".network_gateway" )}
+: ${AWS_NETWORK_DNS:=$(      echo ${metadata} | jq --raw-output ".dns" )}
+: ${DIRECTOR_STATIC_IP:=$(   echo ${metadata} | jq --raw-output ".director_internal_ip" )}
+: ${STATIC_RANGE:=$(         echo ${metadata} | jq --raw-output ".network_static_range" )}
+: ${RESERVED_RANGE:=$(       echo ${metadata} | jq --raw-output ".network_reserved_range" )}
 
 iam_instance_profile_ops=""
 if [ "${ENABLE_IAM_INSTANCE_PROFILE}" == true ]; then
   iam_instance_profile_ops="--ops-file /tmp/iam-instance-profile-ops.yml"
 
-  : ${IAM_INSTANCE_PROFILE:=$( echo ${metadata} | jq --raw-output ".IAMInstanceProfile" )}
+  : ${IAM_INSTANCE_PROFILE:=$( echo ${metadata} | jq --raw-output ".iam_instance_profile" )}
   cat > /tmp/iam-instance-profile-ops.yml <<EOF
 ---
 - type: replace
