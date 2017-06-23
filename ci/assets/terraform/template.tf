@@ -289,7 +289,7 @@ EOF
 }
 
 resource "aws_key_pair" "director" {
-  key_name   = "${env_name}"
+  key_name   = "${var.env_name}"
   public_key = "${var.public_key}"
 }
 
