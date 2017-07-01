@@ -324,23 +324,13 @@ output "dns_recursor_ip" {
 output "internal_ip" {
   value = "${cidrhost(aws_vpc.default.cidr_block, 6)}"
 }
-
-# Used by end-2-end tests
-output "iam_instance_profile" {
-  value = "${aws_iam_instance_profile.e2e.name}"
-}
 output "reserved_range" {
   value = "${cidrhost(aws_vpc.default.cidr_block, 2)}-${cidrhost(aws_vpc.default.cidr_block, 9)}"
 }
 output "static_range" {
   value = "${cidrhost(aws_vpc.default.cidr_block, 10)}-${cidrhost(aws_vpc.default.cidr_block, 30)}"
 }
-output "e2e_elb_name" {
-  value = "${aws_elb.e2e.id}"
-}
-
-# Used by integration tests
-output "deployment_eip" {
+output "bats_eip" {
   value = "${aws_eip.deployment.public_ip}"
 }
 output "network_static_ip_1" {
@@ -349,6 +339,16 @@ output "network_static_ip_1" {
 output "network_static_ip_2" {
   value = "${cidrhost(aws_vpc.default.cidr_block, 30)}"
 }
+
+# Used by end-2-end tests
+output "iam_instance_profile" {
+  value = "${aws_iam_instance_profile.e2e.name}"
+}
+output "e2e_elb_name" {
+  value = "${aws_elb.e2e.id}"
+}
+
+# Used by integration tests
 output "static_ipv6" {
   # workaround: v0.9.5 cidrhost() does not work correctly for IPv6
   value = "${format("%s4", cidrhost(aws_subnet.default.ipv6_cidr_block, 0))}"
@@ -356,7 +356,6 @@ output "static_ipv6" {
 output "elb" {
   value = "${aws_elb.default.id}"
 }
-
 output "alb" {
   value = "${aws_alb.default.id}"
 }
