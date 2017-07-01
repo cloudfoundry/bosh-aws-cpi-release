@@ -4,7 +4,6 @@ set -e
 
 : ${STEMCELL_NAME:?}
 : ${HEAVY_STEMCELL_NAME:?}
-: ${AWS_KMS_KEY_ARN:?}
 
 bosh_cli=$(realpath bosh-cli/bosh-cli-*)
 chmod +x $bosh_cli
@@ -20,10 +19,12 @@ popd
 time bosh2 -n upload-stemcell "$(realpath stemcell/*.tgz)"
 time bosh2 -n upload-stemcell "$(realpath heavy-stemcell/*.tgz)"
 
+aws_kms_key_arn="$(echo environment/metadata | jq --raw-output ".aws_kms_key_arn")"
+
 time bosh2 repack-stemcell \
   --name e2e-encrypted-heavy-stemcell \
   --version 0.1 \
-  --cloud-properties "{\"encrypted\": true, \"kms_key_arn\": \"${AWS_KMS_KEY_ARN}\"}" \
+  --cloud-properties "{\"encrypted\": true, \"kms_key_arn\": \"${aws_kms_key_arn}\"}" \
   "$(realpath heavy-stemcell/*.tgz)" \
   /tmp/e2e-encrypted-heavy-stemcell.tgz
 time bosh2 -n upload-stemcell /tmp/e2e-encrypted-heavy-stemcell.tgz
@@ -34,7 +35,6 @@ time bosh2 -n ucc \
   pipelines/aws/assets/e2e-test-release/cloud-config-2.yml
 
 time bosh2 -n deploy -d e2e-test \
-  -v "aws_kms_key_arn=${AWS_KMS_KEY_ARN}" \
   -v "encrypted_heavy_stemcell_ami_id=${encrypted_heavy_stemcell_ami_id}" \
   -l environment/metadata \
   pipelines/aws/assets/e2e-test-release/manifest.yml
@@ -47,7 +47,7 @@ time bosh2 -n run-errand -d e2e-test encrypted-heavy-stemcell-test
 
 # spot instances do not work in China
 region=$( jq -e --raw-output ".region" environment/metadata )
-if [ "${region}" != "cn-north-1" ]; then
+if [[ "${region}" != "cn-north-1" ]]; then
   time bosh2 -n run-errand -d e2e-test spot-instance-test
 else
   echo "Skipping spot instance tests for ${region}..."

@@ -43,7 +43,6 @@ shared:
     params:
       STEMCELL_NAME:       bosh-aws-xen-hvm-ubuntu-trusty-go_agent
       HEAVY_STEMCELL_NAME: *heavy-ubuntu-stemcell
-      AWS_KMS_KEY_ARN:     {{aws_kms_key_arn}}
 
   - &create-environment
     put: environment
@@ -101,7 +100,6 @@ jobs:
           AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
           AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
           AWS_DEFAULT_REGION:    {{aws_region__primary}}
-          AWS_KMS_KEY_ARN:       {{aws_kms_key_arn}}
         ensure:
           do:
             - <<: *ensure-terminated

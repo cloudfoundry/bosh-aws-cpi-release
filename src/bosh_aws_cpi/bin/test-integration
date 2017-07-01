@@ -5,8 +5,6 @@ set -e
 : ${AWS_ACCESS_KEY_ID:?}
 : ${AWS_SECRET_ACCESS_KEY:?}
 : ${AWS_DEFAULT_REGION:=us-west-1}
-: ${AWS_PUBLIC_KEY_NAME:?}
-: ${AWS_KMS_KEY_ARN:?}
 : ${PROJECT_RUBY_VERSION:?}
 
 function destroy_env() {
@@ -15,6 +13,7 @@ function destroy_env() {
     -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
     -var "region=${AWS_DEFAULT_REGION}" \
     -var "env_name=$(hostname)-local-integration" \
+    -var "public_key=${PUBLIC_KEY}" \
     "${RELEASE_DIR}/ci/assets/terraform"
 }
 
@@ -24,6 +23,7 @@ function create_env() {
     -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
     -var "region=${AWS_DEFAULT_REGION}" \
     -var "env_name=$(hostname)-local-integration" \
+    -var "public_key=${PUBLIC_KEY}" \
     "${RELEASE_DIR}/ci/assets/terraform"
 
   jq -e --raw-output '.modules[0].outputs | map_values(.value)' "$STATE_FILE" > $METADATA_FILE
@@ -32,13 +32,16 @@ function create_env() {
 export AWS_DEFAULT_REGION
 export STATE_FILE=/tmp/integration-terraform-state-"${AWS_DEFAULT_REGION}".tfstate
 export METADATA_FILE=/tmp/integration-terraform-metadata.$$.json
+ssh-keygen -b 521 -t ecdsa -f /tmp/integration-key -N "" -C $(hostname)
+echo "Generated /tmp/integration-key and /tmp/integration-key.pub successfully."
+export PUBLIC_KEY="$(cat /tmp/integration-key.pub)"
 
 echo "###################################################################################"
 echo "Applying terraform. Metadata file at $METADATA_FILE"
 echo "###################################################################################"
 
 option=$1
-if [ "$option" = "destroy" ]; then
+if [[ "$option" = "destroy" ]]; then
     destroy_env
     exit
 fi
@@ -52,7 +55,7 @@ popd
 create_env
 ${RELEASE_DIR}/ci/tasks/run-integration.sh
 
-if [ "$option" = "keep-alive" ]; then
+if [[ "$option" = "keep-alive" ]]; then
   exit
 fi
 destroy_env

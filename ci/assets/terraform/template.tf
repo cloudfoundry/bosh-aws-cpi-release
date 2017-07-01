@@ -289,6 +289,11 @@ resource "aws_key_pair" "director" {
   public_key = "${var.public_key}"
 }
 
+resource "aws_kms_key" "key" {
+  description = "${var.env_name}-kms-key"
+  deletetion_window_in_days = 7
+}
+
 output "vpc_id" {
   value = "${aws_vpc.default.id}"
 }
@@ -346,6 +351,9 @@ output "iam_instance_profile" {
 }
 output "e2e_elb_name" {
   value = "${aws_elb.e2e.id}"
+}
+output "aws_kms_key_arn" {
+  value = "${aws_kms_key.key.arn}"
 }
 
 # Used by integration tests

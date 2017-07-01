@@ -4,7 +4,7 @@ set -e
 
 openssl_version=`PATH=/usr/local/opt/openssl/bin:$PATH openssl version`
 openssl_major_version=`echo $openssl_version | cut -f2 -d\ | cut -f1 -d.`
-if [ $openssl_major_version == 0 ]; then
+if [[ $openssl_major_version == 0 ]]; then
   echo "OpenSSL version 1 or greater is required."
   echo "Currently available: ${openssl_version}"
   exit 1

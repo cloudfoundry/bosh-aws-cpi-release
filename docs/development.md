@@ -34,8 +34,6 @@ of it on your local system.
   ```bash
   export AWS_ACCESS_KEY_ID=AKIAINSxxxxxxxxxxxxx
   export AWS_SECRET_ACCESS_KEY=LvgQOmCtjL1yhcxxxxxxxxxxxxxxxxxxxxxxxxxx
-  export AWS_KMS_KEY_ARN="arn:aws:kms:us-west-1:088499999999:key/944e4xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-  export AWS_PUBLIC_KEY_NAME=dev_aws.pem
   # optional
   # export AWS_DEFAULT_REGION=us-west-1
   ```

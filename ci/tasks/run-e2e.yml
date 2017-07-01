@@ -21,4 +21,3 @@ params:
   BOSH_DEBUG_LEVEL:    info
   STEMCELL_NAME:       ""
   HEAVY_STEMCELL_NAME: ""
-  AWS_KMS_KEY_ARN:     ""
