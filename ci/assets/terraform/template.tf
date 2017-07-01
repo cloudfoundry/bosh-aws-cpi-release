@@ -301,7 +301,7 @@ output "default_key_name" {
   value = "${aws_key_pair.director.key_name}"
 }
 output "default_security_groups" {
-  value = "${aws_security_group.allow_all.id}"
+  value = ["${aws_security_group.allow_all.id}"]
 }
 output "external_ip" {
   value = "${aws_eip.director.public_ip}"
