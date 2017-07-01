@@ -12,10 +12,7 @@ alias bosh2=$bosh_cli
 
 source director-state/director.env
 
-# TODO: remove `cp` line once this story has been accepted: https://www.pivotaltracker.com/story/show/128789021
-e2e_release_home="$HOME/${e2e_release##*/}"
-cp -r ${e2e_release} ${e2e_release_home}
-pushd ${e2e_release_home}
+pushd pipelines/aws/assets/e2e-test-release
   time bosh2 -n create-release --force --name e2e-test --version 1.0.0
   time bosh2 -n upload-release
 popd
