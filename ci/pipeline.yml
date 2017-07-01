@@ -9,6 +9,69 @@ groups:
       - delivery
       - promote-candidate
 
+shared:
+  - &prepare-director
+    task: prepare-director
+    file: pipelines/shared/tasks/prepare-director.yml
+    params: &prepare-director-params
+      INFRASTRUCTURE:     aws
+      DIRECTOR_VARS_FILE: {{aws_director_vars_file}}
+      OPTIONAL_OPS_FILE:  |
+        -o bosh-deployment/external-ip-with-registry-not-recommended.yml
+
+  - &deploy-director
+    task: deploy-director
+    file: pipelines/shared/tasks/deploy-director.yml
+
+  - &run-bats
+    task: run-bats
+    file: pipelines/shared/tasks/run-bats.yml
+    params:
+      INFRASTRUCTURE:     aws
+      STEMCELL_NAME:      bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+      BAT_INFRASTRUCTURE: aws
+      BAT_NETWORKING:     manual
+      BAT_RSPEC_FLAGS:    "--tag ~multiple_manual_networks --tag ~root_partition"
+
+  - &run-end-2-end
+    task: run-e2e
+    file: bosh-cpi-src/ci/tasks/run-e2e.yml
+    input_mapping:
+      pipelines: pipelines
+      environment: terraform
+    params:
+      STEMCELL_NAME:       bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+      HEAVY_STEMCELL_NAME: *heavy-ubuntu-stemcell
+      AWS_KMS_KEY_ARN:     {{aws_kms_key_arn}}
+
+  - &create-environment
+    put: environment
+    params:
+      delete_on_failure: true
+      generate_random_name: true
+      terraform_source: bosh-cpi-src/ci/assets/terraform
+
+  - &destroy-environment
+    put: environment
+    params:
+      action: destroy
+      env_name_file: environment/name
+      terraform_source: bosh-cpi-src/ci/assets/terraform
+    get_params:
+      action: destroy
+
+  - &ensure-terminated
+    task: ensure-terminated
+    file: bosh-cpi-src/ci/tasks/ensure-terminated.yml
+    params:
+      AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
+      AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
+      AWS_DEFAULT_REGION:    {{aws_region__primary}}
+
+  - &teardown
+    task: teardown
+    file: pipelines/shared/tasks/teardown.yml
+
 jobs:
   - name: build-candidate
     serial: true
@@ -30,38 +93,18 @@ jobs:
         - {trigger: true,  passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
         - {trigger: false, passed: [build-candidate], get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {get: 2h,             trigger: true}
-      - put: terraform
-        params:
-          terraform_source: bosh-cpi-src/ci/assets/terraform
-          delete_on_failure: true
-          generate_random_name: true
+      - <<: *create-environment
       - task: test
         file: bosh-cpi-src/ci/tasks/run-integration.yml
-        input_mapping:
-          environment: terraform
         params:
           AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
           AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
           AWS_DEFAULT_REGION:    {{aws_region__primary}}
-          AWS_PUBLIC_KEY_NAME:   {{cpi_pipeline_public_key_name}}
           AWS_KMS_KEY_ARN:       {{aws_kms_key_arn}}
         ensure:
           do:
-            - task: ensure-terminated
-              input_mapping:
-                environment: terraform
-              file: bosh-cpi-src/ci/tasks/ensure-terminated.yml
-              params:
-                AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
-                AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
-                AWS_DEFAULT_REGION:    {{aws_region__primary}}
-            - put: terraform
-              params:
-                terraform_source: bosh-cpi-src/ci/assets/terraform
-                env_name_file: terraform/name
-                action: destroy
-              get_params:
-                action: destroy
+            - <<: *ensure-terminated
+            - <<: *destroy-environment
 
   - name: bats
     serial: true
@@ -72,67 +115,23 @@ jobs:
         - {get: bosh-cpi-src,    trigger: false, resource: bosh-cpi-src-in, passed: [build-candidate]}
         - {get: stemcell,        trigger: false, resource: precompiled-stemcell}
         - {get: bosh-deployment, trigger: false}
-        - {get: certification,   trigger: false}
+        - {get: pipelines,       trigger: false}
         - {get: bosh-cli,        trigger: false}
         - {get: bats,            trigger: false}
         - {get: 2h,              trigger: true}
-      - put: terraform
-        params:
-          terraform_source: bosh-cpi-src/ci/assets/terraform
-          delete_on_failure: true
-          generate_random_name: true
-      - task: prepare-director
-        file: bosh-cpi-src/ci/tasks/prepare-director.yml
-        input_mapping:
-          environment: terraform
-        params:
-            BOSH_CLIENT:            admin
-            BOSH_CLIENT_SECRET:     {{BOSH_CLIENT_SECRET}}
-            AWS_ACCESS_KEY:         {{aws_access_key__primary}}
-            AWS_SECRET_KEY:         {{aws_secret_key__primary}}
-            AWS_REGION_NAME:        {{aws_region__primary}}
-            PUBLIC_KEY_NAME:        {{cpi_pipeline_public_key_name}}
-            PRIVATE_KEY_DATA:       {{cpi_pipeline_private_key}}
+      - <<: *create-environment
       - do:
-          - task: deploy-director
-            file: certification/shared/tasks/deploy-director.yml
-            input_mapping:
-              pipelines: certification
-              environment: terraform
-            params:
-              BOSH_CLIENT:        admin
-              BOSH_CLIENT_SECRET: {{BOSH_CLIENT_SECRET}}
-          - task: run-bats
-            file: certification/shared/tasks/run-bats.yml
-            input_mapping:
-              pipelines: certification
-              environment: terraform
-            params:
-              BAT_VCAP_PASSWORD:  {{BAT_VCAP_PASSWORD}}
-              BOSH_CLIENT_SECRET: {{BOSH_CLIENT_SECRET}}
-              INFRASTRUCTURE:     aws
-              STEMCELL_NAME:      bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+        - <<: *prepare-director
+        - do:
+            - <<: *deploy-director
+            - <<: *run-bats
+          ensure:
+            do:
+              - <<: *teardown
+              - <<: *ensure-terminated
         ensure:
           do:
-            - task: teardown
-              input_mapping:
-                environment: terraform
-              file: bosh-cpi-src/ci/tasks/teardown.yml
-            - task: ensure-terminated
-              input_mapping:
-                environment: terraform
-              file: bosh-cpi-src/ci/tasks/ensure-terminated.yml
-              params:
-                AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
-                AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
-                AWS_DEFAULT_REGION:    {{aws_region__primary}}
-            - put: terraform
-              params:
-                terraform_source: bosh-cpi-src/ci/assets/terraform
-                env_name_file: terraform/name
-                action: destroy
-              get_params:
-                action: destroy
+            - <<: *destroy-environment
 
   - name: end-2-end
     serial: true
@@ -144,18 +143,32 @@ jobs:
         - {get: stemcell,        trigger: false, resource: precompiled-stemcell}
         - {get: heavy-stemcell,  trigger: false, resource: heavy-ubuntu-stemcell}
         - {get: bosh-deployment, trigger: false}
-        - {get: certification,   trigger: false}
+        - {get: pipelines,       trigger: false}
         - {get: bosh-cli,        trigger: false}
         - {get: 2h,              trigger: true}
-      - put: terraform
-        params:
-          terraform_source: bosh-cpi-src/ci/assets/terraform
-          delete_on_failure: true
-          generate_random_name: true
+
+      - <<: *create-environment
+      - do:
+        - <<: *prepare-director
+          params:
+            <<: *prepare-director-params
+            OPTIONAL_OPS_FILE:  |
+              -o bosh-deployment/external-ip-with-registry-not-recommended.yml
+              -o pipelines/aws/assets/ops/iam-instance-profile-ops-file.yml
+        - do:
+            - <<: *deploy-director
+            - <<: *run-end-2-end
+          ensure:
+            do:
+              - <<: *teardown
+              - <<: *ensure-terminated
+        ensure:
+          do:
+            - <<: *destroy-environment
+
+      - <<: *create-environment
       - task: prepare-director
         file: bosh-cpi-src/ci/tasks/prepare-director.yml
-        input_mapping:
-          environment: terraform
         params:
             BOSH_CLIENT_SECRET:          {{BOSH_CLIENT_SECRET}}
             AWS_ACCESS_KEY:              {{aws_access_key__primary}}
@@ -166,16 +179,13 @@ jobs:
             ENABLE_IAM_INSTANCE_PROFILE: true
       - do:
           - task: deploy-director
-            file: certification/shared/tasks/deploy-director.yml
-            input_mapping:
-              pipelines: certification
-              environment: terraform
+            file: pipelines/shared/tasks/deploy-director.yml
             params:
               BOSH_CLIENT_SECRET: {{BOSH_CLIENT_SECRET}}
           - task: run-e2e
             file: bosh-cpi-src/ci/tasks/run-e2e.yml
             input_mapping:
-              pipelines: certification
+              pipelines: pipelines
               environment: terraform
             params: &run-e2e-params
               AWS_ACCESS_KEY:      {{aws_access_key__primary}}
@@ -187,25 +197,9 @@ jobs:
               AWS_KMS_KEY_ARN:     {{aws_kms_key_arn}}
         ensure:
           do:
-            - task: teardown
-              input_mapping:
-                environment: terraform
-              file: bosh-cpi-src/ci/tasks/teardown.yml
-            - task: ensure-terminated
-              input_mapping:
-                environment: terraform
-              file: bosh-cpi-src/ci/tasks/ensure-terminated.yml
-              params:
-                AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
-                AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
-                AWS_DEFAULT_REGION:    {{aws_region__primary}}
-            - put: terraform
-              params:
-                terraform_source: bosh-cpi-src/ci/assets/terraform
-                env_name_file: terraform/name
-                action: destroy
-              get_params:
-                action: destroy
+            - <<: *teardown
+            - <<: *ensure-terminated
+            - <<: *destroy-environment
 
   - name: delivery
     plan:
@@ -279,7 +273,7 @@ resources:
       bucket:            {{s3_aws_cpi_pipeline_bucket}}
       access_key_id:     {{aws_access_key__primary}}
       secret_access_key: {{aws_secret_key__primary}}
-  - name: terraform
+  - name: environment
     type: terraform_type
     source:
       storage:
@@ -298,7 +292,7 @@ resources:
       regexp: bosh-cli-([0-9.]+)-linux-amd64
       bucket: bosh-cli-artifacts
       region_name: us-east-1
-  - name: certification
+  - name: pipelines
     type: git
     source:
       uri: https://github.com/cloudfoundry-incubator/bosh-cpi-certification
@@ -325,7 +319,7 @@ resources:
     type: git
     source:
       uri: https://github.com/cloudfoundry/bosh-acceptance-tests.git
-      branch: master
+      branch: gocli-bats
   - name: tracker-output
     type: tracker
     source:

@@ -105,7 +105,8 @@ EOF
 cat > "${OUTPUT_DIR}/cloud-config.yml" <<EOF
 azs:
 - name: z1
-  cloud_properties: {availability_zone: ${AVAILABILITY_ZONE}}
+  cloud_properties:
+    availability_zone: ${AVAILABILITY_ZONE}
 
 vm_types:
 - name: default
@@ -128,7 +129,8 @@ networks:
     dns:      [8.8.8.8]
     static:   [${STATIC_RANGE}]
     reserved:   [${RESERVED_RANGE}]
-    cloud_properties: {subnet: ${SUBNET_ID}}
+    cloud_properties:
+      subnet: ${SUBNET_ID}
 - name: vip
   type: vip
 

@@ -1,11 +1,7 @@
 variable "access_key" {}
-
 variable "secret_key" {}
-
 variable "region" {}
-
 variable "env_name" {}
-
 variable "public_key" {}
 
 provider "aws" {
@@ -296,92 +292,77 @@ resource "aws_key_pair" "director" {
 output "vpc_id" {
   value = "${aws_vpc.default.id}"
 }
-
-output "security_group_name" {
-  value = "${aws_security_group.allow_all.id}"
-}
-
-output "director_eip" {
-  value = "${aws_eip.director.public_ip}"
-}
-
-output "deployment_eip" {
-  value = "${aws_eip.deployment.public_ip}"
-}
-
-output "director_internal_ip" {
-  value = "${cidrhost(aws_vpc.default.cidr_block, 6)}"
-}
-
 output "region" {
   value = "${var.region}"
 }
 
-output "availability_zone" {
+# Used by bats
+output "default_key_name" {
+  value = "${aws_key_pair.director.key_name}"
+}
+output "default_security_groups" {
+  value = "${aws_security_group.allow_all.id}"
+}
+output "external_ip" {
+  value = "${aws_eip.director.public_ip}"
+}
+output "az" {
   value = "${aws_subnet.default.availability_zone}"
 }
-
 output "subnet_id" {
   value = "${aws_subnet.default.id}"
 }
-
-output "network_cidr" {
+output "internal_cidr" {
   value = "${aws_vpc.default.cidr_block}"
 }
-
-output "network_gateway" {
+output "internal_gw" {
   value = "${cidrhost(aws_vpc.default.cidr_block, 1)}"
 }
-
-output "dns" {
+output "dns_recursor_ip" {
   value = "${cidrhost(aws_vpc.default.cidr_block, 2)}"
 }
+output "internal_ip" {
+  value = "${cidrhost(aws_vpc.default.cidr_block, 6)}"
+}
 
-output "network_reserved_range" {
+# Used by end-2-end tests
+output "iam_instance_profile" {
+  value = "${aws_iam_instance_profile.e2e.name}"
+}
+output "reserved_range" {
   value = "${cidrhost(aws_vpc.default.cidr_block, 2)}-${cidrhost(aws_vpc.default.cidr_block, 9)}"
 }
-
-output "network_static_range" {
+output "static_range" {
   value = "${cidrhost(aws_vpc.default.cidr_block, 10)}-${cidrhost(aws_vpc.default.cidr_block, 30)}"
 }
+output "e2e_elb_name" {
+  value = "${aws_elb.e2e.id}"
+}
 
+# Used by integration tests
+output "deployment_eip" {
+  value = "${aws_eip.deployment.public_ip}"
+}
 output "network_static_ip_1" {
   value = "${cidrhost(aws_vpc.default.cidr_block, 29)}"
 }
-
 output "network_static_ip_2" {
   value = "${cidrhost(aws_vpc.default.cidr_block, 30)}"
 }
-
 output "static_ipv6" {
   # workaround: v0.9.5 cidrhost() does not work correctly for IPv6
   value = "${format("%s4", cidrhost(aws_subnet.default.ipv6_cidr_block, 0))}"
 }
-
 output "elb" {
   value = "${aws_elb.default.id}"
-}
-
-output "elb_e2e" {
-  value = "${aws_elb.e2e.id}"
 }
 
 output "alb" {
   value = "${aws_alb.default.id}"
 }
-
 output "alb_target_group" {
   value = "${aws_alb_target_group.default.name}"
 }
-
 output "blobstore_bucket" {
   value = "${aws_s3_bucket.blobstore.id}"
-}
-
-output "iam_instance_profile" {
-  value = "${aws_iam_instance_profile.e2e.name}"
-}
-
-output "public_key_name" {
-  value = "${aws_key_pair.director.key_name}"
 }
