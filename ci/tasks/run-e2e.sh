@@ -19,7 +19,7 @@ popd
 time bosh2 -n upload-stemcell "$(realpath stemcell/*.tgz)"
 time bosh2 -n upload-stemcell "$(realpath heavy-stemcell/*.tgz)"
 
-aws_kms_key_arn="$(echo environment/metadata | jq --raw-output ".aws_kms_key_arn")"
+aws_kms_key_arn="$(cat environment/metadata | jq --raw-output ".aws_kms_key_arn")"
 
 time bosh2 repack-stemcell \
   --name e2e-encrypted-heavy-stemcell \
