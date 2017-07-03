@@ -291,7 +291,7 @@ resource "aws_key_pair" "director" {
 
 resource "aws_kms_key" "key" {
   description = "${var.env_name}-kms-key"
-  deletetion_window_in_days = 7
+  deletion_window_in_days = 7
 }
 
 output "vpc_id" {
