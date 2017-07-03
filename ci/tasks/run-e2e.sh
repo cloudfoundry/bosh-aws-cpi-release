@@ -16,8 +16,8 @@ popd
 time bosh2 -n upload-stemcell "$(realpath stemcell/*.tgz)"
 time bosh2 -n upload-stemcell "$(realpath heavy-stemcell/*.tgz)"
 
-stemcell_name="$( bosh2 int <( tar xfO $(realpath stemcell/*.tgz stemcell.MF) ) --path /name )"
-heavy_stemcell_name="$( bosh2 int <( tar xfO $(realpath heavy-stemcell/*.tgz stemcell.MF) ) --path /name )"
+stemcell_name="$( bosh2 int <( tar xfO $(realpath stemcell/*.tgz) stemcell.MF ) --path /name )"
+heavy_stemcell_name="$( bosh2 int <( tar xfO $(realpath heavy-stemcell/*.tgz) stemcell.MF ) --path /name )"
 aws_kms_key_arn="$(cat environment/metadata | jq --raw-output ".aws_kms_key_arn")"
 
 time bosh2 repack-stemcell \
