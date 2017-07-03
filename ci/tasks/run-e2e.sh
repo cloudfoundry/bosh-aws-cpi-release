@@ -7,7 +7,7 @@ set -e
 
 bosh_cli=$(realpath bosh-cli/bosh-cli-*)
 chmod +x $bosh_cli
-alias bosh2=$bosh_cli
+cp "${bosh_cli}" /usr/local/bin/bosh2
 
 source director-state/director.env
 
@@ -35,6 +35,8 @@ time bosh2 -n ucc \
   pipelines/aws/assets/e2e-test-release/cloud-config-2.yml
 
 time bosh2 -n deploy -d e2e-test \
+  -v "stemcell_name=${STEMCELL_NAME}" \
+  -v "heavy_stemcell_name=${HEAVY_STEMCELL_NAME}" \
   -v "encrypted_heavy_stemcell_ami_id=${encrypted_heavy_stemcell_ami_id}" \
   -l environment/metadata \
   pipelines/aws/assets/e2e-test-release/manifest.yml
