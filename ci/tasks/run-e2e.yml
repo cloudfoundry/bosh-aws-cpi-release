@@ -6,12 +6,11 @@ image_resource:
   source: {repository: boshcpi/aws-cpi-release}
 
 inputs:
-  - name: bosh-cpi-src
   - name: pipelines
+  - name: environment
   - name: stemcell
   - name: heavy-stemcell
   - name: bosh-cli
-  - name: environment
   - name: director-state
 
 run:
@@ -19,5 +18,3 @@ run:
 
 params:
   BOSH_DEBUG_LEVEL:    info
-  STEMCELL_NAME:       ""
-  HEAVY_STEMCELL_NAME: ""

@@ -37,9 +37,6 @@ shared:
   - &run-end-2-end
     task: run-e2e
     file: bosh-cpi-src/ci/tasks/run-e2e.yml
-    params:
-      STEMCELL_NAME:       bosh-aws-xen-hvm-ubuntu-trusty-go_agent
-      HEAVY_STEMCELL_NAME: *heavy-ubuntu-stemcell
 
   - &create-environment
     put: environment
@@ -142,7 +139,6 @@ jobs:
         - {get: pipelines,       trigger: false}
         - {get: bosh-cli,        trigger: false}
         - {get: 2h,              trigger: true}
-
       - <<: *create-environment
       - do:
         - <<: *prepare-director

@@ -2,9 +2,6 @@
 
 set -e
 
-: ${STEMCELL_NAME:?}
-: ${HEAVY_STEMCELL_NAME:?}
-
 bosh_cli=$(realpath bosh-cli/bosh-cli-*)
 chmod +x $bosh_cli
 cp "${bosh_cli}" /usr/local/bin/bosh2
@@ -19,6 +16,8 @@ popd
 time bosh2 -n upload-stemcell "$(realpath stemcell/*.tgz)"
 time bosh2 -n upload-stemcell "$(realpath heavy-stemcell/*.tgz)"
 
+stemcell_name="$( bosh2 int <( tar xfO $(realpath stemcell/*.tgz stemcell.MF) ) --path /name )"
+heavy_stemcell_name="$( bosh2 int <( tar xfO $(realpath heavy-stemcell/*.tgz stemcell.MF) ) --path /name )"
 aws_kms_key_arn="$(cat environment/metadata | jq --raw-output ".aws_kms_key_arn")"
 
 time bosh2 repack-stemcell \
@@ -35,8 +34,8 @@ time bosh2 -n ucc \
   pipelines/aws/assets/e2e-test-release/cloud-config-2.yml
 
 time bosh2 -n deploy -d e2e-test \
-  -v "stemcell_name=${STEMCELL_NAME}" \
-  -v "heavy_stemcell_name=${HEAVY_STEMCELL_NAME}" \
+  -v "stemcell_name=${stemcell_name}" \
+  -v "heavy_stemcell_name=${heavy_stemcell_name}" \
   -v "encrypted_heavy_stemcell_ami_id=${encrypted_heavy_stemcell_ami_id}" \
   -l environment/metadata \
   pipelines/aws/assets/e2e-test-release/manifest.yml
