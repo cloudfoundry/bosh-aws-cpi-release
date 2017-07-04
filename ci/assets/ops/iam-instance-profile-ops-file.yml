@@ -1,7 +1,0 @@
-- type: replace
-  path: /resource_pools/name=vms/cloud_properties/iam_instance_profile?
-  value: ((iam_instance_profile))
-
-- type: replace
-  path: /instance_groups/name=bosh/properties/aws/default_iam_instance_profile?
-  value: ((iam_instance_profile))
