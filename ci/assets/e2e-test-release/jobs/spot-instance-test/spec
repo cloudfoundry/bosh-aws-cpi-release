@@ -1,0 +1,13 @@
+---
+name: spot-instance-test
+
+packages:
+- jq
+- awscli
+
+templates:
+  run.erb: bin/run
+
+properties:
+  aws_region:
+    description: The AWS region in which the errand is run

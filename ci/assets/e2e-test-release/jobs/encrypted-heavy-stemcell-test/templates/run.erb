@@ -1,0 +1,35 @@
+#!/bin/bash
+set -e -o pipefail
+
+export PATH=$(readlink -nf /var/vcap/packages/jq):/usr/local/bin:/var/vcap/packages/awscli/bin/:${PATH}
+
+region=<%= p('aws_region') %>
+kms_key_arn=<%= p('aws_kms_key_arn') %>
+aws_ami_cid=<%= p('aws_ami_cid') %>
+
+image=$(aws --region "${region}" ec2 describe-images --image-ids "${aws_ami_cid}" | jq .Images[0])
+root_device=$(echo "${image}" | jq -r .RootDeviceName)
+snapshot_id=$(echo "${image}" | jq -r --arg root_device "${root_device}" '.BlockDeviceMappings[] | select(.DeviceName == $root_device)'.Ebs.SnapshotId)
+
+snapshot=$(aws --region "${region}" ec2 describe-snapshots --snapshot-ids "${snapshot_id}" | jq .Snapshots[0])
+encrypted=$(echo "${snapshot}" | jq -r .Encrypted)
+kms_key_id=$(echo "${snapshot}" | jq -r .KmsKeyId)
+
+exit_code=0
+if [[ ${encrypted} == true ]]
+then
+  echo AMI root disk is encrypted.
+else
+  echo AMI root disk is NOT encrypted: encrypted=${encrypted}
+  exit_code=1
+fi
+
+if [[ ${kms_key_id} == ${kms_key_arn} ]]
+then
+  echo KMS key ARNs match.
+else
+  echo KMS key ARN mismatch: ${kms_key_id} \!= ${kms_key_arn}
+  exit_code=1
+fi
+
+exit ${exit_code}

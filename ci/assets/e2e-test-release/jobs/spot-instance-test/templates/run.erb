@@ -1,0 +1,21 @@
+#!/bin/bash
+set -e -o pipefail
+
+export PATH=$(readlink -nf /var/vcap/packages/jq):/usr/local/bin:/var/vcap/packages/awscli/bin/:${PATH}
+
+region=<%= p('aws_region') %>
+
+echo "fetching instance ID"
+instance_id=$(curl http://169.254.169.254/latest/meta-data/instance-id)
+echo "instance id: $instance_id"
+
+echo "checking if our instance is a spot instance"
+instance_description="$(aws --region $region ec2 describe-instances --instance-ids ${instance_id})"
+lifecycle="$(echo ${instance_description} | jq -r '.Reservations[0].Instances[0].InstanceLifecycle')"
+
+if [ "${lifecycle}" != "spot" ]; then
+  echo "Expected InstanceLifecycle to be 'spot' but was '${lifecycle}'"
+  exit 1
+fi
+
+echo "Success!"

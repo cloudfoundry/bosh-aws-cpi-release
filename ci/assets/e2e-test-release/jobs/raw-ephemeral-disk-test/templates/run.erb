@@ -1,0 +1,11 @@
+#!/bin/bash
+
+echo "Querying for raw ephemeral disks..."
+ls -la /dev/disk/by-partlabel/raw-ephemeral-*
+if ! [[ $? == 0 ]] ; then
+  echo "No raw ephemeral disks found!"
+  exit 1
+fi
+
+echo "Raw ephemeral disks found!"
+

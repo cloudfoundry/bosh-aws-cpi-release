@@ -147,7 +147,7 @@ jobs:
             OPTIONAL_OPS_FILE:  |
               -o bosh-deployment/external-ip-with-registry-not-recommended.yml
               -o pipelines/shared/assets/ops/remove-provider-cert.yml
-              -o pipelines/aws/assets/ops/iam-instance-profile-ops-file.yml
+              -o bosh-cpi-src/ci/assets/ops/iam-instance-profile-ops-file.yml
         - do:
             - <<: *deploy-director
             - <<: *run-end-2-end

@@ -1,0 +1,17 @@
+---
+name: encrypted-heavy-stemcell-test
+
+packages:
+- jq
+- awscli
+
+templates:
+  run.erb: bin/run
+
+properties:
+  aws_region:
+    description: The AWS region in which the errand is run
+  aws_kms_key_arn:
+    description: The AWS KMS encryption key used to encrypt root disk of AMI
+  aws_ami_cid:
+    description: The AWS AMI ID

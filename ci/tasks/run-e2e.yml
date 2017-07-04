@@ -7,7 +7,6 @@ image_resource:
 
 inputs:
   - name: bosh-cpi-src
-  - name: pipelines
   - name: environment
   - name: stemcell
   - name: heavy-stemcell
@@ -18,4 +17,4 @@ run:
   path: bosh-cpi-src/ci/tasks/run-e2e.sh
 
 params:
-  BOSH_DEBUG_LEVEL:    info
+  BOSH_DEBUG_LEVEL: info
