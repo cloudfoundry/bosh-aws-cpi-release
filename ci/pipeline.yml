@@ -16,9 +16,6 @@ shared:
     params: &prepare-director-params
       INFRASTRUCTURE:     aws
       DIRECTOR_VARS_FILE: {{aws_director_vars_file}}
-      OPTIONAL_OPS_FILE:  |
-        -o bosh-deployment/external-ip-with-registry-not-recommended.yml
-        -o pipelines/shared/assets/ops/remove-provider-cert.yml
 
   - &deploy-director
     task: deploy-director
@@ -115,6 +112,12 @@ jobs:
       - <<: *create-environment
       - do:
         - <<: *prepare-director
+          params:
+            <<: *prepare-director-params
+            OPTIONAL_OPS_FILE:  |
+              -o pipelines/shared/assets/ops/remove-hm.yml
+              -o bosh-deployment/external-ip-with-registry-not-recommended.yml
+              -o pipelines/shared/assets/ops/remove-provider-cert.yml
         - do:
             - <<: *deploy-director
             - <<: *run-bats
