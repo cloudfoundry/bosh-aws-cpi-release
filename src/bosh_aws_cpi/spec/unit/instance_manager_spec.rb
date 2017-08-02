@@ -9,6 +9,7 @@ module Bosh::AwsCloud
     let(:registry) { double('Bosh::Registry::Client', :endpoint => 'http://...', :update_settings => nil) }
     let(:param_mapper) { instance_double(InstanceParamMapper) }
     let(:block_device_manager) { instance_double(BlockDeviceManager) }
+    let(:instance_manager) { InstanceManager.new(ec2, registry, logger) }
     let(:logger) { Logger.new('/dev/null') }
 
     describe '#create' do
@@ -71,6 +72,8 @@ module Bosh::AwsCloud
         allow(block_device_manager).to receive(:ami_block_device_names=)
         allow(block_device_manager).to receive(:mappings).and_return('fake-block-device-mappings')
         allow(block_device_manager).to receive(:agent_info).and_return('fake-block-device-agent-info')
+        instance_manager.instance_variable_set('@param_mapper', param_mapper)
+        instance_manager.instance_variable_set('@block_device_manager', block_device_manager)
 
         allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: 'running')
 
@@ -98,7 +101,6 @@ module Bosh::AwsCloud
       end
 
       it 'should ask AWS to create an instance in the given region, with parameters built up from the given arguments' do
-        instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
         allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
         expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
@@ -159,7 +161,6 @@ module Bosh::AwsCloud
               and_return(describe_spot_instance_requests_result)
 
           # Trigger spot instance request
-          instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
           instance_manager.create(
             stemcell_id,
             vm_type,
@@ -171,7 +172,6 @@ module Bosh::AwsCloud
 
         context 'when spot creation fails' do
           it 'raises and logs an error' do
-            instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
             expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false))
             expect(logger).to receive(:warn).with(/Spot instance creation failed/)
 
@@ -188,7 +188,7 @@ module Bosh::AwsCloud
           end
 
           context 'and spot_ondemand_fallback is configured' do
-            let(:instance_manager) { InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger) }
+            let(:instance_manager) { InstanceManager.new(ec2, registry, logger) }
             let(:vm_type) do
               {
                 'spot_bid_price' => 0.15,
@@ -242,7 +242,6 @@ module Bosh::AwsCloud
           vm_type['source_dest_check'] = false
         end
         it 'disables source_dest_check on the instance' do
-          instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
           allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
           expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
@@ -260,7 +259,6 @@ module Bosh::AwsCloud
       end
 
       it 'should retry creating the VM when Aws::EC2::Errors::InvalidIPAddressInUse raised' do
-        instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
         allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
         allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
@@ -291,7 +289,6 @@ module Bosh::AwsCloud
         before { allow(Instance).to receive(:new).and_return(instance) }
 
         it 'terminates created instance and re-raises the error' do
-          instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
           allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
           expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
@@ -311,7 +308,6 @@ module Bosh::AwsCloud
         end
 
         it 'should retry creating the VM twice then give up when Bosh::Clouds::AbruptlyTerminated is raised' do
-          instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
           allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
           expect(Instance).to receive(:new).exactly(3).times
@@ -336,7 +332,6 @@ module Bosh::AwsCloud
           before { allow(instance).to receive(:terminate).and_raise(StandardError.new('fake-terminate-err')) }
 
           it 're-raises creation error' do
-            instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
             allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
 
             expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
@@ -368,7 +363,6 @@ module Bosh::AwsCloud
           with(aws_instance, registry, logger).
           and_return(instance)
 
-        instance_manager = InstanceManager.new(ec2, registry, param_mapper, block_device_manager, logger)
         expect(instance_manager.find(instance_id)).to eq(instance)
       end
     end

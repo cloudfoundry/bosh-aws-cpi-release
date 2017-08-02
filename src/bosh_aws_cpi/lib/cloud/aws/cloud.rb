@@ -96,11 +96,7 @@ module Bosh::AwsCloud
       @elb_client = Aws::ElasticLoadBalancing::Client.new(@elb_params)
       @alb_client = Aws::ElasticLoadBalancingV2::Client.new(@elb_params)
 
-      security_group_mapper = SecurityGroupMapper.new(@ec2_resource)
-      instance_param_mapper = InstanceParamMapper.new(security_group_mapper)
-      block_device_manager = BlockDeviceManager.new(@logger)
-      @instance_manager = InstanceManager.new(@ec2_resource, registry, instance_param_mapper, block_device_manager, @logger)
-
+      @instance_manager = InstanceManager.new(@ec2_resource, registry, @logger)
       @instance_type_mapper = InstanceTypeMapper.new
 
       @metadata_lock = Mutex.new

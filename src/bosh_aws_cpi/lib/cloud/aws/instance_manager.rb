@@ -6,12 +6,14 @@ module Bosh::AwsCloud
   class InstanceManager
     include Helpers
 
-    def initialize(ec2, registry, param_mapper, block_device_manager, logger)
+    def initialize(ec2, registry, logger)
       @ec2 = ec2
       @registry = registry
-      @param_mapper = param_mapper
-      @block_device_manager = block_device_manager
       @logger = logger
+
+      security_group_mapper = SecurityGroupMapper.new(@ec2)
+      @param_mapper = InstanceParamMapper.new(security_group_mapper)
+      @block_device_manager = BlockDeviceManager.new(@logger)
     end
 
     def create(stemcell_id, vm_type, networks_spec, disk_locality, aws_option)
@@ -94,9 +96,7 @@ module Bosh::AwsCloud
         block_device_mappings: block_device_mappings,
       }
       @param_mapper.validate
-      instance_params = @param_mapper.instance_params
-
-      return instance_params
+      @param_mapper.instance_params
     end
 
     def create_aws_spot_instance(instance_params, spot_bid_price)
