@@ -11,14 +11,13 @@ module Bosh::AwsCloud
       @logger = Bosh::Clouds::Config.logger
     end
 
-    # TODO(cdutra,kaitingc): `instance_params` is actually only `launch_specification`
-    def create(instance_params, spot_bid_price)
+    def create(launch_specification, spot_bid_price)
       spot_request_spec = {
         spot_price: "#{spot_bid_price}",
         instance_count: 1,
-        launch_specification: instance_params
+        launch_specification: launch_specification
       }
-      unless instance_params[:security_groups].nil?
+      unless launch_specification[:security_groups].nil?
         message = "Cannot use security group names when creating spot instances"
         @logger.error(message)
         raise Bosh::Clouds::VMCreationFailed.new(false), message

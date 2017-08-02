@@ -1,5 +1,5 @@
-require "common/common"
-require "time"
+require 'common/common'
+require 'time'
 
 module Bosh::AwsCloud
   class AbruptlyTerminated < Bosh::Clouds::CloudError; end
@@ -99,19 +99,19 @@ module Bosh::AwsCloud
       @param_mapper.instance_params
     end
 
-    def create_aws_spot_instance(instance_params, spot_bid_price)
+    def create_aws_spot_instance(launch_specification, spot_bid_price)
       @logger.info('Launching spot instance...')
       spot_manager = Bosh::AwsCloud::SpotManager.new(@ec2)
 
-      spot_manager.create(instance_params, spot_bid_price)
+      spot_manager.create(launch_specification, spot_bid_price)
     end
 
     def create_aws_instance(instance_params, vm_type)
       if vm_type['spot_bid_price']
         begin
-          return create_aws_spot_instance instance_params, vm_type['spot_bid_price']
+          return create_aws_spot_instance(instance_params, vm_type['spot_bid_price'])
         rescue Bosh::Clouds::VMCreationFailed => e
-          unless vm_type["spot_ondemand_fallback"]
+          unless vm_type['spot_ondemand_fallback']
             message = "Spot instance creation failed: #{e.inspect}"
             @logger.warn(message)
             raise e, message
@@ -148,8 +148,8 @@ module Bosh::AwsCloud
     end
 
     def subnet_az_mapping(networks_spec)
-      subnet_networks = networks_spec.select { |net, spec| ["dynamic", "manual", nil].include?(spec["type"]) }
-      subnet_ids = subnet_networks.values.map { |spec| spec["cloud_properties"]["subnet"] unless spec["cloud_properties"].nil? }
+      subnet_networks = networks_spec.select { |net, spec| ['dynamic', 'manual', nil].include?(spec['type']) }
+      subnet_ids = subnet_networks.values.map { |spec| spec['cloud_properties']['subnet'] unless spec['cloud_properties'].nil? }
       filtered_subnets = @ec2.subnets({
         filters: [{
           name: 'subnet-id',
