@@ -14,7 +14,7 @@ module Bosh::AwsCloud
       @logger = logger
     end
 
-    def create(stemcell_id, vm_type, networks_spec, disk_locality, options)
+    def create(stemcell_id, vm_type, networks_spec, disk_locality, aws_option)
       ami = @ec2.image(stemcell_id)
       @block_device_manager.vm_type = vm_type
       @block_device_manager.virtualization_type = ami.virtualization_type
@@ -25,7 +25,7 @@ module Bosh::AwsCloud
 
       abruptly_terminated_retries = 2
       begin
-        instance_params = build_instance_params(stemcell_id, vm_type, networks_spec, block_device_info, disk_locality, options)
+        instance_params = build_instance_params(stemcell_id, vm_type, networks_spec, block_device_info, disk_locality, aws_option)
 
         @logger.info("Creating new instance with: #{instance_params.inspect}")
 
@@ -80,7 +80,7 @@ module Bosh::AwsCloud
       end
     end
 
-    def build_instance_params(stemcell_id, vm_type, networks_spec, block_device_mappings, disk_locality = [], options = {})
+    def build_instance_params(stemcell_id, vm_type, networks_spec, block_device_mappings, disk_locality = [], aws_options = {})
       volume_zones = (disk_locality || []).map { |volume_id| @ec2.volume(volume_id).availability_zone }
 
       @param_mapper.manifest_params = {
@@ -88,7 +88,7 @@ module Bosh::AwsCloud
         vm_type: vm_type,
         registry_endpoint: @registry.endpoint,
         networks_spec: networks_spec,
-        defaults: options['aws'],
+        defaults: aws_options,
         volume_zones: volume_zones,
         subnet_az_mapping: subnet_az_mapping(networks_spec),
         block_device_mappings: block_device_mappings,

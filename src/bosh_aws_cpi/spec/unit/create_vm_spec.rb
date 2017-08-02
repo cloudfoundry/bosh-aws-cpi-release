@@ -1,46 +1,44 @@
-require "spec_helper"
+require 'spec_helper'
 
-describe Bosh::AwsCloud::Cloud, "create_vm" do
-  let(:registry) { double("registry") }
-  let(:availability_zone_selector) { double("availability zone selector") }
-  let(:stemcell) { double("stemcell", root_device_name: "root name", image_id: stemcell_id) }
-  let(:instance_manager) { instance_double("Bosh::AwsCloud::InstanceManager") }
+describe Bosh::AwsCloud::Cloud, 'create_vm' do
+  let(:registry) { double('registry') }
+  let(:availability_zone_selector) { double('availability zone selector') }
+  let(:stemcell) { double('stemcell', root_device_name: 'root name', image_id: stemcell_id) }
+  let(:instance_manager) { instance_double('Bosh::AwsCloud::InstanceManager') }
   let (:block_device_agent_info) {
     {
-        "ephemeral" => [{"path" => "/dev/sdz"}],
-        "raw_ephemeral" => [{"path" => "/dev/xvdba"}, {"path" => "/dev/xvdbb"}],
+      'ephemeral' => [{'path' => '/dev/sdz'}],
+      'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}],
     }
   }
-  let(:instance) { instance_double("Bosh::AwsCloud::Instance", id: "fake-id") }
-  let(:network_configurator) { double("network configurator") }
+  let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-id') }
+  let(:network_configurator) { double('network configurator') }
 
-  let(:agent_id) { "agent_id" }
-  let(:stemcell_id) { "stemcell_id" }
+  let(:agent_id) {'agent_id'}
+  let(:stemcell_id) {'stemcell_id'}
   let(:vm_type) { {} }
   let(:networks_spec) do
     {
-      "fake-network-name-1" => {
-        "type" => "dynamic",
+      'fake-network-name-1' => {
+        'type' => 'dynamic',
       },
-      "fake-network-name-2" => {
-        "type" => "manual",
+      'fake-network-name-2' => {
+        'type' => 'manual',
       }
     }
   end
-  let(:disk_locality) { double("disk locality") }
-  let(:environment) { "environment" }
-
+  let(:disk_locality) { double('disk locality') }
+  let(:environment) {'environment'}
+  let(:aws_options) { options['aws'] }
   let(:options) do
-    ops = mock_cloud_properties_merge({
-      "aws" => {
-          "region" => "bar",
+    ops = mock_cloud_properties_merge(
+      'aws' => {
+        'region' => 'bar',
       }
-    })
-
+    )
     ops['agent'] = {
-        "baz" => "qux"
+      'baz' => 'qux'
     }
-
     ops
   end
 
@@ -62,7 +60,7 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
     end
 
     allow(instance_manager).to receive(:create).
-      with(stemcell_id, vm_type, networks_spec, disk_locality, options).
+      with(stemcell_id, vm_type, networks_spec, disk_locality, aws_options).
       and_return([instance, block_device_agent_info])
 
     allow(Bosh::AwsCloud::NetworkConfigurator).to receive(:new).
@@ -83,49 +81,49 @@ describe Bosh::AwsCloud::Cloud, "create_vm" do
       anything,
       anything,
     ).and_return([instance, block_device_agent_info])
-    expect(@cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq("fake-id")
+    expect(@cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq('fake-id')
   end
 
-  it "should create an EC2 instance and return its id" do
+  it 'should create an EC2 instance and return its id' do
     allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: instance, state: :running)
-    expect(@cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq("fake-id")
+    expect(@cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq('fake-id')
   end
 
-  it "should configure the IP for the created instance according to the network specifications" do
+  it 'should configure the IP for the created instance according to the network specifications' do
     allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: instance, state: :running)
     expect(network_configurator).to receive(:configure).with(@ec2, instance)
     @cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
   end
 
-  it "should update the registry settings with the new instance" do
+  it 'should update the registry settings with the new instance' do
     allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: instance, state: :running)
-    allow(SecureRandom).to receive(:uuid).and_return("rand0m")
+    allow(SecureRandom).to receive(:uuid).and_return('rand0m')
 
     agent_settings = {
-        "vm" => {
-            "name" => "vm-rand0m"
+        'vm' => {
+            'name' => 'vm-rand0m'
         },
-        "agent_id" => agent_id,
-        "networks" =>     {
-          "fake-network-name-1" => {
-            "type" => "dynamic",
-            "use_dhcp" => true,
+        'agent_id' => agent_id,
+        'networks' =>     {
+            'fake-network-name-1' => {
+                'type' => 'dynamic',
+                'use_dhcp' => true,
           },
-          "fake-network-name-2" => {
-            "type" => "manual",
-            "use_dhcp" => true,
+            'fake-network-name-2' => {
+              'type' => 'manual',
+              'use_dhcp' => true,
           }
         },
-        "disks" => {
-            "system" => "root name",
-            "ephemeral" => "/dev/sdz",
-            "raw_ephemeral" => [{"path" => "/dev/xvdba"}, {"path" => "/dev/xvdbb"}],
-            "persistent" => {}
+        'disks' => {
+            'system' => 'root name',
+            'ephemeral' => '/dev/sdz',
+            'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}],
+            'persistent' => {}
         },
-        "env" => environment,
-        "baz" => "qux"
+        'env' => environment,
+        'baz' => 'qux'
     }
-    expect(registry).to receive(:update_settings).with("fake-id", agent_settings)
+    expect(registry).to receive(:update_settings).with('fake-id', agent_settings)
 
     @cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
   end

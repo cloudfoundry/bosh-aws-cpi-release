@@ -172,7 +172,7 @@ module Bosh::AwsCloud
             vm_type,
             network_spec,
             (disk_locality || []),
-            options,
+            options['aws'],
           )
 
           target_groups.each do |target_group_name|
