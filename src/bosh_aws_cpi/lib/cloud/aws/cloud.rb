@@ -98,8 +98,6 @@ module Bosh::AwsCloud
 
       @instance_manager = InstanceManager.new(@ec2_resource, registry, @logger)
       @instance_type_mapper = InstanceTypeMapper.new
-
-      @metadata_lock = Mutex.new
     end
 
     ##
@@ -107,7 +105,7 @@ module Bosh::AwsCloud
     # instance id cannot change while current process is running
     # and thus memoizing it.
     def current_vm_id
-      @metadata_lock.synchronize do
+      begin
         return @current_vm_id if @current_vm_id
 
         http_client = HTTPClient.new
@@ -123,11 +121,10 @@ module Bosh::AwsCloud
         end
 
         @current_vm_id = response.body
+      rescue HTTPClient::TimeoutError
+        cloud_error('Timed out reading instance metadata, ' \
+                    'please make sure CPI is running on EC2 instance')
       end
-
-    rescue HTTPClient::TimeoutError
-      cloud_error('Timed out reading instance metadata, ' \
-                  'please make sure CPI is running on EC2 instance')
     end
 
     ##
@@ -631,13 +628,14 @@ module Bosh::AwsCloud
       creator = StemcellCreator.new(@ec2_resource, stemcell_properties)
 
       begin
+        director_vm_id = current_vm_id
         instance = nil
         volume = nil
 
-        instance = @ec2_resource.instance(current_vm_id)
+        instance = @ec2_resource.instance(director_vm_id)
         unless instance.exists?
           cloud_error(
-            "Could not locate the current VM with id '#{current_vm_id}'." +
+            "Could not locate the current VM with id '#{director_vm_id}'." +
                 'Ensure that the current VM is located in the same region as configured in the manifest.'
           )
         end
@@ -652,7 +650,7 @@ module Bosh::AwsCloud
         volume_id = create_disk(
           disk_size,
           encrypted_disk_properties_hash,
-          current_vm_id
+          director_vm_id
         )
         volume = @ec2_resource.volume(volume_id)
 

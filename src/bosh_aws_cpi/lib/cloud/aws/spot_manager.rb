@@ -11,8 +11,8 @@ module Bosh::AwsCloud
       @logger = Bosh::Clouds::Config.logger
     end
 
+    # TODO(cdutra,kaitingc): `instance_params` is actually only `launch_specification`
     def create(instance_params, spot_bid_price)
-      @instance_params = instance_params
       spot_request_spec = {
         spot_price: "#{spot_bid_price}",
         instance_count: 1,
