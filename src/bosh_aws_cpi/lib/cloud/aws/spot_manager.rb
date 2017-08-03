@@ -1,5 +1,5 @@
-require "common/common"
-require "time"
+require 'common/common'
+require 'time'
 
 module Bosh::AwsCloud
   class SpotManager
@@ -18,12 +18,13 @@ module Bosh::AwsCloud
         launch_specification: launch_specification
       }
       unless launch_specification[:security_groups].nil?
-        message = "Cannot use security group names when creating spot instances"
+        message = 'Cannot use security group names when creating spot instances'
         @logger.error(message)
         raise Bosh::Clouds::VMCreationFailed.new(false), message
       end
 
-      @logger.debug("Requesting spot instance with: #{spot_request_spec.inspect}")
+      redacted_spec = Bosh::Cpi::Redactor.clone_and_redact(spot_request_spec, 'launch_specification.user_data')
+      @logger.debug("Requesting spot instance with: #{redacted_spec.inspect}")
 
       begin
         # the top-level ec2 class does not support spot instance methods

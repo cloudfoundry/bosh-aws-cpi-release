@@ -4,7 +4,9 @@ describe Bosh::AwsCloud::SpotManager do
   let(:spot_manager) { described_class.new(ec2) }
   let(:ec2) { instance_double(Aws::EC2::Resource) }
   let(:aws_client) { instance_double(Aws::EC2::Client) }
-  let(:fake_instance_params) { { fake: 'params' } }
+  let(:fake_instance_params) do
+    { fake: 'params', user_data: { password: 'secret' } }
+  end
   let(:request_spot_instances_result) {
     instance_double(Aws::EC2::Types::RequestSpotInstancesResult, spot_instance_requests: spot_instance_requests)
   }
@@ -19,6 +21,14 @@ describe Bosh::AwsCloud::SpotManager do
 
   before do
     allow(ec2).to receive(:client).and_return(aws_client)
+  end
+
+  it 'redacts `user_data` when creating spot instance' do
+    expect(Bosh::Clouds::Config.logger).to receive(:debug).with(/"user_data"=>"<redacted>"/)
+
+    expect {
+      spot_manager.create(fake_instance_params, 0.24)
+    }.to raise_error(anything)
   end
 
   it 'fails to create the spot instance if instance_params[:security_group] is set' do
@@ -49,15 +59,20 @@ describe Bosh::AwsCloud::SpotManager do
   describe 'when correct parameters are passed to `spot_manager.create`' do
     before do
       allow(ec2).to receive(:instance).with('i-12345678').and_return(instance)
+      allow(Bosh::Clouds::Config.logger).to receive(:debug)
 
-      expect(aws_client).to receive(:request_spot_instances).with({
+      expect(aws_client).to receive(:request_spot_instances).with(
         spot_price: '0.24',
         instance_count: 1,
-        launch_specification: { fake: 'params' }
-      }).and_return(request_spot_instances_result)
+        launch_specification: fake_instance_params
+      ).and_return(request_spot_instances_result)
 
       # Override total_spot_instance_request_wait_time to be "unit test" speed
       stub_const('Bosh::AwsCloud::SpotManager::TOTAL_WAIT_TIME_IN_SECONDS', 0.1)
+    end
+
+    after do
+      expect(Bosh::Clouds::Config.logger).to have_received(:debug).with(/"user_data"=>"<redacted>"/)
     end
 
     context 'and state is `open`' do

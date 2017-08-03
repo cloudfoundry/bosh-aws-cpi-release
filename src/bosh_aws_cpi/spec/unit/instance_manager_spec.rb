@@ -21,10 +21,12 @@ module Bosh::AwsCloud
       let(:aws_instance) { instance_double('Aws::EC2::Instance', id: 'i-12345678') }
 
       let(:stemcell_id) { 'stemcell-id' }
-      let(:vm_type) { {
-        'instance_type' => 'm1.small',
-        'availability_zone' => 'us-east-1a',
-      } }
+      let(:vm_type) do
+        {
+          'instance_type' => 'm1.small',
+          'availability_zone' => 'us-east-1a',
+        }
+      end
       let(:networks_spec) do
         {
           'default' => {
@@ -51,19 +53,24 @@ module Bosh::AwsCloud
       end
       let(:block_devices) do
         [
-          double(Aws::AutoScaling::Types::BlockDeviceMapping,
+          double(
+            Aws::AutoScaling::Types::BlockDeviceMapping,
             device_name: 'fake-image-root-device',
-            ebs: double(Aws::AutoScaling::Types::Ebs,
-              volume_size: 17
-            )
+            ebs: double(Aws::AutoScaling::Types::Ebs, volume_size: 17)
           )
         ]
       end
 
       let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-instance-id') }
+      let(:fake_instance_params) do
+        { fake: 'instance-params', user_data: { password: 'secret' } }
+      end
+      let(:run_instances_params) do
+        fake_instance_params.merge(min_count: 1, max_count: 1)
+      end
 
       before do
-        allow(param_mapper).to receive(:instance_params).and_return({ fake: 'instance-params' })
+        allow(param_mapper).to receive(:instance_params).and_return(fake_instance_params)
         allow(param_mapper).to receive(:manifest_params=)
         allow(param_mapper).to receive(:validate)
         allow(block_device_manager).to receive(:vm_type=)
@@ -77,16 +84,17 @@ module Bosh::AwsCloud
 
         allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: 'running')
 
-        allow(ec2).to receive(:subnets).with({
+        allow(ec2).to receive(:subnets).with(
           filters: [{
             name: 'subnet-id',
             values: ['sub-default', 'sub-123456'],
           }],
-        }).and_return([fake_aws_subnet])
+        ).and_return([fake_aws_subnet])
 
         allow(ec2).to receive(:instances).and_return(aws_instances)
         allow(ec2).to receive(:image).with(stemcell_id).and_return(
-          instance_double('Aws::EC2::Image',
+          instance_double(
+            'Aws::EC2::Image',
             root_device_name: 'fake-image-root-device',
             block_device_mappings: block_devices,
             virtualization_type: :hvm
@@ -101,9 +109,9 @@ module Bosh::AwsCloud
       end
 
       it 'should ask AWS to create an instance in the given region, with parameters built up from the given arguments' do
-        allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
+        allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
-        expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
+        expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
         instance_manager.create(
           stemcell_id,
           vm_type,
@@ -112,6 +120,22 @@ module Bosh::AwsCloud
           default_options
         )
       end
+
+      it 'redacts `user_data` when creating an instance' do
+        allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
+        allow(aws_client).to receive(:run_instances)
+
+        allow(logger).to receive(:info)
+        instance_manager.create(
+          stemcell_id,
+          vm_type,
+          networks_spec,
+          disk_locality,
+          default_options
+        )
+        expect(logger).to have_received(:info).with(/"user_data"=>"<redacted>"/)
+      end
+
 
       context 'when spot_bid_price is specified' do
         let(:vm_type) do
@@ -123,12 +147,12 @@ module Bosh::AwsCloud
         }
         let(:spot_instance_requests) {
           [
-          instance_double(
-            Aws::EC2::Types::SpotInstanceRequest,
-            spot_instance_request_id: 'sir-12345c',
-            state: 'active',
-            instance_id: 'i-12345678',
-          ),
+            instance_double(
+              Aws::EC2::Types::SpotInstanceRequest,
+              spot_instance_request_id: 'sir-12345c',
+              state: 'active',
+              instance_id: 'i-12345678',
+            ),
           ]
         }
         let(:describe_spot_instance_requests_result) {
@@ -149,7 +173,7 @@ module Bosh::AwsCloud
           expect(aws_client).to receive(:request_spot_instances) do |spot_request|
             expect(spot_request[:spot_price]).to eq('0.15')
             expect(spot_request[:instance_count]).to eq(1)
-            expect(spot_request[:launch_specification]).to eq({ fake: 'instance-params' })
+            expect(spot_request[:launch_specification]).to eq(fake_instance_params)
 
             # return
             request_spot_instances_result
@@ -208,7 +232,7 @@ module Bosh::AwsCloud
 
             it 'creates an on demand instance' do
               expect(aws_client).to receive(:run_instances)
-                .with({ fake: 'instance-params', min_count: 1, max_count: 1 })
+                .with(run_instances_params)
 
               instance_manager.create(
                 stemcell_id,
@@ -242,9 +266,9 @@ module Bosh::AwsCloud
           vm_type['source_dest_check'] = false
         end
         it 'disables source_dest_check on the instance' do
-          allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
+          allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
-          expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
+          expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
           expect(instance).to receive(:source_dest_check=).with(false)
           expect(instance).to receive(:wait_for_running)
 
@@ -263,12 +287,12 @@ module Bosh::AwsCloud
         allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
         expect(aws_client).to receive(:run_instances).
-          with({ fake: 'instance-params', min_count: 1, max_count: 1 }).
+          with(run_instances_params).
           and_raise(Aws::EC2::Errors::InvalidIPAddressInUse.new(nil, 'in-use'))
 
         expect(aws_client).to receive(:run_instances).
-          with({ fake: 'instance-params', min_count: 1, max_count: 1 }).
-          and_return("run-instances-response")
+          with(run_instances_params).
+          and_return('run-instances-response')
 
         allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
         expect(logger).to receive(:warn).with(/IP address was in use/).once
@@ -289,9 +313,9 @@ module Bosh::AwsCloud
         before { allow(Instance).to receive(:new).and_return(instance) }
 
         it 'terminates created instance and re-raises the error' do
-          allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
+          allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
-          expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
+          expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
           expect(instance).to receive(:wait_for_running).and_raise(create_err)
 
           expect(instance).to receive(:terminate).with(no_args)
@@ -308,12 +332,12 @@ module Bosh::AwsCloud
         end
 
         it 'should retry creating the VM twice then give up when Bosh::Clouds::AbruptlyTerminated is raised' do
-          allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
+          allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
           expect(Instance).to receive(:new).exactly(3).times
 
-          expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response").exactly(3).times
-          expect(instance).to receive(:wait_for_running).and_raise(Bosh::AwsCloud::AbruptlyTerminated, "Server.InternalError: Internal error on launch").exactly(3).times
+          expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response').exactly(3).times
+          expect(instance).to receive(:wait_for_running).and_raise(Bosh::AwsCloud::AbruptlyTerminated, 'Server.InternalError: Internal error on launch').exactly(3).times
           expect(logger).to receive(:warn).with(/Failed to configure instance 'fake-instance-id'/).exactly(3).times
           expect(logger).to receive(:warn).with(/'fake-instance-id' was abruptly terminated, attempting to re-create/).twice
 
@@ -332,9 +356,9 @@ module Bosh::AwsCloud
           before { allow(instance).to receive(:terminate).and_raise(StandardError.new('fake-terminate-err')) }
 
           it 're-raises creation error' do
-            allow(instance_manager).to receive(:get_created_instance_id).with("run-instances-response").and_return('i-12345678')
+            allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
-            expect(aws_client).to receive(:run_instances).with({ fake: 'instance-params', min_count: 1, max_count: 1 }).and_return("run-instances-response")
+            expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
             expect(instance).to receive(:wait_for_running).and_raise(create_err)
 
             expect {

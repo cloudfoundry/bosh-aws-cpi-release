@@ -14,7 +14,7 @@ GEM
     bosh_common (1.3262.24.0)
       logging (~> 1.8.2)
       semi_semantic (~> 1.2.0)
-    bosh_cpi (2.1.1)
+    bosh_cpi (2.3.0)
       httpclient (~> 2.8.3)
       logging (~> 1.8.2)
       membrane (~> 1.1.0)
@@ -69,7 +69,7 @@ PLATFORMS
 DEPENDENCIES
   aws-sdk (~> 2.9.6)
   bosh_common (= 1.3262.24.0)
-  bosh_cpi (= 2.1.1)
+  bosh_cpi (= 2.3.0)
   pry-byebug
   rake (~> 12.0)
   rspec (~> 3.5.0)
