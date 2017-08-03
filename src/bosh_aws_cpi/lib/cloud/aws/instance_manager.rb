@@ -29,9 +29,12 @@ module Bosh::AwsCloud
       begin
         instance_params = build_instance_params(stemcell_id, vm_type, networks_spec, block_device_info, disk_locality, aws_option)
 
-        redacted_instance_params = Bosh::Cpi::Redactor.clone_and_redact(instance_params, 'user_data')
-        # TODO(cdutra,kaitingc): instance_params['defaults']['access_key_id']
-        # instance_params['defaults']['secret_access_key']
+        redacted_instance_params = Bosh::Cpi::Redactor.clone_and_redact(
+          instance_params,
+          'user_data',
+          'defaults.access_key_id',
+          'defaults.secret_access_key'
+        )
         @logger.info("Creating new instance with: #{redacted_instance_params.inspect}")
 
         aws_instance = create_aws_instance(instance_params, vm_type)

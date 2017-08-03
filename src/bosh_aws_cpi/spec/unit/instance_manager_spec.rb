@@ -63,7 +63,14 @@ module Bosh::AwsCloud
 
       let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-instance-id') }
       let(:fake_instance_params) do
-        { fake: 'instance-params', user_data: { password: 'secret' } }
+        {
+          fake: 'instance-params',
+          user_data: { password: 'secret' },
+          defaults: {
+            access_key_id: 'AWSKEYID',
+            secret_access_key: 'AWSSECRET',
+          },
+        }
       end
       let(:run_instances_params) do
         fake_instance_params.merge(min_count: 1, max_count: 1)
@@ -121,21 +128,32 @@ module Bosh::AwsCloud
         )
       end
 
-      it 'redacts `user_data` when creating an instance' do
-        allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
-        allow(aws_client).to receive(:run_instances)
+      context 'redacts' do
+        before do
+          allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
+          allow(aws_client).to receive(:run_instances)
 
-        allow(logger).to receive(:info)
-        instance_manager.create(
-          stemcell_id,
-          vm_type,
-          networks_spec,
-          disk_locality,
-          default_options
-        )
-        expect(logger).to have_received(:info).with(/"user_data"=>"<redacted>"/)
+          allow(logger).to receive(:info)
+          instance_manager.create(
+            stemcell_id,
+            vm_type,
+            networks_spec,
+            disk_locality,
+            default_options
+          )
+        end
+        it '`user_data` when creating an instance' do
+          expect(logger).to have_received(:info).with(/"user_data"=>"<redacted>"/)
+        end
+
+        it '`defaults.access_key_id` when creating an instance' do
+          expect(logger).to have_received(:info).with(/"access_key_id"=>"<redacted>"/)
+        end
+
+        it '`defaults.secret_access_key` when creating an instance' do
+          expect(logger).to have_received(:info).with(/"secret_access_key"=>"<redacted>"/)
+        end
       end
-
 
       context 'when spot_bid_price is specified' do
         let(:vm_type) do
