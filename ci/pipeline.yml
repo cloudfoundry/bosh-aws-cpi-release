@@ -165,8 +165,8 @@ jobs:
   - name: delivery
     plan:
       - aggregate:
-        - {get: cpi-release,    trigger: true,  resource: bosh-cpi-dev-artifacts, passed: [end-2-end, bats, integration]}
-        - {get: bosh-cpi-src,   trigger: false, resource: bosh-cpi-src-in, passed: [end-2-end, bats, integration]}
+        - {get: bosh-cpi-release,  trigger: true,  resource: bosh-cpi-dev-artifacts, passed: [end-2-end, bats, integration]}
+        - {get: bosh-cpi-src, trigger: false, resource: bosh-cpi-src-in, passed: [end-2-end, bats, integration]}
       - put: tracker-output
         params:
           repos:
@@ -175,8 +175,8 @@ jobs:
   - name: promote-candidate
     plan:
       - aggregate:
-        - {get: cpi-release,    trigger: false,  resource: bosh-cpi-dev-artifacts, passed: [end-2-end, bats, integration]}
-        - {get: bosh-cpi-src,   trigger: false, resource: bosh-cpi-src-in, passed: [end-2-end, bats, integration]}
+        - {get: bosh-cpi-release,  trigger: false, resource: bosh-cpi-dev-artifacts, passed: [end-2-end, bats, integration]}
+        - {get: bosh-cpi-src, trigger: false, resource: bosh-cpi-src-in, passed: [end-2-end, bats, integration]}
         - {trigger: false, get: release-version-semver, params: {bump: major}}
       - task: promote
         file: bosh-cpi-src/ci/tasks/promote-candidate.yml
