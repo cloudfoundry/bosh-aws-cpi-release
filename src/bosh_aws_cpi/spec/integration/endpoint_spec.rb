@@ -169,7 +169,7 @@ describe Bosh::AwsCloud::Cloud do
         begin
           valid_bundle = File.open('valid-ca-bundle', 'w+') do |f|
             # Download the CA bundle that is included in the AWS SDK
-            f << open('https://raw.githubusercontent.com/aws/aws-sdk-ruby/master/aws-sdk-core/ca-bundle.crt').read
+            f << open('https://raw.githubusercontent.com/aws/aws-sdk-ruby/v2.10.39/aws-sdk-core/ca-bundle.crt').read
           end
 
           ENV['BOSH_CA_CERT_FILE'] = valid_bundle.path
