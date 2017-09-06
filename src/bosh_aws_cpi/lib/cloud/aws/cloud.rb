@@ -10,7 +10,6 @@ module Bosh::AwsCloud
 
     attr_reader :ec2_resource
     attr_reader :registry
-    attr_reader :options
     attr_accessor :logger
 
     ##
@@ -20,9 +19,7 @@ module Bosh::AwsCloud
     # @option options [Hash] agent agent options
     # @option options [Hash] registry agent options
     def initialize(options)
-      @options = options.dup.freeze
-      validate_options
-      validate_credentials_source
+      @config = Bosh::AwsCloud::Config.build(options.dup.freeze)
 
       @logger = Bosh::Clouds::Config.logger
       aws_logger = @logger
@@ -33,17 +30,17 @@ module Bosh::AwsCloud
       end
 
       @aws_params = {
-        retry_limit: aws_properties['max_retries'],
+        retry_limit: @config.aws.max_retries,
         logger: aws_logger,
         log_level: :debug,
       }
 
-      if aws_properties['region']
-        @aws_params[:region] = aws_properties['region']
+      if @config.aws.region
+        @aws_params[:region] = @config.aws.region
       end
-      if aws_properties['ec2_endpoint']
-        endpoint = aws_properties['ec2_endpoint']
-        if URI(aws_properties['ec2_endpoint']).scheme.nil?
+      if @config.aws.ec2_endpoint
+        endpoint = @config.aws.ec2_endpoint
+        if URI(@config.aws.ec2_endpoint).scheme.nil?
           endpoint = "https://#{endpoint}"
         end
         @aws_params[:endpoint] = endpoint
@@ -56,10 +53,10 @@ module Bosh::AwsCloud
       # credentials_source could be static (default) or env_or_profile
       # - if "static", credentials must be provided
       # - if "env_or_profile", credentials are read from instance metadata
-      credentials_source = aws_properties['credentials_source'] || 'static'
+      credentials_source = @config.aws.credentials_source
 
       if credentials_source == 'static'
-        @aws_params[:credentials] = Aws::Credentials.new(aws_properties['access_key_id'], aws_properties['secret_access_key'])
+        @aws_params[:credentials] = Aws::Credentials.new(@config.aws.access_key_id, @config.aws.secret_access_key)
       else
         @aws_params[:credentials] = Aws::InstanceProfileCredentials.new({retries: 10})
       end
@@ -77,7 +74,11 @@ module Bosh::AwsCloud
 
       @az_selector = AvailabilityZoneSelector.new(@ec2_resource)
 
-      initialize_registry
+      @registry = Bosh::Cpi::RegistryClient.new(
+        @config.registry.endpoint,
+        @config.registry.user,
+        @config.registry.password
+      )
 
       @elb_params = {
         region: @aws_params[:region],
@@ -85,9 +86,9 @@ module Bosh::AwsCloud
         logger: @logger,
       }
 
-      elb_endpoint = aws_properties['elb_endpoint']
+      elb_endpoint = @config.aws.elb_endpoint
       if elb_endpoint
-        if URI(aws_properties['elb_endpoint']).scheme.nil?
+        if URI(@config.aws.elb_endpoint).scheme.nil?
           elb_endpoint = "https://#{elb_endpoint}"
         end
         @elb_params[:endpoint] = elb_endpoint
@@ -165,7 +166,7 @@ module Bosh::AwsCloud
             vm_type,
             network_spec,
             (disk_locality || []),
-            options['aws'],
+            @config.aws.to_h,
           )
 
           target_groups.each do |target_group_name|
@@ -194,7 +195,7 @@ module Bosh::AwsCloud
           instance.id
         rescue => e # is this rescuing too much?
           logger.error(%Q[Failed to create instance: #{e.message}\n#{e.backtrace.join("\n")}])
-          instance.terminate(fast_path_delete?) if instance
+          instance.terminate(@config.aws.fast_path_delete?) if instance
           raise e
         end
       end
@@ -207,7 +208,7 @@ module Bosh::AwsCloud
     def delete_vm(instance_id)
       with_thread_name("delete_vm(#{instance_id})") do
         logger.info("Deleting instance '#{instance_id}'")
-        @instance_manager.find(instance_id).terminate(fast_path_delete?)
+        @instance_manager.find(instance_id).terminate(@config.aws.fast_path_delete?)
       end
     end
 
@@ -311,7 +312,7 @@ module Bosh::AwsCloud
           true # return true to only retry on Exceptions
         end
 
-        if fast_path_delete?
+        if @config.aws.fast_path_delete?
           begin
             TagManager.tag(volume, 'Name', 'to be deleted')
             logger.info("Volume `#{disk_id}' has been marked for deletion")
@@ -455,7 +456,7 @@ module Bosh::AwsCloud
     # @return [String] EC2 AMI name of the stemcell
     def create_stemcell(image_path, stemcell_properties)
       with_thread_name("create_stemcell(#{image_path}...)") do
-        stemcell_properties.merge!(aws_properties['stemcell'] || {})
+        stemcell_properties.merge!(@config.aws.stemcell)
 
         if stemcell_properties.has_key?('ami')
           all_ami_ids = stemcell_properties['ami'].values
@@ -467,13 +468,13 @@ module Bosh::AwsCloud
               values: all_ami_ids
             }]
           ).first
-          raise Bosh::Clouds::CloudError, "Stemcell does not contain an AMI in region #{aws_region}" unless available_image
+          raise Bosh::Clouds::CloudError, "Stemcell does not contain an AMI in region #{@config.aws.region}" unless available_image
 
           if stemcell_properties['encrypted'] == true
             copy_image_result = @ec2_client.copy_image(
-              source_region: aws_region,
-              source_image_id: stemcell_properties['ami'][aws_region],
-              name: "Copied from SourceAMI #{stemcell_properties['ami'][aws_region]}",
+              source_region: @config.aws.region,
+              source_image_id: stemcell_properties['ami'][@config.aws.region],
+              name: "Copied from SourceAMI #{stemcell_properties['ami'][@config.aws.region]}",
               encrypted: stemcell_properties['encrypted'],
               kms_key_id: stemcell_properties['kms_key_arn']
             )
@@ -583,36 +584,6 @@ module Bosh::AwsCloud
     private
 
     attr_reader :az_selector
-
-    def agent_properties
-      @agent_properties ||= options.fetch('agent', {})
-    end
-
-    def aws_properties
-      @aws_properties ||= options.fetch('aws')
-    end
-
-    def aws_region
-      @aws_region ||= aws_properties.fetch('region', nil)
-    end
-
-    def fast_path_delete?
-      aws_properties.fetch('fast_path_delete', false)
-    end
-
-    def initialize_registry
-      registry_properties = options.fetch('registry')
-      registry_endpoint = registry_properties.fetch('endpoint')
-      registry_user = registry_properties.fetch('user')
-      registry_password = registry_properties.fetch('password')
-
-      # Registry updates are not really atomic in relation to
-      # EC2 API calls, so they might get out of sync. Cloudcheck
-      # is supposed to fix that.
-      @registry = Bosh::Cpi::RegistryClient.new(registry_endpoint,
-        registry_user,
-        registry_password)
-    end
 
     def update_agent_settings(instance)
       unless block_given?
@@ -746,57 +717,6 @@ module Bosh::AwsCloud
       ResourceWait.for_attachment(attachment: attachment, state: 'detached')
     end
 
-    ##
-    # Checks if options passed to CPI are valid and can actually
-    # be used to create all required data structures etc.
-    #
-    def validate_options
-      required_keys = {
-          'aws' => ['default_key_name', 'max_retries'],
-          'registry' => ['endpoint', 'user', 'password'],
-      }
-
-      missing_keys = []
-
-      required_keys.each_pair do |key, values|
-        values.each do |value|
-          if (!options.has_key?(key) || !options[key].has_key?(value))
-            missing_keys << "#{key}:#{value}"
-          end
-        end
-      end
-
-      raise ArgumentError, "missing configuration parameters > #{missing_keys.join(', ')}" unless missing_keys.empty?
-
-      if !options['aws'].has_key?('region') && ! (options['aws'].has_key?('ec2_endpoint') && options['aws'].has_key?('elb_endpoint'))
-        raise ArgumentError, 'missing configuration parameters > aws:region, or aws:ec2_endpoint and aws:elb_endpoint'
-      end
-    end
-
-    ##
-    # Checks AWS credentials settings to see if the CPI
-    # will be able to authenticate to AWS.
-    #
-    def validate_credentials_source
-      credentials_source = options['aws']['credentials_source'] || 'static'
-
-      if credentials_source != 'env_or_profile' && credentials_source != 'static'
-        raise ArgumentError, "Unknown credentials_source #{credentials_source}"
-      end
-
-      if credentials_source == 'static'
-        if options['aws']['access_key_id'].nil? || options['aws']['secret_access_key'].nil?
-          raise ArgumentError, 'Must use access_key_id and secret_access_key with static credentials_source'
-        end
-      end
-
-      if credentials_source == 'env_or_profile'
-        if !options['aws']['access_key_id'].nil? || !options['aws']['secret_access_key'].nil?
-          raise ArgumentError, "Can't use access_key_id and secret_access_key with env_or_profile credentials_source"
-        end
-      end
-    end
-
     # Generates initial agent settings. These settings will be read by agent
     # from AWS registry (also a BOSH component) on a target instance. Disk
     # conventions for amazon are:
@@ -831,7 +751,7 @@ module Bosh::AwsCloud
       settings['disks']['ephemeral'] = settings['disks']['ephemeral'][0]['path']
 
       settings['env'] = environment if environment
-      settings.merge(agent_properties)
+      settings.merge(@config.agent.to_h)
     end
 
     def agent_network_spec(network_spec)
