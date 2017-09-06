@@ -1,13 +1,13 @@
 module Bosh::AwsCloud
   class AwsConfig
-    attr_reader :max_retries, :credentials_source, :region, :ec2_endpoint, :elb_endpoint, :stemcell
+    attr_reader :max_retries, :credentials, :region, :ec2_endpoint, :elb_endpoint, :stemcell
     attr_reader :access_key_id, :secret_access_key
 
     def initialize(aws_config_hash)
       @config = aws_config_hash
 
       @max_retries = @config['max_retries']
-      @credentials_source =  @config['credentials_source'] || 'static'
+
       @region = @config['region']
       @ec2_endpoint = @config['ec2_endpoint']
       @elb_endpoint = @config['elb_endpoint']
@@ -17,6 +17,16 @@ module Bosh::AwsCloud
 
       @stemcell = @config['stemcell'] || {}
       @fast_path_delete = @config['fast_path_delete'] || false
+
+      # credentials_source could be static (default) or env_or_profile
+      # - if "static", credentials must be provided
+      # - if "env_or_profile", credentials are read from instance metadata
+      @credentials_source =  @config['credentials_source'] || 'static'
+      if @credentials_source == 'static'
+        @credentials = Aws::Credentials.new(@access_key_id, @secret_access_key)
+      else
+        @credentials = Aws::InstanceProfileCredentials.new({retries: 10})
+      end
     end
 
     def to_h
@@ -54,12 +64,13 @@ module Bosh::AwsCloud
     attr_reader :aws, :registry, :agent
 
     def self.build(config_hash)
-      new(config_hash).tap(&:validate)
+      Config.validate(config_hash)
+      new(config_hash)
     end
 
-    def validate
-      validate_options
-      validate_credentials_source
+    def self.validate(config_hash)
+      Config.validate_options(config_hash)
+      Config.validate_credentials_source(config_hash)
     end
 
     private
@@ -71,17 +82,16 @@ module Bosh::AwsCloud
       @agent = AgentConfig.new(config_hash['agent'] || {})
     end
 
-
     ##
     # Checks if options passed to CPI are valid and can actually
     # be used to create all required data structures etc.
     #
-    def validate_options
+    def self.validate_options(options)
       missing_keys = []
 
       REQUIRED_KEYS.each_pair do |key, values|
         values.each do |value|
-          if (!@config.has_key?(key) || !@config[key].has_key?(value))
+          if (!options.has_key?(key) || !options[key].has_key?(value))
             missing_keys << "#{key}:#{value}"
           end
         end
@@ -89,7 +99,7 @@ module Bosh::AwsCloud
 
       raise ArgumentError, "missing configuration parameters > #{missing_keys.join(', ')}" unless missing_keys.empty?
 
-      if !@config['aws'].has_key?('region') && ! (@config['aws'].has_key?('ec2_endpoint') && @config['aws'].has_key?('elb_endpoint'))
+      if !options['aws'].has_key?('region') && ! (options['aws'].has_key?('ec2_endpoint') && options['aws'].has_key?('elb_endpoint'))
         raise ArgumentError, 'missing configuration parameters > aws:region, or aws:ec2_endpoint and aws:elb_endpoint'
       end
     end
@@ -98,21 +108,21 @@ module Bosh::AwsCloud
     # Checks AWS credentials settings to see if the CPI
     # will be able to authenticate to AWS.
     #
-    def validate_credentials_source
-      credentials_source = @config['aws']['credentials_source'] || 'static'
+    def self.validate_credentials_source(options)
+      credentials_source = options['aws']['credentials_source'] || 'static'
 
       if credentials_source != 'env_or_profile' && credentials_source != 'static'
         raise ArgumentError, "Unknown credentials_source #{credentials_source}"
       end
 
       if credentials_source == 'static'
-        if @config['aws']['access_key_id'].nil? || @config['aws']['secret_access_key'].nil?
+        if options['aws']['access_key_id'].nil? || options['aws']['secret_access_key'].nil?
           raise ArgumentError, 'Must use access_key_id and secret_access_key with static credentials_source'
         end
       end
 
       if credentials_source == 'env_or_profile'
-        if !@config['aws']['access_key_id'].nil? || !@config['aws']['secret_access_key'].nil?
+        if !options['aws']['access_key_id'].nil? || !options['aws']['secret_access_key'].nil?
           raise ArgumentError, "Can't use access_key_id and secret_access_key with env_or_profile credentials_source"
         end
       end

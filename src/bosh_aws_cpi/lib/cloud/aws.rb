@@ -20,6 +20,7 @@ require 'cloud'
 require 'cloud/aws/helpers'
 require 'cloud/aws/cloud'
 require 'cloud/aws/config'
+require 'cloud/aws/aws_provider'
 
 require 'cloud/aws/aki_picker'
 require 'cloud/aws/network_configurator'

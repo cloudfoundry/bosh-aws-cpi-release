@@ -22,55 +22,16 @@ module Bosh::AwsCloud
       @config = Bosh::AwsCloud::Config.build(options.dup.freeze)
 
       @logger = Bosh::Clouds::Config.logger
-      aws_logger = @logger
-
       request_id = options['aws']['request_id']
       if request_id
         @logger.set_request_id(request_id)
       end
 
-      @aws_params = {
-        retry_limit: @config.aws.max_retries,
-        logger: aws_logger,
-        log_level: :debug,
-      }
+      @aws_provider = Bosh::AwsCloud::AwsProvider.new(@config.aws, @logger)
+      @ec2_client = @aws_provider.ec2_client
+      @ec2_resource = @aws_provider.ec2_resource
 
-      if @config.aws.region
-        @aws_params[:region] = @config.aws.region
-      end
-      if @config.aws.ec2_endpoint
-        endpoint = @config.aws.ec2_endpoint
-        if URI(@config.aws.ec2_endpoint).scheme.nil?
-          endpoint = "https://#{endpoint}"
-        end
-        @aws_params[:endpoint] = endpoint
-      end
-
-      if ENV.has_key?('BOSH_CA_CERT_FILE')
-        @aws_params[:ssl_ca_bundle] = ENV['BOSH_CA_CERT_FILE']
-      end
-
-      # credentials_source could be static (default) or env_or_profile
-      # - if "static", credentials must be provided
-      # - if "env_or_profile", credentials are read from instance metadata
-      credentials_source = @config.aws.credentials_source
-
-      if credentials_source == 'static'
-        @aws_params[:credentials] = Aws::Credentials.new(@config.aws.access_key_id, @config.aws.secret_access_key)
-      else
-        @aws_params[:credentials] = Aws::InstanceProfileCredentials.new({retries: 10})
-      end
-
-      # AWS Ruby SDK is threadsafe but Ruby autoload isn't,
-      # so we need to trigger eager autoload while constructing CPI
-      Aws.eager_autoload!
-
-      # In SDK v2 the default is more request driven, while the old 'model way' lives in Resource.
-      # Therefore in most cases Aws::EC2::Resource would replace the client.
-      @ec2_client = Aws::EC2::Client.new(@aws_params)
-      @ec2_resource = Aws::EC2::Resource.new(client: @ec2_client)
-
-      cloud_error('Please make sure the CPI has proper network access to AWS.') unless aws_accessible?
+      cloud_error('Please make sure the CPI has proper network access to AWS.') unless @aws_provider.aws_accessible?
 
       @az_selector = AvailabilityZoneSelector.new(@ec2_resource)
 
@@ -79,23 +40,6 @@ module Bosh::AwsCloud
         @config.registry.user,
         @config.registry.password
       )
-
-      @elb_params = {
-        region: @aws_params[:region],
-        credentials: @aws_params[:credentials],
-        logger: @logger,
-      }
-
-      elb_endpoint = @config.aws.elb_endpoint
-      if elb_endpoint
-        if URI(@config.aws.elb_endpoint).scheme.nil?
-          elb_endpoint = "https://#{elb_endpoint}"
-        end
-        @elb_params[:endpoint] = elb_endpoint
-      end
-
-      @elb_client = Aws::ElasticLoadBalancing::Client.new(@elb_params)
-      @alb_client = Aws::ElasticLoadBalancingV2::Client.new(@elb_params)
 
       @instance_manager = InstanceManager.new(@ec2_resource, registry, @logger)
       @instance_type_mapper = InstanceTypeMapper.new
@@ -150,12 +94,12 @@ module Bosh::AwsCloud
 
         target_groups = vm_type.fetch('lb_target_groups', [])
         if target_groups.length > 0
-          alb_accessible?
+          @aws_provider.alb_accessible?
         end
 
         requested_elbs = vm_type.fetch('elbs', [])
         if requested_elbs.length > 0
-          elb_accessible?
+          @aws_provider.elb_accessible?
         end
 
         stemcell = StemcellFinder.find_by_id(@ec2_resource, stemcell_id)
@@ -566,6 +510,7 @@ module Bosh::AwsCloud
       {'stemcell_formats' => ['aws-raw', 'aws-light']}
     end
 
+    # TODO(cdutra): make this method private, change tests
     def find_device_path_by_name(sd_name)
       xvd_name = sd_name.gsub(/^\/dev\/sd/, '/dev/xvd')
 
@@ -760,46 +705,6 @@ module Bosh::AwsCloud
         [name, settings]
       end
       Hash[spec]
-    end
-
-    def strip_protocol(url)
-      url.sub(/^https?\:\/\//, '')
-    end
-
-    def aws_accessible?
-      # make an arbitrary HTTP request to ensure we can connect and creds are valid
-      @ec2_resource.subnets.first
-      true
-    rescue Seahorse::Client::NetworkingError => e
-      logger.error("Failed to connect to AWS: #{e.inspect}\n#{e.backtrace.join("\n")}")
-      err = "Unable to create a connection to AWS. Please check your provided settings: Region '#{@aws_params[:region] || 'Not provided'}', Endpoint '#{@aws_params[:endpoint] || 'Not provided'}'."
-      cloud_error("#{err}\nIaaS Error: #{e.inspect}")
-    rescue Net::OpenTimeout
-      false
-    end
-
-    def alb_accessible?
-      # make an arbitrary HTTP request to ensure we can connect and creds are valid
-      @alb_client.describe_load_balancers(page_size: 1)
-      true
-    rescue Seahorse::Client::NetworkingError => e
-      logger.error("Failed to connect to AWS Application Load Balancer endpoint: #{e.inspect}\n#{e.backtrace.join("\n")}")
-      err = "Unable to create a connection to AWS. Please check your provided settings: Region '#{@elb_params[:region] || 'Not provided'}', Endpoint '#{@elb_params[:endpoint] || 'Not provided'}'."
-      cloud_error("#{err}\nIaaS Error: #{e.inspect}")
-    rescue Net::OpenTimeout
-      false
-    end
-
-    def elb_accessible?
-      # make an arbitrary HTTP request to ensure we can connect and creds are valid
-      @elb_client.describe_load_balancers(page_size: 1)
-      true
-    rescue Seahorse::Client::NetworkingError => e
-      logger.error("Failed to connect to AWS Elastic Load Balancer endpoint: #{e.inspect}\n#{e.backtrace.join("\n")}")
-      err = "Unable to create a connection to AWS. Please check your provided settings: Region '#{@elb_params[:region] || 'Not provided'}', Endpoint '#{@elb_params[:endpoint] || 'Not provided'}'."
-      cloud_error("#{err}\nIaaS Error: #{e.inspect}")
-    rescue Net::OpenTimeout
-      false
     end
   end
 end

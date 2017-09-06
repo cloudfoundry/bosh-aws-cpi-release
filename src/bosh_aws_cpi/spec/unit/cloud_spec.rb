@@ -4,8 +4,7 @@ describe Bosh::AwsCloud::Cloud do
   subject(:cloud) { described_class.new(options) }
 
   let(:options) { mock_cloud_options['properties'] }
-
-  let(:az_selector) { instance_double('Bosh::AwsCloud::AvailabilityZoneSelector') }
+  let(:az_selector) { instance_double(Bosh::AwsCloud::AvailabilityZoneSelector) }
 
   before do
     allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
@@ -251,7 +250,7 @@ describe Bosh::AwsCloud::Cloud do
       end
     end
 
-    context 'when an unknown credentails_source is set' do
+    context 'when an unknown credentials_source is set' do
       let(:options) do
         mock_cloud_properties_merge(
           'aws' => {
