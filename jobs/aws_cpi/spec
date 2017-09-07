@@ -47,6 +47,9 @@ properties:
       -----BEGIN CERTIFICATE-----
       MII...
       -----END CERTIFICATE-----
+  aws.encrypted:
+    description: Encrypts all instances' volumes
+    default: false
 
   registry.username:
     description: User to access the Registry

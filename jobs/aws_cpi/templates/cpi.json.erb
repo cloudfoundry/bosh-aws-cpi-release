@@ -11,7 +11,8 @@ params = {
         "default_iam_instance_profile" => p('aws.default_iam_instance_profile', nil),
         "default_key_name" => p('aws.default_key_name'),
         "default_security_groups" => p('aws.default_security_groups'),
-        "max_retries" => p('aws.max_retries')
+        "max_retries" => p('aws.max_retries'),
+        "encrypted" => p('aws.encrypted')
       },
       "registry" => {
         "endpoint" => "http://#{p('registry.username')}:#{ERB::Util.url_encode(p('registry.password'))}@#{p('registry.host')}:#{p('registry.port')}",

@@ -1005,15 +1005,83 @@ describe Bosh::AwsCloud::Cloud do
   end
 
   context 'create_stemcell for light-stemcell' do
-    let(:stemcell_properties) do
-      {
-        'ami' => {
-          @region => ami
-        }
-      }
+    context 'when global config has encrypted true' do
+      let(:my_cpi) do
+        Bosh::AwsCloud::Cloud.new(
+          'aws' => {
+            'region' => @region,
+            'default_key_name' => @default_key_name,
+            'default_security_groups' => get_security_group_ids,
+            'fast_path_delete' => 'yes',
+            'access_key_id' => @access_key_id,
+            'secret_access_key' => @secret_access_key,
+            'max_retries' => 8,
+            'encrypted' => true
+          },
+          'registry' => {
+            'endpoint' => 'fake',
+            'user' => 'fake',
+            'password' => 'fake'
+          }
+        )
+      end
+
+      context 'and encrypted flag is not provided in stemcell properties' do
+        let(:stemcell_properties) do
+          {
+            'ami' => {
+              @region => ami
+            }
+          }
+        end
+
+        it 'should encrypt root disk' do
+          begin
+            stemcell_id = my_cpi.create_stemcell('/not/a/real/path', stemcell_properties)
+            expect(stemcell_id).not_to eq("#{ami}")
+
+            encrypted_ami = get_ami(stemcell_id.split[0])
+            expect(encrypted_ami).not_to be_nil
+
+            root_block_device = get_root_block_device(
+              encrypted_ami.root_device_name,
+              encrypted_ami.block_device_mappings
+            )
+            expect(root_block_device.ebs.encrypted).to be(true)
+          ensure
+            my_cpi.delete_stemcell(stemcell_id) if stemcell_id
+          end
+        end
+      end
+
+      context 'and encrypted is overwritten to false in stemcell properties' do
+        let(:stemcell_properties) do
+          {
+            'encrypted' => false,
+            'ami' => {
+              @region => ami
+            }
+          }
+        end
+
+        it 'should NOT copy the AMI' do
+          stemcell_id = my_cpi.create_stemcell('/not/a/real/path', stemcell_properties)
+          expect(stemcell_id).to end_with(' light')
+          expect(stemcell_id).to eq("#{ami} light")
+        end
+      end
     end
 
     context 'when encrypted is false' do
+      let(:stemcell_properties) do
+        {
+          'encrypted' => false,
+          'ami' => {
+            @region => ami
+          }
+        }
+      end
+
       it 'should NOT copy the AMI' do
         stemcell_id = @cpi.create_stemcell('/not/a/real/path', stemcell_properties)
         expect(stemcell_id).to end_with(' light')

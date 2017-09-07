@@ -10,7 +10,9 @@ module Bosh::AwsCloud
       @cloud_properties = cloud_properties.merge(@global_config.aws.stemcell)
 
       @ami = @cloud_properties['ami']
-      @encrypted = !!@cloud_properties['encrypted']
+
+      @encrypted = @global_config.aws.encrypted
+      @encrypted = !!@cloud_properties['encrypted'] if @cloud_properties.key?('encrypted')
       @kms_key_arn = @cloud_properties['kms_key_arn']
 
       @name = @cloud_properties['name']
@@ -46,10 +48,6 @@ module Bosh::AwsCloud
 
     def region_ami
       ami[@global_config.aws.region]
-    end
-
-    def to_h
-      @cloud_properties
     end
 
     private

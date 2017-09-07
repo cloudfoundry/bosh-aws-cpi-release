@@ -25,7 +25,7 @@ describe 'cpi.json.erb' do
         'registry' => {
           'host' => 'registry-host.example.com',
           'username' => 'admin',
-          'password' => 'admin',
+          'password' => 'admin'
         },
         'blobstore' => {
           'address' => 'blobstore-address.example.com',
@@ -43,43 +43,41 @@ describe 'cpi.json.erb' do
   end
 
   it 'is able to render the erb given most basic manifest properties' do
-    expect(subject).to eq({
-      'cloud'=>{
+    expect(subject).to eq(
+      'cloud' => {
         'plugin'=>'aws',
-        'properties'=> {
-          'aws'=>{
+        'properties' => {
+          'aws' => {
             'credentials_source' => 'static',
             'access_key_id' => nil,
             'secret_access_key' => nil,
             'default_iam_instance_profile' => nil,
             'default_key_name'=>'the_default_key_name',
             'default_security_groups'=>['security_group_1'],
-            'region'=>'moon',
-            'max_retries'=>8
+            'region' => 'moon',
+            'max_retries' => 8,
+            'encrypted' => false
           },
-          'registry'=>{
-            'endpoint'=>'http://admin:admin@registry-host.example.com:25777',
-            'user'=>'admin',
-            'password'=>'admin'
+          'registry' => {
+            'endpoint' => 'http://admin:admin@registry-host.example.com:25777',
+            'user' => 'admin',
+            'password' => 'admin'
           },
-          'agent'=>{
-            'ntp'=>[
-              '0.pool.ntp.org',
-              '1.pool.ntp.org'
-            ],
-            'blobstore'=>{
-              'provider'=>'dav',
-              'options'=>{
-                'endpoint'=>'http://blobstore-address.example.com:25250',
-                'user'=>'agent',
-                'password'=>'agent-password'
+          'agent' => {
+            'ntp'=> %w(0.pool.ntp.org 1.pool.ntp.org),
+            'blobstore' => {
+              'provider' => 'dav',
+              'options' => {
+                'endpoint' => 'http://blobstore-address.example.com:25250',
+                'user' => 'agent',
+                'password' => 'agent-password'
               }
             },
             'mbus'=>'nats://nats:nats-password@nats-address.example.com:4222'
           }
         }
       }
-    })
+    )
   end
 
   context 'when the registry password includes special characters' do
@@ -93,6 +91,17 @@ describe 'cpi.json.erb' do
       expect(URI.decode(registry_uri.password)).to eq(special_chars_password)
     end
   end
+
+  context 'when the encrypted property is provided' do
+    before do
+      manifest['properties']['aws']['encrypted'] = true
+    end
+
+    it 'propagates its value to cpi.json' do
+      expect(subject['cloud']['properties']['aws']['encrypted']).to eq(true)
+    end
+  end
+
 
   context 'when credentials are provided in aws properties' do
     before do

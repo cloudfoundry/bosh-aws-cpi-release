@@ -173,7 +173,7 @@ describe Bosh::AwsCloud::Cloud do
       let(:volume) { double('volume', :id => 'vol-xxxxxxxx') }
       let(:stemcell) { double('stemcell', :id => 'ami-xxxxxxxx') }
       let(:instance) { double('instance') }
-      let(:aws_config) { instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}) }
+      let(:aws_config) { instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}, encrypted: false) }
       let(:global_config) { instance_double(Bosh::AwsCloud::Config, aws: aws_config) }
       let(:stemcell_cloud_props) { Bosh::AwsCloud::StemcellCloudProps.new(stemcell_properties, global_config) }
       let(:props_factory) { instance_double(Bosh::AwsCloud::PropsFactory) }
