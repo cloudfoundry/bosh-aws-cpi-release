@@ -43,6 +43,8 @@ module Bosh::AwsCloud
 
       @instance_manager = InstanceManager.new(@ec2_resource, registry, @logger)
       @instance_type_mapper = InstanceTypeMapper.new
+
+      @props_factory = Bosh::AwsCloud::PropsFactory.new(@config)
     end
 
     ##
@@ -400,27 +402,25 @@ module Bosh::AwsCloud
     # @return [String] EC2 AMI name of the stemcell
     def create_stemcell(image_path, stemcell_properties)
       with_thread_name("create_stemcell(#{image_path}...)") do
-        stemcell_properties.merge!(@config.aws.stemcell)
+        props = @props_factory.stemcell_props(stemcell_properties)
 
-        if stemcell_properties.has_key?('ami')
-          all_ami_ids = stemcell_properties['ami'].values
-
+        if props.is_light?
           # select the correct image for the configured ec2 client
           available_image = @ec2_resource.images(
             filters: [{
               name: 'image-id',
-              values: all_ami_ids
+              values: props.ami_ids
             }]
           ).first
           raise Bosh::Clouds::CloudError, "Stemcell does not contain an AMI in region #{@config.aws.region}" unless available_image
 
-          if stemcell_properties['encrypted'] == true
+          if props.encrypted
             copy_image_result = @ec2_client.copy_image(
               source_region: @config.aws.region,
-              source_image_id: stemcell_properties['ami'][@config.aws.region],
-              name: "Copied from SourceAMI #{stemcell_properties['ami'][@config.aws.region]}",
-              encrypted: stemcell_properties['encrypted'],
-              kms_key_id: stemcell_properties['kms_key_arn']
+              source_image_id: props.region_ami,
+              name: "Copied from SourceAMI #{props.region_ami}",
+              encrypted: props.encrypted,
+              kms_key_id: props.kms_key_arn
             )
 
             encrypted_image_id = copy_image_result.image_id
@@ -432,7 +432,7 @@ module Bosh::AwsCloud
 
           "#{available_image.id} light"
         else
-          create_ami_for_stemcell(image_path, stemcell_properties)
+          create_ami_for_stemcell(image_path, props)
         end
       end
     end
@@ -510,7 +510,10 @@ module Bosh::AwsCloud
       {'stemcell_formats' => ['aws-raw', 'aws-light']}
     end
 
-    # TODO(cdutra): make this method private, change tests
+    private
+
+    attr_reader :az_selector
+
     def find_device_path_by_name(sd_name)
       xvd_name = sd_name.gsub(/^\/dev\/sd/, '/dev/xvd')
 
@@ -526,10 +529,6 @@ module Bosh::AwsCloud
       cloud_error('Cannot find EBS volume on current instance')
     end
 
-    private
-
-    attr_reader :az_selector
-
     def update_agent_settings(instance)
       unless block_given?
         raise ArgumentError, 'block is not provided'
@@ -540,8 +539,8 @@ module Bosh::AwsCloud
       registry.update_settings(instance.id, settings)
     end
 
-    def create_ami_for_stemcell(image_path, stemcell_properties)
-      creator = StemcellCreator.new(@ec2_resource, stemcell_properties)
+    def create_ami_for_stemcell(image_path, stemcell_cloud_props)
+      creator = StemcellCreator.new(@ec2_resource, stemcell_cloud_props)
 
       begin
         director_vm_id = current_vm_id
@@ -557,14 +556,13 @@ module Bosh::AwsCloud
         end
 
         encrypted_disk_properties_hash = {}
-        if stemcell_properties['encrypted']
-          encrypted_disk_properties_hash['encrypted'] = stemcell_properties['encrypted']
-          encrypted_disk_properties_hash['kms_key_arn'] = stemcell_properties['kms_key_arn']
+        if stemcell_cloud_props.encrypted
+          encrypted_disk_properties_hash['encrypted'] = stemcell_cloud_props.encrypted
+          encrypted_disk_properties_hash['kms_key_arn'] = stemcell_cloud_props.kms_key_arn
         end
 
-        disk_size = stemcell_properties['disk'] || 2048
         volume_id = create_disk(
-          disk_size,
+          stemcell_cloud_props.disk,
           encrypted_disk_properties_hash,
           director_vm_id
         )
@@ -573,7 +571,7 @@ module Bosh::AwsCloud
         sd_name = attach_ebs_volume(instance, volume)
         device_path = find_device_path_by_name(sd_name)
 
-        logger.info("Creating stemcell with: '#{volume.id}' and '#{stemcell_properties.inspect}'")
+        logger.info("Creating stemcell with: '#{volume.id}' and '#{stemcell_cloud_props.inspect}'")
         creator.create(volume, device_path, image_path).id
       rescue => e
         logger.error(e)

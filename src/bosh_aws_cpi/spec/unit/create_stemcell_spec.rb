@@ -173,6 +173,18 @@ describe Bosh::AwsCloud::Cloud do
       let(:volume) { double('volume', :id => 'vol-xxxxxxxx') }
       let(:stemcell) { double('stemcell', :id => 'ami-xxxxxxxx') }
       let(:instance) { double('instance') }
+      let(:aws_config) { instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}) }
+      let(:global_config) { instance_double(Bosh::AwsCloud::Config, aws: aws_config) }
+      let(:stemcell_cloud_props) { Bosh::AwsCloud::StemcellCloudProps.new(stemcell_properties, global_config) }
+      let(:props_factory) { instance_double(Bosh::AwsCloud::PropsFactory) }
+
+      before do
+        allow(Bosh::AwsCloud::PropsFactory).to receive(:new)
+          .and_return(props_factory)
+        allow(props_factory).to receive(:stemcell_props)
+          .with(stemcell_properties)
+          .and_return(stemcell_cloud_props)
+      end
 
       it 'should create a stemcell' do
         cloud = mock_cloud do |ec2|
@@ -180,7 +192,7 @@ describe Bosh::AwsCloud::Cloud do
           allow(ec2).to receive(:instance).with('i-xxxxxxxx').and_return(instance)
 
           expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-            .with(ec2, stemcell_properties)
+            .with(ec2, stemcell_cloud_props)
             .and_return(creator)
         end
 
@@ -208,8 +220,9 @@ describe Bosh::AwsCloud::Cloud do
             allow(ec2).to receive(:volume).with('vol-xxxxxxxx').and_return(volume)
             allow(ec2).to receive(:instance).with('i-xxxxxxxx').and_return(instance)
 
+            stemcell_properties.merge('kernel_id' => 'fake-kernel-id')
             expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-              .with(ec2, stemcell_properties.merge('kernel_id' => 'fake-kernel-id'))
+              .with(ec2, stemcell_cloud_props)
               .and_return(creator)
           end
 
@@ -251,7 +264,7 @@ describe Bosh::AwsCloud::Cloud do
               allow(ec2).to receive(:instance).with('i-xxxxxxxx').and_return(instance)
 
               expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-                                                             .with(ec2, stemcell_properties)
+                                                             .with(ec2, stemcell_cloud_props)
                                                              .and_return(creator)
             end
 
@@ -290,7 +303,7 @@ describe Bosh::AwsCloud::Cloud do
               allow(ec2).to receive(:instance).with('i-xxxxxxxx').and_return(instance)
 
               expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-                                                             .with(ec2, stemcell_properties)
+                                                             .with(ec2, stemcell_cloud_props)
                                                              .and_return(creator)
             end
 
@@ -319,7 +332,7 @@ describe Bosh::AwsCloud::Cloud do
             allow(ec2).to receive(:instance).with('i-xxxxxxxx').and_return(instance)
 
             expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-                                                           .with(ec2, stemcell_properties)
+                                                           .with(ec2, stemcell_cloud_props)
                                                            .and_return(creator)
           end
 
@@ -381,7 +394,7 @@ describe Bosh::AwsCloud::Cloud do
 
           allow(File).to receive(:blockdev?).with('/dev/sdf').and_return(true)
 
-          expect(cloud.find_device_path_by_name('/dev/sdf')).to eq('/dev/sdf')
+          expect(cloud.send(:find_device_path_by_name, '/dev/sdf')).to eq('/dev/sdf')
         end
 
         it 'should locate ebs volume on the current instance and return the virtual device name' do
@@ -390,7 +403,7 @@ describe Bosh::AwsCloud::Cloud do
           allow(File).to receive(:blockdev?).with('/dev/sdf').and_return(false)
           allow(File).to receive(:blockdev?).with('/dev/xvdf').and_return(true)
 
-          expect(cloud.find_device_path_by_name('/dev/sdf')).to eq('/dev/xvdf')
+          expect(cloud.send(:find_device_path_by_name, '/dev/sdf')).to eq('/dev/xvdf')
         end
       end
     end

@@ -3,12 +3,12 @@ module Bosh::AwsCloud
     include Bosh::Exec
     include Helpers
 
-    attr_reader :resource, :properties
+    attr_reader :resource
     attr_reader :volume, :device_path, :image_path
 
-    def initialize(resource, properties)
+    def initialize(resource, stemcell_props)
       @resource = resource
-      @properties = properties
+      @stemcell_props = stemcell_props
     end
 
     def create(volume, device_path, image_path)
@@ -31,6 +31,8 @@ module Bosh::AwsCloud
       Stemcell.new(resource, image)
     end
 
+    private
+
     # This method tries to execute the helper script stemcell-copy
     # as root using sudo, since it needs to write to the device_path.
     # If stemcell-copy isn't available, it falls back to writing directly
@@ -40,16 +42,16 @@ module Bosh::AwsCloud
     # password.
     #
     def copy_root_image
-      stemcell_copy = find_in_path("stemcell-copy")
+      stemcell_copy = find_in_path('stemcell-copy')
 
       if stemcell_copy
-        logger.debug("copying stemcell using stemcell-copy script")
+        logger.debug('copying stemcell using stemcell-copy script')
         # note that is is a potentially dangerous operation, but as the
         # stemcell-copy script sets PATH to a sane value this is safe
         command = "sudo -n #{stemcell_copy} #{image_path} #{device_path} 2>&1"
       else
-        logger.info("falling back to using included copy stemcell")
-        included_stemcell_copy = File.expand_path("../../../../bin/stemcell-copy", __FILE__)
+        logger.info('falling back to using included copy stemcell')
+        included_stemcell_copy = File.expand_path('../../../../bin/stemcell-copy', __FILE__)
         command = "sudo -n #{included_stemcell_copy} #{image_path} #{device_path} 2>&1"
       end
 
@@ -62,8 +64,8 @@ module Bosh::AwsCloud
 
     # checks if the stemcell-copy script can be found in
     # the current PATH
-    def find_in_path(command, path=ENV["PATH"])
-      path.split(":").each do |dir|
+    def find_in_path(command, path=ENV['PATH'])
+      path.split(':').each do |dir|
         stemcell_copy = File.join(dir, command)
         return stemcell_copy if File.exist?(stemcell_copy)
       end
@@ -71,19 +73,15 @@ module Bosh::AwsCloud
     end
 
     def image_params(snapshot_id)
-      architecture = properties["architecture"]
-      virtualization_type = properties["virtualization_type"] || "hvm"
-
       params = begin
-        if virtualization_type == 'paravirtual'
-          root_device_name = properties["root_device_name"]
-          aki = properties['kernel_id'] || AKIPicker.new(resource).pick(architecture, root_device_name)
+        if @stemcell_props.paravirtual?
+          aki = @stemcell_props.kernel_id || AKIPicker.new(resource).pick(@stemcell_props.architecture, @stemcell_props.root_device_name)
           {
             :kernel_id => aki,
-            :root_device_name => root_device_name,
+            :root_device_name => @stemcell_props.root_device_name,
             :block_device_mappings => [
               {
-                :device_name => "/dev/sda",
+                :device_name => '/dev/sda',
                 :ebs => {
                   :snapshot_id => snapshot_id,
                 },
@@ -92,12 +90,12 @@ module Bosh::AwsCloud
           }
         else
           {
-            :virtualization_type => virtualization_type,
-            :root_device_name => "/dev/xvda",
-            :sriov_net_support => "simple",
+            :virtualization_type => @stemcell_props.virtualization_type,
+            :root_device_name => '/dev/xvda',
+            :sriov_net_support => 'simple',
             :block_device_mappings => [
               {
-                :device_name => "/dev/xvda",
+                :device_name => '/dev/xvda',
                 :ebs => {
                   :snapshot_id => snapshot_id,
                 },
@@ -107,23 +105,19 @@ module Bosh::AwsCloud
         end
       end
 
-      # old stemcells doesn't have name & version
-      if properties["name"] && properties["version"]
-        name = "#{properties['name']} #{properties['version']}"
-        params[:description] = name
+      if @stemcell_props.old?
+        params[:description] = @stemcell_props.formatted_name
       end
 
       params.merge!(
         :name => "BOSH-#{SecureRandom.uuid}",
-        :architecture => architecture,
+        :architecture => @stemcell_props.architecture,
       )
 
       params[:block_device_mappings].push(BlockDeviceManager.default_instance_storage_disk_mapping)
 
       params
     end
-
-    private
 
     def logger
       Bosh::Clouds::Config.logger

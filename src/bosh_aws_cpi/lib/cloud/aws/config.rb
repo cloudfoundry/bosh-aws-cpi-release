@@ -2,9 +2,12 @@ module Bosh::AwsCloud
   class AwsConfig
     attr_reader :max_retries, :credentials, :region, :ec2_endpoint, :elb_endpoint, :stemcell
     attr_reader :access_key_id, :secret_access_key
+    attr_reader :encrypted
 
     def initialize(aws_config_hash)
       @config = aws_config_hash
+
+      @encrypted = !!@config['encrypted']
 
       @max_retries = @config['max_retries']
 
