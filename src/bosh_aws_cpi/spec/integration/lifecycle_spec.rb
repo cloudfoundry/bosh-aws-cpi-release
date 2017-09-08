@@ -31,6 +31,29 @@ describe Bosh::AwsCloud::Cloud do
   let(:registry) { instance_double(Bosh::Cpi::RegistryClient).as_null_object }
   let(:security_groups) { get_security_group_ids }
 
+  let(:aws_config) do
+    {
+      'region' => @region,
+      'default_key_name' => @default_key_name,
+      'default_security_groups' => get_security_group_ids,
+      'fast_path_delete' => 'yes',
+      'access_key_id' => @access_key_id,
+      'secret_access_key' => @secret_access_key,
+      'max_retries' => 8,
+      'encrypted' => true
+    }
+  end
+  let(:my_cpi) do
+    Bosh::AwsCloud::Cloud.new(
+      'aws' => aws_config,
+      'registry' => {
+        'endpoint' => 'fake',
+        'user' => 'fake',
+        'password' => 'fake'
+      }
+    )
+  end
+
   before {
     allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
     allow(registry).to receive(:read_settings).and_return({})
@@ -410,16 +433,6 @@ describe Bosh::AwsCloud::Cloud do
           'encrypted' => true
         }
       end
-      let(:my_cpi) do
-        Bosh::AwsCloud::Cloud.new(
-          'aws' => aws_config,
-          'registry' => {
-            'endpoint' => 'fake',
-            'user' => 'fake',
-            'password' => 'fake'
-          }
-        )
-      end
 
       context 'and encrypted flag is not provided in disk cloud properties' do
         let(:cloud_properties) { {} }
@@ -576,37 +589,67 @@ describe Bosh::AwsCloud::Cloud do
         end
       end
 
-      context 'when encrypted is true' do
-        let(:vm_type) do
-          {
-            'instance_type' => instance_type,
-            'availability_zone' => @subnet_zone,
-            'ephemeral_disk' => {
-              'size' => 4 * 1024,
-              'type' => 'io1',
-              'iops' => 100,
-              'encrypted' => true
+      # TODO(cdutra): write encryption vm_type here
+      context 'when global config has encrypted true' do
+        context 'and vm_type does NOT have encrypted' do
+          let(:vm_type) do
+            {
+              'instance_type' => instance_type,
+              'availability_zone' => @subnet_zone,
+              'ephemeral_disk' => {
+                'size' => 4 * 1024,
+                'type' => 'io1',
+                'iops' => 100
+              }
             }
-          }
-        end
-        let(:instance_type) { instance_type_without_ephemeral }
+          end
 
-        it 'creates an encrypted ephemeral disk' do
-          vm_lifecycle do |instance_id|
-            block_device_mapping = @cpi.ec2_resource.instance(instance_id).block_device_mappings
-            ephemeral_block_device = block_device_mapping.find {|entry| entry.device_name == '/dev/sdb'}
+          it 'creates an encrypted ephemeral disk' do
+            vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: my_cpi) do |instance_id|
+              block_device_mapping = my_cpi.ec2_resource.instance(instance_id).block_device_mappings
+              ephemeral_block_device = block_device_mapping.find { |entry| entry.device_name == '/dev/sdb' }
 
-            ephemeral_disk = @cpi.ec2_resource.volume(ephemeral_block_device.ebs.volume_id)
+              ephemeral_disk = my_cpi.ec2_resource.volume(ephemeral_block_device.ebs.volume_id)
 
-            expect(ephemeral_disk.encrypted).to eq(true)
+              expect(ephemeral_disk.encrypted).to be(true)
+            end
+          end
+
+          context 'and the instance_type does not support encryption' do
+            let(:instance_type) { 't1.micro' }
+            let(:ami) { 'ami-3ec82656' }
+
+            it 'raises an exception' do
+              expect do
+                vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: my_cpi)
+              end.to raise_error
+            end
           end
         end
 
-        context 'when the instance_type does not support encryption' do
-          let(:instance_type) { 't1.micro' }
-          let(:ami) { 'ami-3ec82656' }
-          it 'raises an exception' do
-            expect { vm_lifecycle }.to raise_error
+        context 'and encrypted is overwritten to false in vm_type' do
+          let(:vm_type) do
+            {
+              'instance_type' => instance_type,
+              'availability_zone' => @subnet_zone,
+              'ephemeral_disk' => {
+                'size' => 4 * 1024,
+                'type' => 'io1',
+                'iops' => 100,
+                'encrypted' => false
+              }
+            }
+          end
+
+          it 'creates an unencrypted ephemeral disk' do
+            vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: my_cpi) do |instance_id|
+              block_device_mapping = my_cpi.ec2_resource.instance(instance_id).block_device_mappings
+              ephemeral_block_device = block_device_mapping.find {|entry| entry.device_name == '/dev/sdb'}
+
+              ephemeral_disk = my_cpi.ec2_resource.volume(ephemeral_block_device.ebs.volume_id)
+
+              expect(ephemeral_disk.encrypted).to be(false)
+            end
           end
         end
       end
@@ -1077,29 +1120,6 @@ describe Bosh::AwsCloud::Cloud do
 
   context 'create_stemcell for light-stemcell' do
     context 'when global config has encrypted true' do
-      let(:aws_config) do
-        {
-          'region' => @region,
-          'default_key_name' => @default_key_name,
-          'default_security_groups' => get_security_group_ids,
-          'fast_path_delete' => 'yes',
-          'access_key_id' => @access_key_id,
-          'secret_access_key' => @secret_access_key,
-          'max_retries' => 8,
-          'encrypted' => true
-        }
-      end
-      let(:my_cpi) do
-        Bosh::AwsCloud::Cloud.new(
-          'aws' => aws_config,
-          'registry' => {
-            'endpoint' => 'fake',
-            'user' => 'fake',
-            'password' => 'fake'
-          }
-        )
-      end
-
       context 'and stemcell properties does NOT have encrypted' do
         let(:stemcell_properties) do
           {
@@ -1229,7 +1249,13 @@ describe Bosh::AwsCloud::Cloud do
   end
 
   def vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: @cpi)
-    stemcell_id = cpi.create_stemcell('/not/a/real/path', { 'ami' => { @region => ami_id } })
+    stemcell_properties = {
+      'encrypted' => false,
+      'ami' => {
+        @region => ami_id
+      }
+    }
+    stemcell_id = cpi.create_stemcell('/not/a/real/path', stemcell_properties)
     expect(stemcell_id).to end_with(' light')
 
     instance_id = cpi.create_vm(

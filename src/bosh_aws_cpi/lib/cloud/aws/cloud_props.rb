@@ -76,6 +76,29 @@ module Bosh::AwsCloud
     end
   end
 
+  class VMCloudProps
+    attr_reader :lb_target_groups, :elbs
+
+    # @param [Hash] cloud_properties
+    # @param [Bosh::AwsCloud::Config] global_config
+    def initialize(cloud_properties, global_config)
+      @cloud_properties = cloud_properties.dup
+
+      @elbs = cloud_properties['elbs'] || []
+      @lb_target_groups = cloud_properties['lb_target_groups'] || []
+      encrypted = global_config.aws.encrypted
+      if @cloud_properties.key?('ephemeral_disk') && @cloud_properties['ephemeral_disk'].key?('encrypted')
+        encrypted = !!@cloud_properties['ephemeral_disk']['encrypted']
+      end
+
+      @cloud_properties['ephemeral_disk']['encrypted'] = encrypted
+    end
+
+    def to_h
+      @cloud_properties
+    end
+  end
+
   class PropsFactory
     def initialize(config)
       @config = config
@@ -87,6 +110,10 @@ module Bosh::AwsCloud
 
     def disk_props(disk_properties)
       Bosh::AwsCloud::DiskCloudProps.new(disk_properties, @config)
+    end
+
+    def vm_props(vm_properties)
+      Bosh::AwsCloud::VMCloudProps.new(vm_properties, @config)
     end
   end
 end

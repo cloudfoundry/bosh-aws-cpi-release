@@ -27,7 +27,14 @@ module Bosh::AwsCloud
 
       abruptly_terminated_retries = 2
       begin
-        instance_params = build_instance_params(stemcell_id, vm_type, networks_spec, block_device_info, disk_locality, aws_option)
+        instance_params = build_instance_params(
+          stemcell_id,
+          vm_type,
+          networks_spec,
+          block_device_info,
+          disk_locality,
+          aws_option
+        )
 
         redacted_instance_params = Bosh::Cpi::Redactor.clone_and_redact(
           instance_params,

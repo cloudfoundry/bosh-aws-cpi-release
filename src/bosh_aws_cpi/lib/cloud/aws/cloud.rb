@@ -92,15 +92,16 @@ module Bosh::AwsCloud
     # @return [String] EC2 instance id of the new virtual machine
     def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = nil, environment = nil)
       with_thread_name("create_vm(#{agent_id}, ...)") do
-        # do this early to fail fast
+        props = @props_factory.vm_props(vm_type)
 
-        target_groups = vm_type.fetch('lb_target_groups', [])
-        if target_groups.length > 0
+        # do this early to fail fast
+        target_groups = props.lb_target_groups
+        unless target_groups.empty?
           @aws_provider.alb_accessible?
         end
 
-        requested_elbs = vm_type.fetch('elbs', [])
-        if requested_elbs.length > 0
+        requested_elbs = props.elbs
+        unless requested_elbs.empty?
           @aws_provider.elb_accessible?
         end
 
@@ -109,7 +110,7 @@ module Bosh::AwsCloud
         begin
           instance, block_device_agent_info = @instance_manager.create(
             stemcell.image_id,
-            vm_type,
+            props.to_h,
             network_spec,
             (disk_locality || []),
             @config.aws.to_h
