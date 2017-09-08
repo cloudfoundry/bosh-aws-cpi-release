@@ -14,7 +14,9 @@ module Bosh::AwsCloud
       }
     end
     let(:virtualization_type) {'paravirtual'}
-    let(:aws_config) { instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}, encrypted: false) }
+    let(:aws_config) do
+      instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}, encrypted: false, kms_key_arn: nil)
+    end
     let(:global_config) { instance_double(Bosh::AwsCloud::Config, aws: aws_config) }
     let(:stemcell_cloud_props) { Bosh::AwsCloud::StemcellCloudProps.new(properties, global_config) }
 

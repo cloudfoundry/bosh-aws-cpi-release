@@ -13,8 +13,9 @@ module Bosh::AwsCloud
 
       @encrypted = @global_config.aws.encrypted
       @encrypted = !!@cloud_properties['encrypted'] if @cloud_properties.key?('encrypted')
-      @kms_key_arn = @cloud_properties['kms_key_arn']
 
+      @kms_key_arn = @global_config.aws.kms_key_arn
+      @kms_key_arn = @cloud_properties['kms_key_arn'] if @cloud_properties.key?('kms_key_arn')
 
       @name = @cloud_properties['name']
       @version = @cloud_properties['version']

@@ -1,7 +1,7 @@
 module Bosh::AwsCloud
   class AwsConfig
     attr_reader :max_retries, :credentials, :region, :ec2_endpoint, :elb_endpoint, :stemcell
-    attr_reader :access_key_id, :secret_access_key, :encrypted
+    attr_reader :access_key_id, :secret_access_key, :encrypted, :kms_key_arn
 
     def initialize(aws_config_hash)
       @config = aws_config_hash
@@ -19,6 +19,7 @@ module Bosh::AwsCloud
       @fast_path_delete = @config['fast_path_delete'] || false
 
       @encrypted = @config['encrypted']
+      @kms_key_arn = @config['kms_key_arn']
 
       # credentials_source could be static (default) or env_or_profile
       # - if "static", credentials must be provided

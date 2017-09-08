@@ -56,7 +56,8 @@ describe 'cpi.json.erb' do
             'default_security_groups'=>['security_group_1'],
             'region' => 'moon',
             'max_retries' => 8,
-            'encrypted' => false
+            'encrypted' => false,
+            'kms_key_arn' => nil
           },
           'registry' => {
             'endpoint' => 'http://admin:admin@registry-host.example.com:25777',
@@ -102,6 +103,16 @@ describe 'cpi.json.erb' do
     end
   end
 
+  context 'when the kms_key_arn property is provided' do
+    let(:kms_key_arn) { 'arn:aws:kms:us-east-1:XXXXXX:key/e1c1f008-779b-4ebe-8116-0a34b77747dd' }
+    before do
+      manifest['properties']['aws']['kms_key_arn'] = kms_key_arn
+    end
+
+    it 'propagates its value to cpi.json' do
+      expect(subject['cloud']['properties']['aws']['kms_key_arn']).to eq(kms_key_arn)
+    end
+  end
 
   context 'when credentials are provided in aws properties' do
     before do
@@ -193,7 +204,7 @@ describe 'cpi.json.erb' do
 
     context 'when provided a maximal configuration' do
       before do
-        manifest['properties']['blobstore'].merge!({
+        manifest['properties']['blobstore'].merge!(
           'provider' => 's3',
           'bucket_name' => 'my_bucket',
           'credentials_source' => 'blobstore-credentials-source',
@@ -207,7 +218,7 @@ describe 'cpi.json.erb' do
           's3_signature_version' => '11',
           'server_side_encryption' => 'AES256',
           'sse_kms_key_id' => 'kms-key'
-        })
+        )
       end
 
       it 'renders the s3 provider section correctly' do

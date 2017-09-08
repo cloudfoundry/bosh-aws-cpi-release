@@ -1043,18 +1043,21 @@ describe Bosh::AwsCloud::Cloud do
 
   context 'create_stemcell for light-stemcell' do
     context 'when global config has encrypted true' do
+      let(:aws_config) do
+        {
+          'region' => @region,
+          'default_key_name' => @default_key_name,
+          'default_security_groups' => get_security_group_ids,
+          'fast_path_delete' => 'yes',
+          'access_key_id' => @access_key_id,
+          'secret_access_key' => @secret_access_key,
+          'max_retries' => 8,
+          'encrypted' => true
+        }
+      end
       let(:my_cpi) do
         Bosh::AwsCloud::Cloud.new(
-          'aws' => {
-            'region' => @region,
-            'default_key_name' => @default_key_name,
-            'default_security_groups' => get_security_group_ids,
-            'fast_path_delete' => 'yes',
-            'access_key_id' => @access_key_id,
-            'secret_access_key' => @secret_access_key,
-            'max_retries' => 8,
-            'encrypted' => true
-          },
+          'aws' => aws_config,
           'registry' => {
             'endpoint' => 'fake',
             'user' => 'fake',
@@ -1063,7 +1066,7 @@ describe Bosh::AwsCloud::Cloud do
         )
       end
 
-      context 'and encrypted flag is not provided in stemcell properties' do
+      context 'and stemcell properties does NOT have encrypted' do
         let(:stemcell_properties) do
           {
             'ami' => {
@@ -1105,6 +1108,87 @@ describe Bosh::AwsCloud::Cloud do
           stemcell_id = my_cpi.create_stemcell('/not/a/real/path', stemcell_properties)
           expect(stemcell_id).to end_with(' light')
           expect(stemcell_id).to eq("#{ami} light")
+        end
+      end
+
+      context 'and global kms_key_arn are provided' do
+        let(:aws_config) do
+          {
+            'region' => @region,
+            'default_key_name' => @default_key_name,
+            'default_security_groups' => get_security_group_ids,
+            'fast_path_delete' => 'yes',
+            'access_key_id' => @access_key_id,
+            'secret_access_key' => @secret_access_key,
+            'max_retries' => 8,
+            'encrypted' => true,
+            'kms_key_arn' => @kms_key_arn
+          }
+        end
+
+        context 'and encrypted is overwritten to false in stemcell properties' do
+          let(:stemcell_properties) do
+            {
+              'encrypted' => false,
+              'ami' => {
+                @region => ami
+              }
+            }
+          end
+
+          it 'should NOT copy the AMI' do
+            stemcell_id = my_cpi.create_stemcell('/not/a/real/path', stemcell_properties)
+            expect(stemcell_id).to end_with(' light')
+            expect(stemcell_id).to eq("#{ami} light")
+          end
+        end
+
+        context 'and stemcell properties does NOT have kms_key_arn' do
+          let(:stemcell_properties) do
+            {
+              'ami' => {
+                @region => ami
+              }
+            }
+          end
+
+          it 'encrypts root disk with global kms_key_arn' do
+            begin
+              stemcell_id = my_cpi.create_stemcell('/not/a/real/path', stemcell_properties)
+              expect(stemcell_id).to_not end_with(' light')
+              expect(stemcell_id).not_to eq("#{ami}")
+
+              encrypted_ami = get_ami(stemcell_id.split[0])
+              expect(encrypted_ami).to_not be_nil
+
+              root_block_device = get_root_block_device(encrypted_ami.root_device_name, encrypted_ami.block_device_mappings)
+              encrypted_snapshot = @ec2.snapshot(root_block_device.ebs.snapshot_id)
+              expect(encrypted_snapshot.encrypted).to be(true)
+              expect(encrypted_snapshot.kms_key_id).to eq(@kms_key_arn)
+            ensure
+              my_cpi.delete_stemcell(stemcell_id) if stemcell_id
+            end
+          end
+        end
+
+        context 'and kms_key_arn is overwritten in stemcell properties' do
+          let(:stemcell_properties) do
+            {
+              'kms_key_arn' => 'invalid-kms-key-arn-only-to-test-override',
+              'ami' => {
+                @region => ami
+              }
+            }
+          end
+
+          it 'should try to create root disk with stemcell properties kms_key_arn' do
+            # It's faster to fail than providing another `kms_key_arn` and waiting for success
+            # if the property wasn't being overwritten it would NOT fail
+            expect do
+              stemcell_id = my_cpi.create_stemcell('/not/a/real/path', stemcell_properties)
+              my_cpi.delete_stemcell(stemcell_id) if stemcell_id
+            end.to raise_error(Bosh::Clouds::CloudError)
+          end
         end
       end
     end

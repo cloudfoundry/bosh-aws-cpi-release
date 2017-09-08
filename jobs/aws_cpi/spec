@@ -50,6 +50,10 @@ properties:
   aws.encrypted:
     description: Encrypts all instances' volumes
     default: false
+  aws.kms_key_arn:
+    description: Encrypts all instances' volumes with the given KMS key. (aws.encrypted) should be true
+    example: arn:aws:kms:us-east-1:XXXXXX:key/e1c1f008-779b-4ebe-8116-0a34b77747dd
+    default: null
 
   registry.username:
     description: User to access the Registry
