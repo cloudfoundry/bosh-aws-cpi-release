@@ -380,31 +380,39 @@ describe Bosh::AwsCloud::Cloud do
     end
 
     context 'when global config has encrypted true' do
-      def check_encrypted_disk(cpi, cloud_properties, encrypted)
+      def check_encrypted_disk(cpi, cloud_properties, encrypted, kms_key_arn = nil)
         begin
+          # NOTE: if provided KMS key does not exist, this method will throw Aws::EC2::Errors::InvalidVolumeNotFound
+          # https://www.pivotaltracker.com/story/show/137931593
           volume_id = cpi.create_disk(2048, cloud_properties)
           expect(volume_id).not_to be_nil
           expect(cpi.has_disk?(volume_id)).to be(true)
 
           encrypted_volume = cpi.ec2_resource.volume(volume_id)
           expect(encrypted_volume.encrypted).to be(encrypted)
+          unless kms_key_arn.nil?
+            expect(encrypted_volume.kms_key_id).to eq(kms_key_arn)
+          end
         ensure
           cpi.delete_disk(volume_id) if volume_id
         end
       end
 
+      let(:aws_config) do
+        {
+          'region' => @region,
+          'default_key_name' => @default_key_name,
+          'default_security_groups' => get_security_group_ids,
+          'fast_path_delete' => 'yes',
+          'access_key_id' => @access_key_id,
+          'secret_access_key' => @secret_access_key,
+          'max_retries' => 8,
+          'encrypted' => true
+        }
+      end
       let(:my_cpi) do
         Bosh::AwsCloud::Cloud.new(
-          'aws' => {
-            'region' => @region,
-            'default_key_name' => @default_key_name,
-            'default_security_groups' => get_security_group_ids,
-            'fast_path_delete' => 'yes',
-            'access_key_id' => @access_key_id,
-            'secret_access_key' => @secret_access_key,
-            'max_retries' => 8,
-            'encrypted' => true
-          },
+          'aws' => aws_config,
           'registry' => {
             'endpoint' => 'fake',
             'user' => 'fake',
@@ -428,19 +436,7 @@ describe Bosh::AwsCloud::Cloud do
           end
 
           it 'creates an encrypted persistent disk' do
-            begin
-              # NOTE: if provided KMS key does not exist, this method will throw Aws::EC2::Errors::InvalidVolumeNotFound
-              # https://www.pivotaltracker.com/story/show/137931593
-              volume_id = my_cpi.create_disk(2048, cloud_properties)
-
-              expect(volume_id).not_to be_nil
-              expect(my_cpi.has_disk?(volume_id)).to be(true)
-
-              encrypted_volume = my_cpi.ec2_resource.volume(volume_id)
-              expect(encrypted_volume.kms_key_id).to eq(@kms_key_arn)
-            ensure
-              my_cpi.delete_disk(volume_id) if volume_id
-            end
+            check_encrypted_disk(my_cpi, cloud_properties, true, @kms_key_arn)
           end
         end
       end
@@ -448,8 +444,46 @@ describe Bosh::AwsCloud::Cloud do
       context 'and encrypted is overwritten to false in disk cloud properties' do
         let(:cloud_properties) { { 'encrypted' => false } }
 
-        it 'creates NOT encrypted disk' do
+        it 'creates unencrypted disk' do
           check_encrypted_disk(my_cpi, cloud_properties, false)
+        end
+      end
+
+      context 'and global kms_key_arn are provided' do
+        let(:aws_config) do
+          {
+            'region' => @region,
+            'default_key_name' => @default_key_name,
+            'default_security_groups' => get_security_group_ids,
+            'fast_path_delete' => 'yes',
+            'access_key_id' => @access_key_id,
+            'secret_access_key' => @secret_access_key,
+            'max_retries' => 8,
+            'encrypted' => true,
+            'kms_key_arn' => @kms_key_arn
+          }
+        end
+
+        context 'and disk cloud properties does NOT have kms_key_arn' do
+          let(:cloud_properties) { {} }
+
+          it 'creates disk with global kms_key_arn' do
+            check_encrypted_disk(my_cpi, cloud_properties, true, @kms_key_arn)
+          end
+        end
+
+        context 'and kms_key_arn is overwritten in stemcell properties' do
+          let(:cloud_properties) { { 'kms_key_arn' => 'invalid-kms-key-arn-only-for-testing-overwrite' } }
+
+          it 'should try to create disk with disk cloud properties kms_key_arn' do
+            # It's faster to fail than providing another `kms_key_arn` and waiting for success
+            # if the property wasn't being overwritten it would NOT fail
+            # also no need to have another KMS key be provided in the tests
+            expect do
+              disk_id = my_cpi.create_disk(2048, cloud_properties)
+              my_cpi.delete_disk(disk_id) if disk_id
+            end.to raise_error(Aws::EC2::Errors::InvalidVolumeNotFound)
+          end
         end
       end
     end
@@ -1189,80 +1223,6 @@ describe Bosh::AwsCloud::Cloud do
               my_cpi.delete_stemcell(stemcell_id) if stemcell_id
             end.to raise_error(Bosh::Clouds::CloudError)
           end
-        end
-      end
-    end
-
-    context 'when encrypted is false' do
-      let(:stemcell_properties) do
-        {
-          'encrypted' => false,
-          'ami' => {
-            @region => ami
-          }
-        }
-      end
-
-      it 'should NOT copy the AMI' do
-        stemcell_id = @cpi.create_stemcell('/not/a/real/path', stemcell_properties)
-        expect(stemcell_id).to end_with(' light')
-        expect(stemcell_id).to eq("#{ami} light")
-      end
-    end
-
-    context 'when encrypted is true and kms_key_arn is NOT provided' do
-      let(:stemcell_properties) do
-        {
-          'encrypted' => true,
-          'ami' => {
-            @region => ami
-          }
-        }
-      end
-
-      it 'should encrypt root disk' do
-        begin
-          stemcell_id = @cpi.create_stemcell('/not/a/real/path', stemcell_properties)
-          expect(stemcell_id).to_not end_with(' light')
-          expect(stemcell_id).not_to eq("#{ami}")
-
-          encrypted_ami = get_ami(stemcell_id.split[0])
-          expect(encrypted_ami).not_to be_nil
-
-          root_block_device = get_root_block_device(encrypted_ami.root_device_name, encrypted_ami.block_device_mappings)
-          expect(root_block_device.ebs.encrypted).to be(true)
-        ensure
-          @cpi.delete_stemcell(stemcell_id) if stemcell_id
-        end
-      end
-    end
-
-    context 'when encrypted is true and kms_key_arn is provided' do
-      let(:stemcell_properties) do
-        {
-          'encrypted' => true,
-          'kms_key_arn' => @kms_key_arn,
-          'ami' => {
-            @region => ami
-          }
-        }
-      end
-
-      it 'should encrypt root disk with provided kms_key_arn' do
-        begin
-          stemcell_id = @cpi.create_stemcell('/not/a/real/path', stemcell_properties)
-          expect(stemcell_id).to_not end_with(' light')
-          expect(stemcell_id).not_to eq("#{ami}")
-
-          encrypted_ami = get_ami(stemcell_id.split[0])
-          expect(encrypted_ami).to_not be_nil
-
-          root_block_device = get_root_block_device(encrypted_ami.root_device_name, encrypted_ami.block_device_mappings)
-          encrypted_snapshot = @ec2.snapshot(root_block_device.ebs.snapshot_id)
-          expect(encrypted_snapshot.encrypted).to be(true)
-          expect(encrypted_snapshot.kms_key_id).to eq(@kms_key_arn)
-        ensure
-          @cpi.delete_stemcell(stemcell_id) if stemcell_id
         end
       end
     end
