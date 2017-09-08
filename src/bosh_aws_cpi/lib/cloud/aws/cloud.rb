@@ -185,13 +185,15 @@ module Bosh::AwsCloud
     def create_disk(size, cloud_properties, instance_id = nil)
       raise ArgumentError, 'disk size needs to be an integer' unless size.kind_of?(Integer)
       with_thread_name("create_disk(#{size}, #{instance_id})") do
+        props = @props_factory.disk_props(cloud_properties)
+
         volume_properties = VolumeProperties.new(
           size: size,
-          type: cloud_properties['type'],
-          iops: cloud_properties['iops'],
+          type: props.type,
+          iops: props.iops,
           az: @az_selector.select_availability_zone(instance_id),
-          encrypted: cloud_properties['encrypted'],
-          kms_key_arn: cloud_properties['kms_key_arn']
+          encrypted: props.encrypted,
+          kms_key_arn: props.kms_key_arn
         )
 
         volume_resp = @ec2_client.create_volume(volume_properties.persistent_disk_config)

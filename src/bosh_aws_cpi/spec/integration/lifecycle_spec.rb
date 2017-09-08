@@ -379,40 +379,77 @@ describe Bosh::AwsCloud::Cloud do
       end
     end
 
-    context 'when encrypted is true' do
-      let(:cloud_properties) { {'encrypted' => true} }
-      it 'can create encrypted disks' do
+    context 'when global config has encrypted true' do
+      def check_encrypted_disk(cpi, cloud_properties, encrypted)
         begin
-          volume_id = @cpi.create_disk(2048, cloud_properties)
+          volume_id = cpi.create_disk(2048, cloud_properties)
           expect(volume_id).not_to be_nil
-          expect(@cpi.has_disk?(volume_id)).to be(true)
+          expect(cpi.has_disk?(volume_id)).to be(true)
 
-          encrypted_volume = @cpi.ec2_resource.volume(volume_id)
-          expect(encrypted_volume.encrypted).to be(true)
+          encrypted_volume = cpi.ec2_resource.volume(volume_id)
+          expect(encrypted_volume.encrypted).to be(encrypted)
         ensure
-          @cpi.delete_disk(volume_id) if volume_id
+          cpi.delete_disk(volume_id) if volume_id
         end
       end
 
-      context 'and kms_key_arn is specified' do
-        before do
-          cloud_properties['kms_key_arn'] = @kms_key_arn
+      let(:my_cpi) do
+        Bosh::AwsCloud::Cloud.new(
+          'aws' => {
+            'region' => @region,
+            'default_key_name' => @default_key_name,
+            'default_security_groups' => get_security_group_ids,
+            'fast_path_delete' => 'yes',
+            'access_key_id' => @access_key_id,
+            'secret_access_key' => @secret_access_key,
+            'max_retries' => 8,
+            'encrypted' => true
+          },
+          'registry' => {
+            'endpoint' => 'fake',
+            'user' => 'fake',
+            'password' => 'fake'
+          }
+        )
+      end
+
+      context 'and encrypted flag is not provided in disk cloud properties' do
+        let(:cloud_properties) { {} }
+
+        it 'creates encrypted disk' do
+          check_encrypted_disk(my_cpi, cloud_properties, true)
         end
 
-        it 'creates an encrypted persistent disk' do
-          begin
-            # NOTE: if provided KMS key does not exist, this method will throw Aws::EC2::Errors::InvalidVolumeNotFound
-            # https://www.pivotaltracker.com/story/show/137931593
-            volume_id = @cpi.create_disk(2048, cloud_properties)
-
-            expect(volume_id).not_to be_nil
-            expect(@cpi.has_disk?(volume_id)).to be(true)
-
-            encrypted_volume = @cpi.ec2_resource.volume(volume_id)
-            expect(encrypted_volume.kms_key_id).to eq(@kms_key_arn)
-          ensure
-            @cpi.delete_disk(volume_id) if volume_id
+        context 'and kms_key_arn is specified' do
+          let(:cloud_properties) do
+            {
+              'kms_key_arn' => @kms_key_arn
+            }
           end
+
+          it 'creates an encrypted persistent disk' do
+            begin
+              # NOTE: if provided KMS key does not exist, this method will throw Aws::EC2::Errors::InvalidVolumeNotFound
+              # https://www.pivotaltracker.com/story/show/137931593
+              volume_id = my_cpi.create_disk(2048, cloud_properties)
+
+              expect(volume_id).not_to be_nil
+              expect(my_cpi.has_disk?(volume_id)).to be(true)
+
+              encrypted_volume = my_cpi.ec2_resource.volume(volume_id)
+              expect(encrypted_volume.kms_key_id).to eq(@kms_key_arn)
+            ensure
+              my_cpi.delete_disk(volume_id) if volume_id
+            end
+          end
+        end
+      end
+
+      context 'and encrypted is overwritten to false in disk cloud properties' do
+        let(:cloud_properties) { { 'encrypted' => false } }
+
+        it 'creates NOT encrypted disk' do
+          check_encrypted_disk(my_cpi, cloud_properties, false)
         end
       end
     end

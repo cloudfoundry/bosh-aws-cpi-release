@@ -63,7 +63,7 @@ module Bosh::AwsCloud
               :device_name => '/dev/sda',
               :ebs => {
                 :snapshot_id => 'id',
-              },
+              }
             },
             {
               :device_name => '/dev/sdb',

@@ -15,6 +15,7 @@ module Bosh::AwsCloud
       @encrypted = !!@cloud_properties['encrypted'] if @cloud_properties.key?('encrypted')
       @kms_key_arn = @cloud_properties['kms_key_arn']
 
+
       @name = @cloud_properties['name']
       @version = @cloud_properties['version']
 
@@ -57,6 +58,21 @@ module Bosh::AwsCloud
 
   end
 
+  class DiskCloudProps
+    attr_reader :type, :iops, :encrypted, :kms_key_arn
+
+    # @param [Hash] cloud_properties
+    # @param [Bosh::AwsCloud::Config] global_config
+    def initialize(cloud_properties, global_config)
+      @type = cloud_properties['type']
+      @iops = cloud_properties['iops']
+
+      @encrypted = global_config.aws.encrypted
+      @encrypted = !!cloud_properties['encrypted'] if cloud_properties.key?('encrypted')
+      @kms_key_arn = cloud_properties['kms_key_arn']
+    end
+  end
+
   class PropsFactory
     def initialize(config)
       @config = config
@@ -64,6 +80,10 @@ module Bosh::AwsCloud
 
     def stemcell_props(stemcell_properties)
       Bosh::AwsCloud::StemcellCloudProps.new(stemcell_properties, @config)
+    end
+
+    def disk_props(disk_properties)
+      Bosh::AwsCloud::DiskCloudProps.new(disk_properties, @config)
     end
   end
 end

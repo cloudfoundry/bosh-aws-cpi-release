@@ -146,12 +146,12 @@ describe Bosh::AwsCloud::Cloud do
       context 'when ami does NOT exist' do
         it 'should return error' do
           cloud = mock_cloud do |ec2|
-            allow(ec2).to receive(:images).with({
+            allow(ec2).to receive(:images).with(
               filters: [{
                 name: 'image-id',
-                values: ['ami-xxxxxxxx'],
-              }],
-            }).and_return([])
+                values: ['ami-xxxxxxxx']
+              }]
+            ).and_return([])
           end
           expect{
             cloud.create_stemcell('/tmp/foo', stemcell_properties)
