@@ -1,7 +1,8 @@
 module Bosh::AwsCloud
   class AwsProvider
-    # TODO(cdutra): remove me when cloud.rb is properly refactored, temporarily
-    attr_reader :ec2_client, :ec2_resource
+    include Helpers
+
+    attr_reader :ec2_client, :ec2_resource, :alb_client, :elb_client
 
     def initialize(aws_config, logger)
       @logger = logger
@@ -9,11 +10,11 @@ module Bosh::AwsCloud
       @elb_params = {
         region: aws_config.region,
         credentials: aws_config.credentials,
-        logger: @logger,
+        logger: @logger
       }
       elb_endpoint = aws_config.elb_endpoint
       if elb_endpoint
-        if URI(@config.aws.elb_endpoint).scheme.nil?
+        if URI(aws_config.elb_endpoint).scheme.nil?
           elb_endpoint = "https://#{elb_endpoint}"
         end
         @elb_params[:endpoint] = elb_endpoint

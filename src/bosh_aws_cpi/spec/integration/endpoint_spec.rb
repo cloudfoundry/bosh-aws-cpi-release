@@ -2,7 +2,6 @@ require 'spec_helper'
 require 'logger'
 require 'cloud'
 require 'open-uri'
-require 'pry'
 
 describe Bosh::AwsCloud::Cloud do
   before(:all) do

@@ -53,7 +53,7 @@ describe 'the aws_cpi executable' do
               'fast_path_delete' => 'yes',
               'max_retries' => 0
             },
-              'registry' => {
+            'registry' => {
               'endpoint' => 'fake',
               'user' => 'fake',
               'password' => 'fake'

@@ -86,12 +86,20 @@ module Bosh::AwsCloud
 
       @elbs = cloud_properties['elbs'] || []
       @lb_target_groups = cloud_properties['lb_target_groups'] || []
-      encrypted = global_config.aws.encrypted
-      if @cloud_properties.key?('ephemeral_disk') && @cloud_properties['ephemeral_disk'].key?('encrypted')
-        encrypted = !!@cloud_properties['ephemeral_disk']['encrypted']
-      end
 
-      @cloud_properties['ephemeral_disk']['encrypted'] = encrypted
+      encrypted = global_config.aws.encrypted
+      if encrypted
+        if @cloud_properties['ephemeral_disk']
+          if @cloud_properties['ephemeral_disk'].key?('encrypted')
+            encrypted = !!@cloud_properties['ephemeral_disk']['encrypted']
+          end
+          @cloud_properties['ephemeral_disk']['encrypted'] = encrypted
+        else
+          @cloud_properties['ephemeral_disk'] = {
+            'encrypted' => encrypted
+          }
+        end
+      end
     end
 
     def to_h

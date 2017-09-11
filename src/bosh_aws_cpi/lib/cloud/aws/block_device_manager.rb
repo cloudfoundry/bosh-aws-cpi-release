@@ -24,7 +24,7 @@ module Bosh::AwsCloud
 
       instance_type = @vm_type.fetch('instance_type', 'unspecified')
       if instance_type =~ /^i3./
-        info = @info.reject {|device| device[:bosh_type] == "raw_ephemeral" }
+        info = @info.reject {|device| device[:bosh_type] == 'raw_ephemeral' }
       end
 
       info.map { |entry| entry.reject { |k| k == :bosh_type } }
@@ -36,7 +36,7 @@ module Bosh::AwsCloud
       end
 
       @info.group_by { |v| v[:bosh_type] }
-        .map { |type, devices| {type => devices.map { |device| {"path" => device[:device_name]} }} }
+        .map { |type, devices| {type => devices.map { |device| { 'path' => device[:device_name]} }} }
         .select { |elem| elem[nil].nil? }
         .inject({}) { |a, b| a.merge(b) }
     end
@@ -68,15 +68,15 @@ module Bosh::AwsCloud
     private
 
     def ephemeral_disk_mapping(instance_type, disk_info)
-      disk_options = @vm_type.fetch("ephemeral_disk", {})
+      disk_options = @vm_type.fetch('ephemeral_disk', {})
 
       if disk_options['use_instance_storage']
         if raw_instance_storage?
-          raise Bosh::Clouds::CloudError, "ephemeral_disk.use_instance_storage and raw_instance_storage cannot both be true"
+          raise Bosh::Clouds::CloudError, 'ephemeral_disk.use_instance_storage and raw_instance_storage cannot both be true'
         end
 
         if disk_options.size > 1
-          raise Bosh::Clouds::CloudError, "use_instance_storage cannot be combined with additional ephemeral_disk properties"
+          raise Bosh::Clouds::CloudError, 'use_instance_storage cannot be combined with additional ephemeral_disk properties'
         end
 
         if disk_info.nil?
@@ -137,7 +137,7 @@ module Bosh::AwsCloud
         result = {
           virtual_name: "ephemeral#{index}",
           device_name: next_device,
-          bosh_type: "raw_ephemeral",
+          bosh_type: 'raw_ephemeral',
         }
         next_device = next_raw_ephemeral_disk(next_device)
         result

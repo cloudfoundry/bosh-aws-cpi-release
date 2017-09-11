@@ -3,6 +3,9 @@ module Bosh::AwsCloud
     attr_reader :max_retries, :credentials, :region, :ec2_endpoint, :elb_endpoint, :stemcell
     attr_reader :access_key_id, :secret_access_key, :encrypted, :kms_key_arn
 
+    CREDENTIALS_SOURCE_STATIC = 'static'
+    CREDENTIALS_SOURCE_ENV_OR_PROFILE = 'env_or_profile'
+
     def initialize(aws_config_hash)
       @config = aws_config_hash
 
@@ -24,8 +27,8 @@ module Bosh::AwsCloud
       # credentials_source could be static (default) or env_or_profile
       # - if "static", credentials must be provided
       # - if "env_or_profile", credentials are read from instance metadata
-      @credentials_source =  @config['credentials_source'] || 'static'
-      if @credentials_source == 'static'
+      @credentials_source =  @config['credentials_source'] || CREDENTIALS_SOURCE_STATIC
+      if @credentials_source == CREDENTIALS_SOURCE_STATIC
         @credentials = Aws::Credentials.new(@access_key_id, @secret_access_key)
       else
         @credentials = Aws::InstanceProfileCredentials.new({retries: 10})
@@ -112,7 +115,7 @@ module Bosh::AwsCloud
     # will be able to authenticate to AWS.
     #
     def self.validate_credentials_source(options)
-      credentials_source = options['aws']['credentials_source'] || 'static'
+      credentials_source = options['aws']['credentials_source'] || AwsConfig::CREDENTIALS_SOURCE_STATIC
 
       if credentials_source != 'env_or_profile' && credentials_source != 'static'
         raise ArgumentError, "Unknown credentials_source #{credentials_source}"
@@ -124,7 +127,7 @@ module Bosh::AwsCloud
         end
       end
 
-      if credentials_source == 'env_or_profile'
+      if credentials_source == AwsConfig::CREDENTIALS_SOURCE_ENV_OR_PROFILE
         if !options['aws']['access_key_id'].nil? || !options['aws']['secret_access_key'].nil?
           raise ArgumentError, "Can't use access_key_id and secret_access_key with env_or_profile credentials_source"
         end

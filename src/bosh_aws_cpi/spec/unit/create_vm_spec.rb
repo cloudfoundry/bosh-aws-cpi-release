@@ -147,7 +147,6 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
   end
 
   it 'creates elb client with correct region' do
-
     @cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
   end
 end

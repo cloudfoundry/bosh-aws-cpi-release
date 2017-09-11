@@ -117,12 +117,12 @@ module Bosh::AwsCloud
           )
 
           target_groups.each do |target_group_name|
-            target_group = LBTargetGroup.new(client: @alb_client, group_name: target_group_name)
+            target_group = LBTargetGroup.new(client: @aws_provider.alb_client, group_name: target_group_name)
             target_group.register(instance.id)
           end
 
           requested_elbs.each do |requested_elb_name|
-            requested_elb = ClassicLB.new(client: @elb_client, elb_name: requested_elb_name)
+            requested_elb = ClassicLB.new(client: @aws_provider.elb_client, elb_name: requested_elb_name)
             requested_elb.register(instance.id)
           end
 
