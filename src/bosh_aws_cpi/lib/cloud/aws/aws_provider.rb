@@ -75,10 +75,12 @@ module Bosh::AwsCloud
 
     def aws_params(aws_config, logger)
       aws_params = {
+        credentials: aws_config.credentials,
         retry_limit: aws_config.max_retries,
         logger: logger,
-        log_level: :debug,
+        log_level: :debug
       }
+
       if aws_config.region
         aws_params[:region] = aws_config.region
       end
