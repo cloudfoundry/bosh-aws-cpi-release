@@ -10,6 +10,7 @@ describe Bosh::AwsCloud::Cloud do
     @elb_id             = ENV['BOSH_AWS_ELB_ID']              || raise('Missing BOSH_AWS_ELB_ID')
     @kms_key_arn        = ENV['BOSH_AWS_KMS_KEY_ARN']         || raise('Missing BOSH_AWS_KMS_KEY_ARN')
     @target_group_name  = ENV['BOSH_AWS_TARGET_GROUP_NAME']   || raise('Missing BOSH_AWS_TARGET_GROUP_NAME')
+    @manual_subnet_id   = ENV['BOSH_AWS_MANUAL_SUBNET_ID']    || raise('Missing BOSH_AWS_MANUAL_SUBNET_ID')
   end
 
   let(:instance_type_with_ephemeral)      { ENV.fetch('BOSH_AWS_INSTANCE_TYPE', 'm3.medium') }
@@ -21,7 +22,7 @@ describe Bosh::AwsCloud::Cloud do
   let(:pv_ami)                            { ENV.fetch('BOSH_AWS_PV_IMAGE_ID', 'ami-3f71225f') }
   let(:windows_ami)                       { ENV.fetch('BOSH_AWS_WINDOWS_IMAGE_ID', 'ami-9be0a8fb') }
   let(:eip)                               { ENV.fetch('BOSH_AWS_ELASTIC_IP') }
-  let(:ipv6_ip)                           { ENV.fetch('BOSH_AWS_IPV6_IP') }
+  let(:ipv6_ip)                           { ENV.fetch('BOSH_AWS_MANUAL_IPV6_IP') }
   let(:instance_type) { instance_type_with_ephemeral }
   let(:vm_metadata) { { deployment: 'deployment', job: 'cpi_spec', index: '0', delete_me: 'please' } }
   let(:disks) { [] }
@@ -71,7 +72,9 @@ describe Bosh::AwsCloud::Cloud do
       # don't blow up tests if instance that we're trying to delete was not found
     end
 
-    ip_addresses = NetAddr::CIDR.create(@subnet_cidr).enumerate.drop(6)
+    @manual_subnet_cidr = @ec2.subnet(@manual_subnet_id).cidr_block
+    manual_ips = NetAddr::CIDR.create(@manual_subnet_cidr).enumerate
+    ip_addresses = manual_ips.first(manual_ips.size - 1).drop(7)
     @manual_ip = ip_addresses[rand(ip_addresses.size)]
   end
 
@@ -87,7 +90,7 @@ describe Bosh::AwsCloud::Cloud do
         'default' => {
           'type' => 'manual',
           'ip' => @manual_ip, # use different IP to avoid race condition
-          'cloud_properties' => { 'subnet' => @subnet_id }
+          'cloud_properties' => { 'subnet' => @manual_subnet_id }
         }
       }
     end
@@ -99,7 +102,7 @@ describe Bosh::AwsCloud::Cloud do
           'ipv6' => {
             'type' => 'manual',
             'ip' => ipv6_ip,
-            'cloud_properties' => {'subnet' => @subnet_id}
+            'cloud_properties' => {'subnet' => @manual_subnet_id}
           }
         }
       end
@@ -825,7 +828,7 @@ describe Bosh::AwsCloud::Cloud do
             vm_type,
             network_spec,
             [],
-            nil,
+            nil
           )
 
           disk_id = @cpi.create_disk(2048, {}, vm_id)
@@ -843,7 +846,7 @@ describe Bosh::AwsCloud::Cloud do
             vm_type,
             network_spec,
             [disk_id],
-            nil,
+            nil
           )
 
           expect {

@@ -44,10 +44,7 @@ RSpec.configure do |rspec_config|
     )
 
     @stemcell_id = create_stemcell
-
-    subnet = @ec2.subnet(@subnet_id)
-    @subnet_cidr = subnet.cidr_block
-    @vpc_id = subnet.vpc_id
+    @vpc_id = @ec2.subnet(@subnet_id).vpc_id
   end
 
   rspec_config.after(:each) do

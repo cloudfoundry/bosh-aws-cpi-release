@@ -32,7 +32,7 @@ function create_env() {
 export AWS_DEFAULT_REGION
 export STATE_FILE=/tmp/integration-terraform-state-"${AWS_DEFAULT_REGION}".tfstate
 export METADATA_FILE=/tmp/integration-terraform-metadata.$$.json
-if [[! -f /tmp/integration-key ]]l; then
+if [[ ! -f /tmp/integration-key ]]; then
   ssh-keygen -t rsa -f /tmp/integration-key -N "" -C $(hostname)
 fi
 echo "Generated /tmp/integration-key and /tmp/integration-key.pub successfully."

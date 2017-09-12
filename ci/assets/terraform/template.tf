@@ -46,6 +46,11 @@ resource "aws_route_table_association" "a" {
   route_table_id = "${aws_route_table.default.id}"
 }
 
+resource "aws_route_table_association" "c" {
+  subnet_id = "${aws_subnet.manual.id}"
+  route_table_id = "${aws_route_table.default.id}"
+}
+
 resource "aws_route_table_association" "b" {
   subnet_id = "${aws_subnet.backup.id}"
   route_table_id = "${aws_route_table.default.id}"
@@ -55,8 +60,7 @@ resource "aws_subnet" "default" {
   vpc_id = "${aws_vpc.default.id}"
   cidr_block = "${cidrsubnet(aws_vpc.default.cidr_block, 8, 0)}"
   ipv6_cidr_block = "${cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 1)}"
-  depends_on = [
-    "aws_internet_gateway.default"]
+  depends_on = ["aws_internet_gateway.default"]
   availability_zone = "${data.aws_availability_zones.available.names[0]}"
 
   tags {
@@ -70,8 +74,7 @@ resource "aws_subnet" "backup" {
   vpc_id = "${aws_vpc.default.id}"
   cidr_block = "${cidrsubnet(aws_vpc.default.cidr_block, 8, 1)}"
   ipv6_cidr_block = "${cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 2)}"
-  depends_on = [
-    "aws_internet_gateway.default"]
+  depends_on = ["aws_internet_gateway.default"]
   availability_zone = "${data.aws_availability_zones.available.names[1]}"
 
   tags {
@@ -79,11 +82,28 @@ resource "aws_subnet" "backup" {
   }
 }
 
+resource "aws_subnet" "manual" {
+  vpc_id = "${aws_vpc.default.id}"
+  cidr_block = "${cidrsubnet(aws_vpc.default.cidr_block, 8, 2)}"
+  ipv6_cidr_block = "${cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 3)}"
+  depends_on = ["aws_internet_gateway.default"]
+  availability_zone = "${data.aws_availability_zones.available.names[0]}"
+
+  tags {
+    Name = "${var.env_name}"
+  }
+
+  map_public_ip_on_launch = true
+}
+
 resource "aws_network_acl" "allow_all" {
   vpc_id = "${aws_vpc.default.id}"
   subnet_ids = [
     "${aws_subnet.default.id}",
-    "${aws_subnet.backup.id}"]
+    "${aws_subnet.backup.id}",
+    "${aws_subnet.manual.id}"
+  ]
+
   egress {
     protocol = "-1"
     rule_no = 2
@@ -150,8 +170,7 @@ resource "aws_elb" "default" {
     lb_protocol = "http"
   }
 
-  subnets = [
-    "${aws_subnet.default.id}"]
+  subnets = ["${aws_subnet.default.id}"]
 
   tags {
     Name = "${var.env_name}"
@@ -167,8 +186,7 @@ resource "aws_elb" "e2e" {
     lb_protocol = "http"
   }
 
-  subnets = [
-    "${aws_subnet.default.id}"]
+  subnets = ["${aws_subnet.manual.id}"]
 
   tags {
     Name = "${var.env_name}-e2e"
@@ -179,7 +197,8 @@ resource "aws_elb" "e2e" {
 resource "aws_alb" "default" {
   subnets = [
     "${aws_subnet.default.id}",
-    "${aws_subnet.backup.id}"]
+    "${aws_subnet.backup.id}"
+  ]
 
   tags {
     Name = "${var.env_name}"
@@ -317,6 +336,9 @@ output "az" {
 output "subnet_id" {
   value = "${aws_subnet.default.id}"
 }
+output "manual_subnet_id" {
+  value = "${aws_subnet.manual.id}"
+}
 output "internal_cidr" {
   value = "${aws_vpc.default.cidr_block}"
 }
@@ -357,9 +379,9 @@ output "aws_kms_key_arn" {
 }
 
 # Used by integration tests
-output "static_ipv6" {
+output "manual_static_ipv6" {
   # workaround: v0.9.5 cidrhost() does not work correctly for IPv6
-  value = "${format("%s4", cidrhost(aws_subnet.default.ipv6_cidr_block, 0))}"
+  value = "${format("%s4", cidrhost(aws_subnet.manual.ipv6_cidr_block, 0))}"
 }
 output "elb" {
   value = "${aws_elb.default.id}"
