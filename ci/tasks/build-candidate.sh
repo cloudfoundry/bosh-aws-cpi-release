@@ -18,5 +18,5 @@ pushd bosh-cpi-src
   cpi_release_name="bosh-aws-cpi"
 
   echo "building CPI release..."
-  bosh2 create-release --name $cpi_release_name --version $semver --with-tarball candidate/$cpi_release_name-$semver.tgz
+  bosh2 create-release --name $cpi_release_name --version $semver --tarball candidate/$cpi_release_name-$semver.tgz
 popd

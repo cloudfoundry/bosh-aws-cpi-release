@@ -70,7 +70,7 @@ jobs:
       - aggregate:
         - {trigger: true, get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {trigger: false, get: version-semver, params: {bump: patch}}
-        - {trigger: false, get: bosh-cpi}
+        - {trigger: false, get: bosh-cli}
       - put: version-semver
         params: {file: version-semver/number}
       - task: build
