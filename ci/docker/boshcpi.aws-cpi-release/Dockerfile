@@ -1,60 +1,68 @@
-FROM ubuntu:15.04
+FROM ubuntu:14.04
 
 RUN locale-gen en_US.UTF-8
 RUN dpkg-reconfigure locales
 ENV LANG en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 
-RUN apt-get update; apt-get -y upgrade; apt-get clean
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    git curl wget tar make unzip \
+    sqlite3 libsqlite3-dev \
+    mysql-client libmysqlclient-dev \
+    libpq-dev \
+    python python-pip realpath && \
+    apt-get clean && \
+    pip install awscli
 
-RUN apt-get install -y git curl wget tar make unzip; apt-get clean
+ENV RUBY_INSTALL_VERSION=0.6.1 CHRUBY_VERSION=0.3.9 RUBY_VERSION=2.1.2 JQ_VERSION=1.5
 
-RUN apt-get install -y sqlite3 libsqlite3-dev; apt-get clean
+# Import stedolan PGP key (jq)
+RUN wget -nv https://raw.githubusercontent.com/stedolan/jq/master/sig/jq-release.key && \
+    gpg --import jq-release.key && \
+    gpg --fingerprint 0x71523402 | grep 'Key fingerprint = 4FD7 01D6 FA9B 3D2D F5AC  935D AF19 040C 7152 3402' && \
+    if [ "$?" != "0" ]; then echo "Invalid PGP key!"; exit 1; fi
 
-RUN apt-get install -y mysql-client libmysqlclient-dev; apt-get clean
+# Install jq
+RUN cd /tmp && \
+    wget -nv https://github.com/stedolan/jq/releases/download/jq-$JQ_VERSION/jq-linux64 && \
+    wget -nv https://raw.githubusercontent.com/stedolan/jq/master/sig/v$JQ_VERSION/jq-linux64.asc && \
+    gpg --verify jq-linux64.asc jq-linux64 && \
+    chmod +x jq-linux64 && \
+    mv jq-linux64 /usr/local/bin/jq
 
-RUN apt-get install -y libpq-dev; apt-get clean
+# Import Postmodern PGP key
+RUN wget -nv https://raw.github.com/postmodern/postmodern.github.io/master/postmodern.asc && \
+    gpg --import postmodern.asc && \
+    gpg --fingerprint 0xB9515E77 | grep 'Key fingerprint = 04B2 F3EA 6541 40BC C7DA  1B57 54C3 D9E9 B951 5E77' && \
+    if [ "$?" != "0" ]; then echo "Invalid PGP key!"; exit 1; fi
 
-RUN apt-get install -y python python-pip groff jq; apt-get clean; pip install awscli;
+# Install chruby
+RUN cd /tmp && \
+    wget -nv -O chruby-$CHRUBY_VERSION.tar.gz https://github.com/postmodern/chruby/archive/v$CHRUBY_VERSION.tar.gz && \
+    wget -nv https://raw.github.com/postmodern/chruby/master/pkg/chruby-$CHRUBY_VERSION.tar.gz.asc && \
+    gpg --verify chruby-$CHRUBY_VERSION.tar.gz.asc chruby-$CHRUBY_VERSION.tar.gz && \
+    tar -xzvf chruby-$CHRUBY_VERSION.tar.gz && \
+    cd chruby-$CHRUBY_VERSION/ && \
+    sudo ./scripts/setup.sh && \
+    rm -rf /tmp/chruby-$CHRUBY_VERSION && rm /tmp/*
 
-# chruby
-RUN mkdir /tmp/chruby && \
-    cd /tmp && \
-    curl https://codeload.github.com/postmodern/chruby/tar.gz/v0.3.9 | tar -xz && \
-    cd /tmp/chruby-0.3.9 && \
-    ./scripts/setup.sh && \
-    rm -rf /tmp/chruby
+# Install ruby-install
+RUN cd /tmp && \
+    wget -nv -O ruby-install-$RUBY_INSTALL_VERSION.tar.gz https://github.com/postmodern/ruby-install/archive/v$RUBY_INSTALL_VERSION.tar.gz && \
+    wget -nv https://raw.github.com/postmodern/ruby-install/master/pkg/ruby-install-$RUBY_INSTALL_VERSION.tar.gz.asc && \
+    gpg --verify ruby-install-$RUBY_INSTALL_VERSION.tar.gz.asc ruby-install-$RUBY_INSTALL_VERSION.tar.gz && \
+    tar -xzvf ruby-install-$RUBY_INSTALL_VERSION.tar.gz && \
+    cd ruby-install-$RUBY_INSTALL_VERSION/ && \
+    sudo make install && \
+    rm -rf /tmp/ruby-install-$RUBY_INSTALL_VERSION && rm /tmp/*
 
-# ruby-install
-RUN mkdir /tmp/ruby-install && \
-    cd /tmp && \
-    curl https://codeload.github.com/postmodern/ruby-install/tar.gz/v0.5.0 | tar -xz && \
-    cd /tmp/ruby-install-0.5.0 && \
-    make install && \
-    rm -rf /tmp/ruby-install
+# Install Ruby
+RUN ruby-install ruby $RUBY_VERSION -- --disable-install-rdoc
 
-# ruby
-RUN ruby-install ruby 2.1.2
-
-# Bundler and BOSH CLI
+# Install Bundler
 RUN /bin/bash -l -c "                            \
   source /etc/profile.d/chruby.sh ;              \
-  chruby 2.1.2 ;                                 \
-  gem install bundler bosh_cli --no-ri --no-rdoc \
+  chruby $RUBY_VERSION ;                         \
+  gem install bundler --no-ri --no-rdoc          \
 "
-
-# Pre-Bundle the bosh-cpi-release
-COPY bosh_aws_cpi /tmp/bosh_aws_cpi
-RUN /bin/bash -l -c "               \
-  source /etc/profile.d/chruby.sh ; \
-  chruby 2.1.2 ;                    \
-  pushd /tmp/bosh_aws_cpi ;     \
-  bundle ;                          \
-  popd ;                            \
-  rm -rf /tmp/bosh_aws_cpi ;    \
-"
-
-RUN cd /tmp && \
-    curl -o certify-artifacts -L https://s3.amazonaws.com/bosh-certification-generator-releases/certify-artifacts-linux-amd64 && \
-    chmod +x certify-artifacts && \
-    mv certify-artifacts /bin/certify-artifacts

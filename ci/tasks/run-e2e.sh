@@ -42,11 +42,11 @@ time bosh2 -n deploy -d e2e-test \
   bosh-cpi-src/ci/assets/e2e-test-release/manifest.yml
 
 # RUN ERRANDS
-time bosh2 -n run-errand -d e2e-test iam-instance-profile-test & \
-  bosh2 -n run-errand -d e2e-test raw-ephemeral-disk-test & \
-  bosh2 -n run-errand -d e2e-test elb-registration-test & \
-  bosh2 -n run-errand -d e2e-test heavy-stemcell-test & \
-  bosh2 -n run-errand -d e2e-test encrypted-heavy-stemcell-test
+time bosh2 -n run-errand -d e2e-test iam-instance-profile-test
+time bosh2 -n run-errand -d e2e-test raw-ephemeral-disk-test
+time bosh2 -n run-errand -d e2e-test elb-registration-test
+time bosh2 -n run-errand -d e2e-test heavy-stemcell-test
+time bosh2 -n run-errand -d e2e-test encrypted-heavy-stemcell-test
 
 # spot instances do not work in China
 region=$( jq -e --raw-output ".region" environment/metadata )
