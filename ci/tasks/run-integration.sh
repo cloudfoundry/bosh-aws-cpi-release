@@ -38,5 +38,5 @@ export BOSH_CLI_SILENCE_SLOW_LOAD_WARNING=true
 
 pushd ${release_dir}/src/bosh_aws_cpi > /dev/null
   bundle install
-  bundle exec parallel_rspec --serialize-stdout -- ${RSPEC_ARGUMENTS}
+  bundle exec rspec ${RSPEC_ARGUMENTS}
 popd > /dev/null
