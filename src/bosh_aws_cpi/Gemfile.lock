@@ -33,6 +33,9 @@ GEM
     method_source (0.8.2)
     multi_json (1.12.2)
     netaddr (1.5.1)
+    parallel (1.12.0)
+    parallel_tests (2.14.2)
+      parallel
     pry (0.10.4)
       coderay (~> 1.1.0)
       method_source (~> 0.8.1)
@@ -71,6 +74,7 @@ DEPENDENCIES
   bosh_common (= 1.3262.24.0)
   bosh_cpi (= 2.4.1)
   netaddr
+  parallel_tests
   pry-byebug (~> 3.4.3)
   rake (~> 12.0)
   rspec (~> 3.5.0)
