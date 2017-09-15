@@ -11,6 +11,9 @@ describe Bosh::AwsCloud::Cloud do
     @kms_key_arn        = ENV['BOSH_AWS_KMS_KEY_ARN']         || raise('Missing BOSH_AWS_KMS_KEY_ARN')
     @target_group_name  = ENV['BOSH_AWS_TARGET_GROUP_NAME']   || raise('Missing BOSH_AWS_TARGET_GROUP_NAME')
     @manual_subnet_id   = ENV['BOSH_AWS_MANUAL_SUBNET_ID']    || raise('Missing BOSH_AWS_MANUAL_SUBNET_ID')
+
+    @ip_semaphore = Mutex.new
+    @already_used = []
   end
 
   let(:instance_type_with_ephemeral)      { ENV.fetch('BOSH_AWS_INSTANCE_TYPE', 'm3.medium') }
@@ -75,7 +78,12 @@ describe Bosh::AwsCloud::Cloud do
     @manual_subnet_cidr = @ec2.subnet(@manual_subnet_id).cidr_block
     manual_ips = NetAddr::CIDR.create(@manual_subnet_cidr).enumerate
     ip_addresses = manual_ips.first(manual_ips.size - 1).drop(7)
-    @manual_ip = ip_addresses[rand(ip_addresses.size)]
+
+    @ip_semaphore.synchronize {
+      ip_addresses = ip_addresses - @already_used
+      @manual_ip = ip_addresses[rand(ip_addresses.size)]
+      @already_used << @manual_ip
+    }
   end
 
   before { allow(Bosh::Clouds::Config).to receive_messages(logger: logger) }
