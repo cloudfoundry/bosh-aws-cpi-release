@@ -4,7 +4,7 @@ set -e
 
 source bosh-cpi-src/ci/utils.sh
 source /etc/profile.d/chruby.sh
-chruby 2.1.2
+chruby 2.4.2
 
 semver=`cat version-semver/number`
 

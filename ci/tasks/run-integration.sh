@@ -15,7 +15,7 @@ release_dir="$( cd $(dirname $0) && cd ../.. && pwd )"
 
 if [[ -f "/etc/profile.d/chruby.sh" ]] ; then
   source /etc/profile.d/chruby.sh
-  chruby 2.1.2
+  chruby 2.4.2
 fi
 
 metadata=$(cat ${METADATA_FILE})

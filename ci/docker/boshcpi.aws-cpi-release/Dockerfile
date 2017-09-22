@@ -15,7 +15,7 @@ RUN apt-get update && \
     apt-get clean && \
     pip install awscli
 
-ENV RUBY_INSTALL_VERSION=0.6.1 CHRUBY_VERSION=0.3.9 RUBY_VERSION=2.1.2 JQ_VERSION=1.5
+ENV RUBY_INSTALL_VERSION=0.6.1 CHRUBY_VERSION=0.3.9 RUBY_VERSION=2.4.2 JQ_VERSION=1.5
 
 # Import stedolan PGP key (jq)
 RUN wget -nv https://raw.githubusercontent.com/stedolan/jq/master/sig/jq-release.key && \

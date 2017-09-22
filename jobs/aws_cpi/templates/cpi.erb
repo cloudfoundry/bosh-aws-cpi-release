@@ -25,12 +25,12 @@ export no_proxy="<%= no_proxy %>"
 export BOSH_CA_CERT_FILE=$BOSH_JOBS_DIR/aws_cpi/config/cacert.pem
 <% end %>
 
-PATH=$BOSH_PACKAGES_DIR/ruby_aws_cpi/bin:$PATH
+PATH=$BOSH_PACKAGES_DIR/ruby-2.4/bin:$PATH
 export PATH
 
 export BUNDLE_GEMFILE=$BOSH_PACKAGES_DIR/bosh_aws_cpi/Gemfile
 
-bundle_cmd="$BOSH_PACKAGES_DIR/ruby_aws_cpi/bin/bundle"
+bundle_cmd="$BOSH_PACKAGES_DIR/ruby-2.4/bin/bundle"
 
 exec $bundle_cmd exec $BOSH_PACKAGES_DIR/bosh_aws_cpi/bin/aws_cpi \
   $BOSH_JOBS_DIR/aws_cpi/config/cpi.json
