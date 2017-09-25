@@ -351,13 +351,13 @@ module Bosh::AwsCloud
         snapshot = volume.create_snapshot(name.join('/'))
         logger.info("snapshot '#{snapshot.id}' of volume '#{disk_id}' created")
 
-
         tags = {}
         ['agent_id', 'instance_id', 'director_name', 'director_uuid'].each do |key|
           tags[key] = metadata[key]
         end
         tags['device'] = devices.first unless devices.empty?
         tags['Name'] = name.join('/')
+        tags.merge!(metadata['custom_tags']) if metadata['custom_tags']
         TagManager.tags(snapshot, tags)
 
         ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
