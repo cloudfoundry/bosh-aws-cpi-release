@@ -27,7 +27,8 @@ describe Bosh::AwsCloud::Cloud do
   let(:eip)                               { ENV.fetch('BOSH_AWS_ELASTIC_IP') }
   let(:ipv6_ip)                           { ENV.fetch('BOSH_AWS_MANUAL_IPV6_IP') }
   let(:instance_type) { instance_type_with_ephemeral }
-  let(:vm_metadata) { { deployment: 'deployment', job: 'cpi_spec', index: '0', delete_me: 'please' } }
+  let(:custom_tags) { {custom1: 'custom_value1', custom2: 'custom_value2'} }
+  let(:vm_metadata) { { deployment: 'deployment', job: 'cpi_spec', index: '0', delete_me: 'please', custom_tags: custom_tags } }
   let(:disks) { [] }
   let(:network_spec) { {} }
   let(:vm_type) { { 'instance_type' => instance_type, 'availability_zone' => @subnet_zone } }
@@ -295,6 +296,8 @@ describe Bosh::AwsCloud::Cloud do
             expect(snapshot_tags['director_name']).to eq 'Director'
             expect(snapshot_tags['director_uuid']).to eq '6d06b0cc-2c08-43c5-95be-f1b2dd247e18'
             expect(snapshot_tags['Name']).to eq 'deployment/cpi_spec/0/sdf'
+            expect(snapshot_tags['custom1']).to eq 'custom_value1'
+            expect(snapshot_tags['custom2']).to eq 'custom_value2'
 
           ensure
             @cpi.delete_snapshot(snapshot_id) if snapshot_id
