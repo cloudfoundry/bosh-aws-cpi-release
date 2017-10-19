@@ -23,7 +23,8 @@ pushd promoted/repo
   cat > config/private.yml << EOF
 ---
 blobstore:
-  s3:
+  provider: s3
+  options:
     access_key_id: $AWS_ACCESS_KEY_ID
     secret_access_key: $AWS_SECRET_ACCESS_KEY
 EOF
