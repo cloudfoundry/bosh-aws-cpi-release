@@ -58,11 +58,11 @@ RUN cd /tmp && \
     rm -rf /tmp/ruby-install-$RUBY_INSTALL_VERSION && rm /tmp/*
 
 # Install Ruby
-RUN ruby-install ruby $RUBY_VERSION -- --disable-install-rdoc
+RUN apt-get update && ruby-install ruby $RUBY_VERSION -- --disable-install-rdoc
 
 # Install Bundler
 RUN /bin/bash -l -c "                            \
   source /etc/profile.d/chruby.sh ;              \
   chruby $RUBY_VERSION ;                         \
-  gem install bundler --no-ri --no-rdoc          \
+  gem install bundler -v --no-ri --no-rdoc          \
 "
