@@ -7,18 +7,7 @@ module Bosh::AwsCloud
     def initialize(aws_config, logger)
       @logger = logger
 
-      @elb_params = {
-        region: aws_config.region,
-        credentials: aws_config.credentials,
-        logger: @logger
-      }
-      elb_endpoint = aws_config.elb_endpoint
-      if elb_endpoint
-        if URI(aws_config.elb_endpoint).scheme.nil?
-          elb_endpoint = "https://#{elb_endpoint}"
-        end
-        @elb_params[:endpoint] = elb_endpoint
-      end
+      @elb_params = aws_params(aws_config, @logger)
 
       @elb_client = Aws::ElasticLoadBalancing::Client.new(@elb_params)
       @alb_client = Aws::ElasticLoadBalancingV2::Client.new(@elb_params)
@@ -72,6 +61,31 @@ module Bosh::AwsCloud
     end
 
     private
+
+    def elb_params(aws_config, logger)
+      elb_params = {
+        credentials: aws_config.credentials,
+        retry_limit: aws_config.max_retries,
+        logger: logger,
+        log_level: :debug
+        region: aws_config.region,
+        credentials: aws_config.credentials,
+        logger: @logger
+      }
+      elb_endpoint = aws_config.elb_endpoint
+      if elb_endpoint
+        if URI(aws_config.elb_endpoint).scheme.nil?
+          elb_endpoint = "https://#{elb_endpoint}"
+        end
+        elb_params[:endpoint] = elb_endpoint
+      end
+
+      if ENV.has_key?('BOSH_CA_CERT_FILE')
+        elb_params[:ssl_ca_bundle] = ENV['BOSH_CA_CERT_FILE']
+      end
+
+      elb_params
+    end
 
     def aws_params(aws_config, logger)
       aws_params = {
