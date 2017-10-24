@@ -73,7 +73,7 @@ When you need to terraform a VPC but don't need to run tests (e.g. you're deploy
 ```bash
 . ~/scratch/aws/lifecycle.env
 src/bosh_aws_cpi/bin/test-integration
-bosh2 create-env ~/scratch/aws/bosh-minimal.yml \
+bosh create-env ~/scratch/aws/bosh-minimal.yml \
   -v PublicSubnetID=$(jq -r '.modules[0].outputs.PublicSubnetID.value' < /tmp/integration-terraform-state-us-west-1.tfstate) \
   -v DeploymentEIP=$(jq -r '.modules[0].outputs.DeploymentEIP.value' < /tmp/integration-terraform-state-us-west-1.tfstate) \
   -v access_key_id=$AWS_ACCESS_KEY_ID \

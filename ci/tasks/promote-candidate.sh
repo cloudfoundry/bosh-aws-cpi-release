@@ -30,7 +30,7 @@ blobstore:
 EOF
 
   echo "finalizing CPI release..."
-  bosh2 finalize-release ${dev_release} --version $integer_version
+  bosh finalize-release ${dev_release} --version $integer_version
 
   rm config/private.yml
 
