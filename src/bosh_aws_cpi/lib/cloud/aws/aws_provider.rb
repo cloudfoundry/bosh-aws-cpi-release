@@ -7,7 +7,7 @@ module Bosh::AwsCloud
     def initialize(aws_config, logger)
       @logger = logger
 
-      @elb_params = aws_params(aws_config, @logger)
+      @elb_params = elb_params(aws_config, @logger)
 
       @elb_client = Aws::ElasticLoadBalancing::Client.new(@elb_params)
       @alb_client = Aws::ElasticLoadBalancingV2::Client.new(@elb_params)
@@ -64,13 +64,10 @@ module Bosh::AwsCloud
 
     def elb_params(aws_config, logger)
       elb_params = {
-        credentials: aws_config.credentials,
-        retry_limit: aws_config.max_retries,
-        logger: logger,
-        log_level: :debug
         region: aws_config.region,
         credentials: aws_config.credentials,
-        logger: @logger
+        logger: logger,
+        log_level: :debug
       }
       elb_endpoint = aws_config.elb_endpoint
       if elb_endpoint
