@@ -17,6 +17,7 @@ module Bosh::AwsCloud
 
       @access_key_id = @config['access_key_id']
       @secret_access_key = @config['secret_access_key']
+      @session_token = @config['session_token']
 
       @stemcell = @config['stemcell'] || {}
       @fast_path_delete = @config['fast_path_delete'] || false
@@ -29,7 +30,7 @@ module Bosh::AwsCloud
       # - if "env_or_profile", credentials are read from instance metadata
       @credentials_source =  @config['credentials_source'] || CREDENTIALS_SOURCE_STATIC
       if @credentials_source == CREDENTIALS_SOURCE_STATIC
-        @credentials = Aws::Credentials.new(@access_key_id, @secret_access_key)
+        @credentials = Aws::Credentials.new(@access_key_id, @secret_access_key, @session_token)
       else
         @credentials = Aws::InstanceProfileCredentials.new({retries: 10})
       end
