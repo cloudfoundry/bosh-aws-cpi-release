@@ -592,7 +592,7 @@ module Bosh::AwsCloud
       cloud_error('Instance has too many disks attached') unless device_name
 
       # Work around AWS eventual (in)consistency:
-      # even tough we don't call attach_disk until the disk is ready,
+      # even though we don't call attach_disk until the disk is ready,
       # AWS might still lie and say that the disk isn't ready yet, so
       # we try again just to be really sure it is telling the truth
       attachment_resp = nil
