@@ -22,7 +22,7 @@ function create_env() {
     -var "access_key=${AWS_ACCESS_KEY_ID}" \
     -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
     -var "region=${AWS_DEFAULT_REGION}" \
-    -var "env_name=$(hostname)-local-integration" \
+    -var "env_name=$(hostname -s)-local-integration" \
     -var "public_key=${PUBLIC_KEY}" \
     "${RELEASE_DIR}/ci/assets/terraform"
 
