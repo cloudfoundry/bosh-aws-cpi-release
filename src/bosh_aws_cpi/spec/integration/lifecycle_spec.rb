@@ -75,6 +75,45 @@ describe Bosh::AwsCloud::Cloud do
     end
   end
 
+  context 'using STS credentials' do
+
+    let(:sts_cpi) do
+      sts_client = Aws::STS::Client.new(
+        :region => @region,
+        :access_key_id => @access_key_id,
+        :secret_access_key => @secret_access_key,
+        :session_token => @session_token,
+      )
+      session = sts_client.get_session_token({
+        duration_seconds: 900,
+      }).to_h[:credentials]
+
+      described_class.new(
+        'aws' => {
+          'region' => @region,
+          'default_key_name' => @default_key_name,
+          'fast_path_delete' => 'yes',
+          'access_key_id' => session[:access_key_id],
+          'secret_access_key' => session[:secret_access_key],
+          'session_token' => session[:session_token],
+          'max_retries' => 8
+        },
+        'registry' => {
+          'endpoint' => 'fake',
+          'user' => 'fake',
+          'password' => 'fake'
+        }
+      )
+    end
+    it 'it can perform a AWS API call', :focus => true do
+      skip("Already using STS credentials") unless @session_token.nil? || @session_token == ""
+
+      expect {
+        sts_cpi.delete_disk('vol-4c68780b')
+      }.to raise_error Bosh::Clouds::DiskNotFound
+    end
+  end
+
   describe 'deleting things that no longer exist' do
     it 'raises the appropriate Clouds::Error' do
       # pass in *real* previously deleted ids instead of made up ones
