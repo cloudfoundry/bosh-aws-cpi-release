@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'pry-byebug'
 
 module Bosh::AwsCloud
   describe InstanceManager do
@@ -26,6 +27,12 @@ module Bosh::AwsCloud
           'instance_type' => 'm1.small',
           'availability_zone' => 'us-east-1a',
         }
+      end
+      let(:global_config) do
+        instance_double(Bosh::AwsCloud::Config, aws: Bosh::AwsCloud::AwsConfig.new(default_options['aws']))
+      end
+      let(:vm_cloud_props) do
+        Bosh::AwsCloud::VMCloudProps.new(vm_type, global_config)
       end
       let(:networks_spec) do
         {
@@ -111,6 +118,7 @@ module Bosh::AwsCloud
         allow(ec2).to receive(:instance).with('i-12345678').and_return(aws_instance)
 
         allow(Instance).to receive(:new).and_return(instance)
+        allow(instance).to receive(:source_dest_check=).with(vm_cloud_props.source_dest_check)
         allow(instance).to receive(:wait_for_running)
         allow(instance).to receive(:update_routing_tables)
       end
@@ -121,7 +129,7 @@ module Bosh::AwsCloud
         expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
         instance_manager.create(
           stemcell_id,
-          vm_type,
+          vm_cloud_props,
           networks_spec,
           disk_locality,
           default_options
@@ -136,12 +144,13 @@ module Bosh::AwsCloud
           allow(logger).to receive(:info)
           instance_manager.create(
             stemcell_id,
-            vm_type,
+            vm_cloud_props,
             networks_spec,
             disk_locality,
             default_options
           )
         end
+
         it '`user_data` when creating an instance' do
           expect(logger).to have_received(:info).with(/"user_data"=>"<redacted>"/)
         end
@@ -205,7 +214,7 @@ module Bosh::AwsCloud
           # Trigger spot instance request
           instance_manager.create(
             stemcell_id,
-            vm_type,
+            vm_cloud_props,
             networks_spec,
             disk_locality,
             default_options
@@ -220,7 +229,7 @@ module Bosh::AwsCloud
             expect {
               instance_manager.create(
                 stemcell_id,
-                vm_type,
+                vm_cloud_props,
                 networks_spec,
                 disk_locality,
                 default_options
@@ -254,7 +263,7 @@ module Bosh::AwsCloud
 
               instance_manager.create(
                 stemcell_id,
-                vm_type,
+                vm_cloud_props,
                 networks_spec,
                 disk_locality,
                 default_options
@@ -269,7 +278,7 @@ module Bosh::AwsCloud
 
               instance_manager.create(
                 stemcell_id,
-                vm_type,
+                vm_cloud_props,
                 networks_spec,
                 disk_locality,
                 default_options
@@ -283,16 +292,16 @@ module Bosh::AwsCloud
         before do
           vm_type['source_dest_check'] = false
         end
+
         it 'disables source_dest_check on the instance' do
           allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
           expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
-          expect(instance).to receive(:source_dest_check=).with(false)
           expect(instance).to receive(:wait_for_running)
 
           instance_manager.create(
             stemcell_id,
-            vm_type,
+            vm_cloud_props,
             networks_spec,
             disk_locality,
             default_options
@@ -308,16 +317,15 @@ module Bosh::AwsCloud
           with(run_instances_params).
           and_raise(Aws::EC2::Errors::InvalidIPAddressInUse.new(nil, 'in-use'))
 
-        expect(aws_client).to receive(:run_instances).
-          with(run_instances_params).
-          and_return('run-instances-response')
+        expect(aws_client).to receive(:run_instances)
+          .with(run_instances_params).and_return('run-instances-response')
 
         allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
         expect(logger).to receive(:warn).with(/IP address was in use/).once
 
         instance_manager.create(
           stemcell_id,
-          vm_type,
+          vm_cloud_props,
           networks_spec,
           disk_locality,
           default_options
@@ -341,7 +349,7 @@ module Bosh::AwsCloud
           expect {
             instance_manager.create(
               stemcell_id,
-              vm_type,
+              vm_cloud_props,
               networks_spec,
               disk_locality,
               default_options
@@ -362,7 +370,7 @@ module Bosh::AwsCloud
           expect {
             instance_manager.create(
               stemcell_id,
-              vm_type,
+              vm_cloud_props,
               networks_spec,
               disk_locality,
               default_options
@@ -382,7 +390,7 @@ module Bosh::AwsCloud
             expect {
               instance_manager.create(
                 stemcell_id,
-                vm_type,
+                vm_cloud_props,
                 networks_spec,
                 disk_locality,
                 default_options

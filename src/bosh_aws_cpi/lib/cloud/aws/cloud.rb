@@ -110,7 +110,7 @@ module Bosh::AwsCloud
         begin
           instance, block_device_agent_info = @instance_manager.create(
             stemcell.image_id,
-            props.to_h,
+            props,
             network_spec,
             (disk_locality || []),
             @config.aws.to_h

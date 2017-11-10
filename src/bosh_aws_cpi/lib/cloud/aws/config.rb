@@ -4,8 +4,8 @@ module Bosh::AwsCloud
     attr_reader :access_key_id, :secret_access_key, :default_key_name, :encrypted, :kms_key_arn
     attr_reader :default_iam_instance_profile
 
-    CREDENTIALS_SOURCE_STATIC = 'static'
-    CREDENTIALS_SOURCE_ENV_OR_PROFILE = 'env_or_profile'
+    CREDENTIALS_SOURCE_STATIC = 'static'.freeze
+    CREDENTIALS_SOURCE_ENV_OR_PROFILE = 'env_or_profile'.freeze
 
     def initialize(aws_config_hash)
       @config = aws_config_hash
@@ -30,12 +30,13 @@ module Bosh::AwsCloud
       # credentials_source could be static (default) or env_or_profile
       # - if "static", credentials must be provided
       # - if "env_or_profile", credentials are read from instance metadata
-      @credentials_source =  @config['credentials_source'] || CREDENTIALS_SOURCE_STATIC
-      if @credentials_source == CREDENTIALS_SOURCE_STATIC
-        @credentials = Aws::Credentials.new(@access_key_id, @secret_access_key)
-      else
-        @credentials = Aws::InstanceProfileCredentials.new({retries: 10})
-      end
+      @credentials_source = @config['credentials_source'] || CREDENTIALS_SOURCE_STATIC
+      @credentials =
+        if @credentials_source == CREDENTIALS_SOURCE_STATIC
+          Aws::Credentials.new(@access_key_id, @secret_access_key)
+        else
+          Aws::InstanceProfileCredentials.new(retries: 10)
+        end
     end
 
     def to_h

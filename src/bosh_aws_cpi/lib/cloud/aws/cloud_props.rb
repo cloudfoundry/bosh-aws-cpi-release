@@ -81,7 +81,7 @@ module Bosh::AwsCloud
     attr_reader :spot_bid_price, :spot_ondemand_fallback, :iam_instance_profile
     attr_reader :placement_group, :tenancy, :auto_assign_public_ip, :elbs
     attr_reader :lb_target_groups, :advertised_routes, :raw_instance_storage
-    attr_reader :ephemeral_disk, :root_disk
+    attr_reader :source_dest_check, :ephemeral_disk, :root_disk
 
     # @param [Hash] cloud_properties
     # @param [Bosh::AwsCloud::Config] global_config

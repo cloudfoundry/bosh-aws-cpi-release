@@ -13,10 +13,15 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
   }
   let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-id') }
   let(:network_configurator) { double('network configurator') }
-
+  let(:global_config) do
+    instance_double(Bosh::AwsCloud::Config, aws: Bosh::AwsCloud::AwsConfig.new({}))
+  end
   let(:agent_id) {'agent_id'}
   let(:stemcell_id) {'stemcell_id'}
   let(:vm_type) { {} }
+  let(:vm_cloud_props) do
+    Bosh::AwsCloud::VMCloudProps.new({}, global_config)
+  end
   let(:networks_spec) do
     {
       'fake-network-name-1' => {
@@ -41,6 +46,7 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
     }
     ops
   end
+  let(:props_factory) { instance_double(Bosh::AwsCloud::PropsFactory) }
 
   before do
     @cloud = mock_cloud(options) do |_ec2|
@@ -57,10 +63,14 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
       allow(Aws::ElasticLoadBalancing).to receive(:new).with(hash_including(region: 'bar'))
 
       allow(Bosh::AwsCloud::InstanceManager).to receive(:new).and_return(instance_manager)
+
+      allow(Bosh::AwsCloud::PropsFactory).to receive(:new).and_return(props_factory)
     end
 
+    allow(props_factory).to receive(:vm_props).with(vm_type).and_return(vm_cloud_props)
+
     allow(instance_manager).to receive(:create).
-      with(stemcell_id, vm_type, networks_spec, disk_locality, aws_options).
+      with(stemcell_id, vm_cloud_props, networks_spec, disk_locality, aws_options).
       and_return([instance, block_device_agent_info])
 
     allow(Bosh::AwsCloud::NetworkConfigurator).to receive(:new).

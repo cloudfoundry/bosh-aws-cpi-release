@@ -162,12 +162,16 @@ module Bosh::AwsCloud
       it 'updates the routing table entry with the instance ID when finding an existing route' do
           destination = "10.0.0.0/16"
           expect(fake_route).to receive(:replace).with(instance_id: instance_id)
-          instance.update_routing_tables [{ "table_id" => "r-12345", "destination" => destination }]
+          instance.update_routing_tables [Bosh::AwsCloud::VMCloudProps::AdvertisedRoute.new(
+            "table_id" => "r-12345", "destination" => destination
+          )]
       end
       it 'creates a routing table entry with the instance ID when the route does not exist' do
           destination = "10.5.0.0/16"
           expect(fake_table).to receive(:create_route).with(destination_cidr_block: destination, instance_id: instance_id)
-          instance.update_routing_tables [{ "table_id" => "r-12345", "destination" => destination }]
+          instance.update_routing_tables [Bosh::AwsCloud::VMCloudProps::AdvertisedRoute.new(
+            "table_id" => "r-12345", "destination" => destination
+          )]
       end
     end
 
