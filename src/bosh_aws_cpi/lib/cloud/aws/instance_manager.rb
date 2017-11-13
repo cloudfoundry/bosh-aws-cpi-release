@@ -18,7 +18,7 @@ module Bosh::AwsCloud
 
     def create(stemcell_id, vm_cloud_props, networks_spec, disk_locality, aws_option)
       ami = @ec2.image(stemcell_id)
-      @block_device_manager.vm_type = vm_cloud_props.to_h
+      @block_device_manager.vm_type = vm_cloud_props
       @block_device_manager.virtualization_type = ami.virtualization_type
       @block_device_manager.root_device_name = ami.root_device_name
       @block_device_manager.ami_block_device_names = ami.block_device_mappings.map { |blk| blk.device_name }
@@ -98,13 +98,13 @@ module Bosh::AwsCloud
 
       @param_mapper.manifest_params = {
         stemcell_id: stemcell_id,
-        vm_type: vm_cloud_props.to_h,
+        vm_type: vm_cloud_props,
         registry_endpoint: @registry.endpoint,
         networks_spec: networks_spec,
         defaults: aws_options,
         volume_zones: volume_zones,
         subnet_az_mapping: subnet_az_mapping(networks_spec),
-        block_device_mappings: block_device_mappings,
+        block_device_mappings: block_device_mappings
       }
       @param_mapper.validate
       @param_mapper.instance_params

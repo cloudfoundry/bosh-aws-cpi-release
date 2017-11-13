@@ -1,5 +1,4 @@
 require 'spec_helper'
-require 'pry-byebug'
 
 module Bosh::AwsCloud
   describe InstanceManager do

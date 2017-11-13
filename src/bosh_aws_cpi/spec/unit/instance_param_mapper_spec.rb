@@ -1,5 +1,6 @@
-require "spec_helper"
-require "base64"
+require 'spec_helper'
+require 'base64'
+require 'pry-byebug'
 
 module Bosh::AwsCloud
   describe InstanceParamMapper do
@@ -23,29 +24,54 @@ module Bosh::AwsCloud
       instance_double(Aws::EC2::Subnet,
         vpc: instance_double(Aws::EC2::Vpc, security_groups: security_groups))
     end
+    let(:aws_config) do
+      instance_double(Bosh::AwsCloud::AwsConfig)
+    end
+    let(:global_config) do
+      instance_double(Bosh::AwsCloud::Config, aws: aws_config)
+    end
+    let(:vm_cloud_props) do
+      Bosh::AwsCloud::VMCloudProps.new(vm_type, global_config)
+    end
+    let(:vm_type) { {} }
 
     before do
+      allow(aws_config).to receive(:default_key_name)
+      allow(aws_config).to receive(:default_iam_instance_profile)
+      allow(aws_config).to receive(:encrypted)
+
       allow(ec2_resource).to receive(:subnet).with(dynamic_subnet_id).and_return(shared_subnet)
     end
 
     describe '#instance_params' do
 
       context 'when stemcell_id is provided' do
-        let(:input) { { stemcell_id: 'fake-stemcell' } }
+        let(:input) do
+          {
+            stemcell_id: 'fake-stemcell',
+            vm_type: vm_cloud_props
+          }
+        end
         let(:output) { { image_id: 'fake-stemcell' } }
 
-        it 'maps to image_id' do expect(mapping(input)).to eq(output) end
+        it 'maps to image_id' do
+          expect(mapping(input)).to eq(output)
+        end
       end
 
       context 'when instance_type is provided by vm_type' do
-        let(:input) { { vm_type: { 'instance_type' => 'fake-instance' } } }
+        let(:vm_type) { { 'instance_type' => 'fake-instance' } }
+        let(:input) { { vm_type: vm_cloud_props } }
         let(:output) { { instance_type: 'fake-instance' } }
 
         it 'maps to instance_type' do expect(mapping(input)).to eq(output) end
       end
 
       context 'when placement_group is provided by vm_type' do
-        let(:input) { { vm_type: { 'placement_group' => 'fake-group' } } }
+        let(:vm_type) do
+          { 'placement_group' => 'fake-group' }
+        end
+        let(:input) { { vm_type: vm_cloud_props } }
         let(:output) { { placement: { group_name: 'fake-group' } } }
 
         it 'maps to placement.group_name' do expect(mapping(input)).to eq(output) end
@@ -53,14 +79,16 @@ module Bosh::AwsCloud
 
       describe 'Tenancy options' do
         context 'when tenancy is provided by vm_type, as "dedicated"' do
-          let(:input) { { vm_type: { 'tenancy' => 'dedicated' } } }
+          let(:vm_type) { { 'tenancy' => 'dedicated' } }
+          let(:input) { { vm_type: vm_cloud_props } }
           let(:output) { { placement: { tenancy: 'dedicated' } } }
 
           it 'maps to placement.tenancy' do expect(mapping(input)).to eq(output) end
         end
 
         context 'when tenancy is provided by vm_type, as other than "dedicated"' do
-          let(:input) { { vm_type: { 'tenancy' => 'ignored' } } }
+          let(:vm_type) { { 'tenancy' => 'ignored' } }
+          let(:input) { { vm_type: vm_cloud_props } }
           let(:output) { {} }
 
           it 'is ignored' do expect(mapping(input)).to eq(output) end
@@ -71,24 +99,30 @@ module Bosh::AwsCloud
         context 'when key_name is provided by defaults (only)' do
           let(:input) do
             {
-              defaults: { 'default_key_name' => 'default-fake-key-name' }
+              vm_type: vm_cloud_props
             }
           end
           let(:output) { { key_name: 'default-fake-key-name' } }
+
+          before do
+            expect(aws_config).to receive(:default_key_name).and_return('default-fake-key-name')
+          end
 
           it 'maps key_name from defaults' do expect(mapping(input)).to eq(output) end
         end
 
         context 'when key_name is provided by defaults and vm_type' do
+          let(:vm_type) { { 'key_name' => 'fake-key-name' } }
           let(:input) do
             {
-              vm_type: { 'key_name' => 'fake-key-name' },
-              defaults: { 'default_key_name' => 'default-fake-key-name' }
+              vm_type: vm_cloud_props
             }
           end
           let(:output) { { key_name: 'fake-key-name' } }
 
-          it 'maps key_name from vm_type' do expect(mapping(input)).to eq(output) end
+          it 'maps key_name from vm_type' do
+            expect(mapping(input)).to eq(output)
+          end
         end
       end
 
@@ -96,19 +130,25 @@ module Bosh::AwsCloud
         context 'when iam_instance_profile is provided by defaults (only)' do
           let(:input) do
             {
-              defaults: { 'default_iam_instance_profile' => 'default-fake-iam-profile' }
+              vm_type: vm_cloud_props
             }
           end
           let(:output) { { iam_instance_profile: { name: 'default-fake-iam-profile' } } }
 
-          it 'maps iam_instance_profile from defaults' do expect(mapping(input)).to eq(output) end
+          before do
+            expect(aws_config).to receive(:default_iam_instance_profile).and_return('default-fake-iam-profile')
+          end
+
+          it 'maps iam_instance_profile from defaults' do
+            expect(mapping(input)).to eq(output)
+          end
         end
 
         context 'when iam_instance_profile is provided by defaults and vm_type' do
+          let(:vm_type) { { 'iam_instance_profile' => 'fake-iam-profile' } }
           let(:input) do
             {
-              vm_type: { 'iam_instance_profile' => 'fake-iam-profile' },
-              defaults: { 'default_iam_instance_profile' => 'default-fake-iam-profile' }
+              vm_type: vm_cloud_props
             }
           end
           let(:output) { { iam_instance_profile: { name: 'fake-iam-profile' } } }
@@ -121,14 +161,15 @@ module Bosh::AwsCloud
         context 'when security_groups is provided by defaults (only)' do
           let(:input) do
             {
+              vm_type: vm_cloud_props,
               networks_spec: {
-                "net1" => {
-                  "cloud_properties" => {
-                    "subnet" => dynamic_subnet_id,
+                'net1' => {
+                  'cloud_properties' => {
+                    'subnet' => dynamic_subnet_id,
                   }
                 },
               },
-              defaults: { 'default_security_groups' => ["sg-11111111", "sg-2-name"] }
+              defaults: { 'default_security_groups' => ['sg-11111111', 'sg-2-name'] }
             }
           end
           let(:output) do
@@ -136,7 +177,7 @@ module Bosh::AwsCloud
               network_interfaces: [{
                 device_index: 0,
                 subnet_id: dynamic_subnet_id,
-                groups: ["sg-11111111", "sg-22222222"]
+                groups: ['sg-11111111', 'sg-22222222']
               }]
             }
           end
@@ -147,21 +188,22 @@ module Bosh::AwsCloud
         context 'when security_groups is provided by defaults and networks_spec' do
           let(:input) do
             {
+              vm_type: vm_cloud_props,
               networks_spec: {
-                "net1" => {
-                  "cloud_properties" => {
-                    "security_groups" => ["sg-11111111", "sg-2-name"],
-                    "subnet" => dynamic_subnet_id,
+                'net1' => {
+                  'cloud_properties' => {
+                    'security_groups' => ['sg-11111111', 'sg-2-name'],
+                    'subnet' => dynamic_subnet_id,
                   }
                 },
-                "net2" => {
-                  "cloud_properties" => {
-                    "security_groups" => "sg-33333333",
-                    "subnet" => dynamic_subnet_id,
+                'net2' => {
+                  'cloud_properties' => {
+                    'security_groups' => 'sg-33333333',
+                    'subnet' => dynamic_subnet_id,
                   }
                 }
               },
-              defaults: { 'default_security_groups' => ["sg-44444444", "sg-5-name"] }
+              defaults: { 'default_security_groups' => ['sg-44444444', 'sg-5-name'] }
             }
           end
           let(:output) do
@@ -169,33 +211,36 @@ module Bosh::AwsCloud
               network_interfaces: [{
                 device_index: 0,
                 subnet_id: dynamic_subnet_id,
-                groups: ["sg-11111111", "sg-22222222", "sg-33333333"]
+                groups: ['sg-11111111', 'sg-22222222', 'sg-33333333']
               }]
             }
           end
 
-          it 'maps network_interfaces.first[:groups] from networks_spec' do expect(mapping(input)).to eq(output) end
+          it 'maps network_interfaces.first[:groups] from networks_spec' do
+            expect(mapping(input)).to eq(output)
+          end
         end
 
         context 'when security_groups is provided by defaults, networks_spec, and vm_type' do
+          let(:vm_type) { { 'security_groups' => ['sg-11111111', 'sg-2-name'] } }
           let(:input) do
             {
-              vm_type: { 'security_groups' => ["sg-11111111", "sg-2-name"] },
+              vm_type: vm_cloud_props,
               networks_spec: {
-                "net1" => {
-                  "cloud_properties" => {
-                    "security_groups" => ["sg-33333333", "sg-4-name"],
-                    "subnet" => dynamic_subnet_id,
+                'net1' => {
+                  'cloud_properties' => {
+                    'security_groups' => ['sg-33333333', 'sg-4-name'],
+                    'subnet' => dynamic_subnet_id,
                   }
                 },
-                "net2" => {
-                  "cloud_properties" => {
-                    "security_groups" => "sg-55555555",
-                    "subnet" => dynamic_subnet_id,
+                'net2' => {
+                  'cloud_properties' => {
+                    'security_groups' => 'sg-55555555',
+                    'subnet' => dynamic_subnet_id,
                   }
                 }
               },
-              defaults: { 'default_security_groups' => ["sg-6-name", "sg-77777777"] }
+              defaults: { 'default_security_groups' => ['sg-6-name', 'sg-77777777'] }
             }
           end
           let(:output) do
@@ -203,54 +248,67 @@ module Bosh::AwsCloud
               network_interfaces: [{
                 device_index: 0,
                 subnet_id: dynamic_subnet_id,
-                groups: ["sg-11111111", "sg-22222222"]
+                groups: ['sg-11111111', 'sg-22222222']
               }]
             }
           end
 
-          it 'maps network_interfaces.first[:groups] from vm_type' do expect(mapping(input)).to eq(output) end
+          it 'maps network_interfaces.first[:groups] from vm_type' do
+            expect(mapping(input)).to eq(output)
+          end
         end
       end
 
       context 'when registry_endpoint is provided' do
-        let(:input) { { registry_endpoint: 'example.com' } }
+        let(:input) do
+          {
+            vm_type: vm_cloud_props,
+            registry_endpoint: 'example.com'
+          }
+        end
         let(:output) { { user_data: Base64.encode64('{"registry":{"endpoint":"example.com"}}').strip } }
 
-        it 'maps to Base64 encoded user_data.registry.endpoint' do expect(mapping(input)).to eq(output) end
+        it 'maps to Base64 encoded user_data.registry.endpoint' do
+          expect(mapping(input)).to eq(output)
+        end
       end
 
       context 'when dns is provided by networks in networks_spec' do
         let(:input) do
           {
+            vm_type: vm_cloud_props,
             networks_spec: {
-              "net1" => {},
-              "net2" => {"dns" => "1.1.1.1"},
-              "net3" => {"dns" => "2.2.2.2"}
+              'net1' => {},
+              'net2' => { 'dns' => '1.1.1.1' },
+              'net3' => { 'dns' => '2.2.2.2' }
             }
           }
         end
         let(:output) { { user_data: Base64.encode64('{"dns":{"nameserver":"1.1.1.1"}}').strip } }
 
-        it 'maps to Base64 encoded user_data.dns, from the first matching network' do expect(mapping(input)).to eq(output) end
+        it 'maps to Base64 encoded user_data.dns, from the first matching network' do
+          expect(mapping(input)).to eq(output)
+        end
       end
 
       context 'when IPv6 network address is present' do
         let(:input) do
           {
+            vm_type: vm_cloud_props,
             networks_spec: {
-              "net1" => {},
-              "net2" => {"ip" => "1.1.1.1"},
-              "net3" => {"ip" => "2006::1"}
+              'net1' => {},
+              'net2' => { 'ip' => '1.1.1.1' },
+              'net3' => { 'ip' => '2006::1' }
             }
           }
         end
         let(:output) do
           {
             user_data: Base64.encode64(JSON.dump(
-              "networks" => {
-                "net1" => {"use_dhcp" => true},
-                "net2" => {"ip" => "1.1.1.1", "use_dhcp" => true},
-                "net3" => {"ip" => "2006::1", "use_dhcp" => true},
+              'networks' => {
+                'net1' => { 'use_dhcp' => true},
+                'net2' => { 'ip' => '1.1.1.1', 'use_dhcp' => true},
+                'net3' => { 'ip' => '2006::1', 'use_dhcp' => true},
               }
             )).strip
           }
@@ -265,17 +323,18 @@ module Bosh::AwsCloud
         context 'when an IP address is provided for explicitly specified manual networks in networks_spec' do
           let(:input) do
             {
+              vm_type: vm_cloud_props,
               networks_spec: {
-                "net1" => {
-                  "type" => "dynamic"
+                'net1' => {
+                  'type' => 'dynamic'
                 },
-                "net2" => {
-                  "type" => "manual",
-                  "ip" => "1.1.1.1"
+                'net2' => {
+                  'type' => 'manual',
+                  'ip' => '1.1.1.1'
                 },
-                "net3" => {
-                  "type" => "manual",
-                  "ip" => "2.2.2.2"
+                'net3' => {
+                  'type' => 'manual',
+                  'ip' => '2.2.2.2'
                 }
               }
             }
@@ -299,16 +358,17 @@ module Bosh::AwsCloud
         context 'when an IP address is provided for implicitly specified manual networks in networks_spec' do
           let(:input) do
             {
+              vm_type: vm_cloud_props,
               networks_spec: {
-                "net1" => {
-                  "type" => "dynamic"
+                'net1' => {
+                  'type' => 'dynamic'
                 },
-                "net2" => {
-                  "ip" => "1.1.1.1"
+                'net2' => {
+                  'ip' => '1.1.1.1'
                 },
-                "net3" => {
-                  "type" => "manual",
-                  "ip" => "2.2.2.2"
+                'net3' => {
+                  'type' => 'manual',
+                  'ip' => '2.2.2.2'
                 }
               }
             }
@@ -330,11 +390,10 @@ module Bosh::AwsCloud
         end
 
         context 'when associate_public_ip_address is true' do
+          let(:vm_type) { { 'auto_assign_public_ip' => true } }
           let(:input) do
             {
-              vm_type: {
-                'auto_assign_public_ip' => true
-              }
+              vm_type: vm_cloud_props
             }
           end
           let(:output) do
@@ -347,6 +406,7 @@ module Bosh::AwsCloud
               ]
             }
           end
+
           it 'adds the option to the output' do
             expect(mapping(input)).to eq(output)
           end
@@ -355,13 +415,14 @@ module Bosh::AwsCloud
         context 'when the one manual network address is IPv6' do
           let(:input) do
             {
+              vm_type: vm_cloud_props,
               networks_spec: {
-                "net1" => {
-                  "type" => "dynamic"
+                'net1' => {
+                  'type' => 'dynamic'
                 },
-                "net2" => {
-                  "type" => "manual",
-                  "ip" => "2006::1"
+                'net2' => {
+                  'type' => 'manual',
+                  'ip' => '2006::1'
                 }
               }
             }
@@ -370,7 +431,7 @@ module Bosh::AwsCloud
             {
               network_interfaces: [
                 {
-                  ipv_6_addresses: [{ipv_6_address: "2006::1"}],
+                  ipv_6_addresses: [{ipv_6_address: '2006::1' }],
                   device_index: 0
                 }
               ],
@@ -388,17 +449,18 @@ module Bosh::AwsCloud
         context 'when subnet is provided by manual (explicit or implicit)' do
           let(:input) do
             {
+              vm_type: vm_cloud_props,
               networks_spec: {
-                "net1" => {
-                  "type" => "vip",
-                  "cloud_properties" => { "subnet" => "vip-subnet" }
+                'net1' => {
+                  'type' => 'vip',
+                  'cloud_properties' => { 'subnet' => 'vip-subnet' }
                 },
-                "net2" => {
-                  "cloud_properties" => { "subnet" => manual_subnet_id }
+                'net2' => {
+                  'cloud_properties' => { 'subnet' => manual_subnet_id }
                 }
               },
               subnet_az_mapping: {
-                manual_subnet_id => "region-1b"
+                manual_subnet_id => 'region-1b'
               }
             }
           end
@@ -410,7 +472,7 @@ module Bosh::AwsCloud
                   device_index: 0
                 }
               ],
-              placement: { availability_zone: "region-1b" }
+              placement: { availability_zone: 'region-1b' }
             }
           end
 
@@ -422,19 +484,20 @@ module Bosh::AwsCloud
         context 'when subnet is provided by manual (explicit or implicit) or dynamic networks in networks_spec' do
           let(:input) do
             {
+              vm_type: vm_cloud_props,
               networks_spec: {
-                "net1" => {
-                  "type" => "dynamic",
-                  "cloud_properties" => { "subnet" => dynamic_subnet_id }
+                'net1' => {
+                  'type' => 'dynamic',
+                  'cloud_properties' => { 'subnet' => dynamic_subnet_id }
                 },
-                "net2" => {
-                  "type" => "manual",
-                  "cloud_properties" => { "subnet" => manual_subnet_id }
+                'net2' => {
+                  'type' => 'manual',
+                  'cloud_properties' => { 'subnet' => manual_subnet_id }
                 }
               },
               subnet_az_mapping: {
-                dynamic_subnet_id => "region-1a",
-                manual_subnet_id => "region-1b"
+                dynamic_subnet_id => 'region-1a',
+                manual_subnet_id => 'region-1b'
               }
             }
           end
@@ -459,9 +522,14 @@ module Bosh::AwsCloud
       end
 
       describe 'Availability Zone options' do
+        let(:vm_type) do
+          {
+            'availability_zone' => 'region-1a'
+          }
+        end
         context 'when (only) resource pool AZ is provided' do
-          let(:input) { { vm_type: { "availability_zone" => "region-1a" } } }
-          let(:output) { { placement: { availability_zone: "region-1a" } } }
+          let(:input) { { vm_type: vm_cloud_props } }
+          let(:output) { { placement: { availability_zone: 'region-1a' } } }
           it 'maps placement.availability_zone from vm_type' do
             expect(mapping(input)).to eq(output)
           end
@@ -470,17 +538,15 @@ module Bosh::AwsCloud
         context 'when resource pool AZ, and networks AZs are provided' do
           let(:input) do
             {
-              vm_type: {
-                "availability_zone" => "region-1a"
-              },
+              vm_type: vm_cloud_props,
               networks_spec: {
-                "net1" => {
-                  "type" => "dynamic",
-                  "cloud_properties" => { "subnet" => dynamic_subnet_id }
+                'net1' => {
+                  'type' => 'dynamic',
+                  'cloud_properties' => { 'subnet' => dynamic_subnet_id }
                 },
               },
               subnet_az_mapping: {
-                dynamic_subnet_id => "region-1a"
+                dynamic_subnet_id => 'region-1a'
               }
             }
           end
@@ -506,18 +572,16 @@ module Bosh::AwsCloud
         context 'when volume AZs, resource pool AZ, and networks AZs are provided' do
           let(:input) do
             {
-              volume_zones: ["region-1a", "region-1a"],
-              vm_type: {
-                "availability_zone" => "region-1a"
-              },
+              volume_zones: ['region-1a', 'region-1a'],
+              vm_type: vm_cloud_props,
               networks_spec: {
-                "net1" => {
-                  "type" => "dynamic",
-                  "cloud_properties" => { "subnet" => dynamic_subnet_id }
+                'net1' => {
+                  'type' => 'dynamic',
+                  'cloud_properties' => { 'subnet' => dynamic_subnet_id }
                 }
               },
               subnet_az_mapping: {
-                dynamic_subnet_id => "region-1a"
+                dynamic_subnet_id => 'region-1a'
               }
             }
           end
@@ -542,8 +606,14 @@ module Bosh::AwsCloud
       end
 
       context 'when block_device_mappings are provided' do
-        let(:input) { { block_device_mappings: ["fake-device"] } }
-        let(:output) { { block_device_mappings: ["fake-device"] } }
+        let(:input) do
+          {
+            vm_type: vm_cloud_props,
+            block_device_mappings: ['fake-device']
+          }
+        end
+        let(:output) { { block_device_mappings: ['fake-device'] } }
+
         it 'passes the mapping through to the output' do
           expect(mapping(input)).to eq(output)
         end
@@ -551,56 +621,60 @@ module Bosh::AwsCloud
 
       context 'when a full spec is provided' do
         context 'with security group IDs' do
+          let(:vm_type) do
+            {
+              'instance_type' => 'fake-instance-type',
+              'availability_zone' => 'region-1a',
+              'key_name' => 'fake-key-name',
+              'iam_instance_profile' => 'fake-iam-profile',
+              'security_groups' => ['sg-12345678', 'sg-23456789'],
+              'tenancy' => 'dedicated',
+
+            }
+          end
           let(:input) do
             {
-              stemcell_id: "ami-something",
-              vm_type: {
-                "instance_type" => "fake-instance-type",
-                "availability_zone" => "region-1a",
-                "key_name" => "fake-key-name",
-                "iam_instance_profile" => "fake-iam-profile",
-                "security_groups" => ["sg-12345678", "sg-23456789"],
-                "tenancy" => "dedicated",
-
-              },
+              stemcell_id: 'ami-something',
+              vm_type: vm_cloud_props,
               networks_spec: {
-                "net1" => {
-                  "type" => "manual",
-                  "ip" => "1.1.1.1",
-                  "dns" => "8.8.8.8",
-                  "cloud_properties" => { "subnet" => manual_subnet_id }
+                'net1' => {
+                  'type' => 'manual',
+                  'ip' => '1.1.1.1',
+                  'dns' => '8.8.8.8',
+                  'cloud_properties' => { 'subnet' => manual_subnet_id }
                 }
               },
               subnet_az_mapping: {
-                dynamic_subnet_id => "region-1a"
+                dynamic_subnet_id => 'region-1a'
               },
-              volume_zones: ["region-1a", "region-1a"],
-              registry_endpoint: "example.com",
-              block_device_mappings: ["fake-device"]
+              volume_zones: ['region-1a', 'region-1a'],
+              registry_endpoint: 'example.com',
+              block_device_mappings: ['fake-device']
             }
           end
           let(:output) do
             {
-              image_id: "ami-something",
-              instance_type: "fake-instance-type",
+              image_id: 'ami-something',
+              instance_type: 'fake-instance-type',
               placement: {
-                availability_zone: "region-1a",
-                tenancy: "dedicated"
+                availability_zone: 'region-1a',
+                tenancy: 'dedicated'
               },
-              key_name: "fake-key-name",
-              iam_instance_profile: { name: "fake-iam-profile" },
+              key_name: 'fake-key-name',
+              iam_instance_profile: { name: 'fake-iam-profile' },
               network_interfaces: [
                 {
                   subnet_id: manual_subnet_id,
-                  private_ip_address: "1.1.1.1",
+                  private_ip_address: '1.1.1.1',
                   device_index: 0,
-                  groups: ["sg-12345678", "sg-23456789"],
+                  groups: ['sg-12345678', 'sg-23456789'],
                 }
               ],
               user_data: Base64.encode64('{"registry":{"endpoint":"example.com"},"dns":{"nameserver":"8.8.8.8"}}').strip,
-              block_device_mappings: ["fake-device"]
+              block_device_mappings: ['fake-device']
             }
           end
+
           it 'correctly renders the instance params' do
             expect(mapping(input)).to eq(output)
           end
@@ -609,6 +683,12 @@ module Bosh::AwsCloud
     end
 
     describe '#validate_required_inputs' do
+      before do
+        instance_param_mapper.manifest_params = {
+          vm_type: vm_cloud_props
+        }
+      end
+
       it 'raises an exception if any required properties are not provided' do
         required_inputs = [
           'stemcell_id',
@@ -629,20 +709,19 @@ module Bosh::AwsCloud
     end
 
     describe '#validate_availability_zone' do
+      let(:vm_type) { { 'availability_zone' => 'region-1a' } }
       it 'raises an error when provided AZs do not match' do
         instance_param_mapper.manifest_params = {
-          volume_zones: ["region-1a", "region-1a"],
-          vm_type: {
-            "availability_zone" => "region-1a",
-          },
+          volume_zones: ['region-1a', 'region-1a'],
+          vm_type: vm_cloud_props,
           networks_spec: {
-            "net1" => {
-              "type" => "dynamic",
-              "cloud_properties" => { "subnet" => dynamic_subnet_id }
+            'net1' => {
+              'type' => 'dynamic',
+              'cloud_properties' => { 'subnet' => dynamic_subnet_id }
             }
           },
           subnet_az_mapping: {
-            dynamic_subnet_id => "region-1b"
+            dynamic_subnet_id => 'region-1b'
           }
         }
         expect {
@@ -652,46 +731,26 @@ module Bosh::AwsCloud
     end
 
     describe '#validate' do
-      it 'does not raise an exception on valid input' do
-        instance_param_mapper.manifest_params = {
-          stemcell_id: "ami-something",
-          vm_type: {
-            "instance_type" => "fake-instance-type",
-            "availability_zone" => "region-1a",
-            "key_name" => "fake-key-name",
-            "security_groups" => ["sg-12345678"]
-          },
-          networks_spec: {
-            "net1" => {
-              "type" => "dynamic",
-              "cloud_properties" => { "subnet" => dynamic_subnet_id }
-            }
-          },
-          registry_endpoint: "example.com",
+      let(:vm_type) do
+        {
+          'instance_type' => 'fake-instance-type',
+          'availability_zone' => 'region-1a',
+          'key_name' => 'fake-key-name',
+          'security_groups' => ['sg-12345678']
         }
-        expect {
-          instance_param_mapper.validate
-        }.to_not raise_error
       end
 
-      it 'does not raise an exception on valid input and defaults' do
+      it 'does not raise an exception on valid input' do
         instance_param_mapper.manifest_params = {
-          stemcell_id: "ami-something",
-          vm_type: {
-            "instance_type" => "fake-instance-type",
-            "availability_zone" => "region-1a"
-          },
+          stemcell_id: 'ami-something',
+          vm_type: vm_cloud_props,
           networks_spec: {
-            "net1" => {
-              "type" => "dynamic",
-              "cloud_properties" => { "subnet" => dynamic_subnet_id }
+            'net1' => {
+              'type' => 'dynamic',
+              'cloud_properties' => { 'subnet' => dynamic_subnet_id }
             }
           },
-          registry_endpoint: "example.com",
-          defaults: {
-            "default_key_name" => "fake-key-name",
-            "default_security_groups" => ["sg-12345678"]
-          }
+          registry_endpoint: 'example.com',
         }
         expect {
           instance_param_mapper.validate

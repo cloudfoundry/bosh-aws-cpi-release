@@ -98,27 +98,13 @@ module Bosh::AwsCloud
       @lb_target_groups = cloud_properties['lb_target_groups'] || []
       @iam_instance_profile = cloud_properties['iam_instance_profile'] || global_config.aws.default_iam_instance_profile
       @placement_group = cloud_properties['placement_group']
-      @tenancy = cloud_properties['tenancy'] || 'default'
+      @tenancy = Tenancy.new(cloud_properties['tenancy'])
       @auto_assign_public_ip = !!cloud_properties['auto_assign_public_ip'] || false
       @advertised_routes = (cloud_properties['advertised_routes'] || []).map do |route|
         AdvertisedRoute.new(route)
       end
       @raw_instance_storage = !!cloud_properties['raw_instance_storage'] || false
       @source_dest_check = !!cloud_properties['source_dest_check'] || true
-
-      # encrypted = global_config.aws.encrypted
-      # if encrypted
-      #   if @cloud_properties['ephemeral_disk']
-      #     if @cloud_properties['ephemeral_disk'].key?('encrypted')
-      #       encrypted = !!@cloud_properties['ephemeral_disk']['encrypted']
-      #     end
-      #     @cloud_properties['ephemeral_disk']['encrypted'] = encrypted
-      #   else
-      #     @cloud_properties['ephemeral_disk'] = {
-      #       'encrypted' => encrypted
-      #     }
-      #   end
-      # end
 
       @ephemeral_disk = EphemeralDisk.new(@cloud_properties['ephemeral_disk'], global_config)
       @cloud_properties['ephemeral_disk'] = @ephemeral_disk.disk if !@ephemeral_disk.disk.nil?
@@ -127,8 +113,22 @@ module Bosh::AwsCloud
       @cloud_properties['root_disk'] = @root_disk.disk if !@root_disk.disk.nil?
     end
 
-    def to_h
-      @cloud_properties
+    def raw_instance_storage?
+      @raw_instance_storage
+    end
+
+    class Tenancy
+      def initialize(tenancy)
+        @tenancy = tenancy || 'default'
+      end
+
+      def dedicated?
+        @tenancy == 'dedicated'
+      end
+
+      def dedicated
+        'dedicated'
+      end
     end
 
     class AdvertisedRoute
@@ -149,35 +149,35 @@ module Bosh::AwsCloud
 
           @size = disk['size']
           @type = disk['type']
-          @iops = disk['ios']
+          @iops = disk['iops']
         end
       end
 
       def specified?
-        !disk.key?['size']
+        disk && disk.key?('size')
       end
     end
 
     class EphemeralDisk < Disk
-      attr_reader :size, :type, :iops, :use_instance_storage, :encrypted
+      attr_reader :use_instance_storage, :encrypted
 
       def initialize(ephemeral_disk, global_config)
         super(ephemeral_disk)
 
+        @encrypted = global_config.aws.encrypted
+
         if ephemeral_disk
           @use_instance_storage = !!ephemeral_disk['use_instance_storage'] || false
-        end
 
-        @encrypted = global_config.aws.encrypted
-        if @encrypted
-          if ephemeral_disk
-            if ephemeral_disk.key?('encrypted')
-              @encrypted = !!ephemeral_disk['encrypted']
-            end
-            ephemeral_disk['encrypted'] = @encrypted
-          else
-            @disk.merge!('encrypted' => @encrypted)
+          if ephemeral_disk.key?('encrypted')
+            @encrypted = !!ephemeral_disk['encrypted']
           end
+        end
+      end
+
+      def invalid_instance_storage_config?
+        if use_instance_storage
+          size || type || iops || encrypted
         end
       end
     end
