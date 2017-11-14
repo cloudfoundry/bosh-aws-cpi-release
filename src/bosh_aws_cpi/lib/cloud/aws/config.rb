@@ -2,7 +2,7 @@ module Bosh::AwsCloud
   class AwsConfig
     attr_reader :max_retries, :credentials, :region, :ec2_endpoint, :elb_endpoint, :stemcell
     attr_reader :access_key_id, :secret_access_key, :default_key_name, :encrypted, :kms_key_arn
-    attr_reader :default_iam_instance_profile
+    attr_reader :default_iam_instance_profile, :default_security_groups
 
     CREDENTIALS_SOURCE_STATIC = 'static'.freeze
     CREDENTIALS_SOURCE_ENV_OR_PROFILE = 'env_or_profile'.freeze
@@ -20,6 +20,7 @@ module Bosh::AwsCloud
       @secret_access_key = @config['secret_access_key']
       @default_iam_instance_profile = @config['default_iam_instance_profile']
       @default_key_name = @config['default_key_name']
+      @default_security_groups = @config['default_security_groups']
 
       @stemcell = @config['stemcell'] || {}
       @fast_path_delete = @config['fast_path_delete'] || false

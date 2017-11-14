@@ -93,6 +93,7 @@ module Bosh::AwsCloud
     def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = nil, environment = nil)
       with_thread_name("create_vm(#{agent_id}, ...)") do
         props = @props_factory.vm_props(vm_type)
+        network_props = @props_factory.network_props(network_spec)
 
         # do this early to fail fast
         target_groups = props.lb_target_groups
@@ -111,9 +112,9 @@ module Bosh::AwsCloud
           instance, block_device_agent_info = @instance_manager.create(
             stemcell.image_id,
             props,
-            network_spec,
+            network_props,
             (disk_locality || []),
-            @config.aws.to_h
+            @config.aws.default_security_groups
           )
 
           target_groups.each do |target_group_name|

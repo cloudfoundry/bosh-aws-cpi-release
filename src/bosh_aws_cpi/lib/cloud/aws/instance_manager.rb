@@ -16,7 +16,7 @@ module Bosh::AwsCloud
       @block_device_manager = BlockDeviceManager.new(@logger)
     end
 
-    def create(stemcell_id, vm_cloud_props, networks_spec, disk_locality, aws_option)
+    def create(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, default_security_groups)
       ami = @ec2.image(stemcell_id)
       @block_device_manager.vm_type = vm_cloud_props
       @block_device_manager.virtualization_type = ami.virtualization_type
@@ -30,10 +30,10 @@ module Bosh::AwsCloud
         instance_params = build_instance_params(
           stemcell_id,
           vm_cloud_props,
-          networks_spec,
+          networks_cloud_props,
           block_device_info,
           disk_locality,
-          aws_option
+          default_security_groups
         )
 
         redacted_instance_params = Bosh::Cpi::Redactor.clone_and_redact(
@@ -93,17 +93,17 @@ module Bosh::AwsCloud
       end
     end
 
-    def build_instance_params(stemcell_id, vm_cloud_props, networks_spec, block_device_mappings, disk_locality = [], aws_options = {})
+    def build_instance_params(stemcell_id, vm_cloud_props, networks_cloud_props, block_device_mappings, disk_locality = [], default_security_groups = [])
       volume_zones = (disk_locality || []).map { |volume_id| @ec2.volume(volume_id).availability_zone }
 
       @param_mapper.manifest_params = {
         stemcell_id: stemcell_id,
         vm_type: vm_cloud_props,
         registry_endpoint: @registry.endpoint,
-        networks_spec: networks_spec,
-        defaults: aws_options,
+        networks_spec: networks_cloud_props,
+        default_security_groups: default_security_groups,
         volume_zones: volume_zones,
-        subnet_az_mapping: subnet_az_mapping(networks_spec),
+        subnet_az_mapping: subnet_az_mapping(networks_cloud_props),
         block_device_mappings: block_device_mappings
       }
       @param_mapper.validate
@@ -161,15 +161,17 @@ module Bosh::AwsCloud
       30
     end
 
-    def subnet_az_mapping(networks_spec)
-      subnet_networks = networks_spec.select { |net, spec| ['dynamic', 'manual', nil].include?(spec['type']) }
-      subnet_ids = subnet_networks.values.map { |spec| spec['cloud_properties']['subnet'] unless spec['cloud_properties'].nil? }
-      filtered_subnets = @ec2.subnets({
+    def subnet_az_mapping(networks_cloud_props)
+      subnet_ids = networks_cloud_props.filter('dynamic', 'manual').map do |net|
+        net.subnet if net.cloud_properties?
+      end
+      filtered_subnets = @ec2.subnets(
         filters: [{
           name: 'subnet-id',
           values: subnet_ids
         }]
-      })
+      )
+
       filtered_subnets.inject({}) do |mapping, subnet|
         mapping[subnet.id] = subnet.availability_zone
         mapping

@@ -35,12 +35,12 @@ module Bosh::AwsCloud
       end
 
       unless vm_type.key_name
-        missing_inputs << '(cloud_properties.key_name or defaults.default_key_name)'
+        missing_inputs << '(cloud_properties.key_name or global default_key_name)'
       end
 
       sg = security_groups
       if ( sg.nil? || sg.empty? )
-        missing_inputs << '(cloud_properties.security_groups or defaults.default_security_groups)'
+        missing_inputs << '(cloud_properties.security_groups or global default_security_groups)'
       end
 
       if subnet_id.nil?
@@ -100,15 +100,15 @@ module Bosh::AwsCloud
     private
 
     def vm_type
-      @manifest_params[:vm_type] || {}
+      @manifest_params[:vm_type]
     end
 
-    def networks_spec
-      @manifest_params[:networks_spec] || {}
+    def networks_cloud_props
+      @manifest_params[:networks_spec]
     end
 
-    def defaults
-      @manifest_params[:defaults] || {}
+    def default_security_groups
+      @manifest_params[:default_security_groups] || []
     end
 
     def volume_zones
@@ -124,9 +124,11 @@ module Bosh::AwsCloud
     end
 
     def security_groups
-      groups = defaults['default_security_groups']
-      groups = extract_security_groups(networks_spec) unless extract_security_groups(networks_spec).count.zero?
-      groups = vm_type.security_groups unless vm_type.security_groups.count.zero?
+      networks_security_groups = networks_cloud_props.networks.map(&:security_groups).flatten.sort.uniq
+
+      groups = default_security_groups
+      groups = networks_security_groups unless networks_security_groups.empty?
+      groups = vm_type.security_groups unless vm_type.security_groups.empty?
       groups
     end
 
@@ -134,22 +136,21 @@ module Bosh::AwsCloud
       user_data = {}
       user_data[:registry] = { endpoint: @manifest_params[:registry_endpoint] } if @manifest_params[:registry_endpoint]
 
-      spec_with_dns = networks_spec.values.select { |spec| spec.has_key? 'dns' }.first
-
-      user_data[:dns] = {nameserver: spec_with_dns['dns']} if spec_with_dns
+      network_with_dns = networks_cloud_props.dns_networks.first
+      user_data[:dns] = { nameserver: network_with_dns.dns } unless network_with_dns.nil?
 
       # If IPv6 network is present then send network setting up front so that agent can reconfigure networking stack
-      if networks_spec.find { |_, net| ipv6_address?(net['ip']) }
-        user_data[:networks] = agent_network_spec(networks_spec)
-      end
+      user_data[:networks] = agent_network_spec(networks_cloud_props) unless networks_cloud_props.ipv6_networks.empty?
 
       Base64.encode64(user_data.to_json).strip unless user_data.empty?
     end
 
-    def agent_network_spec(network_spec)
-      spec = network_spec.map do |name, settings|
+    def agent_network_spec(networks_cloud_props)
+      spec = networks_cloud_props.networks.map do |net|
+        settings = net.to_h
         settings['use_dhcp'] = true
-        [name, settings]
+
+        [net.name, settings]
       end
       Hash[spec]
     end
@@ -159,21 +160,18 @@ module Bosh::AwsCloud
     end
 
     def private_ip_address
-      manual_network_spec = networks_spec.values.select do |spec|
-        ['manual', nil].include?(spec['type'])
-      end.first || {}
-      manual_network_spec['ip']
+      first_manual_network = networks_cloud_props.filter('manual').first
+      first_manual_network.ip unless first_manual_network.nil?
     end
 
     # NOTE: do NOT lookup the subnet (from EC2 client) anymore. We just need to
     # pass along the subnet_id anyway, and we have that.
     def subnet_id
-      subnet_network_spec = networks_spec.values.select do |spec|
-        ['manual', nil, 'dynamic'].include?(spec['type']) &&
-          spec.fetch('cloud_properties', {}).has_key?('subnet')
+      subnet_network_spec = networks_cloud_props.filter('manual', 'dynamic').reject do |net|
+        net.subnet.nil?
       end.first
 
-      subnet_network_spec['cloud_properties']['subnet'] if subnet_network_spec
+      subnet_network_spec.subnet unless subnet_network_spec.nil?
     end
 
     def availability_zone
@@ -184,18 +182,5 @@ module Bosh::AwsCloud
         subnet_az_mapping[subnet_id]
       )
     end
-
-    def extract_security_groups(networks_spec)
-      networks_spec.
-          values.
-          select { |network_spec| network_spec.has_key? 'cloud_properties' }.
-          map { |network_spec| network_spec['cloud_properties'] }.
-          select { |cloud_properties| cloud_properties.has_key? 'security_groups' }.
-          map { |cloud_properties| Array(cloud_properties['security_groups']) }.
-          flatten.
-          sort.
-          uniq
-    end
-
   end
 end

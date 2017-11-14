@@ -8,7 +8,7 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
   let (:block_device_agent_info) {
     {
       'ephemeral' => [{'path' => '/dev/sdz'}],
-      'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}],
+      'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}]
     }
   }
   let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-id') }
@@ -25,20 +25,22 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
   let(:networks_spec) do
     {
       'fake-network-name-1' => {
-        'type' => 'dynamic',
+        'type' => 'dynamic'
       },
       'fake-network-name-2' => {
-        'type' => 'manual',
+        'type' => 'manual'
       }
     }
   end
+  let(:networks_cloud_props) do
+    Bosh::AwsCloud::NetworkCloudProps.new(networks_spec, global_config)
+  end
   let(:disk_locality) { double('disk locality') }
-  let(:environment) {'environment'}
-  let(:aws_options) { options['aws'] }
+  let(:environment) { 'environment' }
   let(:options) do
     ops = mock_cloud_properties_merge(
       'aws' => {
-        'region' => 'bar',
+        'region' => 'bar'
       }
     )
     ops['agent'] = {
@@ -54,9 +56,9 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
 
       allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
 
-      allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).
-          with(@ec2).
-          and_return(availability_zone_selector)
+      allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new)
+        .with(@ec2)
+        .and_return(availability_zone_selector)
 
       allow(Bosh::AwsCloud::Stemcell).to receive(:find).with(@ec2, stemcell_id).and_return(stemcell)
 
@@ -68,14 +70,13 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
     end
 
     allow(props_factory).to receive(:vm_props).with(vm_type).and_return(vm_cloud_props)
+    allow(props_factory).to receive(:network_props).with(networks_spec).and_return(networks_cloud_props)
 
-    allow(instance_manager).to receive(:create).
-      with(stemcell_id, vm_cloud_props, networks_spec, disk_locality, aws_options).
-      and_return([instance, block_device_agent_info])
+    allow(instance_manager).to receive(:create)
+      .with(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, [])
+      .and_return([instance, block_device_agent_info])
 
-    allow(Bosh::AwsCloud::NetworkConfigurator).to receive(:new).
-      with(networks_spec).
-      and_return(network_configurator)
+    allow(Bosh::AwsCloud::NetworkConfigurator).to receive(:new).with(networks_spec).and_return(network_configurator)
 
     allow(vm_type).to receive(:[]).and_return(false)
     allow(network_configurator).to receive(:configure)
@@ -89,7 +90,7 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
       anything,
       anything,
       anything,
-      anything,
+      anything
     ).and_return([instance, block_device_agent_info])
     expect(@cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq('fake-id')
   end

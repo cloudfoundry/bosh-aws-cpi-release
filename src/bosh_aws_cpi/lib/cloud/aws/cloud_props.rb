@@ -186,6 +186,119 @@ module Bosh::AwsCloud
     end
   end
 
+  class NetworkCloudProps
+    attr_reader :networks
+
+    # @param [Hash] cloud_properties
+    # @param [Bosh::AwsCloud::Config] global_config
+    def initialize(network_spec, global_config)
+      @network_spec = network_spec.dup
+
+      @networks = network_spec.map do |network_name, settings|
+        Network.create(network_name, settings)
+      end
+    end
+
+    def security_groups
+      @networks.map do |network|
+        network.security_groups if network.security_groups.count > 0
+      end.flatten.sort.uniq
+    end
+
+    def filter(*types)
+      # raise "error" if ![Network::MANUAL, Network::DYNAMIC, Network::PUBLIC].include?(types)
+      networks.select do |net|
+        types.include?(net.type)
+      end
+    end
+
+    def dns_networks
+      filter(Network::MANUAL).reject do |net|
+        net.dns.nil?
+      end
+    end
+
+    def ipv6_networks
+      filter(Network::MANUAL).select do |net|
+        net.ip.to_s.include?(':')
+      end
+    end
+
+    class Network
+      attr_reader :name, :type, :subnet, :security_groups
+
+      MANUAL = 'manual'.freeze
+      DYNAMIC = 'dynamic'.freeze
+      PUBLIC = 'vip'.freeze
+
+      def initialize(name, settings)
+        @settings = settings.dup
+
+        @name = name
+        @type = settings['type'] || MANUAL
+        @cloud_properties = settings['cloud_properties']
+
+        if cloud_properties?
+          @subnet = settings['cloud_properties']['subnet']
+          @security_groups = settings['cloud_properties']['security_groups'] || []
+        end
+      end
+
+      def cloud_properties?
+        !@cloud_properties.nil?
+      end
+
+      def to_h
+        @settings
+      end
+
+      def self.create(name, settings)
+        case settings['type']
+          when DYNAMIC
+            DynamicNetwork.new(name, settings)
+          when PUBLIC
+            PublicNetwork.new(name, settings)
+          else
+            ManualNetwork.new(name, settings)
+        end
+      end
+    end
+
+    class ManualNetwork < Network
+      attr_reader :netmask, :gateway, :default, :dns, :ip
+
+      def initialize(name, settings)
+        super(name, settings)
+
+        @netmask = settings['netmask']
+        @gateway = settings['gateway']
+        @default = settings['default']
+        @ip = settings['ip']
+        @dns = settings['dns']
+
+        # TODO (cdutra): not used by aws cpi but used by other cpis
+        # @gateway = settings['gateway']
+        # @mac = settings['mac']
+      end
+    end
+
+    class DynamicNetwork < Network
+      def initialize(name, settings)
+        super(name, settings)
+      end
+    end
+
+    class PublicNetwork < Network
+      attr_reader :ip
+
+      def initialize(name, settings)
+        super(name, settings)
+
+        @ip = settings['ip']
+      end
+    end
+  end
+
   class PropsFactory
     def initialize(config)
       @config = config
@@ -201,6 +314,10 @@ module Bosh::AwsCloud
 
     def vm_props(vm_properties)
       Bosh::AwsCloud::VMCloudProps.new(vm_properties, @config)
+    end
+
+    def network_props(network_spec)
+      Bosh::AwsCloud::NetworkCloudProps.new(network_spec, @config)
     end
   end
 end

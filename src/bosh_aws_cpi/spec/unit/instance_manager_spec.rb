@@ -47,6 +47,9 @@ module Bosh::AwsCloud
           }
         }
       end
+      let(:networks_cloud_props) do
+        Bosh::AwsCloud::NetworkCloudProps.new(networks_spec, global_config)
+      end
       let(:disk_locality) { nil }
       let(:default_options) do
         {
@@ -122,14 +125,14 @@ module Bosh::AwsCloud
         allow(instance).to receive(:update_routing_tables)
       end
 
-      it 'should ask AWS to create an instance in the given region, with parameters built up from the given arguments' do
+      it 'should ask AWS to create an instance in thpwe given region, with parameters built up from the given arguments' do
         allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
         expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
         instance_manager.create(
           stemcell_id,
           vm_cloud_props,
-          networks_spec,
+          networks_cloud_props,
           disk_locality,
           default_options
         )
@@ -144,7 +147,7 @@ module Bosh::AwsCloud
           instance_manager.create(
             stemcell_id,
             vm_cloud_props,
-            networks_spec,
+            networks_cloud_props,
             disk_locality,
             default_options
           )
@@ -214,7 +217,7 @@ module Bosh::AwsCloud
           instance_manager.create(
             stemcell_id,
             vm_cloud_props,
-            networks_spec,
+            networks_cloud_props,
             disk_locality,
             default_options
           )
@@ -229,7 +232,7 @@ module Bosh::AwsCloud
               instance_manager.create(
                 stemcell_id,
                 vm_cloud_props,
-                networks_spec,
+                networks_cloud_props,
                 disk_locality,
                 default_options
               )
@@ -263,7 +266,7 @@ module Bosh::AwsCloud
               instance_manager.create(
                 stemcell_id,
                 vm_cloud_props,
-                networks_spec,
+                networks_cloud_props,
                 disk_locality,
                 default_options
               )
@@ -278,7 +281,7 @@ module Bosh::AwsCloud
               instance_manager.create(
                 stemcell_id,
                 vm_cloud_props,
-                networks_spec,
+                networks_cloud_props,
                 disk_locality,
                 default_options
               )
@@ -301,7 +304,7 @@ module Bosh::AwsCloud
           instance_manager.create(
             stemcell_id,
             vm_cloud_props,
-            networks_spec,
+            networks_cloud_props,
             disk_locality,
             default_options
           )
@@ -325,7 +328,7 @@ module Bosh::AwsCloud
         instance_manager.create(
           stemcell_id,
           vm_cloud_props,
-          networks_spec,
+          networks_cloud_props,
           disk_locality,
           default_options
         )
@@ -349,7 +352,7 @@ module Bosh::AwsCloud
             instance_manager.create(
               stemcell_id,
               vm_cloud_props,
-              networks_spec,
+              networks_cloud_props,
               disk_locality,
               default_options
             )
@@ -370,7 +373,7 @@ module Bosh::AwsCloud
             instance_manager.create(
               stemcell_id,
               vm_cloud_props,
-              networks_spec,
+              networks_cloud_props,
               disk_locality,
               default_options
             )
@@ -390,7 +393,7 @@ module Bosh::AwsCloud
               instance_manager.create(
                 stemcell_id,
                 vm_cloud_props,
-                networks_spec,
+                networks_cloud_props,
                 disk_locality,
                 default_options
               )
