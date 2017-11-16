@@ -1,3 +1,5 @@
+include Bosh::AwsCloud::Helpers
+
 module Bosh::AwsCloud
   class StemcellCloudProps
     attr_reader :ami, :encrypted, :kms_key_arn
@@ -258,8 +260,11 @@ module Bosh::AwsCloud
             DynamicNetwork.new(name, settings)
           when PUBLIC
             PublicNetwork.new(name, settings)
-          else
+          when MANUAL, nil
             ManualNetwork.new(name, settings)
+          else
+            cloud_error("Invalid network type '#{settings['type']}' for AWS, " \
+                        "can only handle 'dynamic', 'vip', or 'manual' network types")
         end
       end
     end

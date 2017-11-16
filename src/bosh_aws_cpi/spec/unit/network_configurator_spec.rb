@@ -1,186 +1,166 @@
 # Copyright (c) 2009-2012 VMware, Inc.
 
-require "spec_helper"
+require 'spec_helper'
 
 describe Bosh::AwsCloud::NetworkConfigurator do
-
-  let(:dynamic) { {"type" => "dynamic"} }
-  let(:manual) { {"type" => "manual", "cloud_properties" => {"subnet" => "sn-xxxxxxxx"}} }
-  let(:vip) { {"type" => "vip"} }
+  let(:aws_config) do
+    instance_double(Bosh::AwsCloud::AwsConfig)
+  end
+  let(:global_config) do
+    instance_double(Bosh::AwsCloud::Config, aws: aws_config)
+  end
+  let(:dynamic) { { 'type' => 'dynamic' } }
+  let(:manual) { { 'type' => 'manual', 'cloud_properties' => { 'subnet' => 'sn-xxxxxxxx' }} }
+  let(:vip) { { 'type' => 'vip' } }
+  let(:networks_spec) { {} }
+  let(:network_cloud_props) do
+    Bosh::AwsCloud::NetworkCloudProps.new(networks_spec, global_config)
+  end
 
   def set_security_groups(spec, security_groups)
-    spec["cloud_properties"] = {
-        "security_groups" => security_groups
+    spec['cloud_properties'] = {
+        'security_groups' => security_groups
     }
   end
 
-  it "should raise an error if the spec isn't a hash" do
-    expect {
-      Bosh::AwsCloud::NetworkConfigurator.new("foo")
-    }.to raise_error ArgumentError
-  end
-
-  describe "#vpc?" do
-    it "should be true for a manual network" do
-      nc = Bosh::AwsCloud::NetworkConfigurator.new("network1" => manual)
-      expect(nc.vpc?).to be(true)
-    end
-
-    it "should be false for a dynamic network" do
-      nc = Bosh::AwsCloud::NetworkConfigurator.new("network1" => dynamic)
-      expect(nc.vpc?).to be(false)
-    end
-
-  end
-
-  describe "#private_ip" do
-    it "should extract private ip address for manual network" do
-      spec = {}
-      spec["network_a"] = manual
-      spec["network_a"]["ip"] = "10.0.0.1"
-
-      nc = Bosh::AwsCloud::NetworkConfigurator.new(spec)
-      expect(nc.private_ip).to eq("10.0.0.1")
-    end
-
-    it "should extract private ip address from manual network when there's also vip network" do
-      spec = {}
-      spec["network_a"] = vip
-      spec["network_a"]["ip"] = "10.0.0.1"
-      spec["network_b"] = manual
-      spec["network_b"]["ip"] = "10.0.0.2"      
-
-      nc = Bosh::AwsCloud::NetworkConfigurator.new(spec)
-      expect(nc.private_ip).to eq("10.0.0.2")
-    end     
-    
-    it "should not extract private ip address for dynamic network" do
-      spec = {}
-      spec["network_a"] = dynamic
-      spec["network_a"]["ip"] = "10.0.0.1"
-
-      nc = Bosh::AwsCloud::NetworkConfigurator.new(spec)
-      expect(nc.private_ip).to be_nil
-    end     
-  end
-  
-  describe "network types" do
-
-    it "should raise an error if both dynamic and manual networks are defined" do
-      network_spec = {
-          "network1" => dynamic,
-          "network2" => manual
+  describe '#initialize' do
+    let(:networks_spec) do
+      {
+        'network1' => vip,
+        'network2' => vip
       }
-      expect {
-        Bosh::AwsCloud::NetworkConfigurator.new(network_spec)
-      }.to raise_error Bosh::Clouds::CloudError, "Must have exactly one dynamic or manual network per instance"
     end
 
-    it "should raise an error if neither dynamic nor manual networks are defined" do
+    it 'should raise an error if multiple vip networks are defined' do
       expect {
-        Bosh::AwsCloud::NetworkConfigurator.new("network1" => vip)
-      }.to raise_error Bosh::Clouds::CloudError, "Exactly one dynamic or manual network must be defined"
-    end
-
-    it "should raise an error if multiple vip networks are defined" do
-      network_spec = {
-          "network1" => vip,
-          "network2" => vip
-      }
-      expect {
-        Bosh::AwsCloud::NetworkConfigurator.new(network_spec)
+        Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props)
       }.to raise_error Bosh::Clouds::CloudError, "More than one vip network for 'network2'"
     end
 
-    it "should raise an error if multiple dynamic networks are defined" do
-      network_spec = {
-          "network1" => dynamic,
-          "network2" => dynamic
-      }
-      expect {
-        Bosh::AwsCloud::NetworkConfigurator.new(network_spec)
-      }.to raise_error Bosh::Clouds::CloudError, "Must have exactly one dynamic or manual network per instance"
-    end
+    it 'should raise an error if an illegal network type is used' do
+      networks_spec['network1'] = { 'type' => 'foo' }
 
-    it "should raise an error if multiple manual networks are defined" do
-      network_spec = {
-          "network1" => manual,
-          "network2" => manual
-      }
       expect {
-        Bosh::AwsCloud::NetworkConfigurator.new(network_spec)
-      }.to raise_error Bosh::Clouds::CloudError, "Must have exactly one dynamic or manual network per instance"
-    end
-
-    it "should raise an error if an illegal network type is used" do
-      expect {
-        Bosh::AwsCloud::NetworkConfigurator.new("network1" => {"type" => "foo"})
+        Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props)
       }.to raise_error Bosh::Clouds::CloudError, "Invalid network type 'foo' for AWS, " \
                         "can only handle 'dynamic', 'vip', or 'manual' network types"
     end
+  end
 
-    describe "#configure" do
-      let(:ec2) { double("ec2") }
-      let(:instance) { double("instance") }
+  describe '#configure' do
+    let(:ec2) { double('ec2') }
+    let(:ec2_client) { double('ec2_client') }
+    let(:instance) { double('instance') }
 
-      describe "with vip" do
-        it "should configure dynamic network" do
-          network_spec = {"network1" => dynamic, "network2" => vip}
-          nc = Bosh::AwsCloud::NetworkConfigurator.new(network_spec)
-
-          expect(nc.vip_network).to receive(:configure).with(ec2, instance)
-
-          nc.configure(ec2, instance)
+    describe 'without vip' do
+      context 'and associated elastic ip' do
+        let(:networks_spec) do
+          {
+            'network1' => dynamic
+          }
         end
 
-        it "should configure manual network" do
-          network_spec = {"network1" => vip, "network2" => manual}
-          nc = Bosh::AwsCloud::NetworkConfigurator.new(network_spec)
+        it 'should disassociate elastic ip' do
+          expect(instance).to receive(:elastic_ip).and_return(double('elastic ip'))
+          expect(instance).to receive(:id).and_return('i-xxxxxxxx')
+          expect(instance).to receive(:disassociate_elastic_ip)
 
-          expect(nc.vip_network).to receive(:configure).with(ec2, instance)
-
-          nc.configure(ec2, instance)
+          Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2, instance)
         end
-
       end
 
-      describe "without vip" do
-        context "without associated elastic ip" do
-          it "should configure dynamic network" do
-            allow(instance).to receive(:elastic_ip).and_return(nil)
+      context 'and with NO associated elastic ip' do
+        let(:networks_spec) do
+          {
+            'network1' => dynamic
+          }
+        end
 
-            network_spec = {"network1" => dynamic}
-            nc = Bosh::AwsCloud::NetworkConfigurator.new(network_spec)
+        it 'should no-op' do
+          expect(instance).to receive(:elastic_ip).and_return(nil)
+          expect(instance).not_to receive(:disassociate_elastic_ip)
 
-            expect(nc.vip_network).to be_nil
+          Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2, instance)
+        end
+      end
 
-            nc.configure(ec2, instance)
+      context 'with vip' do
+        context 'when no IP is provided' do
+          let(:networks_spec) do
+            {
+              'network1' => vip
+            }
           end
 
-          it "should configure manual network" do
-            allow(instance).to receive(:elastic_ip).and_return(nil)
-
-            network_spec = {"network1" => manual}
-            nc = Bosh::AwsCloud::NetworkConfigurator.new(network_spec)
-
-            expect(nc.vip_network).to be_nil
-
-            nc.configure(ec2, instance)
+          it 'should raise error' do
+            expect {
+              Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2, instance)
+            }.to raise_error /No IP provided for vip network 'network1'/
           end
         end
 
-        context "with previously associated elastic ip" do
-          it "should disassociate from the old elastic ip" do
-            expect(instance).to receive(:elastic_ip).and_return(double("elastic ip"))
-            expect(instance).to receive(:id).and_return("i-xxxxxxxx")
-            expect(instance).to receive(:disassociate_elastic_ip)
+        context 'when IP is provided' do
+          let(:vip_public_ip) { '1.2.3.4' }
+          let(:vip) do
+            {
+              'type' => 'vip',
+              'ip' => vip_public_ip
+            }
+          end
+          let(:networks_spec) do
+            {
+              'network1' => vip
+            }
+          end
+          let(:describe_addresses_arguments) do
+            {
+              public_ips: [vip_public_ip],
+              filters: [
+                {
+                  name: 'domain',
+                  values: ['vpc']
+                }
+              ]
+            }
+          end
 
-            network_spec = {"network1" => dynamic}
-            nc = Bosh::AwsCloud::NetworkConfigurator.new(network_spec)
+          let(:describe_addresses_response) do
+            instance_double(Aws::EC2::Types::DescribeAddressesResult, addresses: response_addresses)
+          end
 
-            allow(nc.network).to receive(:configure)
+          before do
+            allow(ec2).to receive(:client).and_return(ec2_client)
+            allow(instance).to receive(:id).and_return('i-xxxxxxxx')
+          end
 
-            nc.configure(ec2, instance)
+          context 'and Elastic/Public IP is found' do
+            let(:elastic_ip) { double('elastic_ip') }
+            let(:response_addresses) { [elastic_ip] }
+
+            it 'should associate Elastic/Public IP to the instance' do
+              expect(ec2_client).to receive(:describe_addresses)
+                .with(describe_addresses_arguments).and_return(describe_addresses_response)
+              expect(elastic_ip).to receive(:allocation_id).and_return('allocation-id')
+              expect(ec2_client).to receive(:associate_address).with(
+                instance_id: 'i-xxxxxxxx',
+                allocation_id: 'allocation-id'
+              )
+
+              Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2, instance)
+            end
+          end
+
+          context 'but user does not own the Elastic/Public IP' do
+            let(:response_addresses) { [] }
+
+            it 'should raise error' do
+              expect(ec2_client).to receive(:describe_addresses)
+                .with(describe_addresses_arguments).and_return(describe_addresses_response)
+
+              expect {
+                Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2, instance)
+              }.to raise_error /Elastic IP with VPC scope not found with address '#{vip_public_ip}'/
+            end
           end
         end
       end

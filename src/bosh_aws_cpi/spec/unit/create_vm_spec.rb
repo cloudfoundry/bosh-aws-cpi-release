@@ -35,6 +35,9 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
   let(:networks_cloud_props) do
     Bosh::AwsCloud::NetworkCloudProps.new(networks_spec, global_config)
   end
+  let(:networks_cloud_props) do
+    Bosh::AwsCloud::NetworkCloudProps.new(networks_spec, global_config)
+  end
   let(:disk_locality) { double('disk locality') }
   let(:environment) { 'environment' }
   let(:options) do
@@ -76,7 +79,7 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
       .with(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, [])
       .and_return([instance, block_device_agent_info])
 
-    allow(Bosh::AwsCloud::NetworkConfigurator).to receive(:new).with(networks_spec).and_return(network_configurator)
+    allow(Bosh::AwsCloud::NetworkConfigurator).to receive(:new).with(networks_cloud_props).and_return(network_configurator)
 
     allow(vm_type).to receive(:[]).and_return(false)
     allow(network_configurator).to receive(:configure)

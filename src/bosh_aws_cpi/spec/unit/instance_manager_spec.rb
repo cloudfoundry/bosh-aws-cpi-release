@@ -38,11 +38,11 @@ module Bosh::AwsCloud
           'default' => {
             'type' => 'dynamic',
             'dns' => 'foo',
-            'cloud_properties' => {'subnet' => 'sub-default', 'security_groups' => 'baz'}
+            'cloud_properties' => { 'subnet' => 'sub-default', 'security_groups' => 'baz' }
           },
           'other' => {
             'type' => 'manual',
-            'cloud_properties' => {'subnet' => 'sub-123456'},
+            'cloud_properties' => { 'subnet' => 'sub-123456' },
             'ip' => '1.2.3.4'
           }
         }

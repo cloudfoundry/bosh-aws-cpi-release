@@ -1,6 +1,5 @@
 require 'spec_helper'
 require 'base64'
-require 'pry-byebug'
 
 module Bosh::AwsCloud
   describe InstanceParamMapper do

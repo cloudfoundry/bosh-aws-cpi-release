@@ -12,59 +12,20 @@ module Bosh::AwsCloud
   class NetworkConfigurator
     include Helpers
 
-    attr_reader :vip_network, :network
-
     ##
     # Creates new network spec
     #
     # @param [Hash] spec raw network spec passed by director
-    def initialize(spec)
-      unless spec.is_a?(Hash)
-        raise ArgumentError, "Invalid spec, Hash expected, " \
-                             "#{spec.class} provided"
-      end
-
+    def initialize(network_cloud_props)
       @logger = Bosh::Clouds::Config.logger
-      @network = nil
       @vip_network = nil
 
-      spec.each_pair do |name, network_spec|
-        network_type = network_spec["type"] || "manual"
-
-        case network_type
-          when "dynamic"
-            cloud_error("Must have exactly one dynamic or manual network per instance") if @network
-            @network = DynamicNetwork.new(name, network_spec)
-
-          when "manual"
-            cloud_error("Must have exactly one dynamic or manual network per instance") if @network
-            @network = ManualNetwork.new(name, network_spec)
-
-          when "vip"
-            cloud_error("More than one vip network for '#{name}'") if @vip_network
-            @vip_network = VipNetwork.new(name, network_spec)
-
-          else
-            cloud_error("Invalid network type '#{network_type}' for AWS, " \
-                        "can only handle 'dynamic', 'vip', or 'manual' network types")
+      network_cloud_props.networks.each do |net|
+        if net.instance_of?(Bosh::AwsCloud::NetworkCloudProps::PublicNetwork)
+          cloud_error("More than one vip network for '#{net.name}'") if @vip_network
+          @vip_network = net
         end
       end
-
-      unless @network
-        cloud_error("Exactly one dynamic or manual network must be defined")
-      end
-    end
-
-    def subnet
-      @network.subnet
-    end
-
-    def private_ip
-      vpc? ? @network.private_ip : nil
-    end
-
-    def vpc?
-      @network.is_a? ManualNetwork
     end
 
     # Applies network configuration to the vm
@@ -72,7 +33,7 @@ module Bosh::AwsCloud
     # @param [Aws::EC2::Instance] instance EC2 instance to configure
     def configure(ec2, instance)
       if @vip_network
-        @vip_network.configure(ec2, instance)
+        configure_vip(ec2, instance)
       else
         # If there is no vip network we should disassociate any elastic IP
         # currently held by instance (as it might have had elastic IP before)
@@ -83,6 +44,43 @@ module Bosh::AwsCloud
                        "from instance `#{instance.id}'")
           instance.disassociate_elastic_ip
         end
+      end
+    end
+
+    private
+
+    def configure_vip(ec2, instance)
+      if @vip_network.ip.nil?
+        cloud_error("No IP provided for vip network '#{@vip_network.name}'")
+      end
+
+      # AWS accounts that support both EC2-VPC and EC2-Classic platform access explicitly require allocation_id instead of public_ip
+      addresses = ec2.client.describe_addresses(
+        public_ips: [@vip_network.ip],
+        filters: [
+          name: 'domain',
+          values: [
+            'vpc'
+          ]
+        ]
+      ).addresses
+      found_address = addresses.first
+      cloud_error("Elastic IP with VPC scope not found with address '#{@vip_network.ip}'") if found_address.nil?
+
+      allocation_id = found_address.allocation_id
+
+      @logger.info("Associating instance `#{instance.id}' " \
+                   "with elastic IP `#{@vip_network.ip}' and allocation_id '#{allocation_id}'")
+
+      # New elastic IP reservation supposed to clear the old one,
+      # so no need to disassociate manually. Also, we don't check
+      # if this IP is actually an allocated EC2 elastic IP, as
+      # API call will fail in that case.
+
+      errors = [Aws::EC2::Errors::IncorrectInstanceState, Aws::EC2::Errors::InvalidInstanceID]
+      Bosh::Common.retryable(tries: 10, sleep: 1, on: errors) do
+        ec2.client.associate_address(instance_id: instance.id, allocation_id: allocation_id)
+        true # need to return true to end the retries
       end
     end
   end

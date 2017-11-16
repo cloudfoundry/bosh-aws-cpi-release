@@ -92,16 +92,16 @@ module Bosh::AwsCloud
     # @return [String] EC2 instance id of the new virtual machine
     def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = nil, environment = nil)
       with_thread_name("create_vm(#{agent_id}, ...)") do
-        props = @props_factory.vm_props(vm_type)
+        vm_props = @props_factory.vm_props(vm_type)
         network_props = @props_factory.network_props(network_spec)
 
         # do this early to fail fast
-        target_groups = props.lb_target_groups
+        target_groups = vm_props.lb_target_groups
         unless target_groups.empty?
           @aws_provider.alb_accessible?
         end
 
-        requested_elbs = props.elbs
+        requested_elbs = vm_props.elbs
         unless requested_elbs.empty?
           @aws_provider.elb_accessible?
         end
@@ -111,7 +111,7 @@ module Bosh::AwsCloud
         begin
           instance, block_device_agent_info = @instance_manager.create(
             stemcell.image_id,
-            props,
+            vm_props,
             network_props,
             (disk_locality || []),
             @config.aws.default_security_groups
@@ -129,7 +129,7 @@ module Bosh::AwsCloud
 
           logger.info("Creating new instance '#{instance.id}'")
 
-          NetworkConfigurator.new(network_spec).configure(@ec2_resource, instance)
+          NetworkConfigurator.new(network_props).configure(@ec2_resource, instance)
 
           registry_settings = initial_agent_settings(
             agent_id,
