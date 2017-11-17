@@ -28,8 +28,16 @@ describe Bosh::AwsCloud::Cloud do
       expect(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(snapshot: snapshot, state: 'completed')
 
       expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(snapshot,
-        { 'agent_id' => 'agent', 'instance_id' => 'instance', 'director_name' => 'Test Director',
-          'director_uuid' => '6d06b0cc-2c08-43c5-95be-f1b2dd247e18', 'device' => '/dev/sdf', 'Name' => 'deployment/job/0/sdf'
+        {
+          'agent_id' => 'agent',
+          'instance_id' => 'instance',
+          'director_uuid' => '6d06b0cc-2c08-43c5-95be-f1b2dd247e18',
+          'deployment'=> 'deployment',
+          'device' => '/dev/sdf',
+          'director' => 'Test Director',
+          'instance_index'=> '0',
+          'instance_name'=> 'job/instance',
+          'Name' => 'deployment/job/0/sdf'
         }
       )
 
@@ -58,8 +66,16 @@ describe Bosh::AwsCloud::Cloud do
 
 
       expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(snapshot,
-        { 'agent_id' => 'agent', 'instance_id' => 'instance', 'director_name' => 'Test Director',
-          'director_uuid' => '6d06b0cc-2c08-43c5-95be-f1b2dd247e18', 'device' => '/dev/sdf', 'Name' => 'deployment/job/0/sdf'
+        {
+          'agent_id' => 'agent',
+          'instance_id' => 'instance',
+          'director_uuid' => '6d06b0cc-2c08-43c5-95be-f1b2dd247e18',
+          'deployment'=> 'deployment',
+          'device' => '/dev/sdf',
+          'director' => 'Test Director',
+          'instance_index'=> '0',
+          'instance_name'=> 'job/instance',
+          'Name' => 'deployment/job/0/sdf'
         }
       )
 
@@ -79,8 +95,16 @@ describe Bosh::AwsCloud::Cloud do
       )
 
       expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(snapshot,
-        { 'agent_id' => 'agent', 'instance_id' => 'instance', 'director_name' => 'Test Director',
-          'director_uuid' => '6d06b0cc-2c08-43c5-95be-f1b2dd247e18', 'Name' => 'deployment/job/0'}
+        {
+          'agent_id' => 'agent',
+          'instance_id' => 'instance',
+          'director_uuid' => '6d06b0cc-2c08-43c5-95be-f1b2dd247e18',
+          'deployment'=> 'deployment',
+          'director' => 'Test Director',
+          'instance_index'=> '0',
+          'instance_name'=> 'job/instance',
+          'Name' => 'deployment/job/0'
+        }
       )
 
       cloud.snapshot_disk('vol-xxxxxxxx', metadata)
