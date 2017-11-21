@@ -213,6 +213,8 @@ resource "aws_alb_target_group" "default" {
   health_check = {
     interval = 5
     timeout = 4
+    path  = "/"
+    matcher  = "200"
   }
 
   tags {

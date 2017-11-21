@@ -19,3 +19,4 @@ src/bosh_aws_cpi/vendor/cache
 *#
 #*
 tmp
+.terraform
