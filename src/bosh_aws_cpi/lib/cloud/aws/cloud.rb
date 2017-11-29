@@ -180,6 +180,32 @@ module Bosh::AwsCloud
       end
     end
 
+    # Add tags to an instance. In addition to the supplied tags,
+    # it adds a 'Name' tag as it is shown in the AWS console.
+    # @param [String] vm vm id that was once returned by {#create_vm}
+    # @param [Hash] metadata metadata key/value pairs
+    # @return [void]
+    def set_vm_metadata(vm, metadata)
+      metadata = Hash[metadata.map { |key, value| [key.to_s, value] }]
+
+      instance = @ec2_resource.instance(vm)
+
+      job = metadata['job']
+      index = metadata['index']
+
+      if metadata['name']
+        metadata['Name'] = metadata.delete('name')
+      elsif job && index
+        metadata['Name'] = "#{job}/#{index}"
+      elsif metadata['compiling']
+        metadata['Name'] = "compiling/#{metadata['compiling']}"
+      end
+
+      TagManager.tags(instance, metadata)
+    rescue Aws::EC2::Errors::TagLimitExceeded => e
+      logger.error("could not tag #{instance.id}: #{e.message}")
+    end
+
     ##
     # Creates a new EBS volume
     # @param [Integer] size disk size in MiB
@@ -288,6 +314,17 @@ module Bosh::AwsCloud
         end
       end
       disks
+    end
+
+    def set_disk_metadata(disk_id, metadata)
+      with_thread_name("set_disk_metadata(#{disk_id}, ...)") do
+        begin
+          volume = @ec2_resource.volume(disk_id)
+          TagManager.tags(volume, metadata)
+        rescue Aws::EC2::Errors::TagLimitExceeded => e
+          logger.error("could not tag #{volume.id}: #{e.message}")
+        end
+      end
     end
 
     # Take snapshot of disk
@@ -404,44 +441,6 @@ module Bosh::AwsCloud
         stemcell.delete
       end
     end
-
-    # Add tags to an instance. In addition to the supplied tags,
-    # it adds a 'Name' tag as it is shown in the AWS console.
-    # @param [String] vm vm id that was once returned by {#create_vm}
-    # @param [Hash] metadata metadata key/value pairs
-    # @return [void]
-    def set_vm_metadata(vm, metadata)
-      metadata = Hash[metadata.map { |key, value| [key.to_s, value] }]
-
-      instance = @ec2_resource.instance(vm)
-
-      job = metadata['job']
-      index = metadata['index']
-
-      if metadata['name']
-        metadata['Name'] = metadata.delete('name')
-      elsif job && index
-        metadata['Name'] = "#{job}/#{index}"
-      elsif metadata['compiling']
-        metadata['Name'] = "compiling/#{metadata['compiling']}"
-      end
-
-      TagManager.tags(instance, metadata)
-    rescue Aws::EC2::Errors::TagLimitExceeded => e
-      logger.error("could not tag #{instance.id}: #{e.message}")
-    end
-
-    def set_disk_metadata(disk_id, metadata)
-      with_thread_name("set_disk_metadata(#{disk_id}, ...)") do
-        begin
-          volume = @ec2_resource.volume(disk_id)
-          TagManager.tags(volume, metadata)
-        rescue Aws::EC2::Errors::TagLimitExceeded => e
-          logger.error("could not tag #{volume.id}: #{e.message}")
-        end
-      end
-    end
-
     # Map a set of cloud agnostic VM properties (cpu, ram, ephemeral_disk_size) to
     # a set of AWS specific cloud_properties
     # @param [Hash] vm_properties requested cpu, ram, and ephemeral_disk_size
@@ -466,7 +465,9 @@ module Bosh::AwsCloud
     # Information about AWS CPI, currently supported stemcell formats
     # @return [Hash] AWS CPI properties
     def info
-      {'stemcell_formats' => ['aws-raw', 'aws-light']}
+      {
+        'stemcell_formats' => %w(aws-raw aws-light)
+      }
     end
 
     private
@@ -512,31 +513,24 @@ module Bosh::AwsCloud
           )
         end
 
-        encrypted_disk_properties_hash = {}
-        if stemcell_cloud_props.encrypted
-          encrypted_disk_properties_hash['encrypted'] = stemcell_cloud_props.encrypted
-          encrypted_disk_properties_hash['kms_key_arn'] = stemcell_cloud_props.kms_key_arn
-        end
-
-        volume_id = create_disk(
-          stemcell_cloud_props.disk,
-          encrypted_disk_properties_hash,
-          director_vm_id
-        )
-        volume = @ec2_resource.volume(volume_id)
-
+        disk_config = VolumeProperties.new(
+          size: stemcell_cloud_props.disk,
+          az: @az_selector.select_availability_zone(director_vm_id),
+          encrypted: stemcell_cloud_props.encrypted,
+          kms_key_arn: stemcell_cloud_props.kms_key_arn
+        ).persistent_disk_config
+        volume = @volume_manager.create_ebs_volume(disk_config)
         sd_name = @volume_manager.attach_ebs_volume(instance, volume)
-        device_path = find_device_path_by_name(sd_name)
 
         logger.info("Creating stemcell with: '#{volume.id}' and '#{stemcell_cloud_props.inspect}'")
-        creator.create(volume, device_path, image_path).id
+        creator.create(volume, find_device_path_by_name(sd_name), image_path).id
       rescue => e
         logger.error(e)
         raise e
       ensure
         if instance && volume
           @volume_manager.detach_ebs_volume(instance.reload, volume, true)
-          delete_disk(volume.id)
+          @volume_manager.delete_ebs_volume(volume)
         end
       end
     end

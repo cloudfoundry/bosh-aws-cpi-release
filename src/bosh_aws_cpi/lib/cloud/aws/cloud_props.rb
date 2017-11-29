@@ -58,7 +58,6 @@ module Bosh::AwsCloud
 
     DEFAULT_DISK_SIZE = 2048
     PARAVIRTUAL = 'paravirtual'.freeze
-
   end
 
   class DiskCloudProps
