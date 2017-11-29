@@ -44,7 +44,11 @@ module Bosh
 
         output[:iops] = @iops if @iops
         output[:kms_key_id] = @kms_key_arn if @kms_key_arn
-        output[:tags] = @tags unless @tags.empty?
+        unless @tags.empty?
+          output[:tag_specifications] = [
+            { resource_type: 'volume', tags: @tags }
+          ]
+        end
         output
       end
 
