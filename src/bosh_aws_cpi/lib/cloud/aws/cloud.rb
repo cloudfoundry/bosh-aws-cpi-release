@@ -41,6 +41,7 @@ module Bosh::AwsCloud
         @config.registry.password
       )
 
+      @volume_manager = Bosh::AwsCloud::VolumeManager.new(@logger, @aws_provider)
       @instance_manager = InstanceManager.new(@ec2_resource, registry, @logger)
       @instance_type_mapper = InstanceTypeMapper.new
 
@@ -90,30 +91,42 @@ module Bosh::AwsCloud
     # @param [optional, Hash] environment data to be merged into
     #   agent settings
     # @return [String] EC2 instance id of the new virtual machine
-    def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = nil, environment = nil)
+    def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = [], environment = nil)
       with_thread_name("create_vm(#{agent_id}, ...)") do
-        props = @props_factory.vm_props(vm_type)
+        vm_props = @props_factory.vm_props(vm_type)
+        network_props = @props_factory.network_props(network_spec)
 
         # do this early to fail fast
-        target_groups = props.lb_target_groups
+        target_groups = vm_props.lb_target_groups
         unless target_groups.empty?
           @aws_provider.alb_accessible?
         end
 
-        requested_elbs = props.elbs
+        requested_elbs = vm_props.elbs
         unless requested_elbs.empty?
           @aws_provider.elb_accessible?
         end
 
-        stemcell = StemcellFinder.find_by_id(@ec2_resource, stemcell_id)
-
         begin
-          instance, block_device_agent_info = @instance_manager.create(
+          stemcell = StemcellFinder.find_by_id(@ec2_resource, stemcell_id)
+
+          ephemeral_disk_base_snapshot = nil
+          ephemeral_disk_base_snapshot = temporary_snapshot(agent_id, vm_props) if vm_props.custom_encryption?
+
+          block_device_mappings, agent_info = Bosh::AwsCloud::BlockDeviceManager.new(
+            @logger,
+            stemcell,
+            vm_props,
+            ephemeral_disk_base_snapshot
+          ).mappings_and_info
+
+          instance = @instance_manager.create(
             stemcell.image_id,
-            props.to_h,
-            network_spec,
+            vm_props,
+            network_props,
             (disk_locality || []),
-            @config.aws.to_h
+            @config.aws.default_security_groups,
+            block_device_mappings
           )
 
           target_groups.each do |target_group_name|
@@ -128,22 +141,25 @@ module Bosh::AwsCloud
 
           logger.info("Creating new instance '#{instance.id}'")
 
-          NetworkConfigurator.new(network_spec).configure(@ec2_resource, instance)
+          NetworkConfigurator.new(network_props).configure(@ec2_resource, instance)
 
-          registry_settings = initial_agent_settings(
+          registry_settings = AgentSettings.new(
             agent_id,
-            network_spec,
+            network_props,
             environment,
             stemcell.root_device_name,
-            block_device_agent_info
+            agent_info,
+            @config.agent
           )
-          registry.update_settings(instance.id, registry_settings)
+          registry.update_settings(instance.id, registry_settings.settings)
 
           instance.id
         rescue => e # is this rescuing too much?
           logger.error(%Q[Failed to create instance: #{e.message}\n#{e.backtrace.join("\n")}])
           instance.terminate(@config.aws.fast_path_delete?) if instance
           raise e
+        ensure
+          ephemeral_disk_base_snapshot.delete if ephemeral_disk_base_snapshot
         end
       end
     end
@@ -177,6 +193,32 @@ module Bosh::AwsCloud
       end
     end
 
+    # Add tags to an instance. In addition to the supplied tags,
+    # it adds a 'Name' tag as it is shown in the AWS console.
+    # @param [String] vm vm id that was once returned by {#create_vm}
+    # @param [Hash] metadata metadata key/value pairs
+    # @return [void]
+    def set_vm_metadata(vm, metadata)
+      metadata = Hash[metadata.map { |key, value| [key.to_s, value] }]
+
+      instance = @ec2_resource.instance(vm)
+
+      job = metadata['job']
+      index = metadata['index']
+
+      if metadata['name']
+        metadata['Name'] = metadata.delete('name')
+      elsif job && index
+        metadata['Name'] = "#{job}/#{index}"
+      elsif metadata['compiling']
+        metadata['Name'] = "compiling/#{metadata['compiling']}"
+      end
+
+      TagManager.tags(instance, metadata)
+    rescue Aws::EC2::Errors::TagLimitExceeded => e
+      logger.error("could not tag #{instance.id}: #{e.message}")
+    end
+
     ##
     # Creates a new EBS volume
     # @param [Integer] size disk size in MiB
@@ -196,15 +238,7 @@ module Bosh::AwsCloud
           encrypted: props.encrypted,
           kms_key_arn: props.kms_key_arn
         )
-
-        volume_resp = @ec2_client.create_volume(volume_properties.persistent_disk_config)
-        volume = Aws::EC2::Volume.new(
-          id: volume_resp.volume_id,
-          client: @ec2_client,
-        )
-
-        logger.info("Creating volume '#{volume.id}'")
-        ResourceWait.for_volume(volume: volume, state: 'available')
+        volume = @volume_manager.create_ebs_volume(volume_properties.persistent_disk_config)
 
         volume.id
       end
@@ -235,46 +269,7 @@ module Bosh::AwsCloud
     def delete_disk(disk_id)
       with_thread_name("delete_disk(#{disk_id})") do
         volume = @ec2_resource.volume(disk_id)
-
-        logger.info("Deleting volume `#{volume.id}'")
-
-        # Retry 1, 6, 11, 15, 15, 15.. seconds. The total time is ~10 min.
-        # VolumeInUse can be returned by AWS if disk was attached to VM
-        # that was recently removed.
-        tries = ResourceWait::DEFAULT_WAIT_ATTEMPTS
-        sleep_cb = ResourceWait.sleep_callback(
-          "Waiting for volume `#{volume.id}' to be deleted",
-          {interval: 5, total: tries}
-        )
-        ensure_cb = Proc.new do |retries|
-          cloud_error("Timed out waiting to delete volume `#{volume.id}'") if retries == tries
-        end
-        error = Aws::EC2::Errors::VolumeInUse
-
-        Bosh::Common.retryable(tries: tries, sleep: sleep_cb, on: error, ensure: ensure_cb) do
-          begin
-            volume.delete
-          rescue Aws::EC2::Errors::InvalidVolumeNotFound => e
-            logger.warn("Failed to delete disk '#{disk_id}' because it was not found: #{e.inspect}")
-            raise Bosh::Clouds::DiskNotFound.new(false), "Disk '#{disk_id}' not found"
-          end
-          true # return true to only retry on Exceptions
-        end
-
-        if @config.aws.fast_path_delete?
-          begin
-            TagManager.tag(volume, 'Name', 'to be deleted')
-            logger.info("Volume `#{disk_id}' has been marked for deletion")
-          rescue Aws::EC2::Errors::InvalidVolumeNotFound
-            # Once in a blue moon AWS if actually fast enough that the volume is already gone
-            # when we get here, and if it is, our work here is done!
-          end
-          return
-        end
-
-        ResourceWait.for_volume(volume: volume, state: 'deleted')
-
-        logger.info("Volume `#{disk_id}' has been deleted")
+        @volume_manager.delete_ebs_volume(volume, @config.aws.fast_path_delete?)
       end
     end
 
@@ -286,7 +281,7 @@ module Bosh::AwsCloud
         instance = @ec2_resource.instance(instance_id)
         volume = @ec2_resource.volume(disk_id)
 
-        device_name = attach_ebs_volume(instance, volume)
+        device_name = @volume_manager.attach_ebs_volume(instance, volume)
 
         update_agent_settings(instance) do |settings|
           settings['disks'] ||= {}
@@ -309,7 +304,7 @@ module Bosh::AwsCloud
         volume = @ec2_resource.volume(disk_id)
 
         if has_disk?(disk_id)
-          detach_ebs_volume(instance, volume)
+          @volume_manager.detach_ebs_volume(instance, volume)
         else
           @logger.info("Disk `#{disk_id}' not found while trying to detach it from vm `#{instance_id}'...")
         end
@@ -332,6 +327,17 @@ module Bosh::AwsCloud
         end
       end
       disks
+    end
+
+    def set_disk_metadata(disk_id, metadata)
+      with_thread_name("set_disk_metadata(#{disk_id}, ...)") do
+        begin
+          volume = @ec2_resource.volume(disk_id)
+          TagManager.tags(volume, metadata)
+        rescue Aws::EC2::Errors::TagLimitExceeded => e
+          logger.error("could not tag #{volume.id}: #{e.message}")
+        end
+      end
     end
 
     # Take snapshot of disk
@@ -363,6 +369,29 @@ module Bosh::AwsCloud
         ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
         snapshot.id
       end
+    end
+
+    def temporary_snapshot(agent_id, vm_cloud_props)
+      custom_kms_key_disk_config = VolumeProperties.new(
+        size: 1024,
+        type: vm_cloud_props.ephemeral_disk.type,
+        iops: vm_cloud_props.ephemeral_disk.iops,
+        encrypted: vm_cloud_props.ephemeral_disk.encrypted,
+        kms_key_arn: vm_cloud_props.ephemeral_disk.kms_key_arn,
+        az: vm_cloud_props.availability_zone,
+        tags: [{key: "ephemeral_disk_agent_id", value: "temp-vol-bosh-agent-#{agent_id}"}]
+      ).persistent_disk_config
+
+      volume = @volume_manager.create_ebs_volume(custom_kms_key_disk_config)
+      begin
+        snapshot = volume.create_snapshot
+        snapshot.create_tags(tags: [{key: "ephemeral_disk_agent_id", value: "temp-snapshot-bosh-agent-#{agent_id}"}])
+        ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
+      ensure
+        @volume_manager.delete_ebs_volume(volume)
+      end
+
+      snapshot
     end
 
     # Delete a disk snapshot
@@ -448,44 +477,6 @@ module Bosh::AwsCloud
         stemcell.delete
       end
     end
-
-    # Add tags to an instance. In addition to the supplied tags,
-    # it adds a 'Name' tag as it is shown in the AWS console.
-    # @param [String] vm vm id that was once returned by {#create_vm}
-    # @param [Hash] metadata metadata key/value pairs
-    # @return [void]
-    def set_vm_metadata(vm, metadata)
-      metadata = Hash[metadata.map { |key, value| [key.to_s, value] }]
-
-      instance = @ec2_resource.instance(vm)
-
-      job = metadata['job']
-      index = metadata['index']
-
-      if metadata['name']
-        metadata['Name'] = metadata.delete('name')
-      elsif job && index
-        metadata['Name'] = "#{job}/#{index}"
-      elsif metadata['compiling']
-        metadata['Name'] = "compiling/#{metadata['compiling']}"
-      end
-
-      TagManager.tags(instance, metadata)
-    rescue Aws::EC2::Errors::TagLimitExceeded => e
-      logger.error("could not tag #{instance.id}: #{e.message}")
-    end
-
-    def set_disk_metadata(disk_id, metadata)
-      with_thread_name("set_disk_metadata(#{disk_id}, ...)") do
-        begin
-          volume = @ec2_resource.volume(disk_id)
-          TagManager.tags(volume, metadata)
-        rescue Aws::EC2::Errors::TagLimitExceeded => e
-          logger.error("could not tag #{volume.id}: #{e.message}")
-        end
-      end
-    end
-
     # Map a set of cloud agnostic VM properties (cpu, ram, ephemeral_disk_size) to
     # a set of AWS specific cloud_properties
     # @param [Hash] vm_properties requested cpu, ram, and ephemeral_disk_size
@@ -502,7 +493,7 @@ module Bosh::AwsCloud
       {
         'instance_type' => instance_type,
         'ephemeral_disk' => {
-          'size' => vm_properties['ephemeral_disk_size'],
+          'size' => vm_properties['ephemeral_disk_size']
         }
       }
     end
@@ -510,12 +501,12 @@ module Bosh::AwsCloud
     # Information about AWS CPI, currently supported stemcell formats
     # @return [Hash] AWS CPI properties
     def info
-      {'stemcell_formats' => ['aws-raw', 'aws-light']}
+      {
+        'stemcell_formats' => %w(aws-raw aws-light)
+      }
     end
 
     private
-
-    attr_reader :az_selector
 
     def find_device_path_by_name(sd_name)
       xvd_name = sd_name.gsub(/^\/dev\/sd/, '/dev/xvd')
@@ -558,154 +549,26 @@ module Bosh::AwsCloud
           )
         end
 
-        encrypted_disk_properties_hash = {}
-        if stemcell_cloud_props.encrypted
-          encrypted_disk_properties_hash['encrypted'] = stemcell_cloud_props.encrypted
-          encrypted_disk_properties_hash['kms_key_arn'] = stemcell_cloud_props.kms_key_arn
-        end
-
-        volume_id = create_disk(
-          stemcell_cloud_props.disk,
-          encrypted_disk_properties_hash,
-          director_vm_id
-        )
-        volume = @ec2_resource.volume(volume_id)
-
-        sd_name = attach_ebs_volume(instance, volume)
-        device_path = find_device_path_by_name(sd_name)
+        disk_config = VolumeProperties.new(
+          size: stemcell_cloud_props.disk,
+          az: @az_selector.select_availability_zone(director_vm_id),
+          encrypted: stemcell_cloud_props.encrypted,
+          kms_key_arn: stemcell_cloud_props.kms_key_arn
+        ).persistent_disk_config
+        volume = @volume_manager.create_ebs_volume(disk_config)
+        sd_name = @volume_manager.attach_ebs_volume(instance, volume)
 
         logger.info("Creating stemcell with: '#{volume.id}' and '#{stemcell_cloud_props.inspect}'")
-        creator.create(volume, device_path, image_path).id
+        creator.create(volume, find_device_path_by_name(sd_name), image_path).id
       rescue => e
         logger.error(e)
         raise e
       ensure
         if instance && volume
-          detach_ebs_volume(instance.reload, volume, true)
-          delete_disk(volume.id)
+          @volume_manager.detach_ebs_volume(instance.reload, volume, true)
+          @volume_manager.delete_ebs_volume(volume)
         end
       end
-    end
-
-    def attach_ebs_volume(instance, volume)
-      device_name = select_device_name(instance)
-      cloud_error('Instance has too many disks attached') unless device_name
-
-      # Work around AWS eventual (in)consistency:
-      # even tough we don't call attach_disk until the disk is ready,
-      # AWS might still lie and say that the disk isn't ready yet, so
-      # we try again just to be really sure it is telling the truth
-      attachment_resp = nil
-
-      logger.debug("Attaching '#{volume.id}' to '#{instance.id}' as '#{device_name}'")
-
-      # Retry every 1 sec for 15 sec, then every 15 sec for ~10 min
-      # VolumeInUse can be returned by AWS if disk was attached to VM
-      # that was recently removed.
-      tries = ResourceWait::DEFAULT_WAIT_ATTEMPTS
-      sleep_cb = ResourceWait.sleep_callback(
-        "Attaching volume `#{volume.id}' to #{instance.id}",
-        {interval: 0, tries_before_max: 15, total: tries}
-      )
-
-      Bosh::Common.retryable(
-        on: [Aws::EC2::Errors::IncorrectState, Aws::EC2::Errors::VolumeInUse],
-        sleep: sleep_cb,
-        tries: tries
-      ) do |retries, error|
-        # Continue to retry after 15 attempts only for VolumeInUse
-        if retries > 15 && error.instance_of?(Aws::EC2::Errors::IncorrectState)
-          cloud_error("Failed to attach disk: #{error.message}")
-        end
-
-        attachment_resp = volume.attach_to_instance({
-          instance_id: instance.id,
-          device: device_name,
-        })
-      end
-
-      attachment = SdkHelpers::VolumeAttachment.new(attachment_resp, @ec2_resource)
-      ResourceWait.for_attachment(attachment: attachment, state: 'attached')
-
-      device_name = attachment.device
-      logger.info("Attached '#{volume.id}' to '#{instance.id}' as '#{device_name}'")
-
-      device_name
-    end
-
-    def select_device_name(instance)
-      device_names = instance.block_device_mappings.map { |dm| dm.device_name }
-
-      ('f'..'p').each do |char| # f..p is what console suggests
-        device_name = "/dev/sd#{char}"
-        return device_name unless device_names.include?(device_name)
-        logger.warn("'#{device_name}' on '#{instance.id}' is taken")
-      end
-
-      nil
-    end
-
-    def detach_ebs_volume(instance, volume, force=false)
-      device_mapping = instance.block_device_mappings.select { |dm| dm.ebs.volume_id == volume.id }.first
-      if device_mapping.nil?
-        raise Bosh::Clouds::DiskNotAttached.new(true),
-          "Disk `#{volume.id}' is not attached to instance `#{instance.id}'"
-      end
-
-      attachment_resp = volume.detach_from_instance({
-        instance_id: instance.id,
-        device: device_mapping.device_name,
-        force: force,
-      })
-      logger.info("Detaching `#{volume.id}' from `#{instance.id}'")
-
-      attachment = SdkHelpers::VolumeAttachment.new(attachment_resp, @ec2_resource)
-      ResourceWait.for_attachment(attachment: attachment, state: 'detached')
-    end
-
-    # Generates initial agent settings. These settings will be read by agent
-    # from AWS registry (also a BOSH component) on a target instance. Disk
-    # conventions for amazon are:
-    # system disk: /dev/sda
-    # ephemeral disk: /dev/sdb
-    # EBS volumes can be configured to map to other device names later (sdf
-    # through sdp, also some kernels will remap sd* to xvd*).
-    #
-    # @param [String] agent_id Agent id (will be picked up by agent to
-    #   assume its identity
-    # @param [Hash] network_spec Agent network spec
-    # @param [Hash] environment
-    # @param [String] root_device_name root device, e.g. /dev/sda1
-    # @param [Hash] block_device_agent_info disk attachment information to merge into the disks section.
-    #   keys are device type ("ephemeral", "raw_ephemeral") and values are array of strings representing the
-    #   path to the block device. It is expected that "ephemeral" has exactly one value.
-    # @return [Hash]
-    def initial_agent_settings(agent_id, network_spec, environment, root_device_name, block_device_agent_info)
-      settings = {
-          'vm' => {
-              'name' => "vm-#{SecureRandom.uuid}"
-        },
-          'agent_id' => agent_id,
-          'networks' => agent_network_spec(network_spec),
-          'disks' => {
-            'system' => root_device_name,
-            'persistent' => {}
-        }
-      }
-
-      settings['disks'].merge!(block_device_agent_info)
-      settings['disks']['ephemeral'] = settings['disks']['ephemeral'][0]['path']
-
-      settings['env'] = environment if environment
-      settings.merge(@config.agent.to_h)
-    end
-
-    def agent_network_spec(network_spec)
-      spec = network_spec.map do |name, settings|
-        settings['use_dhcp'] = true
-        [name, settings]
-      end
-      Hash[spec]
     end
   end
 end

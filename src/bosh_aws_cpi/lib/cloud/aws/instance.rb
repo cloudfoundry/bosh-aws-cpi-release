@@ -14,7 +14,7 @@ module Bosh::AwsCloud
 
     def elastic_ip
       addresses = @aws_instance.vpc_addresses
-      if addresses.count == 0
+      if addresses.count.zero?
         nil
       else
         addresses.first.public_ip
@@ -23,14 +23,14 @@ module Bosh::AwsCloud
 
     def associate_elastic_ip(elastic_ip)
       elastic_ip = Aws::EC2::VpcAddress.new(elastic_ip)
-      elastic_ip.associate({
+      elastic_ip.associate(
         instance_id: @aws_instance.id,
-      })
+      )
     end
 
     def disassociate_elastic_ip
       addresses = @aws_instance.vpc_addresses
-      if addresses.count == 0
+      if addresses.count.zero?
         raise Bosh::Clouds::CloudError, 'Cannot call `disassociate_elastic_ip` on an Instance without an attached Elastic IP'
       else
         addresses.first.association.delete
@@ -38,11 +38,11 @@ module Bosh::AwsCloud
     end
 
     def source_dest_check=(state)
-      @aws_instance.modify_attribute({
+      @aws_instance.modify_attribute(
         source_dest_check: {
-          value: state,
-        },
-      })
+          value: state
+        }
+      )
     end
 
     def wait_for_running
@@ -108,20 +108,17 @@ module Bosh::AwsCloud
         @logger.debug('Associating instance with destinations in the routing tables')
         tables = @aws_instance.vpc.route_tables
         route_definitions.each do |definition|
-          @logger.debug("Finding routing table '#{definition['table_id']}'")
-          table = tables.find { |t| t.id == definition['table_id'] }
-          @logger.debug("Sending traffic for '#{definition['destination']}' to '#{@aws_instance.id}' in '#{definition['table_id']}'")
+          @logger.debug("Finding routing table '#{definition.table_id}'")
+          table = tables.find { |t| t.id == definition.table_id }
+          @logger.debug("Sending traffic for '#{definition.destination}' to '#{@aws_instance.id}' in '#{definition.table_id}'")
 
-          existing_route = table.routes.find {|route| !route.nil? && route.destination_cidr_block == definition['destination'] }
+          existing_route = table.routes.find do |route|
+            !route.nil? && route.destination_cidr_block == definition.destination
+          end
           if existing_route
-            existing_route.replace({
-              instance_id: @aws_instance.id,
-            })
+            existing_route.replace(instance_id: @aws_instance.id)
           else
-            table.create_route({
-              destination_cidr_block: definition['destination'],
-              instance_id: @aws_instance.id,
-            })
+            table.create_route(destination_cidr_block: definition.destination, instance_id: @aws_instance.id)
           end
         end
       end

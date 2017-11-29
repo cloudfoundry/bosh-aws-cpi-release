@@ -6,8 +6,8 @@ describe Bosh::AwsCloud::Cloud do
     @registry = mock_registry
   end
 
-  let(:instance) { double('instance', :id => 'i-test') }
-  let(:volume) { double('volume', :id => 'v-foobar') }
+  let(:instance) { instance_double(Aws::EC2::Instance, :id => 'i-test') }
+  let(:volume) { instance_double(Aws::EC2::Volume, :id => 'v-foobar') }
   let(:subnet) { instance_double(Aws::EC2::Subnet) }
 
   let(:cloud) do

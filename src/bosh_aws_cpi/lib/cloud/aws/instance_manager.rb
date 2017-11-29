@@ -13,27 +13,18 @@ module Bosh::AwsCloud
 
       security_group_mapper = SecurityGroupMapper.new(@ec2)
       @param_mapper = InstanceParamMapper.new(security_group_mapper)
-      @block_device_manager = BlockDeviceManager.new(@logger)
     end
 
-    def create(stemcell_id, vm_type, networks_spec, disk_locality, aws_option)
-      ami = @ec2.image(stemcell_id)
-      @block_device_manager.vm_type = vm_type
-      @block_device_manager.virtualization_type = ami.virtualization_type
-      @block_device_manager.root_device_name = ami.root_device_name
-      @block_device_manager.ami_block_device_names = ami.block_device_mappings.map { |blk| blk.device_name }
-      block_device_info = @block_device_manager.mappings
-      block_device_agent_info = @block_device_manager.agent_info
-
+    def create(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, default_security_groups, block_device_mappings)
       abruptly_terminated_retries = 2
       begin
         instance_params = build_instance_params(
           stemcell_id,
-          vm_type,
-          networks_spec,
-          block_device_info,
+          vm_cloud_props,
+          networks_cloud_props,
+          block_device_mappings,
           disk_locality,
-          aws_option
+          default_security_groups
         )
 
         redacted_instance_params = Bosh::Cpi::Redactor.clone_and_redact(
@@ -44,12 +35,10 @@ module Bosh::AwsCloud
         )
         @logger.info("Creating new instance with: #{redacted_instance_params.inspect}")
 
-        aws_instance = create_aws_instance(instance_params, vm_type)
+        aws_instance = create_aws_instance(instance_params, vm_cloud_props)
+        instance = Bosh::AwsCloud::Instance.new(aws_instance, @registry, @logger)
 
-        instance = Instance.new(aws_instance, @registry, @logger)
-
-        babysit_instance_creation(instance, vm_type)
-
+        babysit_instance_creation(instance, vm_cloud_props)
       rescue => e
         if e.is_a?(Bosh::AwsCloud::AbruptlyTerminated)
           @logger.warn("Failed to configure instance '#{instance.id}': #{e.inspect}")
@@ -61,7 +50,7 @@ module Bosh::AwsCloud
         raise
       end
 
-      return instance, block_device_agent_info
+      instance
     end
 
     # @param [String] instance_id EC2 instance id
@@ -71,15 +60,13 @@ module Bosh::AwsCloud
 
     private
 
-    def babysit_instance_creation(instance, vm_type)
+    def babysit_instance_creation(instance, vm_cloud_props)
       begin
         # We need to wait here for the instance to be running, as if we are going to
         # attach to a load balancer, the instance must be running.
         instance.wait_for_running
-        instance.update_routing_tables(vm_type['advertised_routes'] || [])
-        if vm_type['source_dest_check'].to_s == 'false'
-          instance.source_dest_check = false
-        end
+        instance.update_routing_tables(vm_cloud_props.advertised_routes)
+        instance.source_dest_check = vm_cloud_props.source_dest_check
       rescue => e
         if e.is_a?(Bosh::AwsCloud::AbruptlyTerminated)
           raise
@@ -95,18 +82,18 @@ module Bosh::AwsCloud
       end
     end
 
-    def build_instance_params(stemcell_id, vm_type, networks_spec, block_device_mappings, disk_locality = [], aws_options = {})
+    def build_instance_params(stemcell_id, vm_cloud_props, networks_cloud_props, block_device_mappings, disk_locality = [], default_security_groups = [])
       volume_zones = (disk_locality || []).map { |volume_id| @ec2.volume(volume_id).availability_zone }
 
       @param_mapper.manifest_params = {
         stemcell_id: stemcell_id,
-        vm_type: vm_type,
+        vm_type: vm_cloud_props,
         registry_endpoint: @registry.endpoint,
-        networks_spec: networks_spec,
-        defaults: aws_options,
+        networks_spec: networks_cloud_props,
+        default_security_groups: default_security_groups,
         volume_zones: volume_zones,
-        subnet_az_mapping: subnet_az_mapping(networks_spec),
-        block_device_mappings: block_device_mappings,
+        subnet_az_mapping: subnet_az_mapping(networks_cloud_props),
+        block_device_mappings: block_device_mappings
       }
       @param_mapper.validate
       @param_mapper.instance_params
@@ -119,17 +106,20 @@ module Bosh::AwsCloud
       spot_manager.create(launch_specification, spot_bid_price)
     end
 
-    def create_aws_instance(instance_params, vm_type)
-      if vm_type['spot_bid_price']
+    def create_aws_instance(instance_params, vm_cloud_props)
+      if vm_cloud_props.spot_bid_price
         begin
-          return create_aws_spot_instance(instance_params, vm_type['spot_bid_price'])
+          return create_aws_spot_instance(
+            instance_params,
+            vm_cloud_props.spot_bid_price
+          )
         rescue Bosh::Clouds::VMCreationFailed => e
-          unless vm_type['spot_ondemand_fallback']
+          if vm_cloud_props.spot_ondemand_fallback
+            @logger.info("Spot instance creation failed with this message: #{e.message}; will create ondemand instance because `spot_ondemand_fallback` is set.")
+          else
             message = "Spot instance creation failed: #{e.inspect}"
             @logger.warn(message)
             raise e, message
-          else
-            @logger.info("Spot instance creation failed with this message: #{e.message}; will create ondemand instance because `spot_ondemand_fallback` is set.")
           end
         end
       end
@@ -160,15 +150,17 @@ module Bosh::AwsCloud
       30
     end
 
-    def subnet_az_mapping(networks_spec)
-      subnet_networks = networks_spec.select { |net, spec| ['dynamic', 'manual', nil].include?(spec['type']) }
-      subnet_ids = subnet_networks.values.map { |spec| spec['cloud_properties']['subnet'] unless spec['cloud_properties'].nil? }
-      filtered_subnets = @ec2.subnets({
+    def subnet_az_mapping(networks_cloud_props)
+      subnet_ids = networks_cloud_props.filter('dynamic', 'manual').map do |net|
+        net.subnet if net.cloud_properties?
+      end
+      filtered_subnets = @ec2.subnets(
         filters: [{
           name: 'subnet-id',
           values: subnet_ids
         }]
-      })
+      )
+
       filtered_subnets.inject({}) do |mapping, subnet|
         mapping[subnet.id] = subnet.availability_zone
         mapping

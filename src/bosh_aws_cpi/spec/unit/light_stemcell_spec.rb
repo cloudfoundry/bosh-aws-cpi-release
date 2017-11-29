@@ -2,7 +2,7 @@ require 'cloud/aws/light_stemcell'
 
 module Bosh::AwsCloud
   describe LightStemcell do
-    let(:heavy_stemcell) { double('heavy stemcell', id: 'fake-ami-id') }
+    let(:heavy_stemcell) { instance_double(Bosh::AwsCloud::Stemcell, id: 'fake-ami-id') }
     let(:logger) { double('logger') }
     subject(:light_stemcell) { described_class.new(heavy_stemcell, logger) }
 

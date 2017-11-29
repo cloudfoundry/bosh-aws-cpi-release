@@ -123,7 +123,7 @@ describe Bosh::AwsCloud::Cloud do
               vm_type,
               nil,
               nil,
-              nil,
+              nil
             )
           }.to raise_error(/fake-endpoint/)
         end

@@ -13,17 +13,23 @@ module Bosh
         @kms_key_arn = options[:kms_key_arn]
         @encrypted = options[:encrypted] || false
         @root_device_name = options[:root_device_name] || '/dev/xvda'
+        @snapshot_id = options[:snapshot_id]
+        @tags = options[:tags] || []
       end
 
-      def ephemeral_disk_config
+      def ephemeral_disk_config()
         mapping = {
           volume_size: size_in_gb,
           volume_type: @type,
-          delete_on_termination: true,
+          delete_on_termination: true
         }
 
         mapping[:iops] = @iops if @iops
-        mapping[:encrypted] = @encrypted if @encrypted
+        if @snapshot_id
+          mapping[:snapshot_id] = @snapshot_id
+        else
+          mapping[:encrypted] = @encrypted if @encrypted
+        end
 
         { device_name: '/dev/sdb', ebs: mapping }
       end
@@ -38,13 +44,14 @@ module Bosh
 
         output[:iops] = @iops if @iops
         output[:kms_key_id] = @kms_key_arn if @kms_key_arn
+        output[:tags] = @tags unless @tags.empty?
         output
       end
 
       def root_disk_config
         root_device = {
           :volume_type => @type,
-          :delete_on_termination => true,
+          :delete_on_termination => true
         }
         if @size > 0
           root_device[:volume_size] = size_in_gb

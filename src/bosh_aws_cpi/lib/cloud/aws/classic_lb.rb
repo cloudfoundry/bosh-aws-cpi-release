@@ -6,14 +6,14 @@ module Bosh::AwsCloud
     end
 
     def register(instance_id)
-      @client.register_instances_with_load_balancer({
+      @client.register_instances_with_load_balancer(
         instances: [
           {
             instance_id: instance_id,
           }
         ],
         load_balancer_name: @elb_name,
-      })
+      )
     end
   end
 end

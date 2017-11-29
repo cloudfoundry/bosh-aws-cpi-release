@@ -1,62 +1,58 @@
 module Bosh::AwsCloud
   class BlockDeviceManager
-    attr_writer :vm_type
-    attr_writer :virtualization_type
-    attr_writer :root_device_name
-    attr_writer :ami_block_device_names
-
-    DEFAULT_VIRTUALIZATION_TYPE = 'hvm'
-
     def self.default_instance_storage_disk_mapping
       { device_name: '/dev/sdb', virtual_name: 'ephemeral0' }
     end
 
-    def initialize(logger)
-      @virtualization_type = DEFAULT_VIRTUALIZATION_TYPE
+    def initialize(logger, stemcell, vm_cloud_props, snapshot)
       @logger = logger
+      @vm_cloud_props = vm_cloud_props
+      @snapshot_id = snapshot ? snapshot.id : nil
+      @virtualization_type = stemcell.ami.virtualization_type
+      @root_device_name = stemcell.ami.root_device_name
+      @ami_block_device_names = stemcell.ami.block_device_mappings.map { |blk| blk.device_name }
     end
 
-    def mappings
-      if @info.nil?
-        @info = build_info
-      end
-      info = @info
+    def mappings_and_info
+      info = build_info
 
-      instance_type = @vm_type.fetch('instance_type', 'unspecified')
+      return mappings(info), agent_info(info)
+    end
+
+    private
+
+    def mappings(info)
+      instance_type = @vm_cloud_props.instance_type.nil? ? 'unspecified' : @vm_cloud_props.instance_type
       if instance_type =~ /^i3./
-        info = @info.reject {|device| device[:bosh_type] == 'raw_ephemeral' }
+        info = info.reject {|device| device[:bosh_type] == 'raw_ephemeral' }
       end
 
       info.map { |entry| entry.reject { |k| k == :bosh_type } }
     end
 
-    def agent_info
-      if @info.nil?
-        @info = build_info
-      end
-
-      @info.group_by { |v| v[:bosh_type] }
+    def agent_info(info)
+      info.group_by { |v| v[:bosh_type] }
         .map { |type, devices| {type => devices.map { |device| { 'path' => device[:device_name]} }} }
         .select { |elem| elem[nil].nil? }
         .inject({}) { |a, b| a.merge(b) }
     end
 
     def build_info
-      instance_type = @vm_type.fetch('instance_type', 'unspecified')
+      instance_type = @vm_cloud_props.instance_type.nil? ? 'unspecified' : @vm_cloud_props.instance_type
 
       disk_info = DiskInfo.for(instance_type)
-      if raw_instance_storage? && disk_info.nil?
+      if @vm_cloud_props.raw_instance_storage? && disk_info.nil?
         raise Bosh::Clouds::CloudError, "raw_instance_storage requested for instance type '#{instance_type}' that does not have instance storage"
       end
 
       block_devices = []
       block_devices << ephemeral_disk_mapping(instance_type, disk_info)
 
-      if raw_instance_storage?
+      if @vm_cloud_props.raw_instance_storage?
         block_devices += raw_instance_mappings(disk_info.count)
       end
 
-      if @vm_type.has_key?('root_disk')
+      if @vm_cloud_props.root_disk.specified?
         block_devices << user_specified_root_disk_mapping
       else
         block_devices << default_root_disk_mapping
@@ -65,17 +61,15 @@ module Bosh::AwsCloud
       block_devices
     end
 
-    private
-
     def ephemeral_disk_mapping(instance_type, disk_info)
-      disk_options = @vm_type.fetch('ephemeral_disk', {})
+      ephemeral_disk = @vm_cloud_props.ephemeral_disk
 
-      if disk_options['use_instance_storage']
-        if raw_instance_storage?
+      if ephemeral_disk.use_instance_storage
+        if @vm_cloud_props.raw_instance_storage?
           raise Bosh::Clouds::CloudError, 'ephemeral_disk.use_instance_storage and raw_instance_storage cannot both be true'
         end
 
-        if disk_options.size > 1
+        if ephemeral_disk.invalid_instance_storage_config?
           raise Bosh::Clouds::CloudError, 'use_instance_storage cannot be combined with additional ephemeral_disk properties'
         end
 
@@ -89,20 +83,19 @@ module Bosh::AwsCloud
         @logger.debug('Use EBS storage to create the virtual machine')
         disk_size = DiskInfo.default.size_in_mb
 
-        if disk_options['size']
-          disk_size = disk_options['size']
-        elsif disk_info && !raw_instance_storage?
+        if ephemeral_disk.size
+          disk_size = ephemeral_disk.size
+        elsif disk_info && !@vm_cloud_props.raw_instance_storage?
           disk_size = disk_info.size_in_mb
         end
 
-        volume_properties = VolumeProperties.new(
+        result = VolumeProperties.new(
           size: disk_size,
-          type: disk_options['type'],
-          iops: disk_options['iops'],
-          encrypted: disk_options.fetch('encrypted', false)
-        )
-
-        result = volume_properties.ephemeral_disk_config
+          type: ephemeral_disk.type,
+          iops: ephemeral_disk.iops,
+          snapshot_id: @snapshot_id,
+          encrypted: ephemeral_disk.encrypted
+        ).ephemeral_disk_config
       end
 
       result[:bosh_type] = 'ephemeral'
@@ -110,7 +103,7 @@ module Bosh::AwsCloud
     end
 
     def first_raw_ephemeral_device
-      instance_type = @vm_type.fetch('instance_type', 'unspecified')
+      instance_type = @vm_cloud_props.instance_type.nil? ? 'unspecified' : @vm_cloud_props.instance_type
       case @virtualization_type
 
         when 'hvm'
@@ -124,10 +117,6 @@ module Bosh::AwsCloud
         else
           raise Bosh::Clouds::CloudError, "unknown virtualization type #{@virtualization_type}"
       end
-    end
-
-    def raw_instance_storage?
-      @vm_type.fetch('raw_instance_storage', false)
     end
 
     def raw_instance_mappings(num_of_devices)
@@ -146,9 +135,9 @@ module Bosh::AwsCloud
 
     def user_specified_root_disk_mapping
       disk_properties = VolumeProperties.new(
-        size: @vm_type['root_disk']['size'],
-        type: @vm_type['root_disk']['type'],
-        iops: @vm_type['root_disk']['iops'],
+        size: @vm_cloud_props.root_disk.size,
+        type: @vm_cloud_props.root_disk.type,
+        iops: @vm_cloud_props.root_disk.iops,
         virtualization_type: @virtualization_type,
         root_device_name: root_device_name,
       )

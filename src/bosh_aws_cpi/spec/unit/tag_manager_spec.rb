@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 describe Bosh::AwsCloud::TagManager do
-  let(:instance) { double('instance', :id => 'i-xxxxxxx') }
+  let(:instance) { instance_double(Aws::EC2::Instance, :id => 'i-xxxxxxx') }
 
   it 'should trim key and value length' do
     expect(instance).to receive(:create_tags) do |args|
@@ -81,12 +81,12 @@ describe Bosh::AwsCloud::TagManager do
   end
 
   it 'should do nothing if key is nil' do
-    expect(instance).not_to receive(:create_tag)
+    expect(instance).not_to receive(:create_tags)
     Bosh::AwsCloud::TagManager.tag(instance, nil, 'value')
   end
 
   it 'should do nothing if value is nil' do
-    expect(instance).not_to receive(:create_tag)
+    expect(instance).not_to receive(:create_tags)
     Bosh::AwsCloud::TagManager.tag(instance, 'key', nil)
   end
 end

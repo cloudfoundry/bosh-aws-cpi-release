@@ -6,6 +6,18 @@ describe Bosh::AwsCloud::Cloud do
 
   describe 'EBS-volume based flow' do
     let(:creator) { double(Bosh::AwsCloud::StemcellCreator) }
+    let(:volume_manager) { instance_double(Bosh::AwsCloud::VolumeManager) }
+    let(:az_selector) do
+      instance_double(Bosh::AwsCloud::AvailabilityZoneSelector, select_availability_zone: 'us-east-1a')
+    end
+    let(:disk_config) do
+      {
+        size: 2,
+        availability_zone: 'us-east-1a',
+        volume_type: 'gp2',
+        encrypted: false
+      }
+    end
 
     context 'light stemcell' do
       let(:ami_id) { 'ami-xxxxxxxx' }
@@ -170,9 +182,9 @@ describe Bosh::AwsCloud::Cloud do
           'virtualization_type' => 'paravirtual'
         }
       end
-      let(:volume) { double('volume', :id => 'vol-xxxxxxxx') }
-      let(:stemcell) { double('stemcell', :id => 'ami-xxxxxxxx') }
-      let(:instance) { double('instance') }
+      let(:volume) { instance_double(Aws::EC2::Volume, :id => 'vol-xxxxxxxx') }
+      let(:stemcell) { instance_double(Bosh::AwsCloud::Stemcell, :id => 'ami-xxxxxxxx') }
+      let(:instance) { instance_double(Aws::EC2::Instance) }
       let(:aws_config) do
         instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}, encrypted: false, kms_key_arn: nil)
       end
@@ -196,20 +208,22 @@ describe Bosh::AwsCloud::Cloud do
           expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
             .with(ec2, stemcell_cloud_props)
             .and_return(creator)
+          expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
+          expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
         end
 
         allow(instance).to receive(:exists?).and_return(true)
         allow(instance).to receive(:reload).and_return(instance)
         allow(cloud).to receive(:current_vm_id).and_return('i-xxxxxxxx')
 
-        expect(cloud).to receive(:create_disk).with(2048, {}, 'i-xxxxxxxx').and_return('vol-xxxxxxxx')
-        expect(cloud).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
+        expect(volume_manager).to receive(:create_ebs_volume).with(disk_config).and_return(volume)
+        expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
         expect(cloud).to receive(:find_device_path_by_name).with('/dev/sdh').and_return('ebs')
 
         expect(creator).to receive(:create).with(volume, 'ebs', '/tmp/foo').and_return(stemcell)
 
-        expect(cloud).to receive(:detach_ebs_volume).with(instance, volume, true)
-        expect(cloud).to receive(:delete_disk).with('vol-xxxxxxxx')
+        expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
+        expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
 
         expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq('ami-xxxxxxxx')
       end
@@ -226,21 +240,23 @@ describe Bosh::AwsCloud::Cloud do
             expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
               .with(ec2, stemcell_cloud_props)
               .and_return(creator)
+            expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
+            expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
           end
 
           allow(instance).to receive(:exists?).and_return(true)
           allow(instance).to receive(:reload).and_return(instance)
           allow(cloud).to receive(:current_vm_id).and_return('i-xxxxxxxx')
 
-          expect(cloud).to receive(:create_disk).with(2048, {}, 'i-xxxxxxxx').and_return('vol-xxxxxxxx')
-          expect(cloud).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
+          expect(volume_manager).to receive(:create_ebs_volume).with(disk_config).and_return(volume)
+          expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
           expect(cloud).to receive(:find_device_path_by_name).with('/dev/sdh').and_return('ebs')
 
           allow(creator).to receive(:create)
           expect(creator).to receive(:create).with(volume, 'ebs', '/tmp/foo').and_return(stemcell)
 
-          expect(cloud).to receive(:detach_ebs_volume).with(instance, volume, true)
-          expect(cloud).to receive(:delete_disk).with('vol-xxxxxxxx')
+          expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
+          expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
 
           expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq('ami-xxxxxxxx')
         end
@@ -259,6 +275,15 @@ describe Bosh::AwsCloud::Cloud do
               'kms_key_arn' => 'arn:aws:kms:us-east-1:ID:key/GUID'
             }
           end
+          let(:disk_config) do
+            {
+              size: 2,
+              availability_zone: 'us-east-1a',
+              volume_type: 'gp2',
+              encrypted: true,
+              kms_key_id: 'arn:aws:kms:us-east-1:ID:key/GUID'
+            }
+          end
 
           it 'should create stemcell with encrypted disk with the given kms key' do
             cloud = mock_cloud do |ec2|
@@ -268,20 +293,22 @@ describe Bosh::AwsCloud::Cloud do
               expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
                                                              .with(ec2, stemcell_cloud_props)
                                                              .and_return(creator)
+              expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
+              expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
             end
 
             allow(instance).to receive(:exists?).and_return(true)
             allow(instance).to receive(:reload).and_return(instance)
             allow(cloud).to receive(:current_vm_id).and_return('i-xxxxxxxx')
 
-            expect(cloud).to receive(:create_disk).with(2048, {'encrypted' => true, 'kms_key_arn' => 'arn:aws:kms:us-east-1:ID:key/GUID'}, 'i-xxxxxxxx').and_return('vol-xxxxxxxx')
-            expect(cloud).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
+            expect(volume_manager).to receive(:create_ebs_volume).with(disk_config).and_return(volume)
+            expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
             expect(cloud).to receive(:find_device_path_by_name).with('/dev/sdh').and_return('ebs')
 
             expect(creator).to receive(:create).with(volume, 'ebs', '/tmp/foo').and_return(stemcell)
 
-            expect(cloud).to receive(:detach_ebs_volume).with(instance, volume, true)
-            expect(cloud).to receive(:delete_disk).with('vol-xxxxxxxx')
+            expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
+            expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
 
             expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq('ami-xxxxxxxx')
           end
@@ -295,7 +322,15 @@ describe Bosh::AwsCloud::Cloud do
               'name' => 'stemcell-name',
               'version' => '1.2.3',
               'virtualization_type' => 'paravirtual',
-              'encrypted' => true,
+              'encrypted' => true
+            }
+          end
+          let(:disk_config) do
+            {
+              size: 2,
+              availability_zone: 'us-east-1a',
+              volume_type: 'gp2',
+              encrypted: true
             }
           end
 
@@ -307,20 +342,22 @@ describe Bosh::AwsCloud::Cloud do
               expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
                                                              .with(ec2, stemcell_cloud_props)
                                                              .and_return(creator)
+              expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
+              expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
             end
 
             allow(instance).to receive(:exists?).and_return(true)
             allow(instance).to receive(:reload).and_return(instance)
             allow(cloud).to receive(:current_vm_id).and_return('i-xxxxxxxx')
 
-            expect(cloud).to receive(:create_disk).with(2048, {'encrypted' => true, 'kms_key_arn' => nil}, 'i-xxxxxxxx').and_return('vol-xxxxxxxx')
-            expect(cloud).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
+            expect(volume_manager).to receive(:create_ebs_volume).with(disk_config).and_return(volume)
+            expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
             expect(cloud).to receive(:find_device_path_by_name).with('/dev/sdh').and_return('ebs')
 
             expect(creator).to receive(:create).with(volume, 'ebs', '/tmp/foo').and_return(stemcell)
 
-            expect(cloud).to receive(:detach_ebs_volume).with(instance, volume, true)
-            expect(cloud).to receive(:delete_disk).with('vol-xxxxxxxx')
+            expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
+            expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
 
             expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq('ami-xxxxxxxx')
           end
@@ -336,22 +373,33 @@ describe Bosh::AwsCloud::Cloud do
             expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
                                                            .with(ec2, stemcell_cloud_props)
                                                            .and_return(creator)
+            expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
+            expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
           end
 
           allow(instance).to receive(:exists?).and_return(true)
           allow(instance).to receive(:reload).and_return(instance)
           allow(cloud).to receive(:current_vm_id).and_return('i-xxxxxxxx')
 
-          expect(cloud).to receive(:create_disk).with(2048, {}, 'i-xxxxxxxx').and_return('vol-xxxxxxxx')
-          expect(cloud).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
+          expect(volume_manager).to receive(:create_ebs_volume).with(disk_config).and_return(volume)
+          expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
           expect(cloud).to receive(:find_device_path_by_name).with('/dev/sdh').and_return('ebs')
 
           expect(creator).to receive(:create).with(volume, 'ebs', '/tmp/foo').and_return(stemcell)
 
-          expect(cloud).to receive(:detach_ebs_volume).with(instance, volume, true)
-          expect(cloud).to receive(:delete_disk).with('vol-xxxxxxxx')
+          expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
+          expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
 
           expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq('ami-xxxxxxxx')
+        end
+        let(:disk_config) do
+          {
+            size: 2,
+            availability_zone: 'us-east-1a',
+            volume_type: 'gp2',
+            encrypted: false,
+            kms_key_id: 'arn:aws:kms:us-east-1:ID:key/GUID'
+          }
         end
 
         context 'when `encrypted` is false and kms_key_arn is provided' do

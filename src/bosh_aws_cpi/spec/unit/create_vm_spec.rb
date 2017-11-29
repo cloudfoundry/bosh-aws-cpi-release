@@ -1,39 +1,49 @@
 require 'spec_helper'
 
 describe Bosh::AwsCloud::Cloud, 'create_vm' do
-  let(:registry) { double('registry') }
-  let(:availability_zone_selector) { double('availability zone selector') }
-  let(:stemcell) { double('stemcell', root_device_name: 'root name', image_id: stemcell_id) }
-  let(:instance_manager) { instance_double('Bosh::AwsCloud::InstanceManager') }
-  let (:block_device_agent_info) {
+  let(:registry) { instance_double(Bosh::Cpi::RegistryClient) }
+  let(:availability_zone_selector) { instance_double(Bosh::AwsCloud::AvailabilityZoneSelector) }
+  let(:stemcell) { instance_double(Bosh::AwsCloud::Stemcell, root_device_name: 'root name', image_id: stemcell_id) }
+  let(:instance_manager) { instance_double(Bosh::AwsCloud::InstanceManager) }
+  let(:block_device_manager) { instance_double(Bosh::AwsCloud::BlockDeviceManager) }
+  let(:block_device_agent_info) do
     {
-      'ephemeral' => [{'path' => '/dev/sdz'}],
-      'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}],
+      'ephemeral' => [{ 'path' => '/dev/sdz' }],
+      'raw_ephemeral' => [{ 'path' => '/dev/xvdba' }, { 'path' => '/dev/xvdbb' }]
     }
-  }
-  let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-id') }
-  let(:network_configurator) { double('network configurator') }
-
+  end
+  let(:mappings) { ['some-mapping'] }
+  let(:instance) { instance_double(Bosh::AwsCloud::Instance, id: 'fake-id') }
+  let(:network_configurator) { instance_double(Bosh::AwsCloud::NetworkConfigurator) }
+  let(:global_config) { instance_double(Bosh::AwsCloud::Config, aws: Bosh::AwsCloud::AwsConfig.new({})) }
   let(:agent_id) {'agent_id'}
   let(:stemcell_id) {'stemcell_id'}
   let(:vm_type) { {} }
+  let(:vm_cloud_props) do
+    Bosh::AwsCloud::VMCloudProps.new({}, global_config)
+  end
   let(:networks_spec) do
     {
       'fake-network-name-1' => {
-        'type' => 'dynamic',
+        'type' => 'dynamic'
       },
       'fake-network-name-2' => {
-        'type' => 'manual',
+        'type' => 'manual'
       }
     }
   end
-  let(:disk_locality) { double('disk locality') }
-  let(:environment) {'environment'}
-  let(:aws_options) { options['aws'] }
+  let(:networks_cloud_props) do
+    Bosh::AwsCloud::NetworkCloudProps.new(networks_spec, global_config)
+  end
+  let(:networks_cloud_props) do
+    Bosh::AwsCloud::NetworkCloudProps.new(networks_spec, global_config)
+  end
+  let(:disk_locality) { ['some', 'disk', 'locality'] }
+  let(:environment) { 'environment' }
   let(:options) do
     ops = mock_cloud_properties_merge(
       'aws' => {
-        'region' => 'bar',
+        'region' => 'bar'
       }
     )
     ops['agent'] = {
@@ -41,6 +51,9 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
     }
     ops
   end
+  let(:props_factory) { instance_double(Bosh::AwsCloud::PropsFactory) }
+  let(:volume_manager) { instance_double(Bosh::AwsCloud::VolumeManager) }
+  let(:temp_snapshot) { nil }
 
   before do
     @cloud = mock_cloud(options) do |_ec2|
@@ -48,24 +61,32 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
 
       allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
 
-      allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).
-          with(@ec2).
-          and_return(availability_zone_selector)
+      allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new)
+        .with(@ec2)
+        .and_return(availability_zone_selector)
 
       allow(Bosh::AwsCloud::Stemcell).to receive(:find).with(@ec2, stemcell_id).and_return(stemcell)
 
-      allow(Aws::ElasticLoadBalancing).to receive(:new).with(hash_including(region: 'bar'))
-
       allow(Bosh::AwsCloud::InstanceManager).to receive(:new).and_return(instance_manager)
+
+      allow(Bosh::AwsCloud::PropsFactory).to receive(:new).and_return(props_factory)
+
+      allow(Bosh::AwsCloud::VolumeManager).to receive(:new).with(anything, anything).and_return(volume_manager)
     end
 
-    allow(instance_manager).to receive(:create).
-      with(stemcell_id, vm_type, networks_spec, disk_locality, aws_options).
-      and_return([instance, block_device_agent_info])
+    allow(props_factory).to receive(:vm_props).with(vm_type).and_return(vm_cloud_props)
+    allow(props_factory).to receive(:network_props).with(networks_spec).and_return(networks_cloud_props)
 
-    allow(Bosh::AwsCloud::NetworkConfigurator).to receive(:new).
-      with(networks_spec).
-      and_return(network_configurator)
+    allow(instance_manager).to receive(:create)
+      .with(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, [], mappings)
+      .and_return(instance)
+
+    allow(Bosh::AwsCloud::NetworkConfigurator).to receive(:new).with(networks_cloud_props).and_return(network_configurator)
+    allow(Bosh::AwsCloud::BlockDeviceManager).to receive(:new)
+      .with(anything, stemcell, vm_cloud_props, temp_snapshot)
+      .and_return(block_device_manager)
+
+    allow(block_device_manager).to receive(:mappings_and_info).and_return([mappings, block_device_agent_info])
 
     allow(vm_type).to receive(:[]).and_return(false)
     allow(network_configurator).to receive(:configure)
@@ -80,7 +101,8 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
       anything,
       anything,
       anything,
-    ).and_return([instance, block_device_agent_info])
+      anything
+    ).and_return(instance)
     expect(@cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq('fake-id')
   end
 
@@ -148,5 +170,47 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
 
   it 'creates elb client with correct region' do
     @cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
+  end
+
+  context 'when specifying kms encryption for ephemeral device' do
+    let(:encrypted_temp_disk_configuration) { {'encrypted' => true, 'kms_key_arn' => 'some-kms-key'} }
+    let(:vm_type) do
+      {
+        'instance_type' => 'm1.small',
+        'availability_zone' => 'us-east-1a',
+        'ephemeral_disk' => encrypted_temp_disk_configuration
+      }
+    end
+    let(:temp_volume) { instance_double(Aws::EC2::Volume) }
+    let(:temp_snapshot) { instance_double(Aws::EC2::Snapshot, id: 's-id') }
+    let(:vm_cloud_props) do
+      Bosh::AwsCloud::VMCloudProps.new({'ephemeral_disk' => {'encrypted' => true, 'kms_key_arn' => 'some-kms-key'}}, global_config)
+    end
+
+    before do
+      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(snapshot: temp_snapshot, state: 'completed')
+    end
+
+    it 'creates and deletes an encrypted volume and snapshot and sends the snapshot to block device manager' do
+      expect(volume_manager).to receive(:create_ebs_volume).with(hash_including({
+        encrypted: true, kms_key_id: 'some-kms-key', tags: [{key: "ephemeral_disk_agent_id", value: "temp-vol-bosh-agent-#{agent_id}"}]
+      })).and_return temp_volume
+      expect(temp_volume).to receive(:create_snapshot).and_return temp_snapshot
+      expect(temp_snapshot).to receive(:create_tags).with({tags: [{key: "ephemeral_disk_agent_id", value: "temp-snapshot-bosh-agent-#{agent_id}"}]})
+
+      expect(temp_snapshot).to receive(:delete)
+      expect(volume_manager).to receive(:delete_ebs_volume).with temp_volume
+
+      expect(instance_manager).to receive(:create).with(
+        stemcell_id,
+        vm_cloud_props,
+        networks_cloud_props,
+        disk_locality,
+        [],
+        mappings
+      )
+
+      @cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
+    end
   end
 end

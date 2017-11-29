@@ -364,7 +364,7 @@ describe Bosh::AwsCloud::Cloud do
     end
 
     context 'when disk_pool specifies a disk type' do
-      let(:cloud_properties) { {'type' => 'standard'} }
+      let(:cloud_properties) { { 'type' => 'standard' } }
 
       it 'creates a disk of the given type' do
         begin
@@ -629,6 +629,76 @@ describe Bosh::AwsCloud::Cloud do
             end
           end
         end
+
+        context 'and global kms_key_arn' do
+          let(:aws_config) do
+            {
+              'region' => @region,
+              'default_key_name' => @default_key_name,
+              'default_security_groups' => get_security_group_ids,
+              'fast_path_delete' => 'yes',
+              'access_key_id' => @access_key_id,
+              'secret_access_key' => @secret_access_key,
+              'max_retries' => 8,
+              'encrypted' => true,
+              'kms_key_arn' => @kms_key_arn
+            }
+          end
+
+          context 'and vm type cloud properties does NOT have kms_key_arn' do
+            let(:vm_type) do
+              {
+                'instance_type' => instance_type,
+                'availability_zone' => @subnet_zone,
+                'ephemeral_disk' => {
+                  'size' => 4 * 1024,
+                  'encrypted' => true
+                }
+              }
+            end
+
+            it 'creates instance with ephemeral disk with global kms_key_arn' do
+              vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: my_cpi) do |instance_id|
+                block_device_mapping = my_cpi.ec2_resource.instance(instance_id).block_device_mappings
+                ephemeral_block_device = block_device_mapping.find { |entry| entry.device_name == '/dev/sdb' }
+
+                ephemeral_disk = my_cpi.ec2_resource.volume(ephemeral_block_device.ebs.volume_id)
+
+                expect(ephemeral_disk.encrypted).to be(true)
+                expect(ephemeral_disk.kms_key_id).to eq(@kms_key_arn)
+
+                expect(ephemeral_disk.snapshot_id).not_to be_nil
+                expect {
+                  snapshot = my_cpi.ec2_resource.snapshot(ephemeral_disk.snapshot_id)
+                  snapshot.data
+                }.to raise_error(Aws::EC2::Errors::InvalidSnapshotNotFound)
+              end
+            end
+          end
+
+          context 'and kms_key_arn is overwritten in vm type properties' do
+            let(:vm_type) do
+              {
+                'instance_type' => instance_type,
+                'availability_zone' => @subnet_zone,
+                'ephemeral_disk' => {
+                  'size' => 4 * 1024,
+                  'encrypted' => true,
+                  'kms_key_arn' => 'invalid-kms-key-arn-only-for-testing-overwrite'
+                }
+              }
+            end
+
+            it 'should try to create ephemeral disk vm type cloud properties kms_key_arn' do
+              # It's faster to fail than providing another `kms_key_arn` and waiting for success
+              # if the property wasn't being overwritten it would NOT fail
+              # also no need to have another KMS key be provided in the tests
+              expect do
+                vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: my_cpi)
+              end.to raise_error(Aws::EC2::Errors::InvalidVolumeNotFound)
+            end
+          end
+        end
       end
     end
 
@@ -647,17 +717,16 @@ describe Bosh::AwsCloud::Cloud do
 
       it 'requests all available instance disks and puts the mappings in the registry' do
         vm_lifecycle do |instance_id|
-          expect(@registry).to have_received(:update_settings).with(instance_id, hash_including({
+          expect(@registry).to have_received(:update_settings).with(instance_id, hash_including(
             'disks' => {
               'system' => '/dev/xvda',
               'persistent' => {},
               'ephemeral' => '/dev/sdb',
               'raw_ephemeral' => [{'path' => '/dev/xvdba'}]
             }
-          }))
+          ))
         end
       end
-
 
       context 'when instance has NVMe SSD' do
         let(:instance_type) { instance_type_with_ephemeral_nvme }

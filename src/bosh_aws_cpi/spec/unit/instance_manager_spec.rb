@@ -6,19 +6,15 @@ module Bosh::AwsCloud
     let(:aws_client) { instance_double(Aws::EC2::Client) }
     before { allow(ec2).to receive(:client).and_return(aws_client) }
 
-    let(:registry) { double('Bosh::Registry::Client', :endpoint => 'http://...', :update_settings => nil) }
+    let(:registry) { instance_double(Bosh::Cpi::RegistryClient, :endpoint => 'http://...', :update_settings => nil) }
     let(:param_mapper) { instance_double(InstanceParamMapper) }
-    let(:block_device_manager) { instance_double(BlockDeviceManager) }
     let(:instance_manager) { InstanceManager.new(ec2, registry, logger) }
     let(:logger) { Logger.new('/dev/null') }
 
     describe '#create' do
-      let(:fake_subnet_collection) { instance_double('Aws::EC2::SubnetCollection')}
-      let(:fake_availability_zone) { instance_double('Aws::EC2::AvailabilityZone', name: 'us-east-1a')}
-      let(:fake_aws_subnet) { instance_double('Aws::EC2::Subnet', id: 'sub-123456', availability_zone: fake_availability_zone) }
+      let(:fake_aws_subnet) { instance_double(Aws::EC2::Subnet, id: 'sub-123456', availability_zone: 'us-east-1a') }
 
-      let(:aws_instances) { instance_double('Aws::EC2::InstanceCollection') }
-      let(:aws_instance) { instance_double('Aws::EC2::Instance', id: 'i-12345678') }
+      let(:aws_instance) { instance_double(Aws::EC2::Instance, id: 'i-12345678') }
 
       let(:stemcell_id) { 'stemcell-id' }
       let(:vm_type) do
@@ -27,19 +23,28 @@ module Bosh::AwsCloud
           'availability_zone' => 'us-east-1a',
         }
       end
+      let(:global_config) do
+        instance_double(Bosh::AwsCloud::Config, aws: Bosh::AwsCloud::AwsConfig.new(default_options['aws']))
+      end
+      let(:vm_cloud_props) do
+        Bosh::AwsCloud::VMCloudProps.new(vm_type, global_config)
+      end
       let(:networks_spec) do
         {
           'default' => {
             'type' => 'dynamic',
             'dns' => 'foo',
-            'cloud_properties' => {'subnet' => 'sub-default', 'security_groups' => 'baz'}
+            'cloud_properties' => { 'subnet' => 'sub-default', 'security_groups' => 'baz' }
           },
           'other' => {
             'type' => 'manual',
-            'cloud_properties' => {'subnet' => 'sub-123456'},
+            'cloud_properties' => { 'subnet' => 'sub-123456' },
             'ip' => '1.2.3.4'
           }
         }
+      end
+      let(:networks_cloud_props) do
+        Bosh::AwsCloud::NetworkCloudProps.new(networks_spec, global_config)
       end
       let(:disk_locality) { nil }
       let(:default_options) do
@@ -60,8 +65,9 @@ module Bosh::AwsCloud
           )
         ]
       end
+      let(:fake_block_device_mappings) { 'fake-block-device-mappings' }
 
-      let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-instance-id') }
+      let(:instance) { instance_double(Bosh::AwsCloud::Instance, id: 'fake-instance-id') }
       let(:fake_instance_params) do
         {
           fake: 'instance-params',
@@ -80,14 +86,7 @@ module Bosh::AwsCloud
         allow(param_mapper).to receive(:instance_params).and_return(fake_instance_params)
         allow(param_mapper).to receive(:manifest_params=)
         allow(param_mapper).to receive(:validate)
-        allow(block_device_manager).to receive(:vm_type=)
-        allow(block_device_manager).to receive(:virtualization_type=)
-        allow(block_device_manager).to receive(:root_device_name=)
-        allow(block_device_manager).to receive(:ami_block_device_names=)
-        allow(block_device_manager).to receive(:mappings).and_return('fake-block-device-mappings')
-        allow(block_device_manager).to receive(:agent_info).and_return('fake-block-device-agent-info')
         instance_manager.instance_variable_set('@param_mapper', param_mapper)
-        instance_manager.instance_variable_set('@block_device_manager', block_device_manager)
 
         allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: 'running')
 
@@ -98,10 +97,11 @@ module Bosh::AwsCloud
           }],
         ).and_return([fake_aws_subnet])
 
-        allow(ec2).to receive(:instances).and_return(aws_instances)
+        # allow(ec2).to receive(:instances).and_return([aws_instance])
+        allow(ec2).to receive(:instances)
         allow(ec2).to receive(:image).with(stemcell_id).and_return(
           instance_double(
-            'Aws::EC2::Image',
+            Aws::EC2::Image,
             root_device_name: 'fake-image-root-device',
             block_device_mappings: block_devices,
             virtualization_type: :hvm
@@ -111,6 +111,7 @@ module Bosh::AwsCloud
         allow(ec2).to receive(:instance).with('i-12345678').and_return(aws_instance)
 
         allow(Instance).to receive(:new).and_return(instance)
+        allow(instance).to receive(:source_dest_check=).with(vm_cloud_props.source_dest_check)
         allow(instance).to receive(:wait_for_running)
         allow(instance).to receive(:update_routing_tables)
       end
@@ -121,12 +122,14 @@ module Bosh::AwsCloud
         expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
         instance_manager.create(
           stemcell_id,
-          vm_type,
-          networks_spec,
+          vm_cloud_props,
+          networks_cloud_props,
           disk_locality,
-          default_options
+          default_options,
+          fake_block_device_mappings
         )
       end
+
 
       context 'redacts' do
         before do
@@ -136,12 +139,14 @@ module Bosh::AwsCloud
           allow(logger).to receive(:info)
           instance_manager.create(
             stemcell_id,
-            vm_type,
-            networks_spec,
+            vm_cloud_props,
+            networks_cloud_props,
             disk_locality,
-            default_options
+            default_options,
+             fake_block_device_mappings
           )
         end
+
         it '`user_data` when creating an instance' do
           expect(logger).to have_received(:info).with(/"user_data"=>"<redacted>"/)
         end
@@ -205,10 +210,11 @@ module Bosh::AwsCloud
           # Trigger spot instance request
           instance_manager.create(
             stemcell_id,
-            vm_type,
-            networks_spec,
+            vm_cloud_props,
+            networks_cloud_props,
             disk_locality,
-            default_options
+            default_options,
+            fake_block_device_mappings
           )
         end
 
@@ -220,17 +226,17 @@ module Bosh::AwsCloud
             expect {
               instance_manager.create(
                 stemcell_id,
-                vm_type,
-                networks_spec,
+                vm_cloud_props,
+                networks_cloud_props,
                 disk_locality,
-                default_options
+                default_options,
+                fake_block_device_mappings
               )
             }.to raise_error(Bosh::Clouds::VMCreationFailed, /Spot instance creation failed/)
 
           end
 
           context 'and spot_ondemand_fallback is configured' do
-            let(:instance_manager) { InstanceManager.new(ec2, registry, logger) }
             let(:vm_type) do
               {
                 'spot_bid_price' => 0.15,
@@ -254,10 +260,11 @@ module Bosh::AwsCloud
 
               instance_manager.create(
                 stemcell_id,
-                vm_type,
-                networks_spec,
+                vm_cloud_props,
+                networks_cloud_props,
                 disk_locality,
-                default_options
+                default_options,
+                fake_block_device_mappings
               )
             end
 
@@ -269,10 +276,11 @@ module Bosh::AwsCloud
 
               instance_manager.create(
                 stemcell_id,
-                vm_type,
-                networks_spec,
+                vm_cloud_props,
+                networks_cloud_props,
                 disk_locality,
-                default_options
+                default_options,
+                fake_block_device_mappings
               )
             end
           end
@@ -283,19 +291,20 @@ module Bosh::AwsCloud
         before do
           vm_type['source_dest_check'] = false
         end
+
         it 'disables source_dest_check on the instance' do
           allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
           expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
-          expect(instance).to receive(:source_dest_check=).with(false)
           expect(instance).to receive(:wait_for_running)
 
           instance_manager.create(
             stemcell_id,
-            vm_type,
-            networks_spec,
+            vm_cloud_props,
+            networks_cloud_props,
             disk_locality,
-            default_options
+            default_options,
+            fake_block_device_mappings
           )
         end
       end
@@ -308,24 +317,24 @@ module Bosh::AwsCloud
           with(run_instances_params).
           and_raise(Aws::EC2::Errors::InvalidIPAddressInUse.new(nil, 'in-use'))
 
-        expect(aws_client).to receive(:run_instances).
-          with(run_instances_params).
-          and_return('run-instances-response')
+        expect(aws_client).to receive(:run_instances)
+          .with(run_instances_params).and_return('run-instances-response')
 
         allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
         expect(logger).to receive(:warn).with(/IP address was in use/).once
 
         instance_manager.create(
           stemcell_id,
-          vm_type,
-          networks_spec,
+          vm_cloud_props,
+          networks_cloud_props,
           disk_locality,
-          default_options
+          default_options,
+          fake_block_device_mappings
         )
       end
 
       context 'when waiting for the instance to be running fails' do
-        let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-instance-id') }
+        let(:instance) { instance_double(Bosh::AwsCloud::Instance, id: 'fake-instance-id') }
         let(:create_err) { StandardError.new('fake-err') }
 
         before { allow(Instance).to receive(:new).and_return(instance) }
@@ -341,10 +350,11 @@ module Bosh::AwsCloud
           expect {
             instance_manager.create(
               stemcell_id,
-              vm_type,
-              networks_spec,
+              vm_cloud_props,
+              networks_cloud_props,
               disk_locality,
-              default_options
+              default_options,
+              fake_block_device_mappings
             )
           }.to raise_error(create_err)
         end
@@ -362,10 +372,11 @@ module Bosh::AwsCloud
           expect {
             instance_manager.create(
               stemcell_id,
-              vm_type,
-              networks_spec,
+              vm_cloud_props,
+              networks_cloud_props,
               disk_locality,
-              default_options
+              default_options,
+              fake_block_device_mappings
             )
           }.to raise_error(Bosh::AwsCloud::AbruptlyTerminated)
         end
@@ -382,10 +393,11 @@ module Bosh::AwsCloud
             expect {
               instance_manager.create(
                 stemcell_id,
-                vm_type,
-                networks_spec,
+                vm_cloud_props,
+                networks_cloud_props,
                 disk_locality,
-                default_options
+                default_options,
+                fake_block_device_mappings
               )
             }.to raise_error(create_err)
           end
@@ -395,11 +407,11 @@ module Bosh::AwsCloud
 
     describe '#find' do
       before { allow(ec2).to receive(:instance).with(instance_id).and_return(aws_instance) }
-      let(:aws_instance) { instance_double('Aws::EC2::Instance', id: instance_id) }
+      let(:aws_instance) { instance_double(Aws::EC2::Instance, id: instance_id) }
       let(:instance_id) { 'fake-id' }
 
       it 'returns found instance (even though it might not exist)' do
-        instance = instance_double('Bosh::AwsCloud::Instance')
+        instance = instance_double(Bosh::AwsCloud::Instance)
 
         allow(Instance).to receive(:new).
           with(aws_instance, registry, logger).
