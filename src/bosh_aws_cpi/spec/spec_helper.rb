@@ -57,7 +57,7 @@ def mock_cloud_options_merge(override_options, base_hash = mock_cloud_options)
 end
 
 def mock_registry(endpoint = 'http://registry:3333')
-  registry = double('registry', :endpoint => endpoint)
+  registry = instance_double(Bosh::Cpi::RegistryClient, :endpoint => endpoint)
   allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
   registry
 end
@@ -125,5 +125,8 @@ RSpec.configure do |config|
     logger = Bosh::Cpi::Logger.new('/dev/null')
     allow(Bosh::Clouds::Config).to receive(:logger).and_return(logger)
     expect(RUBY_VERSION).to eq(PROJECT_RUBY_VERSION)
+  end
+  config.mock_with :rspec do |mocks|
+    mocks.verify_partial_doubles = true
   end
 end

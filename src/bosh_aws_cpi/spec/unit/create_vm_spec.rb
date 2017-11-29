@@ -1,10 +1,10 @@
 require 'spec_helper'
 
 describe Bosh::AwsCloud::Cloud, 'create_vm' do
-  let(:registry) { double('registry') }
-  let(:availability_zone_selector) { double('availability zone selector') }
-  let(:stemcell) { double('stemcell', root_device_name: 'root name', image_id: stemcell_id) }
-  let(:instance_manager) { instance_double('Bosh::AwsCloud::InstanceManager') }
+  let(:registry) { instance_double(Bosh::Cpi::RegistryClient) }
+  let(:availability_zone_selector) { instance_double(Bosh::AwsCloud::AvailabilityZoneSelector) }
+  let(:stemcell) { instance_double(Bosh::AwsCloud::Stemcell, root_device_name: 'root name', image_id: stemcell_id) }
+  let(:instance_manager) { instance_double(Bosh::AwsCloud::InstanceManager) }
   let(:block_device_manager) { instance_double(Bosh::AwsCloud::BlockDeviceManager) }
   let(:block_device_agent_info) do
     {
@@ -13,8 +13,8 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
     }
   end
   let(:mappings) { ['some-mapping'] }
-  let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-id') }
-  let(:network_configurator) { double('network configurator') }
+  let(:instance) { instance_double(Bosh::AwsCloud::Instance, id: 'fake-id') }
+  let(:network_configurator) { instance_double(Bosh::AwsCloud::NetworkConfigurator) }
   let(:global_config) { instance_double(Bosh::AwsCloud::Config, aws: Bosh::AwsCloud::AwsConfig.new({})) }
   let(:agent_id) {'agent_id'}
   let(:stemcell_id) {'stemcell_id'}
@@ -38,7 +38,7 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
   let(:networks_cloud_props) do
     Bosh::AwsCloud::NetworkCloudProps.new(networks_spec, global_config)
   end
-  let(:disk_locality) { double('disk locality') }
+  let(:disk_locality) { ['some', 'disk', 'locality'] }
   let(:environment) { 'environment' }
   let(:options) do
     ops = mock_cloud_properties_merge(
@@ -66,8 +66,6 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
         .and_return(availability_zone_selector)
 
       allow(Bosh::AwsCloud::Stemcell).to receive(:find).with(@ec2, stemcell_id).and_return(stemcell)
-
-      allow(Aws::ElasticLoadBalancing).to receive(:new).with(hash_including(region: 'bar'))
 
       allow(Bosh::AwsCloud::InstanceManager).to receive(:new).and_return(instance_manager)
 

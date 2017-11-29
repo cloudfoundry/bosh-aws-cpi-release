@@ -2,32 +2,32 @@ require 'spec_helper'
 
 describe Bosh::AwsCloud::Stemcell do
   let(:resource) { instance_double(Aws::EC2::Resource) }
-  describe ".find" do
-    it "should return an AMI if given an id for an existing one" do
-      fake_aws_ami = double("image", exists?: true)
+  describe '.find' do
+    it 'should return an AMI if given an id for an existing one' do
+      fake_aws_ami = double('image', exists?: true)
       allow(resource).to receive(:image).with('ami-exists').and_return(fake_aws_ami)
-      expect(described_class.find(resource, "ami-exists").ami).to eq(fake_aws_ami)
+      expect(described_class.find(resource, 'ami-exists').ami).to eq(fake_aws_ami)
     end
 
-    it "should raise an error if no AMI exists with the given id" do
-      fake_aws_ami = double("image", exists?: false)
+    it 'should raise an error if no AMI exists with the given id' do
+      fake_aws_ami = double('image', exists?: false)
       allow(resource).to receive(:image).with('ami-doesntexist').and_return(fake_aws_ami)
       expect {
-        described_class.find(resource, "ami-doesntexist")
+        described_class.find(resource, 'ami-doesntexist')
       }.to raise_error Bosh::Clouds::CloudError, "could not find AMI 'ami-doesntexist'"
     end
   end
 
-  describe "#image_id" do
-    let(:fake_aws_ami) { double("image", id: "my-id") }
+  describe '#image_id' do
+    let(:fake_aws_ami) { instance_double(Aws::EC2::Image, id: 'my-id') }
 
-    it "returns the id of the ami object" do
+    it 'returns the id of the ami object' do
       stemcell = described_class.new(resource, fake_aws_ami)
       expect(stemcell.image_id).to eq('my-id')
     end
   end
 
-  describe "#delete" do
+  describe '#delete' do
     let(:snapshot_id) { 'snap-xxxxxxxx' }
     let(:ami_id) { 'ami-xxxxxxxx' }
 
@@ -50,8 +50,8 @@ describe Bosh::AwsCloud::Stemcell do
       allow(resource).to receive(:snapshot).with(snapshot_id).and_return(fake_snapshot)
     end
 
-    context "with real stemcell" do
-      it "should deregister the ami" do
+    context 'with real stemcell' do
+      it 'should deregister the ami' do
         stemcell = described_class.new(resource, fake_aws_ami)
 
         expect(fake_aws_ami).to receive(:deregister).ordered
@@ -62,8 +62,8 @@ describe Bosh::AwsCloud::Stemcell do
       end
     end
 
-    context "with light stemcell" do
-      it "should raise an error" do
+    context 'with light stemcell' do
+      it 'should raise an error' do
         stemcell = described_class.new(resource, fake_aws_ami)
 
         expect(fake_aws_ami).to receive(:deregister).and_raise(Aws::EC2::Errors::AuthFailure.new(nil, 'auth-failure'))

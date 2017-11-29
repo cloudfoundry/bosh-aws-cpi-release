@@ -30,7 +30,7 @@ module Bosh::AwsCloud
     end
 
     let(:image_id) { 'ami-1234567' }
-    let(:image) { double('AWS ami', id: image_id) }
+    let(:image) { instance_double(Aws::EC2::Image, id: image_id) }
     let(:stemcell) { instance_double(Bosh::AwsCloud::Stemcell, ami: image, image_id: image_id) }
 
     let(:virtualization_type) { 'hvm' }

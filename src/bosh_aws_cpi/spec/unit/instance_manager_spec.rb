@@ -6,18 +6,15 @@ module Bosh::AwsCloud
     let(:aws_client) { instance_double(Aws::EC2::Client) }
     before { allow(ec2).to receive(:client).and_return(aws_client) }
 
-    let(:registry) { double('Bosh::Registry::Client', :endpoint => 'http://...', :update_settings => nil) }
+    let(:registry) { instance_double(Bosh::Cpi::RegistryClient, :endpoint => 'http://...', :update_settings => nil) }
     let(:param_mapper) { instance_double(InstanceParamMapper) }
     let(:instance_manager) { InstanceManager.new(ec2, registry, logger) }
     let(:logger) { Logger.new('/dev/null') }
 
     describe '#create' do
-      let(:fake_subnet_collection) { instance_double('Aws::EC2::SubnetCollection')}
-      let(:fake_availability_zone) { instance_double('Aws::EC2::AvailabilityZone', name: 'us-east-1a')}
-      let(:fake_aws_subnet) { instance_double('Aws::EC2::Subnet', id: 'sub-123456', availability_zone: fake_availability_zone) }
+      let(:fake_aws_subnet) { instance_double(Aws::EC2::Subnet, id: 'sub-123456', availability_zone: 'us-east-1a') }
 
-      let(:aws_instances) { instance_double('Aws::EC2::InstanceCollection') }
-      let(:aws_instance) { instance_double('Aws::EC2::Instance', id: 'i-12345678') }
+      let(:aws_instance) { instance_double(Aws::EC2::Instance, id: 'i-12345678') }
 
       let(:stemcell_id) { 'stemcell-id' }
       let(:vm_type) do
@@ -70,7 +67,7 @@ module Bosh::AwsCloud
       end
       let(:fake_block_device_mappings) { 'fake-block-device-mappings' }
 
-      let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-instance-id') }
+      let(:instance) { instance_double(Bosh::AwsCloud::Instance, id: 'fake-instance-id') }
       let(:fake_instance_params) do
         {
           fake: 'instance-params',
@@ -100,10 +97,11 @@ module Bosh::AwsCloud
           }],
         ).and_return([fake_aws_subnet])
 
-        allow(ec2).to receive(:instances).and_return(aws_instances)
+        # allow(ec2).to receive(:instances).and_return([aws_instance])
+        allow(ec2).to receive(:instances)
         allow(ec2).to receive(:image).with(stemcell_id).and_return(
           instance_double(
-            'Aws::EC2::Image',
+            Aws::EC2::Image,
             root_device_name: 'fake-image-root-device',
             block_device_mappings: block_devices,
             virtualization_type: :hvm
@@ -336,7 +334,7 @@ module Bosh::AwsCloud
       end
 
       context 'when waiting for the instance to be running fails' do
-        let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-instance-id') }
+        let(:instance) { instance_double(Bosh::AwsCloud::Instance, id: 'fake-instance-id') }
         let(:create_err) { StandardError.new('fake-err') }
 
         before { allow(Instance).to receive(:new).and_return(instance) }
@@ -409,11 +407,11 @@ module Bosh::AwsCloud
 
     describe '#find' do
       before { allow(ec2).to receive(:instance).with(instance_id).and_return(aws_instance) }
-      let(:aws_instance) { instance_double('Aws::EC2::Instance', id: instance_id) }
+      let(:aws_instance) { instance_double(Aws::EC2::Instance, id: instance_id) }
       let(:instance_id) { 'fake-id' }
 
       it 'returns found instance (even though it might not exist)' do
-        instance = instance_double('Bosh::AwsCloud::Instance')
+        instance = instance_double(Bosh::AwsCloud::Instance)
 
         allow(Instance).to receive(:new).
           with(aws_instance, registry, logger).

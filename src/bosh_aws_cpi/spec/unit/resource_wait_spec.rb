@@ -260,7 +260,7 @@ module Bosh::AwsCloud
     end
 
     describe '#for_resource' do
-      let(:fake_resource) { double('fake-resource', state: 'unknown', reload: nil, data: 'some_data', exists?: true) }
+      let(:fake_resource) { double('fake ec2 resource which has state method', state: 'unknown', reload: nil, data: 'some_data', exists?: true) }
       let(:args) do
         {
           resource: fake_resource,
@@ -283,7 +283,7 @@ module Bosh::AwsCloud
       end
 
       context 'when the resource asynchronously ceases to exist' do
-        let(:fake_resource) { double('fake-resource', state: 'unknown', reload: nil, data: nil, exists?: false) }
+        let(:fake_resource) { double('fake ec2 resource which has state method', state: 'unknown', reload: nil, data: nil, exists?: false) }
 
         it 'raises a ResourceNotFound error' do
           expect { subject.for_resource(args) }.to raise_error(Aws::EC2::Errors::ResourceNotFound)

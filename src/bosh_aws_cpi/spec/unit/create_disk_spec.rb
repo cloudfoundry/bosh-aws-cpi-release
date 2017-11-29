@@ -5,9 +5,15 @@ require 'spec_helper'
 describe Bosh::AwsCloud::Cloud do
 
   let(:zones) { [{ 'zone_name' => 'us-east-1a' }] }
-  let(:volume) { double('volume', :id => 'v-foobar') }
-  let(:instance) { double('instance', id: 'i-test', placement: double('placement', availability_zone: 'foobar-land')) }
-  let(:volume_resp) { double('Aws::Core::Response', volume_id: 'v-foobar') }
+  let(:volume) { instance_double(Aws::EC2::Volume, :id => 'v-foobar') }
+  let(:instance) do
+    instance_double(
+      Aws::EC2::Instance,
+      id: 'i-test',
+      placement: instance_double(Aws::EC2::Types::Placement, availability_zone: 'foobar-land')
+    )
+  end
+  let(:volume_resp) { instance_double(Aws::EC2::Types::Volume, volume_id: 'v-foobar') }
 
   before do
     @cloud = mock_cloud do |_ec2|

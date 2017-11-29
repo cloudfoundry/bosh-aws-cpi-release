@@ -91,7 +91,7 @@ module Bosh::AwsCloud
     # @param [optional, Hash] environment data to be merged into
     #   agent settings
     # @return [String] EC2 instance id of the new virtual machine
-    def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = nil, environment = nil)
+    def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = [], environment = nil)
       with_thread_name("create_vm(#{agent_id}, ...)") do
         vm_props = @props_factory.vm_props(vm_type)
         network_props = @props_factory.network_props(network_spec)

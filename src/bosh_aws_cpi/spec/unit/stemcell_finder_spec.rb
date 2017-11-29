@@ -5,8 +5,8 @@ module Bosh::AwsCloud
   describe StemcellFinder do
     describe '.find_by_region_and_id' do
       context 'when id ends with " light"' do
-        let(:region) { double('aws region') }
-        let(:stemcell) { double('heavy stemcell') }
+        let(:region) { instance_double(Aws::EC2::Types::Region) }
+        let(:stemcell) { instance_double(Bosh::AwsCloud::Stemcell) }
         before { allow(Stemcell).to receive(:find).with(region, 'ami-id').and_return(stemcell) }
 
         it 'constructs a light stemcell with a heavy stemcell' do

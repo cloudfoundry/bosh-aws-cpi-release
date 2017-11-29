@@ -48,9 +48,9 @@ describe Bosh::AwsCloud::NetworkConfigurator do
   end
 
   describe '#configure' do
-    let(:ec2) { double('ec2') }
-    let(:ec2_client) { double('ec2_client') }
-    let(:instance) { double('instance') }
+    let(:ec2_resource) { instance_double(Aws::EC2::Resource) }
+    let(:ec2_client) { instance_double(Aws::EC2::Client) }
+    let(:instance) { instance_double(Bosh::AwsCloud::Instance) }
 
     describe 'without vip' do
       context 'and associated elastic ip' do
@@ -65,7 +65,7 @@ describe Bosh::AwsCloud::NetworkConfigurator do
           expect(instance).to receive(:id).and_return('i-xxxxxxxx')
           expect(instance).to receive(:disassociate_elastic_ip)
 
-          Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2, instance)
+          Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
         end
       end
 
@@ -80,7 +80,7 @@ describe Bosh::AwsCloud::NetworkConfigurator do
           expect(instance).to receive(:elastic_ip).and_return(nil)
           expect(instance).not_to receive(:disassociate_elastic_ip)
 
-          Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2, instance)
+          Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
         end
       end
 
@@ -94,7 +94,7 @@ describe Bosh::AwsCloud::NetworkConfigurator do
 
           it 'should raise error' do
             expect {
-              Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2, instance)
+              Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
             }.to raise_error /No IP provided for vip network 'network1'/
           end
         end
@@ -129,12 +129,12 @@ describe Bosh::AwsCloud::NetworkConfigurator do
           end
 
           before do
-            allow(ec2).to receive(:client).and_return(ec2_client)
+            allow(ec2_resource).to receive(:client).and_return(ec2_client)
             allow(instance).to receive(:id).and_return('i-xxxxxxxx')
           end
 
           context 'and Elastic/Public IP is found' do
-            let(:elastic_ip) { double('elastic_ip') }
+            let(:elastic_ip) { instance_double(Aws::EC2::Types::Address) }
             let(:response_addresses) { [elastic_ip] }
 
             it 'should associate Elastic/Public IP to the instance' do
@@ -146,7 +146,7 @@ describe Bosh::AwsCloud::NetworkConfigurator do
                 allocation_id: 'allocation-id'
               )
 
-              Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2, instance)
+              Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
             end
           end
 
@@ -158,7 +158,7 @@ describe Bosh::AwsCloud::NetworkConfigurator do
                 .with(describe_addresses_arguments).and_return(describe_addresses_response)
 
               expect {
-                Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2, instance)
+                Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
               }.to raise_error /Elastic IP with VPC scope not found with address '#{vip_public_ip}'/
             end
           end

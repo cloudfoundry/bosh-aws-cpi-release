@@ -4,8 +4,8 @@ require 'logger'
 module Bosh::AwsCloud
   describe Instance do
     subject(:instance) { Instance.new(aws_instance, registry, logger) }
-    let(:aws_instance) { instance_double('Aws::EC2::Instance', id: instance_id, data: 'some-data') }
-    let(:registry) { instance_double('Bosh::Cpi::RegistryClient', :update_settings => nil) }
+    let(:aws_instance) { instance_double(Aws::EC2::Instance, id: instance_id, data: 'some-data') }
+    let(:registry) { instance_double(Bosh::Cpi::RegistryClient, :update_settings => nil) }
     let(:logger) { Logger.new('/dev/null') }
     let(:elastic_ip) { instance_double(Aws::EC2::VpcAddress, public_ip: 'fake-ip') }
     let(:instance_id) { 'fake-id' }
@@ -82,7 +82,6 @@ module Bosh::AwsCloud
 
     describe '#terminate' do
       it 'should terminate an instance given the id' do
-        allow(instance).to receive(:remove_from_load_balancers)
         expect(aws_instance).to receive(:terminate).with(no_args).ordered
         expect(registry).to receive(:delete_settings).with(instance_id).ordered
 
@@ -148,9 +147,9 @@ module Bosh::AwsCloud
     end
 
     describe '#update_routing_tables' do
-      let(:fake_vpc) { instance_double('Aws::EC2::VPC') }
-      let(:fake_table) { instance_double('Aws::EC2::RouteTable', id: 'r-12345') }
-      let(:fake_route) { instance_double('Aws::EC2::Route') }
+      let(:fake_vpc) { instance_double(Aws::EC2::Vpc) }
+      let(:fake_table) { instance_double(Aws::EC2::RouteTable, id: 'r-12345') }
+      let(:fake_route) { instance_double(Aws::EC2::Route) }
       let(:fake_routes) {[ fake_route ]}
 
       before do

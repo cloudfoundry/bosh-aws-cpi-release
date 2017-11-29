@@ -1,10 +1,6 @@
 require 'spec_helper'
 
 describe 'spec_helper' do
-  before(:each) do
-
-  end
-
   it 'merges a flat hash' do
     base_hash = {
         a: 5,
@@ -69,7 +65,7 @@ describe 'spec_helper' do
     expect(mock_cloud_options_merge override_hash, base_hash).to eq(expected_result)
   end
 
-  it 'doesn\'t break, if override_hash is nil' do
+  it 'does not break, if override_hash is nil' do
     base_hash = {
         a: 5,
         b: 6,

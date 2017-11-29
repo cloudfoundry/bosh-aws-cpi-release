@@ -182,9 +182,9 @@ describe Bosh::AwsCloud::Cloud do
           'virtualization_type' => 'paravirtual'
         }
       end
-      let(:volume) { double('volume', :id => 'vol-xxxxxxxx') }
-      let(:stemcell) { double('stemcell', :id => 'ami-xxxxxxxx') }
-      let(:instance) { double('instance') }
+      let(:volume) { instance_double(Aws::EC2::Volume, :id => 'vol-xxxxxxxx') }
+      let(:stemcell) { instance_double(Bosh::AwsCloud::Stemcell, :id => 'ami-xxxxxxxx') }
+      let(:instance) { instance_double(Aws::EC2::Instance) }
       let(:aws_config) do
         instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}, encrypted: false, kms_key_arn: nil)
       end

@@ -70,7 +70,7 @@ describe Bosh::AwsCloud::Cloud do
 
   describe '#create_disk' do
     let(:cloud_properties) { {} }
-    let(:volume) { instance_double('Aws::EC2::Volume', id: 'fake-volume-id') }
+    let(:volume) { instance_double(Aws::EC2::Volume, id: 'fake-volume-id') }
 
     before do
       allow(az_selector).to receive(:select_availability_zone).
