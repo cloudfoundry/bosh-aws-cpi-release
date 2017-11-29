@@ -14,6 +14,7 @@ module Bosh
         @encrypted = options[:encrypted] || false
         @root_device_name = options[:root_device_name] || '/dev/xvda'
         @snapshot_id = options[:snapshot_id]
+        @tags = options[:tags] || []
       end
 
       def ephemeral_disk_config()
@@ -43,6 +44,7 @@ module Bosh
 
         output[:iops] = @iops if @iops
         output[:kms_key_id] = @kms_key_arn if @kms_key_arn
+        output[:tags] = @tags unless @tags.empty?
         output
       end
 

@@ -193,9 +193,10 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
 
     it 'creates and deletes an encrypted volume and snapshot and sends the snapshot to block device manager' do
       expect(volume_manager).to receive(:create_ebs_volume).with(hash_including({
-        encrypted: true, kms_key_id: 'some-kms-key'
+        encrypted: true, kms_key_id: 'some-kms-key', tags: [{key: "ephemeral_disk_agent_id", value: "temp-vol-bosh-agent-#{agent_id}"}]
       })).and_return temp_volume
       expect(temp_volume).to receive(:create_snapshot).and_return temp_snapshot
+      expect(temp_snapshot).to receive(:create_tags).with({tags: [{key: "ephemeral_disk_agent_id", value: "temp-snapshot-bosh-agent-#{agent_id}"}]})
 
       expect(temp_snapshot).to receive(:delete)
       expect(volume_manager).to receive(:delete_ebs_volume).with temp_volume
