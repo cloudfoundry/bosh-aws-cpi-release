@@ -115,6 +115,10 @@ module Bosh::AwsCloud
       @cloud_properties['root_disk'] = @root_disk.disk if !@root_disk.disk.nil?
     end
 
+    def custom_encryption?
+      ephemeral_disk.encrypted && ephemeral_disk.kms_key_arn
+    end
+
     def raw_instance_storage?
       @raw_instance_storage
     end

@@ -20,5 +20,9 @@ module Bosh::AwsCloud
     def image_id
       @heavy_stemcell.image_id
     end
+
+    def ami
+      @heavy_stemcell.ami
+    end
   end
 end

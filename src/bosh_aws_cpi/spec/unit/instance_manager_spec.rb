@@ -8,9 +8,7 @@ module Bosh::AwsCloud
 
     let(:registry) { double('Bosh::Registry::Client', :endpoint => 'http://...', :update_settings => nil) }
     let(:param_mapper) { instance_double(InstanceParamMapper) }
-    let(:block_device_manager) { instance_double(BlockDeviceManager) }
-    let(:volume_manager) { instance_double(Bosh::AwsCloud::VolumeManager) }
-    let(:instance_manager) { InstanceManager.new(ec2, registry, logger, volume_manager) }
+    let(:instance_manager) { InstanceManager.new(ec2, registry, logger) }
     let(:logger) { Logger.new('/dev/null') }
 
     describe '#create' do
@@ -70,6 +68,7 @@ module Bosh::AwsCloud
           )
         ]
       end
+      let(:fake_block_device_mappings) { 'fake-block-device-mappings' }
 
       let(:instance) { instance_double('Bosh::AwsCloud::Instance', id: 'fake-instance-id') }
       let(:fake_instance_params) do
@@ -90,14 +89,7 @@ module Bosh::AwsCloud
         allow(param_mapper).to receive(:instance_params).and_return(fake_instance_params)
         allow(param_mapper).to receive(:manifest_params=)
         allow(param_mapper).to receive(:validate)
-        allow(block_device_manager).to receive(:vm_type=)
-        allow(block_device_manager).to receive(:virtualization_type=)
-        allow(block_device_manager).to receive(:root_device_name=)
-        allow(block_device_manager).to receive(:ami_block_device_names=)
-        allow(block_device_manager).to receive(:mappings).and_return('fake-block-device-mappings')
-        allow(block_device_manager).to receive(:agent_info).and_return('fake-block-device-agent-info')
         instance_manager.instance_variable_set('@param_mapper', param_mapper)
-        instance_manager.instance_variable_set('@block_device_manager', block_device_manager)
 
         allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: 'running')
 
@@ -135,56 +127,11 @@ module Bosh::AwsCloud
           vm_cloud_props,
           networks_cloud_props,
           disk_locality,
-          default_options
+          default_options,
+          fake_block_device_mappings
         )
       end
 
-      context 'when specifying kms encryption for ephemeral device' do
-        let(:vm_type) do
-          {
-            'instance_type' => 'm1.small',
-            'availability_zone' => 'us-east-1a',
-            'ephemeral_disk' => {
-              'encrypted' => true,
-              'kms_key_arn' => 'some-kms-key',
-            }
-          }
-        end
-        let(:temp_volume) { instance_double Aws::EC2::Volume }
-        let(:temp_snapshot) { instance_double(Aws::EC2::Snapshot,id: 's-id') }
-
-        before do
-          allow(ResourceWait).to receive(:for_snapshot).with(snapshot: temp_snapshot, state: 'completed')
-        end
-
-        it 'creates and deletes an encrypted volume and snapshot' do
-          encrypted_temp_disk_configuration = {
-            encrypted: true,
-            kms_key_id: 'some-kms-key'
-          }
-
-          expect(volume_manager).to receive(:create_ebs_volume).with(hash_including encrypted_temp_disk_configuration).and_return temp_volume
-          expect(temp_volume).to receive(:create_snapshot).and_return temp_snapshot
-
-          expect(block_device_manager).to receive(:snapshot_id=).with('s-id')
-
-          expect(temp_snapshot).to receive(:delete)
-          expect(volume_manager).to receive(:delete_ebs_volume).with temp_volume
-
-          allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
-
-          expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
-          expect(instance).to receive(:wait_for_running)
-
-          instance_manager.create(
-            stemcell_id,
-            vm_cloud_props,
-            networks_cloud_props,
-            disk_locality,
-            default_options
-          )
-        end
-      end
 
       context 'redacts' do
         before do
@@ -197,7 +144,8 @@ module Bosh::AwsCloud
             vm_cloud_props,
             networks_cloud_props,
             disk_locality,
-            default_options
+            default_options,
+             fake_block_device_mappings
           )
         end
 
@@ -267,7 +215,8 @@ module Bosh::AwsCloud
             vm_cloud_props,
             networks_cloud_props,
             disk_locality,
-            default_options
+            default_options,
+            fake_block_device_mappings
           )
         end
 
@@ -282,14 +231,14 @@ module Bosh::AwsCloud
                 vm_cloud_props,
                 networks_cloud_props,
                 disk_locality,
-                default_options
+                default_options,
+                fake_block_device_mappings
               )
             }.to raise_error(Bosh::Clouds::VMCreationFailed, /Spot instance creation failed/)
 
           end
 
           context 'and spot_ondemand_fallback is configured' do
-            let(:instance_manager) { InstanceManager.new(ec2, registry, logger, volume_manager) }
             let(:vm_type) do
               {
                 'spot_bid_price' => 0.15,
@@ -316,7 +265,8 @@ module Bosh::AwsCloud
                 vm_cloud_props,
                 networks_cloud_props,
                 disk_locality,
-                default_options
+                default_options,
+                fake_block_device_mappings
               )
             end
 
@@ -331,7 +281,8 @@ module Bosh::AwsCloud
                 vm_cloud_props,
                 networks_cloud_props,
                 disk_locality,
-                default_options
+                default_options,
+                fake_block_device_mappings
               )
             end
           end
@@ -354,7 +305,8 @@ module Bosh::AwsCloud
             vm_cloud_props,
             networks_cloud_props,
             disk_locality,
-            default_options
+            default_options,
+            fake_block_device_mappings
           )
         end
       end
@@ -378,7 +330,8 @@ module Bosh::AwsCloud
           vm_cloud_props,
           networks_cloud_props,
           disk_locality,
-          default_options
+          default_options,
+          fake_block_device_mappings
         )
       end
 
@@ -402,7 +355,8 @@ module Bosh::AwsCloud
               vm_cloud_props,
               networks_cloud_props,
               disk_locality,
-              default_options
+              default_options,
+              fake_block_device_mappings
             )
           }.to raise_error(create_err)
         end
@@ -423,7 +377,8 @@ module Bosh::AwsCloud
               vm_cloud_props,
               networks_cloud_props,
               disk_locality,
-              default_options
+              default_options,
+              fake_block_device_mappings
             )
           }.to raise_error(Bosh::AwsCloud::AbruptlyTerminated)
         end
@@ -443,7 +398,8 @@ module Bosh::AwsCloud
                 vm_cloud_props,
                 networks_cloud_props,
                 disk_locality,
-                default_options
+                default_options,
+                fake_block_device_mappings
               )
             }.to raise_error(create_err)
           end

@@ -11,8 +11,7 @@ describe Bosh::AwsCloud::Cloud, 'delete_vm' do
         .with(
           ec2,
           registry,
-          be_an_instance_of(Bosh::Cpi::Logger),
-          be_an_instance_of(Bosh::AwsCloud::VolumeManager)
+          be_an_instance_of(Bosh::Cpi::Logger)
         ).and_return(instance_manager)
     end
   }

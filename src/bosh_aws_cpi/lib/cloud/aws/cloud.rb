@@ -42,7 +42,7 @@ module Bosh::AwsCloud
       )
 
       @volume_manager = Bosh::AwsCloud::VolumeManager.new(@logger, @aws_provider)
-      @instance_manager = InstanceManager.new(@ec2_resource, registry, @logger, @volume_manager)
+      @instance_manager = InstanceManager.new(@ec2_resource, registry, @logger)
       @instance_type_mapper = InstanceTypeMapper.new
 
       @props_factory = Bosh::AwsCloud::PropsFactory.new(@config)
@@ -107,15 +107,26 @@ module Bosh::AwsCloud
           @aws_provider.elb_accessible?
         end
 
-        stemcell = StemcellFinder.find_by_id(@ec2_resource, stemcell_id)
-
         begin
-          instance, block_device_agent_info = @instance_manager.create(
+          stemcell = StemcellFinder.find_by_id(@ec2_resource, stemcell_id)
+
+          ephemeral_disk_base_snapshot = nil
+          ephemeral_disk_base_snapshot = temporary_snapshot(vm_props) if vm_props.custom_encryption?
+
+          block_device_mappings, agent_info = Bosh::AwsCloud::BlockDeviceManager.new(
+            @logger,
+            stemcell,
+            vm_props,
+            ephemeral_disk_base_snapshot
+          ).mappings_and_info
+
+          instance = @instance_manager.create(
             stemcell.image_id,
             vm_props,
             network_props,
             (disk_locality || []),
-            @config.aws.default_security_groups
+            @config.aws.default_security_groups,
+            block_device_mappings
           )
 
           target_groups.each do |target_group_name|
@@ -137,7 +148,7 @@ module Bosh::AwsCloud
             network_props,
             environment,
             stemcell.root_device_name,
-            block_device_agent_info,
+            agent_info,
             @config.agent
           )
           registry.update_settings(instance.id, registry_settings.settings)
@@ -147,6 +158,8 @@ module Bosh::AwsCloud
           logger.error(%Q[Failed to create instance: #{e.message}\n#{e.backtrace.join("\n")}])
           instance.terminate(@config.aws.fast_path_delete?) if instance
           raise e
+        ensure
+          ephemeral_disk_base_snapshot.delete if ephemeral_disk_base_snapshot
         end
       end
     end
@@ -356,6 +369,27 @@ module Bosh::AwsCloud
         ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
         snapshot.id
       end
+    end
+
+    def temporary_snapshot(vm_cloud_props)
+      custom_kms_key_disk_config = VolumeProperties.new(
+        size: 1024,
+        type: vm_cloud_props.ephemeral_disk.type,
+        iops: vm_cloud_props.ephemeral_disk.iops,
+        encrypted: vm_cloud_props.ephemeral_disk.encrypted,
+        kms_key_arn: vm_cloud_props.ephemeral_disk.kms_key_arn,
+        az: vm_cloud_props.availability_zone
+      ).persistent_disk_config
+
+      volume = @volume_manager.create_ebs_volume(custom_kms_key_disk_config)
+      begin
+        snapshot = volume.create_snapshot
+        ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
+      ensure
+        @volume_manager.delete_ebs_volume(volume)
+      end
+
+      snapshot
     end
 
     # Delete a disk snapshot
