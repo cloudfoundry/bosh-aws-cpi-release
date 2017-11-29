@@ -131,14 +131,15 @@ module Bosh::AwsCloud
 
           NetworkConfigurator.new(network_props).configure(@ec2_resource, instance)
 
-          registry_settings = initial_agent_settings(
+          registry_settings = AgentSettings.new(
             agent_id,
-            network_spec,
+            network_props,
             environment,
             stemcell.root_device_name,
-            block_device_agent_info
+            block_device_agent_info,
+            @config.agent
           )
-          registry.update_settings(instance.id, registry_settings)
+          registry.update_settings(instance.id, registry_settings.settings)
 
           instance.id
         rescue => e # is this rescuing too much?
@@ -662,51 +663,6 @@ module Bosh::AwsCloud
 
       attachment = SdkHelpers::VolumeAttachment.new(attachment_resp, @ec2_resource)
       ResourceWait.for_attachment(attachment: attachment, state: 'detached')
-    end
-
-    # Generates initial agent settings. These settings will be read by agent
-    # from AWS registry (also a BOSH component) on a target instance. Disk
-    # conventions for amazon are:
-    # system disk: /dev/sda
-    # ephemeral disk: /dev/sdb
-    # EBS volumes can be configured to map to other device names later (sdf
-    # through sdp, also some kernels will remap sd* to xvd*).
-    #
-    # @param [String] agent_id Agent id (will be picked up by agent to
-    #   assume its identity
-    # @param [Hash] network_spec Agent network spec
-    # @param [Hash] environment
-    # @param [String] root_device_name root device, e.g. /dev/sda1
-    # @param [Hash] block_device_agent_info disk attachment information to merge into the disks section.
-    #   keys are device type ("ephemeral", "raw_ephemeral") and values are array of strings representing the
-    #   path to the block device. It is expected that "ephemeral" has exactly one value.
-    # @return [Hash]
-    def initial_agent_settings(agent_id, network_spec, environment, root_device_name, block_device_agent_info)
-      settings = {
-          'vm' => {
-              'name' => "vm-#{SecureRandom.uuid}"
-        },
-          'agent_id' => agent_id,
-          'networks' => agent_network_spec(network_spec),
-          'disks' => {
-            'system' => root_device_name,
-            'persistent' => {}
-        }
-      }
-
-      settings['disks'].merge!(block_device_agent_info)
-      settings['disks']['ephemeral'] = settings['disks']['ephemeral'][0]['path']
-
-      settings['env'] = environment if environment
-      settings.merge(@config.agent.to_h)
-    end
-
-    def agent_network_spec(network_spec)
-      spec = network_spec.map do |name, settings|
-        settings['use_dhcp'] = true
-        [name, settings]
-      end
-      Hash[spec]
     end
   end
 end

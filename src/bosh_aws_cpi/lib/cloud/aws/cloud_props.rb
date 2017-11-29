@@ -95,18 +95,19 @@ module Bosh::AwsCloud
       @security_groups = cloud_properties['security_groups'] || []
       @key_name = cloud_properties['key_name'] || global_config.aws.default_key_name
       @spot_bid_price = cloud_properties['spot_bid_price']
-      @spot_ondemand_fallback = !!cloud_properties['spot_ondemand_fallback'] || false
+      @spot_ondemand_fallback = !!cloud_properties['spot_ondemand_fallback']
       @elbs = cloud_properties['elbs'] || []
       @lb_target_groups = cloud_properties['lb_target_groups'] || []
       @iam_instance_profile = cloud_properties['iam_instance_profile'] || global_config.aws.default_iam_instance_profile
       @placement_group = cloud_properties['placement_group']
       @tenancy = Tenancy.new(cloud_properties['tenancy'])
-      @auto_assign_public_ip = !!cloud_properties['auto_assign_public_ip'] || false
+      @auto_assign_public_ip = !!cloud_properties['auto_assign_public_ip']
       @advertised_routes = (cloud_properties['advertised_routes'] || []).map do |route|
         AdvertisedRoute.new(route)
       end
-      @raw_instance_storage = !!cloud_properties['raw_instance_storage'] || false
-      @source_dest_check = !!cloud_properties['source_dest_check'] || true
+      @raw_instance_storage = !!cloud_properties['raw_instance_storage']
+      @source_dest_check = true
+      @source_dest_check = !!cloud_properties['source_dest_check'] unless cloud_properties['source_dest_check'].nil?
 
       @ephemeral_disk = EphemeralDisk.new(@cloud_properties['ephemeral_disk'], global_config)
       @cloud_properties['ephemeral_disk'] = @ephemeral_disk.disk if !@ephemeral_disk.disk.nil?
@@ -191,19 +192,20 @@ module Bosh::AwsCloud
   class NetworkCloudProps
     attr_reader :networks
 
-    # @param [Hash] cloud_properties
+    # @param [Hash] network_spec
     # @param [Bosh::AwsCloud::Config] global_config
     def initialize(network_spec, global_config)
-      @network_spec = network_spec.dup
+      @network_spec = (network_spec || {}).dup
 
-      @networks = network_spec.map do |network_name, settings|
+      @networks = []
+      @networks = @network_spec.map do |network_name, settings|
         Network.create(network_name, settings)
       end
     end
 
     def security_groups
       @networks.map do |network|
-        network.security_groups if network.security_groups.count > 0
+        network.security_groups
       end.flatten.sort.uniq
     end
 
@@ -239,6 +241,8 @@ module Bosh::AwsCloud
         @name = name
         @type = settings['type'] || MANUAL
         @cloud_properties = settings['cloud_properties']
+
+        @security_groups = []
 
         if cloud_properties?
           @subnet = settings['cloud_properties']['subnet']

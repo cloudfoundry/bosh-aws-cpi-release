@@ -49,7 +49,6 @@ module Bosh::AwsCloud
         instance = Instance.new(aws_instance, @registry, @logger)
 
         babysit_instance_creation(instance, vm_cloud_props)
-
       rescue => e
         if e.is_a?(Bosh::AwsCloud::AbruptlyTerminated)
           @logger.warn("Failed to configure instance '#{instance.id}': #{e.inspect}")

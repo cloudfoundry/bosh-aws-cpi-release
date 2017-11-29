@@ -124,7 +124,7 @@ module Bosh::AwsCloud
     end
 
     def security_groups
-      networks_security_groups = networks_cloud_props.networks.map(&:security_groups).flatten.sort.uniq
+      networks_security_groups = networks_cloud_props.security_groups
 
       groups = default_security_groups
       groups = networks_security_groups unless networks_security_groups.empty?
@@ -140,19 +140,9 @@ module Bosh::AwsCloud
       user_data[:dns] = { nameserver: network_with_dns.dns } unless network_with_dns.nil?
 
       # If IPv6 network is present then send network setting up front so that agent can reconfigure networking stack
-      user_data[:networks] = agent_network_spec(networks_cloud_props) unless networks_cloud_props.ipv6_networks.empty?
+      user_data[:networks] = Bosh::AwsCloud::AgentSettings.agent_network_spec(networks_cloud_props) unless networks_cloud_props.ipv6_networks.empty?
 
       Base64.encode64(user_data.to_json).strip unless user_data.empty?
-    end
-
-    def agent_network_spec(networks_cloud_props)
-      spec = networks_cloud_props.networks.map do |net|
-        settings = net.to_h
-        settings['use_dhcp'] = true
-
-        [net.name, settings]
-      end
-      Hash[spec]
     end
 
     def ipv6_address?(addr)
