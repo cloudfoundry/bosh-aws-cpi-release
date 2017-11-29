@@ -126,7 +126,7 @@ module Bosh::AwsCloud
         allow(instance).to receive(:update_routing_tables)
       end
 
-      it 'should ask AWS to create an instance in thpwe given region, with parameters built up from the given arguments' do
+      it 'should ask AWS to create an instance in the given region, with parameters built up from the given arguments' do
         allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
         expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
@@ -137,6 +137,53 @@ module Bosh::AwsCloud
           disk_locality,
           default_options
         )
+      end
+
+      context 'when specifying kms encryption for ephemeral device' do
+        let(:vm_type) do
+          {
+            'instance_type' => 'm1.small',
+            'availability_zone' => 'us-east-1a',
+            'ephemeral_disk' => {
+              'encrypted' => true,
+              'kms_key_arn' => 'some-kms-key',
+            }
+          }
+        end
+        let(:temp_volume) { instance_double Aws::EC2::Volume }
+        let(:temp_snapshot) { instance_double(Aws::EC2::Snapshot,id: 's-id') }
+
+        before do
+          allow(ResourceWait).to receive(:for_snapshot).with(snapshot: temp_snapshot, state: 'completed')
+        end
+
+        it 'creates and deletes an encrypted volume and snapshot' do
+          encrypted_temp_disk_configuration = {
+            encrypted: true,
+            kms_key_id: 'some-kms-key'
+          }
+
+          expect(volume_manager).to receive(:create_ebs_volume).with(hash_including encrypted_temp_disk_configuration).and_return temp_volume
+          expect(temp_volume).to receive(:create_snapshot).and_return temp_snapshot
+
+          expect(block_device_manager).to receive(:snapshot_id=).with('s-id')
+
+          expect(temp_snapshot).to receive(:delete)
+          expect(volume_manager).to receive(:delete_ebs_volume).with temp_volume
+
+          allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
+
+          expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
+          expect(instance).to receive(:wait_for_running)
+
+          instance_manager.create(
+            stemcell_id,
+            vm_cloud_props,
+            networks_cloud_props,
+            disk_locality,
+            default_options
+          )
+        end
       end
 
       context 'redacts' do

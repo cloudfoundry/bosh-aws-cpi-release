@@ -10,10 +10,11 @@ module Bosh::AwsCloud
       @ec2 = ec2
       @registry = registry
       @logger = logger
+      @volume_manager = volume_manager
 
       security_group_mapper = SecurityGroupMapper.new(@ec2)
       @param_mapper = InstanceParamMapper.new(security_group_mapper)
-      @block_device_manager = BlockDeviceManager.new(@logger, volume_manager)
+      @block_device_manager = BlockDeviceManager.new(@logger)
     end
 
     def create(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, default_security_groups)
@@ -22,6 +23,28 @@ module Bosh::AwsCloud
       @block_device_manager.virtualization_type = ami.virtualization_type
       @block_device_manager.root_device_name = ami.root_device_name
       @block_device_manager.ami_block_device_names = ami.block_device_mappings.map { |blk| blk.device_name }
+
+      if vm_cloud_props.ephemeral_disk.encrypted && vm_cloud_props.ephemeral_disk.kms_key_arn
+        custom_kms_key_disk_config = VolumeProperties.new(
+          size: 1024,
+          type: vm_cloud_props.ephemeral_disk.type,
+          iops: vm_cloud_props.ephemeral_disk.iops,
+          encrypted: vm_cloud_props.ephemeral_disk.encrypted,
+          kms_key_arn: vm_cloud_props.ephemeral_disk.kms_key_arn,
+          az: vm_cloud_props.availability_zone
+        ).persistent_disk_config
+
+        volume = @volume_manager.create_ebs_volume(custom_kms_key_disk_config) # TODO: delete-me
+        begin
+          snapshot = volume.create_snapshot
+          ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
+        ensure
+          @volume_manager.delete_ebs_volume(volume)
+        end
+
+        @block_device_manager.snapshot_id = snapshot.id
+      end
+
       block_device_mappings = @block_device_manager.mappings
       block_device_agent_info = @block_device_manager.agent_info
 
@@ -45,7 +68,6 @@ module Bosh::AwsCloud
         @logger.info("Creating new instance with: #{redacted_instance_params.inspect}")
 
         aws_instance = create_aws_instance(instance_params, vm_cloud_props)
-
         instance = Instance.new(aws_instance, @registry, @logger)
 
         babysit_instance_creation(instance, vm_cloud_props)
@@ -58,6 +80,8 @@ module Bosh::AwsCloud
           end
         end
         raise
+      ensure
+        snapshot.delete if snapshot
       end
 
       return instance, block_device_agent_info

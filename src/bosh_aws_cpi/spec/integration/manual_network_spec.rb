@@ -645,7 +645,7 @@ describe Bosh::AwsCloud::Cloud do
             }
           end
 
-          context 'and disk cloud properties does NOT have kms_key_arn' do
+          context 'and vm type cloud properties does NOT have kms_key_arn' do
             let(:vm_type) do
               {
                 'instance_type' => instance_type,
@@ -666,7 +666,36 @@ describe Bosh::AwsCloud::Cloud do
 
                 expect(ephemeral_disk.encrypted).to be(true)
                 expect(ephemeral_disk.kms_key_id).to eq(@kms_key_arn)
+
+                expect(ephemeral_disk.snapshot_id).not_to be_nil
+                expect {
+                  snapshot = my_cpi.ec2_resource.snapshot(ephemeral_disk.snapshot_id)
+                  snapshot.data
+                }.to raise_error(Aws::EC2::Errors::InvalidSnapshotNotFound)
               end
+            end
+          end
+
+          context 'and kms_key_arn is overwritten in vm type properties' do
+            let(:vm_type) do
+              {
+                'instance_type' => instance_type,
+                'availability_zone' => @subnet_zone,
+                'ephemeral_disk' => {
+                  'size' => 4 * 1024,
+                  'encrypted' => true,
+                  'kms_key_arn' => 'invalid-kms-key-arn-only-for-testing-overwrite'
+                }
+              }
+            end
+
+            it 'should try to create ephemeral disk vm type cloud properties kms_key_arn' do
+              # It's faster to fail than providing another `kms_key_arn` and waiting for success
+              # if the property wasn't being overwritten it would NOT fail
+              # also no need to have another KMS key be provided in the tests
+              expect do
+                vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: my_cpi)
+              end.to raise_error(Aws::EC2::Errors::InvalidVolumeNotFound)
             end
           end
         end

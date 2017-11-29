@@ -4,6 +4,7 @@ module Bosh::AwsCloud
     attr_writer :virtualization_type
     attr_writer :root_device_name
     attr_writer :ami_block_device_names
+    attr_writer :snapshot_id
 
     DEFAULT_VIRTUALIZATION_TYPE = 'hvm'
 
@@ -11,9 +12,8 @@ module Bosh::AwsCloud
       { device_name: '/dev/sdb', virtual_name: 'ephemeral0' }
     end
 
-    def initialize(logger, volume_manager)
+    def initialize(logger)
       @logger = logger
-      @volume_manager = volume_manager
       @virtualization_type = DEFAULT_VIRTUALIZATION_TYPE
     end
 
@@ -96,43 +96,13 @@ module Bosh::AwsCloud
           disk_size = disk_info.size_in_mb
         end
 
-        result =
-          if ephemeral_disk.encrypted && ephemeral_disk.kms_key_arn
-            custom_kms_key_disk_config = VolumeProperties.new(
-              size: 1024,
-              type: ephemeral_disk.type,
-              iops: ephemeral_disk.iops,
-              encrypted: ephemeral_disk.encrypted,
-              kms_key_arn: ephemeral_disk.kms_key_arn,
-              az: @vm_type.availability_zone
-            ).persistent_disk_config
-
-            volume = nil
-            begin
-              volume = @volume_manager.create_ebs_volume(custom_kms_key_disk_config)
-              snapshot = volume.create_snapshot
-              ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
-              # delete snapshot after instance is created
-            ensure
-              if volume
-                @volume_manager.delete_ebs_volume(volume)
-              end
-            end
-
-            VolumeProperties.new(
-              size: disk_size,
-              type: ephemeral_disk.type,
-              iops: ephemeral_disk.iops,
-              snapshot_id: snapshot.id
-            ).ephemeral_disk_config
-          else
-            VolumeProperties.new(
-              size: disk_size,
-              type: ephemeral_disk.type,
-              iops: ephemeral_disk.iops,
-              encrypted: ephemeral_disk.encrypted
-            ).ephemeral_disk_config
-          end
+        result = VolumeProperties.new(
+          size: disk_size,
+          type: ephemeral_disk.type,
+          iops: ephemeral_disk.iops,
+          snapshot_id: @snapshot_id,
+          encrypted: ephemeral_disk.encrypted
+        ).ephemeral_disk_config
       end
 
       result[:bosh_type] = 'ephemeral'
