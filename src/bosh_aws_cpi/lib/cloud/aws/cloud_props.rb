@@ -162,7 +162,7 @@ module Bosh::AwsCloud
     end
 
     class EphemeralDisk < Disk
-      attr_reader :use_instance_storage, :encrypted
+      attr_reader :use_instance_storage, :encrypted, :kms_key_arn
 
       def initialize(ephemeral_disk, global_config)
         super(ephemeral_disk)
@@ -174,6 +174,8 @@ module Bosh::AwsCloud
 
           if ephemeral_disk.key?('encrypted')
             @encrypted = !!ephemeral_disk['encrypted']
+            @kms_key_arn = global_config.aws.kms_key_arn
+            @kms_key_arn = ephemeral_disk['kms_key_arn'] if ephemeral_disk.key?('kms_key_arn')
           end
         end
       end

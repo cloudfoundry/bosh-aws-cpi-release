@@ -6,14 +6,14 @@ module Bosh::AwsCloud
   class InstanceManager
     include Helpers
 
-    def initialize(ec2, registry, logger)
+    def initialize(ec2, registry, logger, volume_manager)
       @ec2 = ec2
       @registry = registry
       @logger = logger
 
       security_group_mapper = SecurityGroupMapper.new(@ec2)
       @param_mapper = InstanceParamMapper.new(security_group_mapper)
-      @block_device_manager = BlockDeviceManager.new(@logger)
+      @block_device_manager = BlockDeviceManager.new(@logger, volume_manager)
     end
 
     def create(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, default_security_groups)
@@ -22,7 +22,7 @@ module Bosh::AwsCloud
       @block_device_manager.virtualization_type = ami.virtualization_type
       @block_device_manager.root_device_name = ami.root_device_name
       @block_device_manager.ami_block_device_names = ami.block_device_mappings.map { |blk| blk.device_name }
-      block_device_info = @block_device_manager.mappings
+      block_device_mappings = @block_device_manager.mappings
       block_device_agent_info = @block_device_manager.agent_info
 
       abruptly_terminated_retries = 2
@@ -31,7 +31,7 @@ module Bosh::AwsCloud
           stemcell_id,
           vm_cloud_props,
           networks_cloud_props,
-          block_device_info,
+          block_device_mappings,
           disk_locality,
           default_security_groups
         )

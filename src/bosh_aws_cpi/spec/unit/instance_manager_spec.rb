@@ -9,7 +9,8 @@ module Bosh::AwsCloud
     let(:registry) { double('Bosh::Registry::Client', :endpoint => 'http://...', :update_settings => nil) }
     let(:param_mapper) { instance_double(InstanceParamMapper) }
     let(:block_device_manager) { instance_double(BlockDeviceManager) }
-    let(:instance_manager) { InstanceManager.new(ec2, registry, logger) }
+    let(:volume_manager) { instance_double(Bosh::AwsCloud::VolumeManager) }
+    let(:instance_manager) { InstanceManager.new(ec2, registry, logger, volume_manager) }
     let(:logger) { Logger.new('/dev/null') }
 
     describe '#create' do
@@ -241,7 +242,7 @@ module Bosh::AwsCloud
           end
 
           context 'and spot_ondemand_fallback is configured' do
-            let(:instance_manager) { InstanceManager.new(ec2, registry, logger) }
+            let(:instance_manager) { InstanceManager.new(ec2, registry, logger, volume_manager) }
             let(:vm_type) do
               {
                 'spot_bid_price' => 0.15,

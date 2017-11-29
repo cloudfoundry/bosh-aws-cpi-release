@@ -43,7 +43,7 @@ module Bosh::AwsCloud
 
           {
             key: trimmed_key,
-            value: trimmed_value,
+            value: trimmed_value
           }
         end
       end

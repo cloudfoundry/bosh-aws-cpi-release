@@ -21,9 +21,7 @@ module Bosh::AwsCloud
       resp = nil
 
       begin
-        resp = @client.describe_target_groups(
-          {names: [@group_name]}
-        )
+        resp = @client.describe_target_groups(names: [@group_name])
       rescue Aws::ElasticLoadBalancingV2::Errors::TargetGroupNotFound
         cloud_error("Cloud not find ALB target group `#{@group_name}'")
       end

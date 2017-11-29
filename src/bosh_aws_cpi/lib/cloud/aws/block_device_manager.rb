@@ -11,9 +11,10 @@ module Bosh::AwsCloud
       { device_name: '/dev/sdb', virtual_name: 'ephemeral0' }
     end
 
-    def initialize(logger)
-      @virtualization_type = DEFAULT_VIRTUALIZATION_TYPE
+    def initialize(logger, volume_manager)
       @logger = logger
+      @volume_manager = volume_manager
+      @virtualization_type = DEFAULT_VIRTUALIZATION_TYPE
     end
 
     def mappings
@@ -95,14 +96,43 @@ module Bosh::AwsCloud
           disk_size = disk_info.size_in_mb
         end
 
-        volume_properties = VolumeProperties.new(
-          size: disk_size,
-          type: ephemeral_disk.type,
-          iops: ephemeral_disk.iops,
-          encrypted: ephemeral_disk.encrypted
-        )
+        result =
+          if ephemeral_disk.encrypted && ephemeral_disk.kms_key_arn
+            custom_kms_key_disk_config = VolumeProperties.new(
+              size: 1024,
+              type: ephemeral_disk.type,
+              iops: ephemeral_disk.iops,
+              encrypted: ephemeral_disk.encrypted,
+              kms_key_arn: ephemeral_disk.kms_key_arn,
+              az: @vm_type.availability_zone
+            ).persistent_disk_config
 
-        result = volume_properties.ephemeral_disk_config
+            volume = nil
+            begin
+              volume = @volume_manager.create_ebs_volume(custom_kms_key_disk_config)
+              snapshot = volume.create_snapshot
+              ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
+              # delete snapshot after instance is created
+            ensure
+              if volume
+                @volume_manager.delete_ebs_volume(volume)
+              end
+            end
+
+            VolumeProperties.new(
+              size: disk_size,
+              type: ephemeral_disk.type,
+              iops: ephemeral_disk.iops,
+              snapshot_id: snapshot.id
+            ).ephemeral_disk_config
+          else
+            VolumeProperties.new(
+              size: disk_size,
+              type: ephemeral_disk.type,
+              iops: ephemeral_disk.iops,
+              encrypted: ephemeral_disk.encrypted
+            ).ephemeral_disk_config
+          end
       end
 
       result[:bosh_type] = 'ephemeral'

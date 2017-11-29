@@ -3,7 +3,8 @@ require 'spec_helper'
 module Bosh::AwsCloud
   describe 'BlockDeviceManager' do
     let(:logger) { Logger.new('/dev/null') }
-    let(:default_root) {
+    let(:volume_manager) { instance_double(Bosh::AwsCloud::VolumeManager) }
+    let(:default_root) do
       {
         device_name: default_root_dev,
         ebs: {
@@ -11,7 +12,7 @@ module Bosh::AwsCloud
           delete_on_termination: true,
         },
       }
-    }
+    end
     let(:default_root_dev) { '/dev/xvda' }
     let(:aws_config) do
       instance_double(Bosh::AwsCloud::AwsConfig)
@@ -32,6 +33,7 @@ module Bosh::AwsCloud
     before do
       allow(aws_config).to receive(:default_iam_instance_profile)
       allow(aws_config).to receive(:encrypted)
+      allow(aws_config).to receive(:kms_key_arn)
     end
 
     describe '#mappings' do
@@ -41,7 +43,7 @@ module Bosh::AwsCloud
         context 'when instance type has instance storage' do
           context 'when raw_instance_storage is false' do
             it 'returns an ebs volume with size determined by the instance_type' do
-              manager = BlockDeviceManager.new(logger)
+              manager = BlockDeviceManager.new(logger, volume_manager)
               manager.vm_type = vm_cloud_props
 
               actual_output = manager.mappings
@@ -61,7 +63,7 @@ module Bosh::AwsCloud
           end
 
           context 'when raw_instance_storage is true' do
-            let (:manager) { BlockDeviceManager.new(logger) }
+            let (:manager) { BlockDeviceManager.new(logger, volume_manager) }
             let (:vm_type) do
               {
                 'key_name' => 'bar',
@@ -126,7 +128,7 @@ module Bosh::AwsCloud
             context 'when the instance is paravirtual' do
               let(:default_root_dev) { '/dev/sda' }
               it 'attaches instance disks under /dev/sd[c-z]' do
-                manager = BlockDeviceManager.new(logger)
+                manager = BlockDeviceManager.new(logger, volume_manager)
                 manager.vm_type = vm_cloud_props
                 manager.virtualization_type = 'paravirtual'
 
@@ -169,7 +171,7 @@ module Bosh::AwsCloud
           end
 
           it 'uses a default 10GB ebs storage for ephemeral disk' do
-            manager = BlockDeviceManager.new(logger)
+            manager = BlockDeviceManager.new(logger, volume_manager)
             manager.vm_type = vm_cloud_props
 
             ebs_disk = {
@@ -185,7 +187,7 @@ module Bosh::AwsCloud
 
           it 'raises an error when asked for raw instance storage' do
             vm_type['raw_instance_storage'] = true
-            manager = BlockDeviceManager.new(logger)
+            manager = BlockDeviceManager.new(logger, volume_manager)
             manager.vm_type = vm_cloud_props
             expect { manager.mappings }.to raise_error(
                                              Bosh::Clouds::CloudError,
@@ -209,7 +211,7 @@ module Bosh::AwsCloud
         end
 
         it 'returns an ebs with the specified ephemeral disk size' do
-          manager = BlockDeviceManager.new(logger)
+          manager = BlockDeviceManager.new(logger, volume_manager)
           manager.vm_type = vm_cloud_props
 
           expected_output = [
@@ -241,7 +243,7 @@ module Bosh::AwsCloud
           end
 
           it 'returns disks for new ebs volume and instance storage disks' do
-            manager = BlockDeviceManager.new(logger)
+            manager = BlockDeviceManager.new(logger, volume_manager)
             manager.vm_type = vm_cloud_props
 
             expected_disks = [
@@ -282,7 +284,7 @@ module Bosh::AwsCloud
             end
 
             it 'returns disks for new ebs volume and instance storage disks under /dev/sd[c-z]' do
-              manager = BlockDeviceManager.new(logger)
+              manager = BlockDeviceManager.new(logger, volume_manager)
               manager.vm_type = vm_cloud_props
               manager.virtualization_type = 'paravirtual'
 
@@ -328,7 +330,7 @@ module Bosh::AwsCloud
         end
 
         it 'uses the specified type' do
-          manager = BlockDeviceManager.new(logger)
+          manager = BlockDeviceManager.new(logger, volume_manager)
           manager.vm_type = vm_cloud_props
 
           ebs_disk = {
@@ -351,7 +353,7 @@ module Bosh::AwsCloud
           end
 
           it 'configures the io1 disk' do
-            manager = BlockDeviceManager.new(logger)
+            manager = BlockDeviceManager.new(logger, volume_manager)
             manager.vm_type = vm_cloud_props
 
             ebs_disk = {
@@ -382,7 +384,7 @@ module Bosh::AwsCloud
         end
 
         it 'will add it to the ebs configuration' do
-          manager = BlockDeviceManager.new(logger)
+          manager = BlockDeviceManager.new(logger, volume_manager)
           manager.vm_type = vm_cloud_props
 
           expected_output = [
@@ -398,6 +400,64 @@ module Bosh::AwsCloud
             default_root
           ]
           expect(manager.mappings).to match_array(expected_output)
+        end
+
+        context 'and kms_key_arn' do
+          let(:vm_type) do
+            {
+              'key_name' => 'bar',
+              'availability_zone' => 'us-east-1a',
+              'instance_type' => 't2.small',
+              'ephemeral_disk' => {
+                'size' => 4000,
+                'encrypted' => true,
+                'kms_key_arn' => 'arn:aws:kms:us-east-1:XXXXXX:key/e1c1f008-779b-4ebe-8116-0a34b77747dd'
+              }
+            }
+          end
+          let(:volume) { instance_double(Aws::EC2::Volume) }
+          let(:snapshot) do
+            instance_double(
+              Aws::EC2::Snapshot,
+              id: 'snap-05e3175b7fc6cce4c',
+              exists?: true,
+              state: 'completed'
+            )
+          end
+
+          it 'will add snapshot snapshot_id to the ebs conbfiguration' do
+            manager = BlockDeviceManager.new(logger, volume_manager)
+            manager.vm_type = vm_cloud_props
+
+            expected_output = [
+              {
+                device_name: '/dev/sdb',
+                ebs: {
+                  volume_size: 4,
+                  volume_type: 'gp2',
+                  delete_on_termination: true,
+                  snapshot_id: 'snap-05e3175b7fc6cce4c'
+                }
+              },
+              default_root
+            ]
+
+            expect(volume_manager).to receive(:create_ebs_volume).with(
+              size: 1,
+              availability_zone: 'us-east-1a',
+              volume_type: 'gp2',
+              encrypted: true,
+              kms_key_id: 'arn:aws:kms:us-east-1:XXXXXX:key/e1c1f008-779b-4ebe-8116-0a34b77747dd'
+            ).and_return(volume)
+            expect(volume).to receive(:create_snapshot).and_return(snapshot)
+            allow(snapshot).to receive(:reload)
+            allow(snapshot).to receive(:data)
+
+            expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
+
+            # TODO(cdutra): make sure volume and snapshots are being created
+            expect(manager.mappings).to match_array(expected_output)
+          end
         end
       end
 
@@ -415,7 +475,7 @@ module Bosh::AwsCloud
           end
 
           it 'returns instance storage disks as ephemeral disk' do
-            manager = BlockDeviceManager.new(logger)
+            manager = BlockDeviceManager.new(logger, volume_manager)
             manager.vm_type = vm_cloud_props
 
             expected_disks = [
@@ -443,7 +503,7 @@ module Bosh::AwsCloud
           end
 
           it 'raises an error' do
-            manager = BlockDeviceManager.new(logger)
+            manager = BlockDeviceManager.new(logger, volume_manager)
             manager.vm_type = vm_cloud_props
 
             expect { manager.mappings }.to raise_error(
@@ -467,7 +527,7 @@ module Bosh::AwsCloud
           end
 
           it 'raises an error' do
-            manager = BlockDeviceManager.new(logger)
+            manager = BlockDeviceManager.new(logger, volume_manager)
             manager.vm_type = vm_cloud_props
 
             expect { manager.mappings }.to raise_error(
@@ -491,7 +551,7 @@ module Bosh::AwsCloud
           end
 
           it 'raises an error' do
-            manager = BlockDeviceManager.new(logger)
+            manager = BlockDeviceManager.new(logger, volume_manager)
             manager.vm_type = vm_cloud_props
 
             expect { manager.mappings }.to raise_error(
@@ -515,7 +575,7 @@ module Bosh::AwsCloud
         end
 
         it 'should default root disk type to gp2 if type is not specified' do
-          manager = BlockDeviceManager.new(logger)
+          manager = BlockDeviceManager.new(logger, volume_manager)
           manager.vm_type = vm_cloud_props
 
           expected_disks = [
@@ -556,7 +616,7 @@ module Bosh::AwsCloud
             vm_type['root_disk']['type'] = 'io1'
             vm_type['root_disk']['iops'] = 1000
 
-            manager = BlockDeviceManager.new(logger)
+            manager = BlockDeviceManager.new(logger, volume_manager)
             manager.vm_type = vm_cloud_props
             expected_disks = []
 
@@ -587,7 +647,7 @@ module Bosh::AwsCloud
         end
 
         it 'should set device name if virtualization type is not hvm' do
-          manager = BlockDeviceManager.new(logger)
+          manager = BlockDeviceManager.new(logger, volume_manager)
           manager.vm_type = vm_cloud_props
           manager.virtualization_type = 'paravirtual'
 
@@ -633,7 +693,7 @@ module Bosh::AwsCloud
             }
           end
           it 'returns information about the first managed instance storage disk, ignoring the other disks' do
-            manager = BlockDeviceManager.new(logger)
+            manager = BlockDeviceManager.new(logger, volume_manager)
             manager.vm_type = vm_cloud_props
 
             expect(manager.agent_info).to eq('ephemeral' => [{'path' => '/dev/sdb'}])
@@ -642,7 +702,7 @@ module Bosh::AwsCloud
 
         context 'when instance type does not have instance storage' do
           it 'returns information about the first managed EBS disk' do
-            manager = BlockDeviceManager.new(logger)
+            manager = BlockDeviceManager.new(logger, volume_manager)
             manager.vm_type = vm_cloud_props
 
             expect(manager.agent_info).to eq('ephemeral' => [{'path' => '/dev/sdb'}])
@@ -651,7 +711,7 @@ module Bosh::AwsCloud
       end
 
       context 'when raw_instance_storage is true' do
-        let(:manager) { BlockDeviceManager.new(logger) }
+        let(:manager) { BlockDeviceManager.new(logger, volume_manager) }
         let(:vm_type) do
           {
             'key_name' => 'bar',
@@ -699,7 +759,7 @@ module Bosh::AwsCloud
         end
 
         it 'returns information about a managed EBS disk' do
-          manager = BlockDeviceManager.new(logger)
+          manager = BlockDeviceManager.new(logger, volume_manager)
           manager.vm_type = vm_cloud_props
 
           expect(manager.agent_info).to eq('ephemeral' => [{'path' => '/dev/sdb'}])

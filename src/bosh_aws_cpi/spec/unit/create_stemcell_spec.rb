@@ -6,6 +6,7 @@ describe Bosh::AwsCloud::Cloud do
 
   describe 'EBS-volume based flow' do
     let(:creator) { double(Bosh::AwsCloud::StemcellCreator) }
+    let(:volume_manager) { instance_double(Bosh::AwsCloud::VolumeManager) }
 
     context 'light stemcell' do
       let(:ami_id) { 'ami-xxxxxxxx' }
@@ -196,6 +197,7 @@ describe Bosh::AwsCloud::Cloud do
           expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
             .with(ec2, stemcell_cloud_props)
             .and_return(creator)
+          expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
         end
 
         allow(instance).to receive(:exists?).and_return(true)
@@ -203,12 +205,12 @@ describe Bosh::AwsCloud::Cloud do
         allow(cloud).to receive(:current_vm_id).and_return('i-xxxxxxxx')
 
         expect(cloud).to receive(:create_disk).with(2048, {}, 'i-xxxxxxxx').and_return('vol-xxxxxxxx')
-        expect(cloud).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
+        expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
         expect(cloud).to receive(:find_device_path_by_name).with('/dev/sdh').and_return('ebs')
 
         expect(creator).to receive(:create).with(volume, 'ebs', '/tmp/foo').and_return(stemcell)
 
-        expect(cloud).to receive(:detach_ebs_volume).with(instance, volume, true)
+        expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
         expect(cloud).to receive(:delete_disk).with('vol-xxxxxxxx')
 
         expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq('ami-xxxxxxxx')
@@ -226,6 +228,7 @@ describe Bosh::AwsCloud::Cloud do
             expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
               .with(ec2, stemcell_cloud_props)
               .and_return(creator)
+            expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
           end
 
           allow(instance).to receive(:exists?).and_return(true)
@@ -233,13 +236,13 @@ describe Bosh::AwsCloud::Cloud do
           allow(cloud).to receive(:current_vm_id).and_return('i-xxxxxxxx')
 
           expect(cloud).to receive(:create_disk).with(2048, {}, 'i-xxxxxxxx').and_return('vol-xxxxxxxx')
-          expect(cloud).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
+          expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
           expect(cloud).to receive(:find_device_path_by_name).with('/dev/sdh').and_return('ebs')
 
           allow(creator).to receive(:create)
           expect(creator).to receive(:create).with(volume, 'ebs', '/tmp/foo').and_return(stemcell)
 
-          expect(cloud).to receive(:detach_ebs_volume).with(instance, volume, true)
+          expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
           expect(cloud).to receive(:delete_disk).with('vol-xxxxxxxx')
 
           expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq('ami-xxxxxxxx')
@@ -268,6 +271,7 @@ describe Bosh::AwsCloud::Cloud do
               expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
                                                              .with(ec2, stemcell_cloud_props)
                                                              .and_return(creator)
+              expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
             end
 
             allow(instance).to receive(:exists?).and_return(true)
@@ -275,12 +279,12 @@ describe Bosh::AwsCloud::Cloud do
             allow(cloud).to receive(:current_vm_id).and_return('i-xxxxxxxx')
 
             expect(cloud).to receive(:create_disk).with(2048, {'encrypted' => true, 'kms_key_arn' => 'arn:aws:kms:us-east-1:ID:key/GUID'}, 'i-xxxxxxxx').and_return('vol-xxxxxxxx')
-            expect(cloud).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
+            expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
             expect(cloud).to receive(:find_device_path_by_name).with('/dev/sdh').and_return('ebs')
 
             expect(creator).to receive(:create).with(volume, 'ebs', '/tmp/foo').and_return(stemcell)
 
-            expect(cloud).to receive(:detach_ebs_volume).with(instance, volume, true)
+            expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
             expect(cloud).to receive(:delete_disk).with('vol-xxxxxxxx')
 
             expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq('ami-xxxxxxxx')
@@ -307,6 +311,7 @@ describe Bosh::AwsCloud::Cloud do
               expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
                                                              .with(ec2, stemcell_cloud_props)
                                                              .and_return(creator)
+              expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
             end
 
             allow(instance).to receive(:exists?).and_return(true)
@@ -314,12 +319,12 @@ describe Bosh::AwsCloud::Cloud do
             allow(cloud).to receive(:current_vm_id).and_return('i-xxxxxxxx')
 
             expect(cloud).to receive(:create_disk).with(2048, {'encrypted' => true, 'kms_key_arn' => nil}, 'i-xxxxxxxx').and_return('vol-xxxxxxxx')
-            expect(cloud).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
+            expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
             expect(cloud).to receive(:find_device_path_by_name).with('/dev/sdh').and_return('ebs')
 
             expect(creator).to receive(:create).with(volume, 'ebs', '/tmp/foo').and_return(stemcell)
 
-            expect(cloud).to receive(:detach_ebs_volume).with(instance, volume, true)
+            expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
             expect(cloud).to receive(:delete_disk).with('vol-xxxxxxxx')
 
             expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq('ami-xxxxxxxx')
@@ -336,6 +341,7 @@ describe Bosh::AwsCloud::Cloud do
             expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
                                                            .with(ec2, stemcell_cloud_props)
                                                            .and_return(creator)
+            expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
           end
 
           allow(instance).to receive(:exists?).and_return(true)
@@ -343,12 +349,12 @@ describe Bosh::AwsCloud::Cloud do
           allow(cloud).to receive(:current_vm_id).and_return('i-xxxxxxxx')
 
           expect(cloud).to receive(:create_disk).with(2048, {}, 'i-xxxxxxxx').and_return('vol-xxxxxxxx')
-          expect(cloud).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
+          expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
           expect(cloud).to receive(:find_device_path_by_name).with('/dev/sdh').and_return('ebs')
 
           expect(creator).to receive(:create).with(volume, 'ebs', '/tmp/foo').and_return(stemcell)
 
-          expect(cloud).to receive(:detach_ebs_volume).with(instance, volume, true)
+          expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
           expect(cloud).to receive(:delete_disk).with('vol-xxxxxxxx')
 
           expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq('ami-xxxxxxxx')

@@ -85,8 +85,11 @@ describe Bosh::AwsCloud::Cloud do
       let(:ec2_client) { instance_double(Aws::EC2::Client) }
       let(:volume_resp) { instance_double(Aws::EC2::Types::Volume, volume_id: 'fake-volume-id') }
       let(:volume) { instance_double(Aws::EC2::Volume, id: 'fake-volume-id') }
+      let(:volume_manager) { Bosh::AWsCloud::VolumeManager.new() }
       before do
-        cloud.instance_variable_set(:@ec2_client, ec2_client)
+        # cloud.instance_variable_set(:@ec2_client, ec2_client)
+        volume_manager = cloud.instance_variable_get(:@volume_manager)
+        volume_manager.instance_variable_set(:@ec2_client, ec2_client)
       end
 
       context 'when disk type is provided' do
