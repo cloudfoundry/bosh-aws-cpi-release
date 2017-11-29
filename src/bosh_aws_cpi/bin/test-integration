@@ -8,24 +8,28 @@ set -e
 : ${PROJECT_RUBY_VERSION:?}
 
 function destroy_env() {
-  terraform destroy -force -state="${STATE_FILE}" \
-    -var "access_key=${AWS_ACCESS_KEY_ID}" \
-    -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
-    -var "region=${AWS_DEFAULT_REGION}" \
-    -var "env_name=$(hostname)-local-integration" \
-    -var "public_key=${PUBLIC_KEY}" \
-    "${RELEASE_DIR}/ci/assets/terraform"
+  pushd "${RELEASE_DIR}/ci/assets/terraform"
+    terraform init --input=false
+    terraform destroy -force -state="${STATE_FILE}" \
+      -var "access_key=${AWS_ACCESS_KEY_ID}" \
+      -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
+      -var "region=${AWS_DEFAULT_REGION}" \
+      -var "env_name=$(hostname)-local-integration" \
+      -var "public_key=${PUBLIC_KEY}"
+    popd
 }
 
 function create_env() {
-  terraform apply -state="${STATE_FILE}" \
-    -auto-approve \
-    -var "access_key=${AWS_ACCESS_KEY_ID}" \
-    -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
-    -var "region=${AWS_DEFAULT_REGION}" \
-    -var "env_name=$(hostname)-local-integration" \
-    -var "public_key=${PUBLIC_KEY}" \
-    "${RELEASE_DIR}/ci/assets/terraform"
+  pushd "${RELEASE_DIR}/ci/assets/terraform"
+    terraform init --input=false
+    terraform apply -state="${STATE_FILE}" \
+      -auto-approve \
+      -var "access_key=${AWS_ACCESS_KEY_ID}" \
+      -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
+      -var "region=${AWS_DEFAULT_REGION}" \
+      -var "env_name=$(hostname)-local-integration" \
+      -var "public_key=${PUBLIC_KEY}"
+    popd
 
   jq -e --raw-output '.modules[0].outputs | map_values(.value)' "$STATE_FILE" > $METADATA_FILE
 }
