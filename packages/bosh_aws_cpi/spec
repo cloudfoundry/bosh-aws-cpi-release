@@ -1,7 +1,7 @@
 ---
 name: bosh_aws_cpi
 dependencies:
-- ruby-2.4
+- ruby-2.4-r3
 files:
 - bosh_aws_cpi/Gemfile
 - bosh_aws_cpi/Gemfile.lock
