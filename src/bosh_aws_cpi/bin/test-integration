@@ -13,10 +13,11 @@ function destroy_env() {
     terraform destroy -force -state="${STATE_FILE}" \
       -var "access_key=${AWS_ACCESS_KEY_ID}" \
       -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
+      ${AWS_SESSION_TOKEN:+-var "session_token=${AWS_SESSION_TOKEN}"} \
       -var "region=${AWS_DEFAULT_REGION}" \
-      -var "env_name=$(hostname)-local-integration" \
+      -var "env_name=$(hostname -s)-local-integration" \
       -var "public_key=${PUBLIC_KEY}"
-    popd
+  popd
 }
 
 function create_env() {
@@ -26,10 +27,11 @@ function create_env() {
       -auto-approve \
       -var "access_key=${AWS_ACCESS_KEY_ID}" \
       -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
+      ${AWS_SESSION_TOKEN:+-var "session_token=${AWS_SESSION_TOKEN}"} \
       -var "region=${AWS_DEFAULT_REGION}" \
-      -var "env_name=$(hostname)-local-integration" \
+      -var "env_name=$(hostname -s)-local-integration" \
       -var "public_key=${PUBLIC_KEY}"
-    popd
+  popd
 
   jq -e --raw-output '.modules[0].outputs | map_values(.value)' "$STATE_FILE" > $METADATA_FILE
 }
@@ -38,7 +40,7 @@ export AWS_DEFAULT_REGION
 export STATE_FILE=/tmp/integration-terraform-state-"${AWS_DEFAULT_REGION}".tfstate
 export METADATA_FILE=/tmp/integration-terraform-metadata.$$.json
 if [[ ! -f /tmp/integration-key ]]; then
-  ssh-keygen -t rsa -f /tmp/integration-key -N "" -C $(hostname)
+  ssh-keygen -t rsa -f /tmp/integration-key -N "" -C $(hostname -s)
 fi
 echo "Generated /tmp/integration-key and /tmp/integration-key.pub successfully."
 export PUBLIC_KEY="$(cat /tmp/integration-key.pub)"

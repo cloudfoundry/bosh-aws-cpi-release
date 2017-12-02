@@ -43,6 +43,7 @@ describe Bosh::AwsCloud::Cloud do
       'fast_path_delete' => 'yes',
       'access_key_id' => @access_key_id,
       'secret_access_key' => @secret_access_key,
+      'session_token' => @session_token,
       'max_retries' => 8,
       'encrypted' => true
     }
@@ -140,6 +141,7 @@ describe Bosh::AwsCloud::Cloud do
               'fast_path_delete' => 'yes',
               'access_key_id' => @access_key_id,
               'secret_access_key' => @secret_access_key,
+              'session_token' => @session_token,
               'max_retries' => 8,
               'request_id' => '419877'
             },
@@ -173,6 +175,7 @@ describe Bosh::AwsCloud::Cloud do
               'fast_path_delete' => 'yes',
               'access_key_id' => @access_key_id,
               'secret_access_key' => @secret_access_key,
+              'session_token' => @session_token,
               'max_retries' => 8
             },
             'registry' => {
@@ -206,6 +209,7 @@ describe Bosh::AwsCloud::Cloud do
         Aws::ElasticLoadBalancing::Client.new(
           access_key_id: @access_key_id,
           secret_access_key: @secret_access_key,
+          session_token:  @session_token,
           region: @region,
         )
       end
@@ -242,6 +246,7 @@ describe Bosh::AwsCloud::Cloud do
         Aws::ElasticLoadBalancingV2::Client.new(
           access_key_id: @access_key_id,
           secret_access_key: @secret_access_key,
+          session_token:  @session_token,
           region: @region,
         )
       end
@@ -407,6 +412,7 @@ describe Bosh::AwsCloud::Cloud do
           'fast_path_delete' => 'yes',
           'access_key_id' => @access_key_id,
           'secret_access_key' => @secret_access_key,
+          'session_token' => @session_token,
           'max_retries' => 8,
           'encrypted' => true
         }
@@ -449,6 +455,7 @@ describe Bosh::AwsCloud::Cloud do
             'fast_path_delete' => 'yes',
             'access_key_id' => @access_key_id,
             'secret_access_key' => @secret_access_key,
+            'session_token' => @session_token,
             'max_retries' => 8,
             'encrypted' => true,
             'kms_key_arn' => @kms_key_arn

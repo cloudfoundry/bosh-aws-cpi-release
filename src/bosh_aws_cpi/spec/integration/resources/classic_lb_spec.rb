@@ -5,6 +5,7 @@ describe Bosh::AwsCloud::ClassicLB do
     Aws::ElasticLoadBalancing::Client.new(
       access_key_id: @access_key_id,
       secret_access_key: @secret_access_key,
+      session_token:  @session_token,
       region: @region,
     )
   end

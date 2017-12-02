@@ -7,6 +7,7 @@ RSpec.configure do |rspec_config|
   rspec_config.before(:each) do
     @access_key_id      = ENV['BOSH_AWS_ACCESS_KEY_ID']       || raise('Missing BOSH_AWS_ACCESS_KEY_ID')
     @secret_access_key  = ENV['BOSH_AWS_SECRET_ACCESS_KEY']   || raise('Missing BOSH_AWS_SECRET_ACCESS_KEY')
+    @session_token      = ENV['BOSH_AWS_SESSION_TOKEN']       || nil
     @subnet_id          = ENV['BOSH_AWS_SUBNET_ID']           || raise('Missing BOSH_AWS_SUBNET_ID')
     @subnet_zone        = ENV['BOSH_AWS_SUBNET_ZONE']         || raise('Missing BOSH_AWS_SUBNET_ZONE')
     @region             = ENV.fetch('BOSH_AWS_REGION', 'us-west-1')
@@ -18,6 +19,7 @@ RSpec.configure do |rspec_config|
       region:      @region,
       access_key_id: @access_key_id,
       secret_access_key: @secret_access_key,
+      session_token: @session_token,
       logger: logger,
     )
     @ec2 = Aws::EC2::Resource.new(client: ec2_client)
@@ -34,6 +36,7 @@ RSpec.configure do |rspec_config|
         'fast_path_delete' => 'yes',
         'access_key_id' => @access_key_id,
         'secret_access_key' => @secret_access_key,
+        'session_token' =>  @session_token,
         'max_retries' => 8
       },
       'registry' => {
