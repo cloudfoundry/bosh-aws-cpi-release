@@ -7,6 +7,7 @@ describe Bosh::AwsCloud::Cloud do
   before(:all) do
     @access_key_id     = ENV['BOSH_AWS_ACCESS_KEY_ID']       || raise("Missing BOSH_AWS_ACCESS_KEY_ID")
     @secret_access_key = ENV['BOSH_AWS_SECRET_ACCESS_KEY']   || raise("Missing BOSH_AWS_SECRET_ACCESS_KEY")
+    @session_token     = ENV['BOSH_AWS_SESSION_TOKEN']       || nil
     @region            = ENV['BOSH_AWS_REGION']              || 'us-west-1'
   end
 
@@ -24,6 +25,7 @@ describe Bosh::AwsCloud::Cloud do
           'access_key_id' => @access_key_id,
           'default_key_name' => 'fake-key',
           'secret_access_key' => @secret_access_key,
+          'session_token' => @session_token,
           'max_retries' => 8
         },
         'registry' => {
@@ -49,6 +51,7 @@ describe Bosh::AwsCloud::Cloud do
             'access_key_id' => @access_key_id,
             'default_key_name' => 'fake-key',
             'secret_access_key' => @secret_access_key,
+            'session_token' => @session_token,
             'max_retries' => 8
           },
           'registry' => {
@@ -77,6 +80,7 @@ describe Bosh::AwsCloud::Cloud do
             'access_key_id' => @access_key_id,
             'default_key_name' => 'fake-key',
             'secret_access_key' => @secret_access_key,
+            'session_token' => @session_token,
             'max_retries' => 8
           },
           'registry' => {
@@ -139,6 +143,7 @@ describe Bosh::AwsCloud::Cloud do
           'default_key_name' => 'fake-key',
           'access_key_id' => @access_key_id,
           'secret_access_key' => @secret_access_key,
+          'session_token' => @session_token,
           'max_retries' => 8
         },
         'registry' => {
@@ -203,6 +208,7 @@ describe Bosh::AwsCloud::Cloud do
             'access_key_id' => @access_key_id,
             'default_key_name' => 'fake-key',
             'secret_access_key' => @secret_access_key,
+            'session_token' => @session_token,
             'max_retries' => 8
           },
           'registry' => {

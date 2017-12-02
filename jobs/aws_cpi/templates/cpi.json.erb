@@ -8,6 +8,7 @@ params = {
         "credentials_source" => p('aws.credentials_source'),
         "access_key_id" => p('aws.access_key_id', nil),
         "secret_access_key" => p('aws.secret_access_key', nil),
+        "session_token" => p('aws.session_token', nil),
         "default_iam_instance_profile" => p('aws.default_iam_instance_profile', nil),
         "default_key_name" => p('aws.default_key_name'),
         "default_security_groups" => p('aws.default_security_groups'),
@@ -60,6 +61,7 @@ if_p('blobstore') do
       "credentials_source" => p(['agent.blobstore.credentials_source', 'blobstore.credentials_source']),
       "access_key_id" => p(['agent.blobstore.access_key_id', 'blobstore.access_key_id'], nil),
       "secret_access_key" => p(['agent.blobstore.secret_access_key', 'blobstore.secret_access_key'], nil),
+      "session_token" => p(['agent.blobstore.session_token', 'blobstore.session_token'], nil),
     }
 
     def update_blobstore_options(blobstore, manifest_key, rendered_key=manifest_key)

@@ -22,6 +22,9 @@ metadata=$(cat ${METADATA_FILE})
 
 export BOSH_AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
 export BOSH_AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+if [ "${AWS_SESSION_TOKEN}" ]; then
+	export BOSH_AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+fi
 export BOSH_AWS_DEFAULT_KEY_NAME=$(echo ${metadata} | jq -e --raw-output ".default_key_name")
 export BOSH_AWS_REGION=$(echo ${metadata} | jq -e --raw-output ".region")
 export BOSH_AWS_SUBNET_ID=$(echo ${metadata} | jq -e --raw-output ".subnet_id")

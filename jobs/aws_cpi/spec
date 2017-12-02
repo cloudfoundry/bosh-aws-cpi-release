@@ -20,6 +20,9 @@ properties:
   aws.secret_access_key:
     description: AWS secret_access_key for the aws cpi (Required when aws.credentials_source is set to `static`)
     default: null
+  aws.session_token:
+    description: AWS session_token when using STS credentials for the aws cpi (Optional, used when aws.credentials_source is set to `static`)
+    default: null
   aws.default_iam_instance_profile:
     description: Default AWS iam_instance_profile for the aws cpi
     default: null

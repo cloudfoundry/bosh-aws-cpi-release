@@ -1,5 +1,8 @@
 variable "access_key" {}
 variable "secret_key" {}
+variable "session_token" {
+  default = ""
+}
 variable "region" {}
 variable "env_name" {}
 variable "public_key" {}
@@ -7,6 +10,7 @@ variable "public_key" {}
 provider "aws" {
   access_key = "${var.access_key}"
   secret_key = "${var.secret_key}"
+  token = "${var.session_token}"
   region = "${var.region}"
 }
 

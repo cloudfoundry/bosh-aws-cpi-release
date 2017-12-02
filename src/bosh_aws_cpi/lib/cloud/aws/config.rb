@@ -18,6 +18,7 @@ module Bosh::AwsCloud
 
       @access_key_id = @config['access_key_id']
       @secret_access_key = @config['secret_access_key']
+      @session_token = @config['session_token']
       @default_iam_instance_profile = @config['default_iam_instance_profile']
       @default_key_name = @config['default_key_name']
       @default_security_groups = @config['default_security_groups']
@@ -34,7 +35,7 @@ module Bosh::AwsCloud
       @credentials_source = @config['credentials_source'] || CREDENTIALS_SOURCE_STATIC
       @credentials =
         if @credentials_source == CREDENTIALS_SOURCE_STATIC
-          Aws::Credentials.new(@access_key_id, @secret_access_key)
+          Aws::Credentials.new(@access_key_id, @secret_access_key, @session_token)
         else
           Aws::InstanceProfileCredentials.new(retries: 10)
         end

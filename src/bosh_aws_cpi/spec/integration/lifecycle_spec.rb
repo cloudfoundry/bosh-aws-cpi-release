@@ -63,6 +63,7 @@ describe Bosh::AwsCloud::Cloud do
           'fast_path_delete' => 'yes',
           'access_key_id' => @access_key_id,
           'secret_access_key' => @secret_access_key,
+          'session_token' => @session_token,
           'max_retries' => 0
         },
         'registry' => {
@@ -71,6 +72,45 @@ describe Bosh::AwsCloud::Cloud do
           'password' => 'fake'
         })
       end.to raise_error(/region/)
+    end
+  end
+
+  context 'using STS credentials' do
+
+    let(:sts_cpi) do
+      sts_client = Aws::STS::Client.new(
+        :region => @region,
+        :access_key_id => @access_key_id,
+        :secret_access_key => @secret_access_key,
+        :session_token => @session_token,
+      )
+      session = sts_client.get_session_token({
+        duration_seconds: 900,
+      }).to_h[:credentials]
+
+      described_class.new(
+        'aws' => {
+          'region' => @region,
+          'default_key_name' => @default_key_name,
+          'fast_path_delete' => 'yes',
+          'access_key_id' => session[:access_key_id],
+          'secret_access_key' => session[:secret_access_key],
+          'session_token' => session[:session_token],
+          'max_retries' => 8
+        },
+        'registry' => {
+          'endpoint' => 'fake',
+          'user' => 'fake',
+          'password' => 'fake'
+        }
+      )
+    end
+    it 'it can perform a AWS API call', :focus => true do
+      skip("Already using STS credentials") unless @session_token.nil? || @session_token == ""
+
+      expect {
+        sts_cpi.delete_disk('vol-4c68780b')
+      }.to raise_error Bosh::Clouds::DiskNotFound
     end
   end
 
@@ -188,6 +228,7 @@ describe Bosh::AwsCloud::Cloud do
             'fast_path_delete' => 'yes',
             'access_key_id' => @access_key_id,
             'secret_access_key' => @secret_access_key,
+            'session_token' => @session_token,
             'max_retries' => 8
           },
           'registry' => {

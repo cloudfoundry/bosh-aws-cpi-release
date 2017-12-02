@@ -51,6 +51,7 @@ describe 'cpi.json.erb' do
             'credentials_source' => 'static',
             'access_key_id' => nil,
             'secret_access_key' => nil,
+            'session_token' => nil,
             'default_iam_instance_profile' => nil,
             'default_key_name'=>'the_default_key_name',
             'default_security_groups'=>['security_group_1'],
@@ -126,6 +127,19 @@ describe 'cpi.json.erb' do
       expect(subject['cloud']['properties']['aws']['credentials_source']).to eq('static')
       expect(subject['cloud']['properties']['aws']['access_key_id']).to eq('some key')
       expect(subject['cloud']['properties']['aws']['secret_access_key']).to eq('some secret')
+      expect(subject['cloud']['properties']['aws']['session_token']).to be_nil
+    end
+
+    context 'incluing a session_token' do
+      before do
+        manifest['properties']['aws'].merge!({
+          'session_token' => 'some token'
+        })
+      end
+
+      it 'is able to render the erb given access key id and secret access key' do
+        expect(subject['cloud']['properties']['aws']['session_token']).to eq('some token')
+      end
     end
   end
 
@@ -168,6 +182,7 @@ describe 'cpi.json.erb' do
               'credentials_source' => 'static',
               'access_key_id' => 'blobstore-access-key-id',
               'secret_access_key' => 'blobstore-secret-access-key',
+              'session_token' => nil,
               'use_ssl' => true,
               'port' => 443,
             }
@@ -194,6 +209,7 @@ describe 'cpi.json.erb' do
               'credentials_source' => 'env_or_profile',
               'access_key_id' => nil,
               'secret_access_key' => nil,
+              'session_token' => nil,
               'use_ssl' => true,
               'port' => 443,
             }
@@ -210,6 +226,7 @@ describe 'cpi.json.erb' do
           'credentials_source' => 'blobstore-credentials-source',
           'access_key_id' => 'blobstore-access-key-id',
           'secret_access_key' => 'blobstore-secret-access-key',
+          'session_token' => 'blobstore-session-token',
           's3_region' => 'blobstore-region',
           'use_ssl' => false,
           's3_port' => 21,
@@ -230,6 +247,7 @@ describe 'cpi.json.erb' do
               'credentials_source' => 'blobstore-credentials-source',
               'access_key_id' => 'blobstore-access-key-id',
               'secret_access_key' => 'blobstore-secret-access-key',
+              'session_token' => nil,
               'region' => 'blobstore-region',
               'use_ssl' => false,
               'host' => 'blobstore-host',
@@ -249,6 +267,7 @@ describe 'cpi.json.erb' do
             'credentials_source' => 'agent-credentials-source',
             'access_key_id' => 'agent_access_key_id',
             'secret_access_key' => 'agent_secret_access_key',
+            'session_token' => 'agent_session_token',
             's3_region' => 'agent-region',
             'use_ssl' => true,
             's3_port' => 42,
@@ -264,6 +283,7 @@ describe 'cpi.json.erb' do
           'credentials_source' => 'blobstore-credentials-source',
           'access_key_id' => 'blobstore_access_key_id',
           'secret_access_key' => 'blobstore_secret_access_key',
+          'session_token' => 'blobstore_session_token',
           's3_region' => 'blobstore-region',
           'use_ssl' => false,
           's3_port' => 21,

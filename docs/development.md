@@ -34,7 +34,10 @@ of it on your local system.
   ```bash
   export AWS_ACCESS_KEY_ID=AKIAINSxxxxxxxxxxxxx
   export AWS_SECRET_ACCESS_KEY=LvgQOmCtjL1yhcxxxxxxxxxxxxxxxxxxxxxxxxxx
-  # optional
+  # Optionally use STS Tokens
+  # export AWS_SESSION_TOKEN=xxxxxxxx
+
+  # Optionally use alternate region
   # export AWS_DEFAULT_REGION=us-west-1
   ```
 1. source your `lifecycle.env` file
