@@ -29,7 +29,7 @@ module Bosh::AwsCloud
       true
     rescue Seahorse::Client::NetworkingError => e
       @logger.error("Failed to connect to AWS: #{e.inspect}\n#{e.backtrace.join("\n")}")
-      err = "Unable to create a connection to AWS. Please check your provided settings: Region '#{@aws_params[:region] || 'Not provided'}', Endpoint '#{@aws_params[:endpoint] || 'Not provided'}'."
+      err = "Unable to create a connection to AWS. Please check your provided settings: Region '#{@aws_config.region || 'Not provided'}', Endpoint '#{@aws_config.ec2_endpoint || 'Not provided'}'."
       cloud_error("#{err}\nIaaS Error: #{e.inspect}")
     rescue Net::OpenTimeout
       false
@@ -41,7 +41,7 @@ module Bosh::AwsCloud
       true
     rescue Seahorse::Client::NetworkingError => e
       @logger.error("Failed to connect to AWS Application Load Balancer endpoint: #{e.inspect}\n#{e.backtrace.join("\n")}")
-      err = "Unable to create a connection to AWS. Please check your provided settings: Region '#{@elb_params[:region] || 'Not provided'}', Endpoint '#{@elb_params[:endpoint] || 'Not provided'}'."
+      err = "Unable to create a connection to AWS. Please check your provided settings: Region '#{@aws_config.region || 'Not provided'}', Endpoint '#{@aws_config.elb_endpoint || 'Not provided'}'."
       cloud_error("#{err}\nIaaS Error: #{e.inspect}")
     rescue Net::OpenTimeout
       false
@@ -53,7 +53,7 @@ module Bosh::AwsCloud
       true
     rescue Seahorse::Client::NetworkingError => e
       @logger.error("Failed to connect to AWS Elastic Load Balancer endpoint: #{e.inspect}\n#{e.backtrace.join("\n")}")
-      err = "Unable to create a connection to AWS. Please check your provided settings: Region '#{@elb_params[:region] || 'Not provided'}', Endpoint '#{@elb_params[:endpoint] || 'Not provided'}'."
+      err = "Unable to create a connection to AWS. Please check your provided settings: Region '#{@aws_config.region || 'Not provided'}', Endpoint '#{@aws_config.elb_endpoint || 'Not provided'}'."
       cloud_error("#{err}\nIaaS Error: #{e.inspect}")
     rescue Net::OpenTimeout
       false
