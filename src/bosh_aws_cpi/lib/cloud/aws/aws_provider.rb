@@ -2,28 +2,18 @@ module Bosh::AwsCloud
   class AwsProvider
     include Helpers
 
-    attr_reader :ec2_client, :ec2_resource, :alb_client, :elb_client
+    attr_reader :ec2_client, :ec2_resource, :alb_client, :elb_client, :elb_params, :ec2_params
 
     def initialize(aws_config, logger)
+      @aws_config = aws_config
       @logger = logger
 
-      @elb_params = {
-        region: aws_config.region,
-        credentials: aws_config.credentials,
-        logger: @logger
-      }
-      elb_endpoint = aws_config.elb_endpoint
-      if elb_endpoint
-        if URI(aws_config.elb_endpoint).scheme.nil?
-          elb_endpoint = "https://#{elb_endpoint}"
-        end
-        @elb_params[:endpoint] = elb_endpoint
-      end
+      @elb_params = initialize_params(@aws_config.elb_endpoint)
 
       @elb_client = Aws::ElasticLoadBalancing::Client.new(@elb_params)
       @alb_client = Aws::ElasticLoadBalancingV2::Client.new(@elb_params)
 
-      @aws_params = aws_params(aws_config, @logger)
+      @ec2_params = initialize_params(@aws_config.ec2_endpoint)
 
       # AWS Ruby SDK is threadsafe but Ruby autoload isn't,
       # so we need to trigger eager autoload while constructing CPI
@@ -31,7 +21,7 @@ module Bosh::AwsCloud
 
       # In SDK v2 the default is more request driven, while the old 'model way' lives in Resource.
       # Therefore in most cases Aws::EC2::Resource would replace the client.
-      @ec2_client = Aws::EC2::Client.new(@aws_params)
+      @ec2_client = Aws::EC2::Client.new(@ec2_params)
       @ec2_resource = Aws::EC2::Resource.new(client: @ec2_client)
     end
 
@@ -73,31 +63,27 @@ module Bosh::AwsCloud
 
     private
 
-    def aws_params(aws_config, logger)
-      aws_params = {
-        credentials: aws_config.credentials,
-        retry_limit: aws_config.max_retries,
-        logger: logger,
+    def initialize_params(endpoint)
+      params = {
+        credentials: @aws_config.credentials,
+        retry_limit: @aws_config.max_retries,
+        logger: @logger,
         log_level: :debug
       }
-
-      if aws_config.region
-        aws_params[:region] = aws_config.region
+      if @aws_config.region
+        params[:region] = @aws_config.region
       end
-      if aws_config.ec2_endpoint
-        endpoint = aws_config.ec2_endpoint
-        if URI(aws_config.ec2_endpoint).scheme.nil?
+      if endpoint
+        if URI(endpoint).scheme.nil?
           endpoint = "https://#{endpoint}"
         end
-        aws_params[:endpoint] = endpoint
+        params[:endpoint] = endpoint
       end
 
-      # TODO(cdutra): move this to a better place
       if ENV.has_key?('BOSH_CA_CERT_FILE')
-        aws_params[:ssl_ca_bundle] = ENV['BOSH_CA_CERT_FILE']
+        params[:ssl_ca_bundle] = ENV['BOSH_CA_CERT_FILE']
       end
-
-      aws_params
+      params
     end
   end
 end
