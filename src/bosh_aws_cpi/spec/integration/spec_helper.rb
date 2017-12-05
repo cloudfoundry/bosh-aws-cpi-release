@@ -1,26 +1,75 @@
 require 'spec_helper'
 require 'integration/helpers/ec2_helper'
 
+def validate_minimum_permissions(logger)
+  if @permissions_auditor_key_id && @permissions_auditor_secret_key
+    sts_client = Aws::STS::Client.new(
+      region: @region,
+      access_key_id: @access_key_id,
+      secret_access_key: @secret_access_key,
+      session_token: @session_token
+    )
+    integration_test_user_arn = sts_client.get_caller_identity.arn
+
+    iam_client = Aws::IAM::Client.new(
+      region: @region,
+      access_key_id: @permissions_auditor_key_id,
+      secret_access_key: @permissions_auditor_secret_key,
+      session_token: @session_token,
+      logger: logger
+    )
+
+    user_details = iam_client.get_account_authorization_details(
+      filter: ['User'],
+      max_items: 1
+    ).user_detail_list.find { |user| user.arn == integration_test_user_arn }
+
+    policy_documents = []
+    policy_documents += user_details.attached_managed_policies.map do |p|
+      version_id = iam_client.get_policy(policy_arn: p.policy_arn).policy.default_version_id
+      iam_client.get_policy_version(policy_arn: p.policy_arn, version_id: version_id).policy_version.document
+    end
+    policy_documents += user_details.user_policy_list.map(&:policy_document)
+
+    actions = policy_documents.map do |document|
+      JSON.parse(URI.unescape(document))['Statement'].map do |s|
+        s['Action']
+      end.flatten
+    end.flatten.uniq
+
+    minimum_action = JSON.parse(File.read File.join(ENV['RELEASE_DIR'], 'docs/minimum-iam-policy.json'))['Statement'].map do |s|
+      s['Action']
+    end.flatten.uniq
+
+    expect(actions).to match_array(minimum_action)
+  end
+end
+
 RSpec.configure do |rspec_config|
   include IntegrationHelpers
 
   rspec_config.before(:each) do
-    @access_key_id      = ENV['BOSH_AWS_ACCESS_KEY_ID']       || raise('Missing BOSH_AWS_ACCESS_KEY_ID')
-    @secret_access_key  = ENV['BOSH_AWS_SECRET_ACCESS_KEY']   || raise('Missing BOSH_AWS_SECRET_ACCESS_KEY')
-    @session_token      = ENV['BOSH_AWS_SESSION_TOKEN']       || nil
-    @subnet_id          = ENV['BOSH_AWS_SUBNET_ID']           || raise('Missing BOSH_AWS_SUBNET_ID')
-    @subnet_zone        = ENV['BOSH_AWS_SUBNET_ZONE']         || raise('Missing BOSH_AWS_SUBNET_ZONE')
-    @region             = ENV.fetch('BOSH_AWS_REGION', 'us-west-1')
-    @default_key_name   = ENV.fetch('BOSH_AWS_DEFAULT_KEY_NAME', 'bosh')
-    @ami                = ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-866d3ee6')
+    @access_key_id                  = ENV['BOSH_AWS_ACCESS_KEY_ID']       || raise('Missing BOSH_AWS_ACCESS_KEY_ID')
+    @secret_access_key              = ENV['BOSH_AWS_SECRET_ACCESS_KEY']   || raise('Missing BOSH_AWS_SECRET_ACCESS_KEY')
+    @session_token                  = ENV['BOSH_AWS_SESSION_TOKEN']       || nil
+    @subnet_id                      = ENV['BOSH_AWS_SUBNET_ID']           || raise('Missing BOSH_AWS_SUBNET_ID')
+    @subnet_zone                    = ENV['BOSH_AWS_SUBNET_ZONE']         || raise('Missing BOSH_AWS_SUBNET_ZONE')
+    @region                         = ENV.fetch('BOSH_AWS_REGION', 'us-west-1')
+    @default_key_name               = ENV.fetch('BOSH_AWS_DEFAULT_KEY_NAME', 'bosh')
+    @ami                            = ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-866d3ee6')
+    @permissions_auditor_key_id     = ENV.fetch('BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID', nil)
+    @permissions_auditor_secret_key = ENV.fetch('BOSH_AWS_PERMISSIONS_AUDITOR_SECRET_KEY', nil)
 
     logger = Bosh::Cpi::Logger.new(STDERR)
+
+    validate_minimum_permissions(logger)
+
     ec2_client = Aws::EC2::Client.new(
-      region:      @region,
+      region: @region,
       access_key_id: @access_key_id,
       secret_access_key: @secret_access_key,
       session_token: @session_token,
-      logger: logger,
+      logger: logger
     )
     @ec2 = Aws::EC2::Resource.new(client: ec2_client)
 
@@ -36,7 +85,7 @@ RSpec.configure do |rspec_config|
         'fast_path_delete' => 'yes',
         'access_key_id' => @access_key_id,
         'secret_access_key' => @secret_access_key,
-        'session_token' =>  @session_token,
+        'session_token' => @session_token,
         'max_retries' => 8
       },
       'registry' => {

@@ -89,8 +89,10 @@ jobs:
       - task: test
         file: bosh-cpi-src/ci/tasks/run-integration.yml
         params:
-          AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
-          AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
+          AWS_ACCESS_KEY_ID:     {{aws_access_key__cpi}}
+          AWS_SECRET_ACCESS_KEY: {{aws_secret_key__cpi}}
+          BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID: {{aws_access_key__auditor}}
+          BOSH_AWS_PERMISSIONS_AUDITOR_SECRET_KEY: {{aws_secret_key__auditor}}
           AWS_DEFAULT_REGION:    {{aws_region__primary}}
         ensure:
           do:
