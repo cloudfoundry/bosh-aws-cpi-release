@@ -10,6 +10,7 @@ def validate_minimum_permissions(logger)
       session_token: @session_token
     )
     integration_test_user_arn = sts_client.get_caller_identity.arn
+    raise 'Cannot get user ARN' if integration_test_user_arn.nil?
 
     iam_client = Aws::IAM::Client.new(
       region: @region,
@@ -19,10 +20,8 @@ def validate_minimum_permissions(logger)
       logger: logger
     )
 
-    user_details = iam_client.get_account_authorization_details(
-      filter: ['User'],
-      max_items: 1
-    ).user_detail_list.find { |user| user.arn == integration_test_user_arn }
+    user_details = iam_client.get_account_authorization_details(filter: ['User']).user_detail_list.find { |user| user.arn == integration_test_user_arn }
+    raise "Cannot find user with ARN: #{integration_test_user_arn}" if user_details.nil?
 
     policy_documents = []
     policy_documents += user_details.attached_managed_policies.map do |p|
