@@ -23,7 +23,9 @@
         "ec2:TerminateInstances",
         "ec2:RegisterImage",
         "ec2:DeregisterImage",
-        "ec2:ModifyInstanceAttribute"
+        "ec2:CopyImage",
+        "ec2:ModifyInstanceAttribute",
+        "ec2:DescribeAvailabilityZones"
       ],
       "Effect": "Allow",
       "Resource": "*"
@@ -31,7 +33,8 @@
     {
       "Effect": "Allow",
       "Action": [
-        "elasticloadbalancing:RegisterInstance",
+        "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
+        "elasticloadbalancing:DescribeTargetHealth",
         "elasticloadbalancing:RegisterTargets",
         "elasticloadbalancing:DescribeLoadBalancers",
         "elasticloadbalancing:DescribeTargetGroups"
