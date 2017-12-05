@@ -39,7 +39,11 @@ export BOSH_AWS_KMS_KEY_ARN=$(echo ${metadata} | jq -e --raw-output ".aws_kms_ke
 
 export BOSH_CLI_SILENCE_SLOW_LOAD_WARNING=true
 
-pushd ${release_dir}/src/bosh_aws_cpi > /dev/null
-  bundle install
-  bundle exec rspec ${RSPEC_ARGUMENTS}
-popd > /dev/null
+pushd ${release_dir}
+  source .envrc
+
+  pushd src/bosh_aws_cpi > /dev/null
+    bundle install
+    bundle exec rspec ${RSPEC_ARGUMENTS}
+  popd > /dev/null
+popd
