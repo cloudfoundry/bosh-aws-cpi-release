@@ -1,17 +1,9 @@
-require 'spec_helper'
+require 'integration/spec_helper'
 require 'json'
 require 'tempfile'
 require 'yaml'
 
 describe 'the aws_cpi executable' do
-
-  before(:all) do
-    @access_key_id     = ENV['BOSH_AWS_ACCESS_KEY_ID']       || raise('Missing BOSH_AWS_ACCESS_KEY_ID')
-    @secret_access_key = ENV['BOSH_AWS_SECRET_ACCESS_KEY']   || raise('Missing BOSH_AWS_SECRET_ACCESS_KEY')
-    @session_token     = ENV['BOSH_AWS_SESSION_TOKEN']       || nil
-    @region            = ENV['BOSH_AWS_REGION']              || 'us-west-1'
-  end
-
   before(:each) do
     config_file.write(cloud_properties.to_yaml)
     config_file.close

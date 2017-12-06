@@ -1,17 +1,9 @@
-require 'spec_helper'
+require 'integration/spec_helper'
 require 'logger'
 require 'cloud'
 require 'open-uri'
 
 describe Bosh::AwsCloud::Cloud do
-  before(:all) do
-    @access_key_id     = ENV['BOSH_AWS_ACCESS_KEY_ID']       || raise("Missing BOSH_AWS_ACCESS_KEY_ID")
-    @secret_access_key = ENV['BOSH_AWS_SECRET_ACCESS_KEY']   || raise("Missing BOSH_AWS_SECRET_ACCESS_KEY")
-    @session_token     = ENV['BOSH_AWS_SESSION_TOKEN']       || nil
-    @region            = ENV['BOSH_AWS_REGION']              || 'us-west-1'
-  end
-
-  before { allow(Bosh::Clouds::Config).to receive_messages(logger: logger) }
   let(:logger) { Bosh::Cpi::Logger.new(STDERR) }
   let(:non_existent_vm_id) { 'i-010fd20eb24f606ab' }
 

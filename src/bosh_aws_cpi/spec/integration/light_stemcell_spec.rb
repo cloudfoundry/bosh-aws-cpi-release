@@ -3,10 +3,6 @@ require 'bosh/cpi/logger'
 require 'cloud'
 
 describe Bosh::AwsCloud::Cloud do
-  before(:all) do
-    @kms_key_arn = ENV['BOSH_AWS_KMS_KEY_ARN'] || raise('Missing BOSH_AWS_KMS_KEY_ARN')
-  end
-
   let(:ami) { hvm_ami }
   let(:hvm_ami) { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-9c91b7fc') }
   let(:registry) { instance_double(Bosh::Cpi::RegistryClient).as_null_object }

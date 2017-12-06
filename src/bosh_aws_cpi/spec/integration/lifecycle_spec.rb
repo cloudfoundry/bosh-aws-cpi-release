@@ -6,9 +6,9 @@ require 'cloud'
 
 describe Bosh::AwsCloud::Cloud do
   before(:all) do
-    @manual_ip          = ENV['BOSH_AWS_LIFECYCLE_MANUAL_IP'] || raise('Missing BOSH_AWS_LIFECYCLE_MANUAL_IP')
-    @elb_id             = ENV['BOSH_AWS_ELB_ID']              || raise('Missing BOSH_AWS_ELB_ID')
-    @target_group_name  = ENV['BOSH_AWS_TARGET_GROUP_NAME']   || raise('Missing BOSH_AWS_TARGET_GROUP_NAME')
+    @manual_ip          = ENV.fetch('BOSH_AWS_LIFECYCLE_MANUAL_IP')
+    @elb_id             = ENV.fetch('BOSH_AWS_ELB_ID')
+    @target_group_name  = ENV.fetch('BOSH_AWS_TARGET_GROUP_NAME')
   end
 
   let(:instance_type_with_ephemeral)      { ENV.fetch('BOSH_AWS_INSTANCE_TYPE', 'm3.medium') }
@@ -145,7 +145,7 @@ describe Bosh::AwsCloud::Cloud do
     context 'with advertised_routes' do
       let(:route_destination) { '9.9.9.9/32' }
       let!(:route_table_id) do
-        ENV['BOSH_AWS_ADVERTISED_ROUTE_TABLE'] || raise('Missing BOSH_AWS_ADVERTISED_ROUTE_TABLE')
+        ENV.fetch('BOSH_AWS_ADVERTISED_ROUTE_TABLE')
       end
       let(:vm_type) do
         {

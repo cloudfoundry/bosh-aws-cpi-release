@@ -47,21 +47,23 @@ end
 RSpec.configure do |rspec_config|
   include IntegrationHelpers
 
-  rspec_config.before(:each) do
-    @access_key_id                  = ENV['BOSH_AWS_ACCESS_KEY_ID']       || raise('Missing BOSH_AWS_ACCESS_KEY_ID')
-    @secret_access_key              = ENV['BOSH_AWS_SECRET_ACCESS_KEY']   || raise('Missing BOSH_AWS_SECRET_ACCESS_KEY')
-    @session_token                  = ENV['BOSH_AWS_SESSION_TOKEN']       || nil
-    @subnet_id                      = ENV['BOSH_AWS_SUBNET_ID']           || raise('Missing BOSH_AWS_SUBNET_ID')
-    @subnet_zone                    = ENV['BOSH_AWS_SUBNET_ZONE']         || raise('Missing BOSH_AWS_SUBNET_ZONE')
+  rspec_config.before(:all) do
+    @access_key_id                  = ENV.fetch('BOSH_AWS_ACCESS_KEY_ID')
+    @secret_access_key              = ENV.fetch('BOSH_AWS_SECRET_ACCESS_KEY')
+    @session_token                  = ENV.fetch('BOSH_AWS_SESSION_TOKEN', nil)
+    @subnet_id                      = ENV.fetch('BOSH_AWS_SUBNET_ID')
+    @subnet_zone                    = ENV.fetch('BOSH_AWS_SUBNET_ZONE')
+    @kms_key_arn                    = ENV.fetch('BOSH_AWS_KMS_KEY_ARN')
     @region                         = ENV.fetch('BOSH_AWS_REGION', 'us-west-1')
     @default_key_name               = ENV.fetch('BOSH_AWS_DEFAULT_KEY_NAME', 'bosh')
     @ami                            = ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-866d3ee6')
     @permissions_auditor_key_id     = ENV.fetch('BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID', nil)
     @permissions_auditor_secret_key = ENV.fetch('BOSH_AWS_PERMISSIONS_AUDITOR_SECRET_KEY', nil)
 
-    logger = Bosh::Cpi::Logger.new(STDERR)
 
-    validate_minimum_permissions(logger)
+    logger = Bosh::Cpi::Logger.new(STDERR)
+    Bosh::Clouds::Config.define_singleton_method(:logger) { logger }
+    # validate_minimum_permissions(logger)
 
     ec2_client = Aws::EC2::Client.new(
       region: @region,
@@ -71,11 +73,13 @@ RSpec.configure do |rspec_config|
       logger: logger
     )
     @ec2 = Aws::EC2::Resource.new(client: ec2_client)
+  end
 
+  rspec_config.before(:each) do
     @registry = instance_double(Bosh::Cpi::RegistryClient).as_null_object
     allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(@registry)
     allow(@registry).to receive(:read_settings).and_return({})
-    allow(Bosh::Clouds::Config).to receive_messages(logger: logger)
+
     @cpi = Bosh::AwsCloud::Cloud.new(
       'aws' => {
         'region' => @region,
@@ -93,7 +97,6 @@ RSpec.configure do |rspec_config|
         'password' => 'fake'
       }
     )
-
     @stemcell_id = create_stemcell
     @vpc_id = @ec2.subnet(@subnet_id).vpc_id
   end
@@ -158,7 +161,7 @@ def route_exists?(route_table, expected_cidr, instance_id)
     sleep 0.5
   end
 
-  return false
+  false
 end
 
 def array_key_value_to_hash(arr_with_keys)
@@ -173,12 +176,9 @@ end
 class RegisteredInstances < StandardError; end
 
 def ensure_no_instances_registered_with_elb(elb_client, elb_id)
-  instances = elb_client.describe_load_balancers({:load_balancer_names => [elb_id]})[:load_balancer_descriptions]
+  instances = elb_client.describe_load_balancers(load_balancer_names: [elb_id])[:load_balancer_descriptions]
     .first[:instances]
 
-  if !instances.empty?
-    raise RegisteredInstances
-  end
-
+  raise RegisteredInstances unless instances.empty?
   true
 end

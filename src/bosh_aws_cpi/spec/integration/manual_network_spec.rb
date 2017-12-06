@@ -7,10 +7,9 @@ require 'netaddr'
 
 describe Bosh::AwsCloud::Cloud do
   before(:all) do
-    @elb_id             = ENV['BOSH_AWS_ELB_ID']              || raise('Missing BOSH_AWS_ELB_ID')
-    @kms_key_arn        = ENV['BOSH_AWS_KMS_KEY_ARN']         || raise('Missing BOSH_AWS_KMS_KEY_ARN')
-    @target_group_name  = ENV['BOSH_AWS_TARGET_GROUP_NAME']   || raise('Missing BOSH_AWS_TARGET_GROUP_NAME')
-    @manual_subnet_id   = ENV['BOSH_AWS_MANUAL_SUBNET_ID']    || raise('Missing BOSH_AWS_MANUAL_SUBNET_ID')
+    @elb_id             = ENV.fetch('BOSH_AWS_ELB_ID')
+    @target_group_name  = ENV.fetch('BOSH_AWS_TARGET_GROUP_NAME')
+    @manual_subnet_id   = ENV.fetch('BOSH_AWS_MANUAL_SUBNET_ID')
 
     @ip_semaphore = Mutex.new
     @already_used = []
