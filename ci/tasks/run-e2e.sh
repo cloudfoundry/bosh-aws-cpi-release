@@ -2,6 +2,8 @@
 
 set -e
 
+: ${BOSH_AWS_KMS_KEY_ARN:?}
+
 source bosh-cpi-src/ci/utils.sh
 source director-state/director.env
 
@@ -17,12 +19,11 @@ time bosh -n upload-stemcell "$(realpath heavy-stemcell/*.tgz)"
 
 stemcell_name="$( bosh int <( tar xfO $(realpath stemcell/*.tgz) stemcell.MF ) --path /name )"
 heavy_stemcell_name="$( bosh int <( tar xfO $(realpath heavy-stemcell/*.tgz) stemcell.MF ) --path /name )"
-aws_kms_key_arn="$(cat environment/metadata | jq --raw-output ".aws_kms_key_arn")"
 
 time bosh repack-stemcell \
   --name e2e-encrypted-heavy-stemcell \
   --version 0.1 \
-  --cloud-properties "{\"encrypted\": true, \"kms_key_arn\": \"${aws_kms_key_arn}\"}" \
+  --cloud-properties "{\"encrypted\": true, \"kms_key_arn\": \"${BOSH_AWS_KMS_KEY_ARN}\"}" \
   "$(realpath heavy-stemcell/*.tgz)" \
   /tmp/e2e-encrypted-heavy-stemcell.tgz
 time bosh -n upload-stemcell /tmp/e2e-encrypted-heavy-stemcell.tgz

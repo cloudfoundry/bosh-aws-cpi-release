@@ -17,4 +17,5 @@ run:
   path: bosh-cpi-src/ci/tasks/run-e2e.sh
 
 params:
-  BOSH_DEBUG_LEVEL: info
+  BOSH_DEBUG_LEVEL:     info
+  BOSH_AWS_KMS_KEY_ARN: ""

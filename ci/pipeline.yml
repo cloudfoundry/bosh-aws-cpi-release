@@ -34,6 +34,8 @@ shared:
   - &run-end-2-end
     task: run-e2e
     file: bosh-cpi-src/ci/tasks/run-e2e.yml
+    params:
+      BOSH_AWS_KMS_KEY_ARN: {{aws_kms_key_arn}}
 
   - &create-environment
     put: environment
