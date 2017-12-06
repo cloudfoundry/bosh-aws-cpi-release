@@ -5,6 +5,7 @@ set -e
 : ${AWS_ACCESS_KEY_ID:?}
 : ${AWS_SECRET_ACCESS_KEY:?}
 : ${AWS_DEFAULT_REGION:?}
+: ${BOSH_AWS_KMS_KEY_ARN:?}
 
 # NOTE: To run with specific line numbers, set:
 # RSPEC_ARGUMENTS="spec/integration/lifecycle_spec.rb:mm:nn"
@@ -35,7 +36,7 @@ export BOSH_AWS_ELB_ID=$(echo ${metadata} | jq -e --raw-output ".elb")
 export BOSH_AWS_TARGET_GROUP_NAME=$(echo ${metadata} | jq -e --raw-output ".alb_target_group")
 export BOSH_AWS_ELASTIC_IP=$(echo ${metadata} | jq -e --raw-output ".bats_eip")
 export BOSH_AWS_MANUAL_IPV6_IP=$(echo ${metadata} | jq -e --raw-output ".manual_static_ipv6")
-export BOSH_AWS_KMS_KEY_ARN=$(echo ${metadata} | jq -e --raw-output ".aws_kms_key_arn")
+export BOSH_AWS_ADVERTISED_ROUTE_TABLE=$(echo ${metadata} | jq -e --raw-output ".advertised_route_table")
 
 export BOSH_CLI_SILENCE_SLOW_LOAD_WARNING=true
 

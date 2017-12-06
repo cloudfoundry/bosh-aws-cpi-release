@@ -144,13 +144,8 @@ describe Bosh::AwsCloud::Cloud do
 
     context 'with advertised_routes' do
       let(:route_destination) { '9.9.9.9/32' }
-      let(:route_table_id) do
-        vpc_id = @cpi.ec2_resource.subnet(@subnet_id).vpc_id
-        rt = @cpi.ec2_resource.client.create_route_table({
-          vpc_id: vpc_id,
-        }).route_table
-        expect(rt).to_not be_nil
-        rt.route_table_id
+      let!(:route_table_id) do
+        ENV['BOSH_AWS_ADVERTISED_ROUTE_TABLE'] || raise('Missing BOSH_AWS_ADVERTISED_ROUTE_TABLE')
       end
       let(:vm_type) do
         {
@@ -163,10 +158,6 @@ describe Bosh::AwsCloud::Cloud do
             }
           ]
         }
-      end
-
-      after(:each) do
-        @cpi.ec2_resource.client.delete_route_table({ route_table_id: route_table_id })
       end
 
       it 'associates the route to the created instance' do

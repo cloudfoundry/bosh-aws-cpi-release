@@ -25,7 +25,10 @@
         "ec2:DeregisterImage",
         "ec2:CopyImage",
         "ec2:ModifyInstanceAttribute",
-        "ec2:DescribeAvailabilityZones"
+        "ec2:DescribeAvailabilityZones",
+        "ec2:CreateRoute",
+        "ec2:ReplaceRoute",
+        "ec2:DescribeRouteTables"
       ],
       "Effect": "Allow",
       "Resource": "*"
