@@ -37,10 +37,10 @@ module Bosh::AwsCloud
       end
     end
 
-    def source_dest_check=(state)
+    def disable_dest_check
       @aws_instance.modify_attribute(
         source_dest_check: {
-          value: state
+          value: false
         }
       )
     end

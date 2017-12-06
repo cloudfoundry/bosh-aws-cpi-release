@@ -66,7 +66,7 @@ module Bosh::AwsCloud
         # attach to a load balancer, the instance must be running.
         instance.wait_for_running
         instance.update_routing_tables(vm_cloud_props.advertised_routes)
-        instance.source_dest_check = vm_cloud_props.source_dest_check
+        instance.disable_dest_check unless vm_cloud_props.source_dest_check
       rescue => e
         if e.is_a?(Bosh::AwsCloud::AbruptlyTerminated)
           raise

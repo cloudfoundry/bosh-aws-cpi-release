@@ -174,15 +174,10 @@ module Bosh::AwsCloud
       end
     end
 
-    describe '#source_dest_check=' do
-      it 'propagates source_dest_check= true' do
+    describe '#disable_dest_check' do
+      it 'sets source_dest_check attribute to false' do
         expect(aws_instance).to receive(:modify_attribute).with(source_dest_check: {value: false})
-        instance.source_dest_check = false
-      end
-
-      it 'propagates source_dest_check= false' do
-        expect(aws_instance).to receive(:modify_attribute).with(source_dest_check: {value: true})
-        instance.source_dest_check = true
+        instance.disable_dest_check
       end
     end
   end

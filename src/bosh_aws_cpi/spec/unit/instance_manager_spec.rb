@@ -111,7 +111,6 @@ module Bosh::AwsCloud
         allow(ec2).to receive(:instance).with('i-12345678').and_return(aws_instance)
 
         allow(Instance).to receive(:new).and_return(instance)
-        allow(instance).to receive(:source_dest_check=).with(vm_cloud_props.source_dest_check)
         allow(instance).to receive(:wait_for_running)
         allow(instance).to receive(:update_routing_tables)
       end
@@ -129,7 +128,6 @@ module Bosh::AwsCloud
           fake_block_device_mappings
         )
       end
-
 
       context 'redacts' do
         before do
@@ -287,6 +285,26 @@ module Bosh::AwsCloud
         end
       end
 
+
+      context 'when source_dest_check is set to true' do
+        it 'does NOT call disable_dest_check' do
+          allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
+
+          expect(instance).not_to receive(:disable_dest_check)
+          expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
+          expect(instance).to receive(:wait_for_running)
+
+          instance_manager.create(
+            stemcell_id,
+            vm_cloud_props,
+            networks_cloud_props,
+            disk_locality,
+            default_options,
+            fake_block_device_mappings
+          )
+        end
+      end
+
       context 'when source_dest_check is set to false' do
         before do
           vm_type['source_dest_check'] = false
@@ -295,6 +313,7 @@ module Bosh::AwsCloud
         it 'disables source_dest_check on the instance' do
           allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
+          expect(instance).to receive(:disable_dest_check)
           expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
           expect(instance).to receive(:wait_for_running)
 
