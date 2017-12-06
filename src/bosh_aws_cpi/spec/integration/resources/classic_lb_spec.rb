@@ -10,8 +10,7 @@ describe Bosh::AwsCloud::ClassicLB do
     )
   end
 
-  let(:elb_name) { ENV.fetch('BOSH_AWS_ELB_ID')
-
+  let(:elb_name) { ENV.fetch('BOSH_AWS_ELB_ID') }
   let(:instance_id) { create_vm }
 
   after do

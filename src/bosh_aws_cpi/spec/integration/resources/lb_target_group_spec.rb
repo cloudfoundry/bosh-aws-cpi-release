@@ -10,8 +10,7 @@ describe Bosh::AwsCloud::LBTargetGroup do
     )
   end
 
-  let(:target_group_name) { ENV.fetch('BOSH_AWS_TARGET_GROUP_NAME')
-
+  let(:target_group_name) { ENV.fetch('BOSH_AWS_TARGET_GROUP_NAME') }
   let(:instance_id) { create_vm }
 
   after do
