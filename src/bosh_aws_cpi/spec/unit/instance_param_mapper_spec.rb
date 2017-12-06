@@ -42,6 +42,7 @@ module Bosh::AwsCloud
       allow(aws_config).to receive(:default_key_name)
       allow(aws_config).to receive(:default_iam_instance_profile)
       allow(aws_config).to receive(:encrypted)
+      allow(aws_config).to receive(:kms_key_arn)
 
       allow(ec2_resource).to receive(:subnet).with(dynamic_subnet_id).and_return(shared_subnet)
     end

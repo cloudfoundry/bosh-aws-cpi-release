@@ -657,8 +657,7 @@ describe Bosh::AwsCloud::Cloud do
                 'instance_type' => instance_type,
                 'availability_zone' => @subnet_zone,
                 'ephemeral_disk' => {
-                  'size' => 4 * 1024,
-                  'encrypted' => true
+                  'size' => 4 * 1024
                 }
               }
             end

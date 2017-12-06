@@ -171,15 +171,14 @@ module Bosh::AwsCloud
         super(ephemeral_disk)
 
         @encrypted = global_config.aws.encrypted
+        @kms_key_arn = global_config.aws.kms_key_arn
 
         if ephemeral_disk
           @use_instance_storage = !!ephemeral_disk['use_instance_storage'] || false
 
-          if ephemeral_disk.key?('encrypted')
-            @encrypted = !!ephemeral_disk['encrypted']
-            @kms_key_arn = global_config.aws.kms_key_arn
-            @kms_key_arn = ephemeral_disk['kms_key_arn'] if ephemeral_disk.key?('kms_key_arn')
-          end
+          # TODO(cdutra, glesperance): remove '!!'
+          @encrypted = !!ephemeral_disk['encrypted'] if ephemeral_disk.key?('encrypted')
+          @kms_key_arn = ephemeral_disk['kms_key_arn'] if ephemeral_disk.key?('kms_key_arn')
         end
       end
 
