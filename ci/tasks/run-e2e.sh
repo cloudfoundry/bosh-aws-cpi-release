@@ -39,6 +39,7 @@ time bosh -n deploy -d e2e-test \
   -v "stemcell_name=${stemcell_name}" \
   -v "heavy_stemcell_name=${heavy_stemcell_name}" \
   -v "encrypted_heavy_stemcell_ami_id=${encrypted_heavy_stemcell_ami_id}" \
+  -v "aws_kms_key_arn=${BOSH_AWS_KMS_KEY_ARN}" \
   -l environment/metadata \
   bosh-cpi-src/ci/assets/e2e-test-release/manifest.yml
 
