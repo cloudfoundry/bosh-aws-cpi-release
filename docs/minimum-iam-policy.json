@@ -28,7 +28,9 @@
         "ec2:DescribeAvailabilityZones",
         "ec2:CreateRoute",
         "ec2:ReplaceRoute",
-        "ec2:DescribeRouteTables"
+        "ec2:DescribeRouteTables",
+        "ec2:RequestSpotInstances",
+        "ec2:CancelSpotInstanceRequests"
       ],
       "Effect": "Allow",
       "Resource": "*"
