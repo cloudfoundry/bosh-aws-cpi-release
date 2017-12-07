@@ -63,7 +63,7 @@ RSpec.configure do |rspec_config|
 
     logger = Bosh::Cpi::Logger.new(STDERR)
     Bosh::Clouds::Config.define_singleton_method(:logger) { logger }
-    # validate_minimum_permissions(logger)
+    validate_minimum_permissions(logger)
 
     ec2_client = Aws::EC2::Client.new(
       region: @region,

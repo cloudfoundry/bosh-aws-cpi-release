@@ -43,6 +43,11 @@
         "elasticloadbalancing:DescribeTargetGroups"
       ],
       "Resource": [ "*" ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::*:*"
     }
   ]
 }

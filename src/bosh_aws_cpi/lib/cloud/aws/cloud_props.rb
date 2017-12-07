@@ -2,8 +2,10 @@ include Bosh::AwsCloud::Helpers
 
 module Bosh::AwsCloud
   class StemcellCloudProps
-    attr_reader :ami, :encrypted, :kms_key_arn
+    attr_reader :ami
     attr_reader :disk, :architecture, :virtualization_type, :root_device_name, :kernel_id
+    # AWS Permissions: ec2:CopyImage
+    attr_reader :encrypted, :kms_key_arn
 
     # @param [Hash] cloud_properties
     # @param [Bosh::AwsCloud::Config] global_config
@@ -79,10 +81,20 @@ module Bosh::AwsCloud
 
   class VMCloudProps
     attr_reader :instance_type, :availability_zone, :security_groups, :key_name
-    attr_reader :spot_bid_price, :spot_ondemand_fallback, :iam_instance_profile
-    attr_reader :placement_group, :tenancy, :auto_assign_public_ip, :elbs
-    attr_reader :lb_target_groups, :advertised_routes, :raw_instance_storage
-    attr_reader :source_dest_check, :ephemeral_disk, :root_disk
+    attr_reader :spot_bid_price, :spot_ondemand_fallback
+    attr_reader :placement_group, :tenancy, :auto_assign_public_ip
+    attr_reader :raw_instance_storage
+    attr_reader :ephemeral_disk, :root_disk
+    # AWS Permissions: iam:PassRole
+    attr_reader :iam_instance_profile
+    # AWS Permissions: elasticloadbalancing:{DescribeLoadBalancers, RegisterInstancesWithLoadBalancer}
+    attr_reader :elbs
+    # AWS Permissions: elasticloadbalancing:{DescribeTargetHealth, RegisterTargets, DescribeTargetGroups,DescribeLoadBalancers}
+    attr_reader :lb_target_groups
+    # AWS Permissions: ec2:{CreateRoute, ReplaceRoute, DescribeRouteTables}
+    attr_reader :advertised_routes
+    # AWS Permissions: ec2:ModifyInstanceAttribute
+    attr_reader :source_dest_check
 
     # @param [Hash] cloud_properties
     # @param [Bosh::AwsCloud::Config] global_config
