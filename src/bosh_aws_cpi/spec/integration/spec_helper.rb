@@ -36,7 +36,7 @@ def validate_minimum_permissions(logger)
       end.flatten
     end.flatten.uniq
 
-    minimum_action = JSON.parse(File.read File.join(ENV['RELEASE_DIR'], 'docs/minimum-iam-policy.json'))['Statement'].map do |s|
+    minimum_action = JSON.parse(File.read File.join(ENV['RELEASE_DIR'], 'docs/iam-policy.json'))['Statement'].map do |s|
       s['Action']
     end.flatten.uniq
 
