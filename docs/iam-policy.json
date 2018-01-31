@@ -40,6 +40,19 @@
             "Resource": "*"
         },
         {
+            "Sid": RequiredIfUsingCustomKMSKeys,
+            "Effect": "Allow",
+            "Action": [
+                "kms:ReEncrypt*",
+                "kms:GenerateDataKey*",
+                "kms:CreateGrant",
+                "kms:DescribeKey*"
+            ],
+            "Resource": [
+                "arn:aws:kms:((region)):((account)):key/((kms_key_id))"
+            ]
+        },
+        {
             "Sid": "RequiredIfUsingSnapshotsFeature",
             "Effect": "Allow",
             "Action": [

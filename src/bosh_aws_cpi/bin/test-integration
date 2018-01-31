@@ -16,7 +16,7 @@ function destroy_env() {
       -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
       ${AWS_SESSION_TOKEN:+-var "session_token=${AWS_SESSION_TOKEN}"} \
       -var "region=${AWS_DEFAULT_REGION}" \
-      -var "env_name=$(hostname -s)-local-integration" \
+      -var "env_name=$(hostname -s|tr '[:upper:]' '[:lower:]')-local-int" \
       -var "public_key=${PUBLIC_KEY}"
   popd
 }
@@ -30,7 +30,7 @@ function create_env() {
       -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
       ${AWS_SESSION_TOKEN:+-var "session_token=${AWS_SESSION_TOKEN}"} \
       -var "region=${AWS_DEFAULT_REGION}" \
-      -var "env_name=$(hostname -s)-local-integration" \
+      -var "env_name=$(hostname -s|tr '[:upper:]' '[:lower:]')-local-int" \
       -var "public_key=${PUBLIC_KEY}"
   popd
 
