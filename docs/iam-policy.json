@@ -40,7 +40,7 @@
             "Resource": "*"
         },
         {
-            "Sid": RequiredIfUsingCustomKMSKeys,
+            "Sid": "RequiredIfUsingCustomKMSKeys",
             "Effect": "Allow",
             "Action": [
                 "kms:ReEncrypt*",
@@ -49,7 +49,7 @@
                 "kms:DescribeKey*"
             ],
             "Resource": [
-                "arn:aws:kms:((region)):((account)):key/((kms_key_id))"
+                "((kms_key_arn))"
             ]
         },
         {
