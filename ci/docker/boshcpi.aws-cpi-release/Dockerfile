@@ -61,8 +61,8 @@ RUN cd /tmp && \
 RUN apt-get update && ruby-install ruby $RUBY_VERSION -- --disable-install-rdoc
 
 # Install Bundler
-RUN /bin/bash -l -c "                            \
-  source /etc/profile.d/chruby.sh ;              \
-  chruby $RUBY_VERSION ;                         \
-  gem install bundler -v --no-ri --no-rdoc          \
+RUN /bin/bash -l -c "               \
+  source /etc/profile.d/chruby.sh ; \
+  chruby $RUBY_VERSION ;            \
+  gem install --no-document bundler \
 "

@@ -43,8 +43,6 @@ export BOSH_CLI_SILENCE_SLOW_LOAD_WARNING=true
 pushd ${release_dir}
   source .envrc
 
-  bosh int docs/iam-policy.json -v kms_key_arn="${BOSH_AWS_KMS_KEY_ARN}" > docs/iam-policy.json.generated
-
   pushd src/bosh_aws_cpi > /dev/null
     bundle install
     bundle exec rspec ${RSPEC_ARGUMENTS}
