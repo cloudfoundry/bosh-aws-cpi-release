@@ -274,6 +274,7 @@ module Bosh::AwsCloud
     # Attach an EBS volume to an EC2 instance
     # @param [String] instance_id EC2 instance id of the virtual machine to attach the disk to
     # @param [String] disk_id EBS volume id of the disk to attach
+    # @return [Hash] Size and encryption status of the attached disk
     def attach_disk(instance_id, disk_id)
       with_thread_name("attach_disk(#{instance_id}, #{disk_id})") do
         instance = @ec2_resource.instance(instance_id)
@@ -287,10 +288,14 @@ module Bosh::AwsCloud
           settings['disks']['persistent'][disk_id] = device_name
         end
         logger.info("Attached `#{disk_id}' to `#{instance_id}'")
-      end
 
-      # log registry settings for debugging
-      logger.debug("updated registry settings: #{registry.read_settings(instance_id)}")
+        # log registry settings for debugging
+        logger.debug("updated registry settings: #{registry.read_settings(instance_id)}")
+        {
+          'size' => volume.size * 1024,
+          'cloud_properties' => { 'encrypted' => volume.encrypted }
+        }
+      end
     end
 
     # Detach an EBS volume from an EC2 instance
