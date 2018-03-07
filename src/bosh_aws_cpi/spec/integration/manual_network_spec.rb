@@ -22,7 +22,7 @@ describe Bosh::AwsCloud::Cloud do
   let(:ami)                               { hvm_ami }
   let(:hvm_ami)                           { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-9c91b7fc') }
   let(:pv_ami)                            { ENV.fetch('BOSH_AWS_PV_IMAGE_ID', 'ami-3f71225f') }
-  let(:windows_ami)                       { ENV.fetch('BOSH_AWS_WINDOWS_IMAGE_ID', 'ami-9be0a8fb') }
+  let(:windows_ami)                       { ENV.fetch('BOSH_AWS_WINDOWS_IMAGE_ID', 'ami-f8dfd698') }
   let(:eip)                               { ENV.fetch('BOSH_AWS_ELASTIC_IP') }
   let(:ipv6_ip)                           { ENV.fetch('BOSH_AWS_MANUAL_IPV6_IP') }
   let(:instance_type) { instance_type_with_ephemeral }
