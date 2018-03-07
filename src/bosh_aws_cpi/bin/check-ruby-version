@@ -1,22 +1,8 @@
 #!/usr/bin/env bash
 
-[[ ! -f /usr/local/share/chruby/chruby.sh ]] && brew install chruby
-source /usr/local/share/chruby/chruby.sh
-
-chruby $PROJECT_RUBY_VERSION
-if [[ "$?" -eq "1" ]]; then
-  echo "Ruby version $PROJECT_RUBY_VERSION not found. Installing..."
-
-  which ruby-install > /dev/null 2>&1
-  [[ "$?" -eq "1" ]] && brew install ruby-install
-
-  echo "Installing Ruby version $PROJECT_RUBY_VERSION ..."
-  ruby-install ruby $PROJECT_RUBY_VERSION
-  chruby $PROJECT_RUBY_VERSION
-
-  echo "Ruby version $PROJECT_RUBY_VERSION successfully installed."
+CURRENT_RUBY_VERSION="$(ruby -e 'print "#{ RUBY_VERSION }"')"
+if [ "$CURRENT_RUBY_VERSION" != "$PROJECT_RUBY_VERSION" ]; then
+  echo "Ruby version '$CURRENT_RUBY_VERSION' doesn't match project's '$PROJECT_RUBY_VERSION', please install and configure ruby '$PROJECT_RUBY_VERSION'"
+  exit 1
 fi
-echo "Using ruby version $PROJECT_RUBY_VERSION"
 
-echo "Installing bundler..."
-gem install bundler
