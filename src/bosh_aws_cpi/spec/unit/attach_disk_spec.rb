@@ -7,7 +7,8 @@ describe Bosh::AwsCloud::Cloud do
   end
 
   let(:instance) { instance_double(Aws::EC2::Instance, :id => 'i-test') }
-  let(:volume) { instance_double(Aws::EC2::Volume, :id => 'v-foobar') }
+  let(:volume_size_gb) { 1234 }
+  let(:volume) { instance_double(Aws::EC2::Volume, :id => 'v-foobar', :size => volume_size_gb, :encrypted => false) }
   let(:subnet) { instance_double(Aws::EC2::Subnet) }
 
   let(:cloud) do
@@ -47,7 +48,10 @@ describe Bosh::AwsCloud::Cloud do
 
     expect(@registry).to receive(:update_settings).with('i-test', new_settings)
 
-    cloud.attach_disk('i-test', 'v-foobar')
+    expect(cloud.attach_disk('i-test', 'v-foobar')).to eq({
+        'size'=> volume_size_gb * 1024,
+        'cloud_properties' => { 'encrypted' => false }
+    })
   end
 
   it 'picks next available device name' do
