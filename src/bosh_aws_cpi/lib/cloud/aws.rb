@@ -19,6 +19,7 @@ require 'bosh/cpi/registry_client'
 require 'cloud'
 require 'cloud/aws/helpers'
 require 'cloud/aws/cloud'
+require 'cloud/aws/cloud_v2'
 require 'cloud/aws/config'
 require 'cloud/aws/aws_provider'
 require 'cloud/aws/cloud_props'
@@ -47,6 +48,12 @@ require 'cloud/aws/sdk_helpers/volume_manager'
 
 module Bosh
   module Clouds
-    Aws = Bosh::AwsCloud::Cloud
+    def create_cloud(cpi_api_version, cloud_properties)
+      if cpi_api_version && cpi_api_version > 1
+        Bosh::AwsCloud::CloudV2.new(cpi_api_version, cloud_properties)
+      else
+        Bosh::AwsCloud::Cloud.new(cloud_properties)
+      end
+    end
   end
 end

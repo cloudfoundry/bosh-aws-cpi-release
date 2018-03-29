@@ -350,27 +350,19 @@ module Bosh::AwsCloud
         volume.attachments.each { |attachment| devices << attachment.device }
 
         name = ['deployment', 'job', 'index'].collect { |key| metadata[key] }
-
-        unless devices.empty?
-          name << devices.first.split('/').last
-          metadata['device'] = devices.first
-        end
+        name << devices.first.split('/').last unless devices.empty?
 
         snapshot = volume.create_snapshot(name.join('/'))
         logger.info("snapshot '#{snapshot.id}' of volume '#{disk_id}' created")
 
-        metadata.merge!({
-          'director' => metadata['director_name'],
-          'instance_index' => metadata['index'].to_s,
-          'instance_name' => metadata['job'] + '/' + metadata['instance_id'],
-          'Name' => name.join('/')
-        })
 
-        ['director_name', 'index', 'job'].each do |tag|
-          metadata.delete(tag)
+        tags = {}
+        ['agent_id', 'instance_id', 'director_name', 'director_uuid'].each do |key|
+          tags[key] = metadata[key]
         end
-
-        TagManager.tags(snapshot, metadata)
+        tags['device'] = devices.first unless devices.empty?
+        tags['Name'] = name.join('/')
+        TagManager.tags(snapshot, tags)
 
         ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
         snapshot.id
