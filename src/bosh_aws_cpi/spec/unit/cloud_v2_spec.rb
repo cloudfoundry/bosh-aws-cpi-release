@@ -63,7 +63,7 @@ describe Bosh::AwsCloud::CloudV2 do
         end
 
         it 'passes required properties to AWS SDK' do
-          config = cloud.aws_cloud.ec2_resource.client.config
+          config = cloud.ec2_resource.client.config
           expect(config.region).to eq('fake-region')
         end
       end
@@ -162,27 +162,11 @@ describe Bosh::AwsCloud::CloudV2 do
   end
 
   describe '#create_vm' do
-    let(:registry) { instance_double(Bosh::Cpi::RegistryClient) }
-    let(:availability_zone_selector) { instance_double(Bosh::AwsCloud::AvailabilityZoneSelector) }
-    let(:stemcell) { instance_double(Bosh::AwsCloud::Stemcell, root_device_name: 'root name', image_id: stemcell_id) }
-    let(:instance_manager) { instance_double(Bosh::AwsCloud::InstanceManager) }
-    let(:block_device_manager) { instance_double(Bosh::AwsCloud::BlockDeviceManager) }
-    let(:block_device_agent_info) do
-      {
-        'ephemeral' => [{ 'path' => '/dev/sdz' }],
-        'raw_ephemeral' => [{ 'path' => '/dev/xvdba' }, { 'path' => '/dev/xvdbb' }]
-      }
-    end
-    let(:mappings) { ['some-mapping'] }
     let(:instance) { instance_double(Bosh::AwsCloud::Instance, id: 'fake-id') }
-    let(:network_configurator) { instance_double(Bosh::AwsCloud::NetworkConfigurator) }
-    let(:global_config) { instance_double(Bosh::AwsCloud::Config, aws: Bosh::AwsCloud::AwsConfig.new({})) }
     let(:agent_id) {'agent_id'}
     let(:stemcell_id) {'stemcell_id'}
     let(:vm_type) { {} }
-    let(:vm_cloud_props) do
-      Bosh::AwsCloud::VMCloudProps.new({}, global_config)
-    end
+
     let(:networks_spec) do
       {
         'fake-network-name-1' => {
@@ -193,69 +177,16 @@ describe Bosh::AwsCloud::CloudV2 do
         }
       }
     end
-    let(:networks_cloud_props) do
-      Bosh::AwsCloud::NetworkCloudProps.new(networks_spec, global_config)
-    end
-    let(:networks_cloud_props) do
-      Bosh::AwsCloud::NetworkCloudProps.new(networks_spec, global_config)
-    end
+
     let(:disk_locality) { ['some', 'disk', 'locality'] }
     let(:environment) { 'environment' }
-    let(:options) do
-      ops = mock_cloud_properties_merge(
-        'aws' => {
-          'region' => 'bar'
-        }
-      )
-      ops['agent'] = {
-        'baz' => 'qux'
-      }
-      ops
-    end
-    let(:props_factory) { instance_double(Bosh::AwsCloud::PropsFactory) }
-    let(:volume_manager) { instance_double(Bosh::AwsCloud::VolumeManager) }
-    let(:temp_snapshot) { nil }
 
     before do
-      @cloud = mock_cloud(options) do |_ec2|
-        @ec2 = _ec2
-
-        allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
-
-        allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new)
-                                                             .with(@ec2)
-                                                             .and_return(availability_zone_selector)
-
-        allow(Bosh::AwsCloud::Stemcell).to receive(:find).with(@ec2, stemcell_id).and_return(stemcell)
-
-        allow(Bosh::AwsCloud::InstanceManager).to receive(:new).and_return(instance_manager)
-
-        allow(Bosh::AwsCloud::PropsFactory).to receive(:new).and_return(props_factory)
-
-        allow(Bosh::AwsCloud::VolumeManager).to receive(:new).with(anything, anything).and_return(volume_manager)
-      end
-
-      allow(props_factory).to receive(:vm_props).with(vm_type).and_return(vm_cloud_props)
-      allow(props_factory).to receive(:network_props).with(networks_spec).and_return(networks_cloud_props)
-
-      allow(instance_manager).to receive(:create)
-                                   .with(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, [], mappings)
-                                   .and_return(instance)
-
-      allow(Bosh::AwsCloud::NetworkConfigurator).to receive(:new).with(networks_cloud_props).and_return(network_configurator)
-      allow(Bosh::AwsCloud::BlockDeviceManager).to receive(:new)
-                                                     .with(anything, stemcell, vm_cloud_props, temp_snapshot)
-                                                     .and_return(block_device_manager)
-
-      allow(block_device_manager).to receive(:mappings_and_info).and_return([mappings, block_device_agent_info])
-
-      allow(vm_type).to receive(:[]).and_return(false)
-      allow(network_configurator).to receive(:configure)
-      allow(registry).to receive(:update_settings)
+      allow_any_instance_of(Bosh::AwsCloud::Cloud).to receive(:create_vm).and_return(instance.id)
     end
+
     it 'should create an EC2 instance and return its id' do
-      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: instance, state: :running)
-      expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq({"vm_cid"=>"fake-id"})
+      expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq({"vm_cid"=>instance.id})
     end
   end
 
@@ -266,28 +197,25 @@ describe Bosh::AwsCloud::CloudV2 do
     let(:instance) { instance_double(Aws::EC2::Instance, :id => instance_id ) }
     let(:volume) { instance_double(Aws::EC2::Volume, :id => volume_id) }
     let(:subnet) { instance_double(Aws::EC2::Subnet) }
-
+    let(:fake_cloud_v1) {instance_double(Bosh::AwsCloud::Cloud, :attach_disk => {})}
+    let(:endpoint) {'http://registry:3333'}
+    # let(:registry) {instance_double(Bosh::Cpi::RegistryClient, :endpoint => endpoint, :read_setting => settings)}
+    let(:settings) {
+      {
+        'foo' => 'bar',
+        'disks' => {
+          'persistent' => {
+            'v-foobar' => '/dev/sdf'
+          }
+        }
+      }
+    }
     before do
-      allow(cloud.aws_cloud).to receive(:registry).and_return(mock_registry)
-      allow(cloud.aws_cloud.ec2_resource).to receive(:instance).with('i-test').and_return(instance)
-      allow(cloud.aws_cloud.ec2_resource).to receive(:volume).with('v-foobar').and_return(volume)
-      allow(cloud.aws_cloud.ec2_resource).to receive(:subnets).and_return([subnet])
-      allow(instance).to receive(:block_device_mappings).and_return({})
+      allow_any_instance_of(Bosh::AwsCloud::Cloud).to receive(:attach_disk).and_return({})
+      allow_any_instance_of(Bosh::Cpi::RegistryClient).to receive(:read_settings).and_return(settings)
     end
 
     it 'should attach an EC2 volume to an instance' do
-      attachment = instance_double(Bosh::AwsCloud::SdkHelpers::VolumeAttachment, device: '/dev/sdf')
-
-      fake_resp = double('attachment-resp')
-      expect(volume).to receive(:attach_to_instance).
-        with(instance_id: instance_id, device: device_name).and_return(fake_resp)
-
-      allow(Bosh::AwsCloud::SdkHelpers::VolumeAttachment).to receive(:new).with(fake_resp, cloud.aws_cloud.ec2_resource).and_return(attachment)
-      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_attachment).with(attachment: attachment, state: 'attached')
-
-      expect(cloud.aws_cloud.registry).to receive(:update_settings)
-      expect(cloud.aws_cloud.registry).to receive(:read_settings).thrice.with('i-test').and_return({'funky'=> 'chicken'})
-
       expect(cloud.attach_disk(instance_id, volume_id, {})).to eq({'device_name'=>device_name})
     end
   end

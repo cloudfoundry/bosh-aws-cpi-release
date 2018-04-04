@@ -20,7 +20,7 @@ cpi_lambda = lambda do |context, cpi_api_version|
   cloud_properties = cpi_config['cloud']['properties']
 
   cloud_properties['aws'].merge!(context)
-  Bosh::Clouds::Aws.create_cloud(cpi_api_version, cloud_properties)
+  Bosh::Clouds::Aws.new.create_cloud(cpi_api_version, cloud_properties)
 end
 
 cli = Bosh::Cpi::Cli.new(cpi_lambda, cpi_log, STDOUT)
