@@ -58,7 +58,7 @@ describe 'the aws_cpi executable' do
     end
 
     it 'will not evaluate anything that causes an exception and will return the proper message to stdout' do
-      result = run_cpi({'method'=>'ping', 'arguments'=>[], 'context'=>{'director_uuid' => 'abc123'}})
+      result = run_cpi({'method'=>'ping', 'arguments'=>[], 'context'=>{'director_uuid' => 'abc123', 'api_version' => 2}})
 
       expect(result.keys).to eq(%w(result error log))
 
@@ -69,6 +69,68 @@ describe 'the aws_cpi executable' do
       expect(result['error']['type']).to eq('Unknown')
 
       expect(result['log']).to include('backtrace')
+    end
+  end
+
+  context 'when cpi_api_version is provided by director' do
+    let(:cloud_properties) {
+      {
+        'cloud' => {
+          'properties' => {
+            'aws' => {
+            },
+            'registry' => {
+              'endpoint' => 'fake',
+              'user' => 'fake',
+              'password' => 'fake'
+            }
+          }
+        }
+      }
+    }
+    let(:context) {
+      {
+        'director_uuid' => 'abc123',
+        'access_key_id' => @access_key_id,
+        'secret_access_key' => @secret_access_key,
+        'session_token' => @session_token,
+        'region' => @region,
+        'default_key_name' => 'default_key_name',
+        'fast_path_delete' => 'yes',
+        'max_retries' => 0,
+        'api_version' => cpi_api_version
+      }
+    }
+    let(:cpi_api_version) { 2 }
+
+
+    #just to test code path: wrong arguments for create_vm; should fail
+    context 'passing wrong arguments' do
+      it 'should raise error' do
+        result = run_cpi({'method'=>'create_vm',
+                          'arguments'=>['agent-01f73de98ab33ad2f'],
+                          'context'=> context,
+                          'api_version' => cpi_api_version})
+
+        expect(result.keys).to eq(%w(result error log))
+        expect(result['result']).to be_falsey
+        expect(result['error']['type']).to eq('InvalidCall')
+        expect(result['error']['message']).to include('Arguments are not correct')
+        expect(result['log']).to include('cloud_v2')
+      end
+    end
+
+    context 'when correct arguments are provided (not implemented methods)' do
+      it 'should forward it cloud V1' do
+          result = run_cpi({'method'=>'has_vm',
+                            'arguments'=>['i-01f73de98ab33ad2f'],
+                            'context'=> context,
+                            'api_version' => cpi_api_version})
+
+          expect(result.keys).to eq(%w(result error log))
+          expect(result['result']).to be_falsey
+          expect(result['error']).to be_nil
+      end
     end
   end
 
@@ -121,8 +183,7 @@ describe 'the aws_cpi executable' do
       }
     }
     it 'merges the context into the cloud_properties' do
-      result = run_cpi({'method'=>'has_vm', 'arguments'=>['i-01f73de98ab33ad2f'], 'context'=> context})
-
+      result = run_cpi({'method'=>'has_vm', 'arguments'=>['i-01f73de98ab33ad2f'], 'context'=> context, 'api_version'=>2})
       expect(result.keys).to eq(%w(result error log))
 
       expect(result['result']).to be_falsey
@@ -174,6 +235,71 @@ describe 'the aws_cpi executable' do
       end
     end
   end
+
+ # # context 'v2' do
+ #    before(:all) do
+ #      @elb_id             = ENV.fetch('BOSH_AWS_ELB_ID')
+ #      @target_group_name  = ENV.fetch('BOSH_AWS_TARGET_GROUP_NAME')
+ #      @manual_subnet_id   = ENV.fetch('BOSH_AWS_MANUAL_SUBNET_ID')
+ #
+ #      @ip_semaphore = Mutex.new
+ #      @already_used = []
+ #    end
+ #
+ #    context '#create_vm' do
+ #
+ #      it 'creates a vm with the specified cpi api_version' do
+ #        begin
+ #          stemcell_id = @cpi.create_stemcell('/not/a/real/path', {'ami' => {@region => ami}})
+ #          vm_id = @cpi.create_vm(
+ #            nil,
+ #            stemcell_id,
+ #            vm_type,
+ #            network_spec,
+ #            [],
+ #            nil
+ #          )
+ #
+ #          disk_id = @cpi.create_disk(2048, {}, vm_id)
+ #          expect(@cpi.has_disk?(disk_id)).to be(true)
+ #
+ #          @cpi.attach_disk(vm_id, disk_id)
+ #          expect(@cpi.get_disks(vm_id)).to include(disk_id)
+ #
+ #          @cpi.delete_vm(vm_id)
+ #          vm_id = nil
+ #
+ #          new_vm_id = @cpi.create_vm(
+ #            nil,
+ #            stemcell_id,
+ #            vm_type,
+ #            network_spec,
+ #            [disk_id],
+ #            nil
+ #          )
+ #
+ #          expect {
+ #            @cpi.attach_disk(new_vm_id, disk_id)
+ #          }.to_not raise_error
+ #
+ #          expect(@cpi.get_disks(new_vm_id)).to include(disk_id)
+ #        ensure
+ #          @cpi.delete_vm(new_vm_id) if new_vm_id
+ #          @cpi.delete_disk(disk_id) if disk_id
+ #          @cpi.delete_stemcell(stemcell_id) if stemcell_id
+ #          @cpi.delete_vm(vm_id) if vm_id
+ #        end
+ #      end
+ #    end
+ #
+ #    context '#attach_disk' do
+ #
+ #    end
+ #
+ #    context '#info' do
+ #
+ #    end
+ #  end
 
   def run_cpi(input)
     command_file = Tempfile.new('command.json')

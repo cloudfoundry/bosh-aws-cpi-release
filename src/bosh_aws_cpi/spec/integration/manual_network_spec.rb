@@ -912,7 +912,7 @@ describe Bosh::AwsCloud::Cloud do
       it 'should wait for 10 mins to attach disk/delete disk ignoring VolumeInUse error' do
         begin
           stemcell_id = @cpi.create_stemcell('/not/a/real/path', {'ami' => {@region => ami}})
-          vm_id = @cpi.create_vm(
+          vm_id = create_vm(
             nil,
             stemcell_id,
             vm_type,
@@ -930,7 +930,7 @@ describe Bosh::AwsCloud::Cloud do
           @cpi.delete_vm(vm_id)
           vm_id = nil
 
-          new_vm_id = @cpi.create_vm(
+          new_vm_id = create_vm(
             nil,
             stemcell_id,
             vm_type,
@@ -975,5 +975,14 @@ describe Bosh::AwsCloud::Cloud do
         end
       end
     end
+
+    def create_vm(*args)
+      vm_id = @cpi.create_vm(*args)
+      if @cpi_api_version >= 2
+        vm_id = vm_id['vm_cid']
+      end
+      vm_id
+    end
+
   end
 end

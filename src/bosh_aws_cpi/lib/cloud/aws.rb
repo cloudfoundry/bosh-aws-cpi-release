@@ -48,11 +48,13 @@ require 'cloud/aws/sdk_helpers/volume_manager'
 
 module Bosh
   module Clouds
-    def create_cloud(cpi_api_version, cloud_properties)
-      if cpi_api_version && cpi_api_version > 1
-        Bosh::AwsCloud::CloudV2.new(cpi_api_version, cloud_properties)
-      else
-        Bosh::AwsCloud::Cloud.new(cloud_properties)
+    class Aws
+      def create_cloud(cpi_api_version, cloud_properties)
+        if cpi_api_version && cpi_api_version > 1
+          Bosh::AwsCloud::CloudV2.new(cpi_api_version, cloud_properties)
+        else
+          Bosh::AwsCloud::Cloud.new(cloud_properties)
+        end
       end
     end
   end

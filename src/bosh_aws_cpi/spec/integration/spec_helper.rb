@@ -62,6 +62,7 @@ RSpec.configure do |rspec_config|
     @permissions_auditor_key_id     = ENV.fetch('BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID', nil)
     @permissions_auditor_secret_key = ENV.fetch('BOSH_AWS_PERMISSIONS_AUDITOR_SECRET_KEY', nil)
 
+    @cpi_api_version                = ENV.fetch('BOSH_CPI_API_VERSION', 1).to_i
 
     logger = Bosh::Cpi::Logger.new(STDERR)
     Bosh::Clouds::Config.define_singleton_method(:logger) { logger }
@@ -97,10 +98,34 @@ RSpec.configure do |rspec_config|
         'endpoint' => 'fake',
         'user' => 'fake',
         'password' => 'fake'
-      }
+      },
     )
+
+    if @cpi_api_version >= 2
+      @cpi = Bosh::AwsCloud::CloudV2.new(
+        @cpi_api_version,
+        'aws' => {
+          'region' => @region,
+          'default_key_name' => @default_key_name,
+          'default_security_groups' => get_security_group_ids,
+          'fast_path_delete' => 'yes',
+          'access_key_id' => @access_key_id,
+          'secret_access_key' => @secret_access_key,
+          'session_token' => @session_token,
+          'max_retries' => 8
+        },
+        'registry' => {
+          'endpoint' => 'fake',
+          'user' => 'fake',
+          'password' => 'fake'
+        },
+      )
+    end
+
     @stemcell_id = create_stemcell
     @vpc_id = @ec2.subnet(@subnet_id).vpc_id
+
+    puts "Running on cpi_version: #{@cpi_api_version} class: #{@cpi.class}"
   end
 
   rspec_config.after(:each) do
@@ -118,16 +143,23 @@ def vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: @cpi)
   stemcell_id = cpi.create_stemcell('/not/a/real/path', stemcell_properties)
   expect(stemcell_id).to end_with(' light')
 
-  instance_id = cpi.create_vm(
+  create_vm_response = cpi.create_vm(
     nil,
     stemcell_id,
     vm_type,
     network_spec,
     vm_disks,
     nil,
-  )
-  expect(instance_id).not_to be_nil
+    )
+  puts "=== create vm response: #{create_vm_response}"
+  instance_id = create_vm_response
 
+  # cpi check for custom cpi during tests
+  if @cpi_api_version >= 2 && cpi == @cpi
+    instance_id = create_vm_response['vm_cid']
+  end
+  
+  expect(instance_id).not_to be_nil
   expect(cpi.has_vm?(instance_id)).to be(true)
 
   cpi.set_vm_metadata(instance_id, vm_metadata)

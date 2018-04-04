@@ -11,10 +11,16 @@ describe Bosh::AwsCloud::LBTargetGroup do
   end
 
   let(:target_group_name) { ENV.fetch('BOSH_AWS_TARGET_GROUP_NAME') }
-  let(:instance_id) { create_vm }
+
+  before do
+    @instance_id = create_vm
+    if @cpi_api_version >=2
+      @instance_id = @instance_id['vm_cid']
+    end
+  end
 
   after do
-    delete_vm(instance_id)
+    delete_vm(@instance_id)
   end
 
   it 'registers new instance with target group' do
@@ -22,11 +28,11 @@ describe Bosh::AwsCloud::LBTargetGroup do
       client: elb_v2_client,
       group_name: target_group_name,
     )
-    target_group.register(instance_id)
+    target_group.register(@instance_id)
 
     wait_for_target_state(
       target_group_name: target_group_name,
-      target_id: instance_id,
+      target_id: @instance_id,
       target_state: 'unhealthy',
     )
   end
@@ -41,7 +47,7 @@ describe Bosh::AwsCloud::LBTargetGroup do
       )
 
       expect {
-        target_group.register(instance_id)
+        target_group.register(@instance_id)
       }.to raise_error(Bosh::Clouds::CloudError, /#{target_group_name}/)
     end
   end
