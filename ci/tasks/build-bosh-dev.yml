@@ -1,0 +1,19 @@
+---
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: boshcpi/aws-cpi-release
+
+inputs:
+- name: bosh-src
+- name: bosh-dev-version
+- name: bosh-cli
+- name: bosh-cpi-src
+
+outputs:
+- name: release
+
+run:
+  path: bosh-cpi-src/ci/tasks/build-bosh-dev.sh
