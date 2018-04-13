@@ -1,6 +1,7 @@
 require 'spec_helper'
 require 'integration/helpers/ec2_helper'
 
+
 def validate_minimum_permissions(logger)
   if @permissions_auditor_key_id && @permissions_auditor_secret_key
     sts_client = Aws::STS::Client.new(
@@ -36,9 +37,7 @@ def validate_minimum_permissions(logger)
       end.flatten
     end.flatten.uniq
 
-    local_policy = File.read(File.join(ENV['RELEASE_DIR'], 'docs/iam-policy.json'))
-    local_policy.gsub!(%r{\(\(kms_key_arn\)\)}, @kms_key_arn)
-    minimum_action = JSON.parse(local_policy)['Statement'].map do |s|
+    minimum_action = JSON.parse(File.read File.join(ENV['RELEASE_DIR'], 'docs/iam-policy.json'))['Statement'].map do |s|
       s['Action']
     end.flatten.uniq
 

@@ -297,17 +297,10 @@ describe Bosh::AwsCloud::Cloud do
             expect(snapshot_tags['device']).to eq '/dev/sdf'
             expect(snapshot_tags['agent_id']).to eq 'agent'
             expect(snapshot_tags['instance_id']).to eq 'instance'
-            expect(snapshot_tags['instance_name']).to eq 'cpi_spec/instance'
-            expect(snapshot_tags['instance_index']).to eq '0'
-            expect(snapshot_tags['director']).to eq 'Director'
+            expect(snapshot_tags['director_name']).to eq 'Director'
             expect(snapshot_tags['director_uuid']).to eq '6d06b0cc-2c08-43c5-95be-f1b2dd247e18'
-            expect(snapshot_tags['deployment']).to eq 'deployment'
             expect(snapshot_tags['Name']).to eq 'deployment/cpi_spec/0/sdf'
-            expect(snapshot_tags['custom1']).to eq 'custom_value1'
-            expect(snapshot_tags['custom2']).to eq 'custom_value2'
-            expect(snapshot_tags['director_name']).to be_nil
-            expect(snapshot_tags['index']).to be_nil
-            expect(snapshot_tags['job']).to be_nil
+
           ensure
             @cpi.delete_snapshot(snapshot_id) if snapshot_id
             Bosh::Common.retryable(tries: 20, on: Bosh::Clouds::DiskNotAttached, sleep: lambda { |n, _| [2**(n-1), 30].min }) do
@@ -979,7 +972,7 @@ describe Bosh::AwsCloud::Cloud do
     def create_vm(*args)
       vm_id = @cpi.create_vm(*args)
       if @cpi_api_version >= 2
-        vm_id = vm_id['vm_cid']
+        vm_id = vm_id.first
       end
       vm_id
     end

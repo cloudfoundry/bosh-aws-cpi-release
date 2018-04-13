@@ -4,7 +4,6 @@ require 'cloud_v2'
 
 module Bosh::AwsCloud
   class CloudV2 < Bosh::AwsCloud::Cloud
-    #include Bosh::CloudV2
 
     CPI_API_VERSION = 2
     METADATA_TIMEOUT = 5 # in seconds
@@ -47,29 +46,23 @@ module Bosh::AwsCloud
     #   availability zone)
     # @param [optional, Hash] environment data to be merged into
     #   agent settings
-    # @return [Hash] Contains VM ID, list of networks and disk_hints for attached disks
+    # @return [Array] Contains VM ID, list of networks and disk_hints for attached disks
     def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = [], environment = nil)
       vm_cid = super(agent_id, stemcell_id, vm_type, network_spec, disk_locality, environment)
-      # vm_cid = aws_cloud.create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality, environment)
-      {
-        'vm_cid' => vm_cid
-      }
+      [vm_cid, [], {}]
     end
 
     # Attaches a disk
     # @param [String] vm vm id that was once returned by {#create_vm}
     # @param [String] disk disk id that was once returned by {#create_disk}
     # @param [Hash] disk_hints list of attached disks {#create_disk}
-    # @return [Hash] hint for location of attached disk
+    # @return [String] hint for location of attached disk
     def attach_disk(vm_id, disk_id, disk_hints={})
       # aws_cloud.attach_disk(vm_id, disk_id)
       super(vm_id, disk_id)
       #this will be replaced by metadata service calls
-      # settings = aws_cloud.registry.read_settings(vm_id)
       settings = registry.read_settings(vm_id)
-      {
-        'device_name' => settings['disks']['persistent'][disk_id]
-      }
+      settings['disks']['persistent'][disk_id]
     end
   end
 end
