@@ -1,3 +1,12 @@
+GIT
+  remote: https://github.com/cloudfoundry/bosh-cpi-ruby.git
+  revision: fb2d7fbe1bfb79e6bb8f33e19d9454c4c413a26b
+  branch: external-cpi-refactor
+  specs:
+    bosh_cpi (2.4.2)
+      httpclient (~> 2.8.3)
+      membrane (~> 1.1.0)
+
 GEM
   remote: https://rubygems.org/
   specs:
@@ -14,9 +23,6 @@ GEM
     bosh_common (1.3262.24.0)
       logging (~> 1.8.2)
       semi_semantic (~> 1.2.0)
-    bosh_cpi (2.4.1)
-      httpclient (~> 2.8.3)
-      membrane (~> 1.1.0)
     byebug (9.1.0)
     coderay (1.1.2)
     crack (0.4.3)
@@ -67,7 +73,7 @@ PLATFORMS
 DEPENDENCIES
   aws-sdk (~> 2.10)
   bosh_common (= 1.3262.24.0)
-  bosh_cpi (~> 2.4)
+  bosh_cpi!
   netaddr
   pry-byebug (~> 3.4)
   rake (~> 12.0)
@@ -75,4 +81,4 @@ DEPENDENCIES
   webmock
 
 BUNDLED WITH
-   1.15.4
+   1.16.1

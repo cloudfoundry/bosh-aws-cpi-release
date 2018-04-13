@@ -2,7 +2,8 @@ source 'https://rubygems.org'
 
 gem 'aws-sdk',     '~>2.10'
 gem 'bosh_common', '1.3262.24.0'
-gem 'bosh_cpi',    '~>2.4'
+# gem 'bosh_cpi', path: '/Users/pivotal/workspace/bosh-cpi-ruby'
+gem 'bosh_cpi', git: 'https://github.com/cloudfoundry/bosh-cpi-ruby.git', branch: 'external-cpi-refactor'
 
 group :development, :test do
   gem 'netaddr'

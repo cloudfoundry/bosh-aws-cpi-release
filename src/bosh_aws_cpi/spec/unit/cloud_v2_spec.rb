@@ -186,7 +186,7 @@ describe Bosh::AwsCloud::CloudV2 do
     end
 
     it 'should create an EC2 instance and return its id' do
-      expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq({"vm_cid"=>instance.id})
+      expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq([instance.id, [], {}])
     end
   end
 
@@ -216,7 +216,7 @@ describe Bosh::AwsCloud::CloudV2 do
     end
 
     it 'should attach an EC2 volume to an instance' do
-      expect(cloud.attach_disk(instance_id, volume_id, {})).to eq({'device_name'=>device_name})
+      expect(cloud.attach_disk(instance_id, volume_id, {})).to eq(device_name)
     end
   end
 end
