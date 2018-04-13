@@ -1,7 +1,5 @@
-GIT
-  remote: https://github.com/cloudfoundry/bosh-cpi-ruby.git
-  revision: fb2d7fbe1bfb79e6bb8f33e19d9454c4c413a26b
-  branch: external-cpi-refactor
+PATH
+  remote: vendor/bosh-cpi-ruby-gem
   specs:
     bosh_cpi (2.4.2)
       httpclient (~> 2.8.3)

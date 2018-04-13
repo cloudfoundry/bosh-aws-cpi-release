@@ -8,3 +8,4 @@ files:
 - bosh_aws_cpi/bin/**/*
 - bosh_aws_cpi/lib/**/*
 - bosh_aws_cpi/vendor/package/**/*
+- bosh_aws_cpi/vendor/bosh-cpi-ruby-gem/**/*

@@ -136,6 +136,7 @@ jobs:
             OPTIONAL_OPS_FILE:  |
               -o pipelines/shared/assets/ops/remove-hm.yml
               -o bosh-deployment/external-ip-with-registry-not-recommended.yml
+              -o bosh-deployment/experimental/blobstore-https.yml
               -o pipelines/shared/assets/ops/remove-provider-cert.yml
         - do:
             - <<: *deploy-director
@@ -168,6 +169,7 @@ jobs:
             OPTIONAL_OPS_FILE:  |
               -o bosh-deployment/external-ip-with-registry-not-recommended.yml
               -o pipelines/shared/assets/ops/remove-provider-cert.yml
+              -o bosh-deployment/experimental/blobstore-https.yml
               -o pipelines/aws/assets/ops/iam-instance-profile-ops-file.yml
         - do:
             - <<: *deploy-director
