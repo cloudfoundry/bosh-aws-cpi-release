@@ -21,7 +21,12 @@ def validate_minimum_permissions(logger)
       logger: logger
     )
 
-    user_details = iam_client.get_account_authorization_details(filter: ['User']).user_detail_list.find { |user| user.arn == integration_test_user_arn }
+    auth_details = iam_client.get_account_authorization_details(filter: ['User'])
+    puts 'QQQQQ we got auth details'
+    user_details = auth_details.user_detail_list
+    puts 'QQQQQ we got user details'
+
+    user_details = user_details.find { |user| user.arn == integration_test_user_arn }
     raise "Cannot find user with ARN: #{integration_test_user_arn}" if user_details.nil?
 
     policy_documents = []
