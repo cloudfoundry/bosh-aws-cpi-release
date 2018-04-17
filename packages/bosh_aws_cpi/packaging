@@ -4,9 +4,7 @@ set -e
 
 BOSH_PACKAGES_DIR=${BOSH_PACKAGES_DIR:-/var/vcap/packages}
 
-ls -al bosh_aws_cpi/vendor
 cp -a bosh_aws_cpi/* ${BOSH_INSTALL_TARGET}
-cp -R bosh_aws_cpi/vendor/bosh-cpi-ruby-gem ${BOSH_INSTALL_TARGET}/vendor/bosh-cpi-ruby-gem
 
 export BUNDLE_CACHE_PATH="vendor/package"
 export BUNDLE_WITHOUT="development:test"

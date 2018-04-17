@@ -138,6 +138,7 @@ jobs:
               -o bosh-deployment/external-ip-with-registry-not-recommended.yml
               -o bosh-deployment/experimental/blobstore-https.yml
               -o pipelines/shared/assets/ops/remove-provider-cert.yml
+              -o bosh-deployment/experimental/bpm.yml
         - do:
             - <<: *deploy-director
             - <<: *run-bats
@@ -171,6 +172,7 @@ jobs:
               -o pipelines/shared/assets/ops/remove-provider-cert.yml
               -o bosh-deployment/experimental/blobstore-https.yml
               -o pipelines/aws/assets/ops/iam-instance-profile-ops-file.yml
+              -o bosh-deployment/experimental/bpm.yml
         - do:
             - <<: *deploy-director
             - <<: *run-end-2-end
