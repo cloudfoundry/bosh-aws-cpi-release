@@ -82,6 +82,17 @@ describe 'cpi.json.erb' do
     )
   end
 
+  context 'when api_version is provided in the manifest' do
+    let(:cpi_api_version) { 42 }
+    before do
+      manifest['properties']['api_version'] = cpi_api_version
+    end
+
+    it 'renders the api_version' do
+      expect(subject['cloud']['properties']['api_version']).to eq(cpi_api_version)
+    end
+  end
+
   context 'when the registry password includes special characters' do
     special_chars_password = '=!@#$%^&*/-+?='
     before do
