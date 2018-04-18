@@ -54,7 +54,7 @@ properties:
       MII...
       -----END CERTIFICATE-----
   aws.encrypted:
-    description: Encrypts all instances volumes
+    description: Encrypts all instances' volumes
     default: false
   aws.kms_key_arn:
     description: Encrypts all instances' volumes with the given KMS key. (aws.encrypted) should be true
