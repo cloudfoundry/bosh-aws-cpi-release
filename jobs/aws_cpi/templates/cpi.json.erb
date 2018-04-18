@@ -29,6 +29,8 @@ params = {
   }
 }
 
+params["cloud"]["properties"]["api_version"] = api_version if_p('api_version')
+
 if_p('aws.stemcell.kernel_id') do |kernel_id|
   params["cloud"]["properties"]["stemcell"] = {
     "kernel_id" => kernel_id

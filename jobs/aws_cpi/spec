@@ -11,6 +11,9 @@ packages:
 - bosh_aws_cpi
 
 properties:
+  api_version:
+    description: api_version supported by cpi (can be used as an override for fallback).
+    default: null
   aws.credentials_source:
     description: Where to get AWS credentials for the aws cpi. This can be set to `static` to use an `access_key_id` and `secret_access_key` or `env_or_profile` to get the credentials from environment variables or an EC2 instance profile.
     default: static
@@ -51,7 +54,7 @@ properties:
       MII...
       -----END CERTIFICATE-----
   aws.encrypted:
-    description: Encrypts all instances' volumes
+    description: Encrypts all instances volumes
     default: false
   aws.kms_key_arn:
     description: Encrypts all instances' volumes with the given KMS key. (aws.encrypted) should be true

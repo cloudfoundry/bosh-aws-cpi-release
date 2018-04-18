@@ -73,7 +73,7 @@ module Bosh::AwsCloud
   end
 
   class Config
-    attr_reader :aws, :registry, :agent
+    attr_reader :aws, :registry, :agent, :api_version
 
     def self.build(config_hash)
       Config.validate(config_hash)
@@ -92,6 +92,7 @@ module Bosh::AwsCloud
       @aws = AwsConfig.new(config_hash['aws'] || {})
       @registry = RegistryConfig.new(config_hash['registry'] || {})
       @agent = AgentConfig.new(config_hash['agent'] || {})
+      @api_version = config_hash['api_version'] || nil
     end
 
     ##

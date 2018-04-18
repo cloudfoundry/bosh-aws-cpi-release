@@ -5,6 +5,7 @@ module Bosh::AwsCloud
   class Cloud < Bosh::Cloud
     include Helpers
 
+    CPI_API_VERSION = 2
     METADATA_TIMEOUT = 5 # in seconds
     DEVICE_POLL_TIMEOUT = 60 # in seconds
 
@@ -20,6 +21,7 @@ module Bosh::AwsCloud
     # @option options [Hash] registry agent options
     def initialize(options)
       @config = Bosh::AwsCloud::Config.build(options.dup.freeze)
+      @cpi_api_version = @config.api_version || CPI_API_VERSION
 
       @logger = Bosh::Clouds::Config.logger
       request_id = options['aws']['request_id']
@@ -502,8 +504,10 @@ module Bosh::AwsCloud
     # Information about AWS CPI, currently supported stemcell formats
     # @return [Hash] AWS CPI properties
     def info
+      @logger.info("Sending info:V2'")
       {
-        'stemcell_formats' => %w(aws-raw aws-light)
+        'stemcell_formats' => %w(aws-raw aws-light),
+        'api_version' => @cpi_api_version
       }
     end
 
