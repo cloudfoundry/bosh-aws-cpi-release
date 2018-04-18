@@ -166,8 +166,20 @@ describe Bosh::AwsCloud::Cloud do
       end
 
       describe '#info' do
-        it 'returns correct info' do
-          expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light']})
+        it 'returns correct info with default api_version' do
+          expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light'], 'api_version' => 2})
+        end
+
+        context 'when api_version is specified in config json' do
+          let(:options) do
+            mock_cloud_properties_merge(
+              'api_version' => 42
+            )
+          end
+
+          it 'returns correct api_version in info' do
+            expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light'], 'api_version' => options['api_version']})
+          end
         end
       end
 
