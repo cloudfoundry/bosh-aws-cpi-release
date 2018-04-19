@@ -3,9 +3,8 @@ require 'logger'
 
 module Bosh::AwsCloud
   describe Instance do
-    subject(:instance) { Instance.new(aws_instance, registry, logger) }
+    subject(:instance) { Instance.new(aws_instance, logger) }
     let(:aws_instance) { instance_double(Aws::EC2::Instance, id: instance_id, data: 'some-data') }
-    let(:registry) { instance_double(Bosh::Cpi::RegistryClient, :update_settings => nil) }
     let(:logger) { Logger.new('/dev/null') }
     let(:elastic_ip) { instance_double(Aws::EC2::VpcAddress, public_ip: 'fake-ip') }
     let(:instance_id) { 'fake-id' }
@@ -83,7 +82,7 @@ module Bosh::AwsCloud
     describe '#terminate' do
       it 'should terminate an instance given the id' do
         expect(aws_instance).to receive(:terminate).with(no_args).ordered
-        expect(registry).to receive(:delete_settings).with(instance_id).ordered
+        # expect(registry).to receive(:delete_settings).with(instance_id).ordered
 
         expect(ResourceWait).to receive(:for_instance).
           with(instance: aws_instance, state: 'terminated').ordered
@@ -100,7 +99,7 @@ module Bosh::AwsCloud
         end
 
         it 'raises Bosh::Clouds::VMNotFound but still removes settings from registry' do
-          expect(registry).to receive(:delete_settings).with(instance_id)
+          # expect(registry).to receive(:delete_settings).with(instance_id)
 
           expect {
             instance.terminate
@@ -116,7 +115,7 @@ module Bosh::AwsCloud
         end
 
         it 'logs a message and considers the instance to be terminated' do
-          expect(registry).to receive(:delete_settings).with(instance_id)
+          # expect(registry).to receive(:delete_settings).with(instance_id)
           expect(aws_instance).to receive(:reload)
 
           err = Aws::EC2::Errors::InvalidInstanceIDNotFound.new(nil, 'not-found')
@@ -132,7 +131,7 @@ module Bosh::AwsCloud
       describe 'fast path deletion' do
         it 'deletes the instance without waiting for confirmation of termination' do
           expect(aws_instance).to receive(:terminate).ordered
-          expect(registry).to receive(:delete_settings).ordered
+          # expect(registry).to receive(:delete_settings).ordered
           expect(TagManager).to receive(:tag).with(aws_instance, "Name", "to be deleted").ordered
           instance.terminate(true)
         end

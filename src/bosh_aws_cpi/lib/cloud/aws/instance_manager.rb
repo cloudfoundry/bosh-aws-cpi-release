@@ -6,9 +6,9 @@ module Bosh::AwsCloud
   class InstanceManager
     include Helpers
 
-    def initialize(ec2, registry, logger)
+    def initialize(ec2, registry_endpoint, logger)
       @ec2 = ec2
-      @registry = registry
+      @registry_endpoint = registry_endpoint
       @logger = logger
 
       security_group_mapper = SecurityGroupMapper.new(@ec2)
@@ -36,7 +36,7 @@ module Bosh::AwsCloud
         @logger.info("Creating new instance with: #{redacted_instance_params.inspect}")
 
         aws_instance = create_aws_instance(instance_params, vm_cloud_props)
-        instance = Bosh::AwsCloud::Instance.new(aws_instance, @registry, @logger)
+        instance = Bosh::AwsCloud::Instance.new(aws_instance, @logger)
 
         babysit_instance_creation(instance, vm_cloud_props)
       rescue => e
@@ -55,7 +55,7 @@ module Bosh::AwsCloud
 
     # @param [String] instance_id EC2 instance id
     def find(instance_id)
-      Instance.new(@ec2.instance(instance_id), @registry, @logger)
+      Bosh::AwsCloud::Instance.new(@ec2.instance(instance_id), @logger)
     end
 
     private
@@ -88,7 +88,7 @@ module Bosh::AwsCloud
       @param_mapper.manifest_params = {
         stemcell_id: stemcell_id,
         vm_type: vm_cloud_props,
-        registry_endpoint: @registry.endpoint,
+        registry_endpoint: @registry_endpoint,
         networks_spec: networks_cloud_props,
         default_security_groups: default_security_groups,
         volume_zones: volume_zones,

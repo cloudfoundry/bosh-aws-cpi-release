@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-describe Bosh::AwsCloud::Cloud do
+describe Bosh::AwsCloud::CloudV1 do
   it 'should delete the stemcell' do
     stemcell = double(Bosh::AwsCloud::Stemcell)
 

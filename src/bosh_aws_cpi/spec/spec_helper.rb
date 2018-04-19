@@ -71,7 +71,7 @@ def mock_cloud(options = nil)
 
   yield ec2 if block_given?
 
-  Bosh::AwsCloud::Cloud.new(options || mock_cloud_options['properties'])
+  Bosh::AwsCloud::CloudV1.new(options || mock_cloud_options['properties'])
 end
 
 def mock_ec2

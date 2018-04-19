@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Bosh::AwsCloud::Cloud do
+describe Bosh::AwsCloud::CloudV1 do
   subject(:cloud) { described_class.new(options) }
 
   let(:options) { mock_cloud_options['properties'] }

@@ -182,7 +182,7 @@ describe Bosh::AwsCloud::CloudV2 do
     let(:environment) { 'environment' }
 
     before do
-      allow_any_instance_of(Bosh::AwsCloud::Cloud).to receive(:create_vm).and_return(instance.id)
+      allow_any_instance_of(Bosh::AwsCloud::CloudV1).to receive(:create_vm).and_return(instance.id)
     end
 
     it 'should create an EC2 instance and return its id' do
@@ -197,7 +197,7 @@ describe Bosh::AwsCloud::CloudV2 do
     let(:instance) { instance_double(Aws::EC2::Instance, :id => instance_id ) }
     let(:volume) { instance_double(Aws::EC2::Volume, :id => volume_id) }
     let(:subnet) { instance_double(Aws::EC2::Subnet) }
-    let(:fake_cloud_v1) {instance_double(Bosh::AwsCloud::Cloud, :attach_disk => {})}
+    let(:fake_cloud_v1) {instance_double(Bosh::AwsCloud::CloudV1, :attach_disk => {})}
     let(:endpoint) {'http://registry:3333'}
     # let(:registry) {instance_double(Bosh::Cpi::RegistryClient, :endpoint => endpoint, :read_setting => settings)}
     let(:settings) {
@@ -211,7 +211,7 @@ describe Bosh::AwsCloud::CloudV2 do
       }
     }
     before do
-      allow_any_instance_of(Bosh::AwsCloud::Cloud).to receive(:attach_disk).and_return({})
+      allow_any_instance_of(Bosh::AwsCloud::CloudV1).to receive(:attach_disk).and_return({})
       allow_any_instance_of(Bosh::Cpi::RegistryClient).to receive(:read_settings).and_return(settings)
     end
 

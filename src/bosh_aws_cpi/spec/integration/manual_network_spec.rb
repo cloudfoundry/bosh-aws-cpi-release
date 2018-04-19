@@ -5,7 +5,7 @@ require 'bosh/cpi/logger'
 require 'cloud'
 require 'netaddr'
 
-describe Bosh::AwsCloud::Cloud do
+describe Bosh::AwsCloud::CloudV1 do
   before(:all) do
     @elb_id             = ENV.fetch('BOSH_AWS_ELB_ID')
     @target_group_name  = ENV.fetch('BOSH_AWS_TARGET_GROUP_NAME')
@@ -49,7 +49,7 @@ describe Bosh::AwsCloud::Cloud do
     }
   end
   let(:my_cpi) do
-    Bosh::AwsCloud::Cloud.new(
+    Bosh::AwsCloud::CloudV1.new(
       'aws' => aws_config,
       'registry' => {
         'endpoint' => 'fake',
@@ -131,7 +131,7 @@ describe Bosh::AwsCloud::Cloud do
 
       context 'when request_id is present in the context' do
         let(:endpoint_configured_cpi) do
-          Bosh::AwsCloud::Cloud.new(
+          Bosh::AwsCloud::CloudV1.new(
             'aws' => {
               'region' => @region,
               'ec2_endpoint' => "https://ec2.#{@region}.amazonaws.com",
@@ -165,7 +165,7 @@ describe Bosh::AwsCloud::Cloud do
 
       context 'when request_id is NOT present in the context' do
         let(:endpoint_configured_cpi) do
-          Bosh::AwsCloud::Cloud.new(
+          Bosh::AwsCloud::CloudV1.new(
             'aws' => {
               'region' => @region,
               'ec2_endpoint' => "https://ec2.#{@region}.amazonaws.com",

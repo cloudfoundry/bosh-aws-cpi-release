@@ -4,7 +4,7 @@ require 'tempfile'
 require 'bosh/cpi/logger'
 require 'cloud'
 
-describe Bosh::AwsCloud::Cloud do
+describe Bosh::AwsCloud::CloudV1 do
   before(:all) do
     @manual_ip          = ENV.fetch('BOSH_AWS_LIFECYCLE_MANUAL_IP')
     @elb_id             = ENV.fetch('BOSH_AWS_ELB_ID')

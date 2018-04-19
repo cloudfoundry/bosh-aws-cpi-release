@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-describe Bosh::AwsCloud::Cloud do
+describe Bosh::AwsCloud::CloudV1 do
 
   let(:zones) { [{ 'zone_name' => 'us-east-1a' }] }
   let(:volume) { instance_double(Aws::EC2::Volume, :id => 'v-foobar') }

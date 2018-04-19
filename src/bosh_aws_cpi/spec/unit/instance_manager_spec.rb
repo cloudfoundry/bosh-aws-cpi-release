@@ -6,9 +6,9 @@ module Bosh::AwsCloud
     let(:aws_client) { instance_double(Aws::EC2::Client) }
     before { allow(ec2).to receive(:client).and_return(aws_client) }
 
-    let(:registry) { instance_double(Bosh::Cpi::RegistryClient, :endpoint => 'http://...', :update_settings => nil) }
+    let(:registry_endpoint) { 'http://...' }
     let(:param_mapper) { instance_double(InstanceParamMapper) }
-    let(:instance_manager) { InstanceManager.new(ec2, registry, logger) }
+    let(:instance_manager) { InstanceManager.new(ec2, registry_endpoint, logger) }
     let(:logger) { Logger.new('/dev/null') }
 
     describe '#create' do
@@ -432,8 +432,8 @@ module Bosh::AwsCloud
       it 'returns found instance (even though it might not exist)' do
         instance = instance_double(Bosh::AwsCloud::Instance)
 
-        allow(Instance).to receive(:new).
-          with(aws_instance, registry, logger).
+        allow(Bosh::AwsCloud::Instance).to receive(:new).
+          with(aws_instance, logger).
           and_return(instance)
 
         expect(instance_manager.find(instance_id)).to eq(instance)

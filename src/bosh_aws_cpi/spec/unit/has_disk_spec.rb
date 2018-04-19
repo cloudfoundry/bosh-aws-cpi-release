@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Bosh::AwsCloud::Cloud do
+describe Bosh::AwsCloud::CloudV1 do
   describe 'has_disk?' do
     context 'when disk is found' do
       let(:disk) {instance_double(Aws::EC2::Volume, id: 'v-foo', exists?: true, state: 'available')}
