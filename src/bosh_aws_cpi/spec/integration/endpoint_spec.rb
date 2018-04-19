@@ -3,13 +3,13 @@ require 'logger'
 require 'cloud'
 require 'open-uri'
 
-describe Bosh::AwsCloud::Cloud do
+describe Bosh::AwsCloud::CloudV1 do
   let(:logger) { Bosh::Cpi::Logger.new(STDERR) }
   let(:non_existent_vm_id) { 'i-010fd20eb24f606ab' }
 
   describe 'specifying ec2 endpoint instead of region' do
     let(:cpi) do
-      Bosh::AwsCloud::Cloud.new(
+      Bosh::AwsCloud::CloudV1.new(
         'aws' => {
           'ec2_endpoint' => 'https://ec2.sa-east-1.amazonaws.com',
           'elb_endpoint' => 'https://elasticloadbalancing.sa-east-1.amazonaws.com',
@@ -36,7 +36,7 @@ describe Bosh::AwsCloud::Cloud do
 
     context 'endpoint does not match region' do
       let(:cpi) do
-        Bosh::AwsCloud::Cloud.new(
+        Bosh::AwsCloud::CloudV1.new(
           'aws' => {
             'ec2_endpoint' => 'https://ec2.fake-endpoint.amazonaws.com',
             'region' => 'sa-east-1',
@@ -65,7 +65,7 @@ describe Bosh::AwsCloud::Cloud do
   describe 'specifying elb endpoint instead of region' do
     context 'endpoint does not match region' do
       let(:cpi) do
-        Bosh::AwsCloud::Cloud.new(
+        Bosh::AwsCloud::CloudV1.new(
           'aws' => {
             'elb_endpoint' => 'https://elasticloadbalancing.fake-endpoint.amazonaws.com',
             'region' => 'sa-east-1',
@@ -129,7 +129,7 @@ describe Bosh::AwsCloud::Cloud do
 
   describe 'using a custom CA bundle' do
     let(:cpi) do
-      Bosh::AwsCloud::Cloud.new(
+      Bosh::AwsCloud::CloudV1.new(
         'aws' => {
           'region' => @region,
           'default_key_name' => 'fake-key',
@@ -192,7 +192,7 @@ describe Bosh::AwsCloud::Cloud do
 
     context 'when the endpoint is provided without a protocol' do
       let(:cpi) do
-        Bosh::AwsCloud::Cloud.new(
+        Bosh::AwsCloud::CloudV1.new(
           'aws' => {
             'ec2_endpoint' => 'ec2.sa-east-1.amazonaws.com',
             'elb_endpoint' => 'elasticloadbalancing.sa-east-1.amazonaws.com',

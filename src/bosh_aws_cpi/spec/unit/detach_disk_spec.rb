@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-describe Bosh::AwsCloud::Cloud do
+describe Bosh::AwsCloud::CloudV1 do
 
   before(:each) do
     @registry = mock_registry

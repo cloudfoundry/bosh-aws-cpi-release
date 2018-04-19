@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Bosh::AwsCloud::Cloud, "reboot_vm" do
+describe Bosh::AwsCloud::CloudV1, "reboot_vm" do
   let(:cloud) { mock_cloud }
 
   it 'deletes an EC2 instance' do

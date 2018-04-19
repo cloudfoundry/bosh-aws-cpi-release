@@ -3,7 +3,7 @@ require 'uri'
 require 'cloud_v2'
 
 module Bosh::AwsCloud
-  class CloudV2 < Bosh::AwsCloud::Cloud
+  class CloudV2 < Bosh::AwsCloud::CloudV1
 
     METADATA_TIMEOUT = 5 # in seconds
     DEVICE_POLL_TIMEOUT = 60 # in seconds

@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Bosh::AwsCloud::Cloud do
+describe Bosh::AwsCloud::CloudV1 do
   before { @tmp_dir = Dir.mktmpdir }
   after { FileUtils.rm_rf(@tmp_dir) }
 

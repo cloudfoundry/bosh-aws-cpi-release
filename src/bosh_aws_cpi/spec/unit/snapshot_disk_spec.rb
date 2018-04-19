@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Bosh::AwsCloud::Cloud do
+describe Bosh::AwsCloud::CloudV1 do
   describe '#snapshot_disk' do
     let(:volume) { double(Aws::EC2::Volume, id: 'vol-xxxxxxxx') }
     let(:snapshot) { double(Aws::EC2::Snapshot, id: 'snap-xxxxxxxx') }

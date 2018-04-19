@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Bosh::AwsCloud::Cloud, '#set_disk_metadata' do
+describe Bosh::AwsCloud::CloudV1, '#set_disk_metadata' do
   let(:volume) { double(Aws::EC2::Volume, id: 'vol-xxxxxxxx') }
   let(:metadata) { { 'deployment' => 'deployment-x', 'instance_id' => 'instance-x' } }
 

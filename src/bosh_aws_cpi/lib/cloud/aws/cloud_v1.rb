@@ -2,7 +2,7 @@ require 'cloud/aws/stemcell_finder'
 require 'uri'
 
 module Bosh::AwsCloud
-  class Cloud < Bosh::Cloud
+  class CloudV1 < Bosh::Cloud
     include Helpers
 
     CPI_API_VERSION = 2

@@ -3,7 +3,7 @@
 require 'spec_helper'
 require 'webmock/rspec'
 
-describe Bosh::AwsCloud::Cloud do
+describe Bosh::AwsCloud::CloudV1 do
 
   describe '#current_vm_id' do
     let(:options) {

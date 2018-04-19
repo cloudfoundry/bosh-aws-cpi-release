@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Bosh::AwsCloud::Cloud, 'create_vm' do
+describe Bosh::AwsCloud::CloudV1, 'create_vm' do
   let(:registry) { instance_double(Bosh::Cpi::RegistryClient) }
   let(:availability_zone_selector) { instance_double(Bosh::AwsCloud::AvailabilityZoneSelector) }
   let(:stemcell) { instance_double(Bosh::AwsCloud::Stemcell, root_device_name: 'root name', image_id: stemcell_id) }
@@ -72,6 +72,8 @@ describe Bosh::AwsCloud::Cloud, 'create_vm' do
       allow(Bosh::AwsCloud::PropsFactory).to receive(:new).and_return(props_factory)
 
       allow(Bosh::AwsCloud::VolumeManager).to receive(:new).with(anything, anything).and_return(volume_manager)
+
+      allow(registry).to receive(:endpoint).and_return('http://something.12.34.52')
     end
 
     allow(props_factory).to receive(:vm_props).with(vm_type).and_return(vm_cloud_props)

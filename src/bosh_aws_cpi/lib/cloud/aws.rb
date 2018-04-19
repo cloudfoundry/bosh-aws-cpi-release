@@ -18,7 +18,8 @@ require 'bosh/cpi/registry_client'
 
 require 'cloud'
 require 'cloud/aws/helpers'
-require 'cloud/aws/cloud'
+require 'cloud/aws/cloud_core'
+require 'cloud/aws/cloud_v1'
 require 'cloud/aws/cloud_v2'
 require 'cloud/aws/config'
 require 'cloud/aws/aws_provider'
@@ -53,7 +54,7 @@ module Bosh
         if cpi_api_version && cpi_api_version > 1
           Bosh::AwsCloud::CloudV2.new(cpi_api_version, cloud_properties)
         else
-          Bosh::AwsCloud::Cloud.new(cloud_properties)
+          Bosh::AwsCloud::CloudV1.new(cloud_properties)
         end
       end
     end
