@@ -25,8 +25,7 @@ export no_proxy="<%= no_proxy %>"
 export BOSH_CA_CERT_FILE=$BOSH_JOBS_DIR/aws_cpi/config/cacert.pem
 <% end %>
 
-source /var/vcap/packages/ruby-2.4-r4/bosh/runtime.env
-source /var/vcap/packages/aws_cpi/bosh/runtime.env
+source /var/vcap/packages/ruby-2.4-r4/runtime.env
 
 export BUNDLE_GEMFILE=$BOSH_PACKAGES_DIR/bosh_aws_cpi/Gemfile
 
