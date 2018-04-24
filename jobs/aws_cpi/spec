@@ -7,7 +7,7 @@ templates:
   cpi_ctl.erb: bin/cpi_ctl
 
 packages:
-- ruby-2.4-r3
+- ruby-2.4-r4
 - bosh_aws_cpi
 
 properties:
