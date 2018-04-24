@@ -2,6 +2,8 @@
 
 set -e
 
+source /var/vcap/packages/ruby-2.4-r4/bosh/compile.env
+
 BOSH_PACKAGES_DIR=${BOSH_PACKAGES_DIR:-/var/vcap/packages}
 
 cp -a bosh_aws_cpi/* ${BOSH_INSTALL_TARGET}
