@@ -21,13 +21,7 @@ module Bosh::AwsCloud
     # @option options [Hash] agent agent options
     # @option options [Hash] registry agent options
     def initialize(options)
-<<<<<<< HEAD:src/bosh_aws_cpi/lib/cloud/aws/cloud_v1.rb
-      @config = Bosh::AwsCloud::Config.build(options.dup.freeze)
-      @cpi_api_version = @config.api_version || CPI_API_VERSION
-
-=======
       @config = Bosh::AwsCloud::Config.build(options.dup.freeze, VALIDATE_REGISTRY)
->>>>>>> bf36060a35fc4a34f106071bc62bb0017ae800ea:src/bosh_aws_cpi/lib/cloud/aws/cloud_v1.rb
       @logger = Bosh::Clouds::Config.logger
       request_id = options['aws']['request_id']
       if request_id
