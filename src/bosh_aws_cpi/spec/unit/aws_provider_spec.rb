@@ -8,7 +8,8 @@ describe Bosh::AwsCloud::AwsProvider do
     opts
   end
   let(:logger) { Bosh::Clouds::Config.logger}
-  let(:config) { Bosh::AwsCloud::Config.build(options.dup.freeze) }
+  let(:validate_registry) { true }
+  let(:config) { Bosh::AwsCloud::Config.build(options.dup.freeze, validate_registry) }
   let(:params) do
     {
       credentials: config.aws.credentials,

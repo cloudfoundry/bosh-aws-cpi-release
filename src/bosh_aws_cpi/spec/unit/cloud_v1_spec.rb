@@ -85,7 +85,7 @@ describe Bosh::AwsCloud::CloudV1 do
       let(:ec2_client) { instance_double(Aws::EC2::Client) }
       let(:volume_resp) { instance_double(Aws::EC2::Types::Volume, volume_id: 'fake-volume-id') }
       let(:volume) { instance_double(Aws::EC2::Volume, id: 'fake-volume-id') }
-      let(:volume_manager) { Bosh::AWsCloud::VolumeManager.new() }
+      let(:volume_manager) { instance_double(Bosh::AwsCloud::VolumeManager) }
       before do
         # cloud.instance_variable_set(:@ec2_client, ec2_client)
         volume_manager = cloud.instance_variable_get(:@volume_manager)
@@ -166,8 +166,17 @@ describe Bosh::AwsCloud::CloudV1 do
       end
 
       describe '#info' do
+        let(:volume_manager) { instance_double(Bosh::AwsCloud::VolumeManager) }
+        let(:az_selector) { instance_double(Bosh::AwsCloud::AvailabilityZoneSelector) }
+        let(:api_version) { 2 }
+        let(:options) { mock_cloud_options['properties'] }
+        let(:validate_registry) { true }
+        let(:config) { Bosh::AwsCloud::Config.build(options, validate_registry) }
+        let(:logger) { Bosh::Clouds::Config.logger }
+        let(:cloud_core) { Bosh::AwsCloud::CloudCore.new(config, logger, volume_manager, az_selector) }
+
         it 'returns correct info with default api_version' do
-          expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light'], 'api_version' => 2})
+          expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light'], 'api_version' => api_version})
         end
 
         context 'when api_version is specified in config json' do
@@ -176,6 +185,9 @@ describe Bosh::AwsCloud::CloudV1 do
               'api_version' => 42
             )
           end
+
+          let(:config) { Bosh::AwsCloud::Config.build(options, validate_registry) }
+          let(:cloud_core) { Bosh::AwsCloud::CloudCore.new(config, logger, volume_manager, az_selector) }
 
           it 'returns correct api_version in info' do
             expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light'], 'api_version' => options['api_version']})
@@ -288,6 +300,81 @@ describe Bosh::AwsCloud::CloudV1 do
       expect {
         cloud.configure_networks('i-foobar', {})
       }.to raise_error Bosh::Clouds::NotSupported
+    end
+  end
+
+  describe '#create_vm' do
+    let(:registry) { instance_double(Bosh::Cpi::RegistryClient) }
+
+    let(:global_config) { instance_double(Bosh::AwsCloud::Config, aws: Bosh::AwsCloud::AwsConfig.new({})) }
+    let(:networks_spec) do
+      {
+        'fake-network-name-1' => {
+          'type' => 'dynamic'
+        },
+        'fake-network-name-2' => {
+          'type' => 'manual'
+        }
+      }
+    end
+    let(:networks_cloud_props) do
+      Bosh::AwsCloud::NetworkCloudProps.new(networks_spec, global_config)
+    end
+    let(:environment) { {} }
+    let(:agent_id) { '007-agent' }
+    let(:instance_id) { 'instance-id' }
+    let(:root_device_name) { 'root name' }
+    let(:agent_info) do
+      {
+        'ephemeral' => [{'path' => '/dev/sdz'}],
+        'raw_ephemeral' => [{'path'=>'/dev/xvdba'}, {'path'=>'/dev/xvdbb'}]
+      }
+    end
+    let(:agent_config) { {'baz' => 'qux'} }
+
+    let(:stemcell_id) { 'stemcell-id' }
+    let(:vm_type) { 'vm-type' }
+    let(:disk_locality) { [] }
+    let(:cloud_core) { instance_double(Bosh::AwsCloud::CloudCore) }
+
+    before do
+      allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
+      allow(registry).to receive(:endpoint).and_return('http://something.12.34.52')
+      allow(SecureRandom).to receive(:uuid).and_return('rand0m')
+
+      allow(Bosh::AwsCloud::CloudCore).to receive(:new).and_return(cloud_core)
+    end
+
+    it 'updates the registry' do
+      allow(cloud_core).to receive(:create_vm).and_yield(instance_id, agent_id, networks_cloud_props, environment, root_device_name, agent_info, agent_config)
+
+      agent_settings = {
+        'vm' => {
+          'name' => 'vm-rand0m'
+        },
+        'agent_id' => agent_id,
+        'networks' => {
+          'fake-network-name-1' => {
+            'type' => 'dynamic',
+            'use_dhcp' => true,
+          },
+          'fake-network-name-2' => {
+            'type' => 'manual',
+            'use_dhcp' => true,
+          }
+        },
+        'disks' => {
+          'system' => 'root name',
+          'ephemeral' => '/dev/sdz',
+          'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}],
+          'persistent' => {}
+        },
+        'env' => environment,
+        'baz' => 'qux'
+      }
+      expect(registry).to receive(:update_settings).with(instance_id, agent_settings)
+
+      cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
     end
   end
 end

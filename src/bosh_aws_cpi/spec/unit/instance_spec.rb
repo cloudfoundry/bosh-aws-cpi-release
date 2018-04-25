@@ -82,7 +82,6 @@ module Bosh::AwsCloud
     describe '#terminate' do
       it 'should terminate an instance given the id' do
         expect(aws_instance).to receive(:terminate).with(no_args).ordered
-        # expect(registry).to receive(:delete_settings).with(instance_id).ordered
 
         expect(ResourceWait).to receive(:for_instance).
           with(instance: aws_instance, state: 'terminated').ordered
@@ -99,8 +98,6 @@ module Bosh::AwsCloud
         end
 
         it 'raises Bosh::Clouds::VMNotFound but still removes settings from registry' do
-          # expect(registry).to receive(:delete_settings).with(instance_id)
-
           expect {
             instance.terminate
           }.to raise_error(Bosh::Clouds::VMNotFound, "VM `#{instance_id}' not found")
@@ -115,7 +112,6 @@ module Bosh::AwsCloud
         end
 
         it 'logs a message and considers the instance to be terminated' do
-          # expect(registry).to receive(:delete_settings).with(instance_id)
           expect(aws_instance).to receive(:reload)
 
           err = Aws::EC2::Errors::InvalidInstanceIDNotFound.new(nil, 'not-found')
@@ -131,7 +127,6 @@ module Bosh::AwsCloud
       describe 'fast path deletion' do
         it 'deletes the instance without waiting for confirmation of termination' do
           expect(aws_instance).to receive(:terminate).ordered
-          # expect(registry).to receive(:delete_settings).ordered
           expect(TagManager).to receive(:tag).with(aws_instance, "Name", "to be deleted").ordered
           instance.terminate(true)
         end

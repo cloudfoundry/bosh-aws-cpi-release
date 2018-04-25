@@ -35,9 +35,6 @@ describe Bosh::AwsCloud::CloudV1, 'create_vm' do
   let(:networks_cloud_props) do
     Bosh::AwsCloud::NetworkCloudProps.new(networks_spec, global_config)
   end
-  let(:networks_cloud_props) do
-    Bosh::AwsCloud::NetworkCloudProps.new(networks_spec, global_config)
-  end
   let(:disk_locality) { ['some', 'disk', 'locality'] }
   let(:environment) { 'environment' }
   let(:options) do
@@ -80,7 +77,7 @@ describe Bosh::AwsCloud::CloudV1, 'create_vm' do
     allow(props_factory).to receive(:network_props).with(networks_spec).and_return(networks_cloud_props)
 
     allow(instance_manager).to receive(:create)
-      .with(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, [], mappings)
+      .with(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, [], mappings, anything)
       .and_return(instance)
 
     allow(Bosh::AwsCloud::NetworkConfigurator).to receive(:new).with(networks_cloud_props).and_return(network_configurator)
@@ -103,6 +100,7 @@ describe Bosh::AwsCloud::CloudV1, 'create_vm' do
       anything,
       anything,
       anything,
+      anything,
       anything
     ).and_return(instance)
     expect(@cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq('fake-id')
@@ -119,55 +117,57 @@ describe Bosh::AwsCloud::CloudV1, 'create_vm' do
     @cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
   end
 
-  it 'should update the registry settings with the new instance' do
-    allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: instance, state: :running)
-    allow(SecureRandom).to receive(:uuid).and_return('rand0m')
+  context 'using cloud core to create_vm' do
+    it 'should update the registry settings with the new instance' do
+      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: instance, state: :running)
+      allow(SecureRandom).to receive(:uuid).and_return('rand0m')
 
-    agent_settings = {
-        'vm' => {
-            'name' => 'vm-rand0m'
-        },
-        'agent_id' => agent_id,
-        'networks' =>     {
-            'fake-network-name-1' => {
-                'type' => 'dynamic',
-                'use_dhcp' => true,
+      agent_settings = {
+          'vm' => {
+              'name' => 'vm-rand0m'
           },
-            'fake-network-name-2' => {
-              'type' => 'manual',
-              'use_dhcp' => true,
-          }
-        },
-        'disks' => {
-            'system' => 'root name',
-            'ephemeral' => '/dev/sdz',
-            'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}],
-            'persistent' => {}
-        },
-        'env' => environment,
-        'baz' => 'qux'
-    }
-    expect(registry).to receive(:update_settings).with('fake-id', agent_settings)
+          'agent_id' => agent_id,
+          'networks' =>     {
+              'fake-network-name-1' => {
+                  'type' => 'dynamic',
+                  'use_dhcp' => true,
+            },
+              'fake-network-name-2' => {
+                'type' => 'manual',
+                'use_dhcp' => true,
+            }
+          },
+          'disks' => {
+              'system' => 'root name',
+              'ephemeral' => '/dev/sdz',
+              'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}],
+              'persistent' => {}
+          },
+          'env' => environment,
+          'baz' => 'qux'
+      }
+      expect(registry).to receive(:update_settings).with('fake-id', agent_settings)
 
-    @cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
-  end
-
-  it 'terminates instance if updating registry settings fails' do
-    allow(network_configurator).to receive(:configure).and_raise(StandardError)
-    expect(instance).to receive(:terminate)
-
-    expect {
       @cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
-    }.to raise_error(StandardError)
-  end
+    end
 
-  it 'terminates instance if updating registry settings fails' do
-    allow(registry).to receive(:update_settings).and_raise(StandardError)
-    expect(instance).to receive(:terminate)
+    it 'terminates instance if updating registry settings fails' do
+      allow(network_configurator).to receive(:configure).and_raise(StandardError)
+      expect(instance).to receive(:terminate)
 
-    expect {
-      @cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
-    }.to raise_error(StandardError)
+      expect {
+        @cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
+      }.to raise_error(StandardError)
+    end
+
+    it 'terminates instance if updating registry settings fails' do
+      allow(registry).to receive(:update_settings).and_raise(StandardError)
+      expect(instance).to receive(:terminate)
+
+      expect {
+        @cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
+      }.to raise_error(StandardError)
+    end
   end
 
   it 'creates elb client with correct region' do
@@ -214,7 +214,8 @@ describe Bosh::AwsCloud::CloudV1, 'create_vm' do
         networks_cloud_props,
         disk_locality,
         [],
-        mappings
+        mappings,
+        anything
       )
 
       @cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)

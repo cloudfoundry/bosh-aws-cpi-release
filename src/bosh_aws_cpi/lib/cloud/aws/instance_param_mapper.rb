@@ -17,7 +17,7 @@ module Bosh::AwsCloud
     def validate_required_inputs
       required_top_level = [
         'stemcell_id',
-        'registry_endpoint'
+        'user_data'
       ]
       required_vm_type = [
         'instance_type',
@@ -63,7 +63,7 @@ module Bosh::AwsCloud
         instance_type: vm_type.instance_type,
         key_name: vm_type.key_name,
         iam_instance_profile: iam_instance_profile,
-        user_data: user_data,
+        user_data: @manifest_params[:user_data],
         block_device_mappings: @manifest_params[:block_device_mappings]
       }
 
@@ -130,19 +130,6 @@ module Bosh::AwsCloud
       groups = networks_security_groups unless networks_security_groups.empty?
       groups = vm_type.security_groups unless vm_type.security_groups.empty?
       groups
-    end
-
-    def user_data
-      user_data = {}
-      user_data[:registry] = { endpoint: @manifest_params[:registry_endpoint] } if @manifest_params[:registry_endpoint]
-
-      network_with_dns = networks_cloud_props.dns_networks.first
-      user_data[:dns] = { nameserver: network_with_dns.dns } unless network_with_dns.nil?
-
-      # If IPv6 network is present then send network setting up front so that agent can reconfigure networking stack
-      user_data[:networks] = Bosh::AwsCloud::AgentSettings.agent_network_spec(networks_cloud_props) unless networks_cloud_props.ipv6_networks.empty?
-
-      Base64.encode64(user_data.to_json).strip unless user_data.empty?
     end
 
     def ipv6_address?(addr)
