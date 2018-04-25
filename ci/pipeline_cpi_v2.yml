@@ -136,6 +136,7 @@ jobs:
             OPTIONAL_OPS_FILE:  |
               -o pipelines/shared/assets/ops/remove-hm.yml
               -o bosh-deployment/external-ip-with-registry-not-recommended.yml
+              -o bosh-deployment/experimental/blobstore-https.yml
               -o pipelines/shared/assets/ops/remove-provider-cert.yml
               -o bosh-deployment/experimental/bpm.yml
         - do:
@@ -169,6 +170,7 @@ jobs:
             OPTIONAL_OPS_FILE:  |
               -o bosh-deployment/external-ip-with-registry-not-recommended.yml
               -o pipelines/shared/assets/ops/remove-provider-cert.yml
+              -o bosh-deployment/experimental/blobstore-https.yml
               -o pipelines/aws/assets/ops/iam-instance-profile-ops-file.yml
               -o bosh-deployment/experimental/bpm.yml
 
@@ -274,7 +276,7 @@ resources:
     type: git
     source:
       uri: https://github.com/cloudfoundry/bosh-acceptance-tests.git
-      branch: gocli-bats
+      branch: master
   - name: bosh-deployment
     type: git
     source:
