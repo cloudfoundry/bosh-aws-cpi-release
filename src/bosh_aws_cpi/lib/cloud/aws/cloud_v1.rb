@@ -8,6 +8,7 @@ module Bosh::AwsCloud
     CPI_API_VERSION = 2
     METADATA_TIMEOUT = 5 # in seconds
     DEVICE_POLL_TIMEOUT = 60 # in seconds
+    VALIDATE_REGISTRY = true
 
     attr_reader :ec2_resource
     attr_reader :registry
@@ -20,22 +21,18 @@ module Bosh::AwsCloud
     # @option options [Hash] agent agent options
     # @option options [Hash] registry agent options
     def initialize(options)
+<<<<<<< HEAD:src/bosh_aws_cpi/lib/cloud/aws/cloud_v1.rb
       @config = Bosh::AwsCloud::Config.build(options.dup.freeze)
       @cpi_api_version = @config.api_version || CPI_API_VERSION
 
+=======
+      @config = Bosh::AwsCloud::Config.build(options.dup.freeze, VALIDATE_REGISTRY)
+>>>>>>> bf36060a35fc4a34f106071bc62bb0017ae800ea:src/bosh_aws_cpi/lib/cloud/aws/cloud_v1.rb
       @logger = Bosh::Clouds::Config.logger
       request_id = options['aws']['request_id']
       if request_id
         @logger.set_request_id(request_id)
       end
-
-      @aws_provider = Bosh::AwsCloud::AwsProvider.new(@config.aws, @logger)
-      @ec2_client = @aws_provider.ec2_client
-      @ec2_resource = @aws_provider.ec2_resource
-
-      cloud_error('Please make sure the CPI has proper network access to AWS.') unless @aws_provider.aws_accessible?
-
-      @az_selector = AvailabilityZoneSelector.new(@ec2_resource)
 
       @registry = Bosh::Cpi::RegistryClient.new(
         @config.registry.endpoint,
@@ -43,8 +40,17 @@ module Bosh::AwsCloud
         @config.registry.password
       )
 
+      @aws_provider = Bosh::AwsCloud::AwsProvider.new(@config.aws, @logger)
+      @ec2_client = @aws_provider.ec2_client
+      @ec2_resource = @aws_provider.ec2_resource
+      @az_selector = AvailabilityZoneSelector.new(@ec2_resource)
       @volume_manager = Bosh::AwsCloud::VolumeManager.new(@logger, @aws_provider)
-      @instance_manager = InstanceManager.new(@ec2_resource, registry, @logger)
+
+      @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector)
+
+      cloud_error('Please make sure the CPI has proper network access to AWS.') unless @aws_provider.aws_accessible?
+
+      @instance_manager = InstanceManager.new(@ec2_resource, @logger)
       @instance_type_mapper = InstanceTypeMapper.new
 
       @props_factory = Bosh::AwsCloud::PropsFactory.new(@config)
@@ -56,6 +62,10 @@ module Bosh::AwsCloud
     # and thus memoizing it.
     def current_vm_id
       begin
+        #xxxx = coreCloud.current_vm_id()
+        # process xxxx based on version
+        # return based on version
+
         return @current_vm_id if @current_vm_id
 
         http_client = HTTPClient.new
@@ -95,71 +105,22 @@ module Bosh::AwsCloud
     # @return [String] EC2 instance id of the new virtual machine
     def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = [], environment = nil)
       with_thread_name("create_vm(#{agent_id}, ...)") do
-        vm_props = @props_factory.vm_props(vm_type)
         network_props = @props_factory.network_props(network_spec)
 
-        # do this early to fail fast
-        target_groups = vm_props.lb_target_groups
-        unless target_groups.empty?
-          @aws_provider.alb_accessible?
-        end
+        user_data = user_data(network_props)
 
-        requested_elbs = vm_props.elbs
-        unless requested_elbs.empty?
-          @aws_provider.elb_accessible?
-        end
-
-        begin
-          stemcell = StemcellFinder.find_by_id(@ec2_resource, stemcell_id)
-
-          ephemeral_disk_base_snapshot = temporary_snapshot(agent_id, vm_props)
-          block_device_mappings, agent_info = Bosh::AwsCloud::BlockDeviceManager.new(
-            @logger,
-            stemcell,
-            vm_props,
-            ephemeral_disk_base_snapshot
-          ).mappings_and_info
-
-          instance = @instance_manager.create(
-            stemcell.image_id,
-            vm_props,
-            network_props,
-            (disk_locality || []),
-            @config.aws.default_security_groups,
-            block_device_mappings
-          )
-
-          target_groups.each do |target_group_name|
-            target_group = LBTargetGroup.new(client: @aws_provider.alb_client, group_name: target_group_name)
-            target_group.register(instance.id)
-          end
-
-          requested_elbs.each do |requested_elb_name|
-            requested_elb = ClassicLB.new(client: @aws_provider.elb_client, elb_name: requested_elb_name)
-            requested_elb.register(instance.id)
-          end
-
-          logger.info("Creating new instance '#{instance.id}'")
-
-          NetworkConfigurator.new(network_props).configure(@ec2_resource, instance)
-
+        @cloud_core.create_vm(agent_id, stemcell_id, vm_type, network_props, user_data, disk_locality, environment) do
+        |instance_id, agent_id, network_props, environment, root_device_name, agent_info, agent|
           registry_settings = AgentSettings.new(
             agent_id,
             network_props,
             environment,
-            stemcell.root_device_name,
+            root_device_name,
             agent_info,
-            @config.agent
+            agent
           )
-          registry.update_settings(instance.id, registry_settings.settings)
 
-          instance.id
-        rescue => e # is this rescuing too much?
-          logger.error(%Q[Failed to create instance: #{e.message}\n#{e.backtrace.join("\n")}])
-          instance.terminate(@config.aws.fast_path_delete?) if instance
-          raise e
-        ensure
-          ephemeral_disk_base_snapshot.delete if ephemeral_disk_base_snapshot
+          @registry.update_settings(instance_id, registry_settings.settings)
         end
       end
     end
@@ -171,7 +132,10 @@ module Bosh::AwsCloud
     def delete_vm(instance_id)
       with_thread_name("delete_vm(#{instance_id})") do
         logger.info("Deleting instance '#{instance_id}'")
-        @instance_manager.find(instance_id).terminate(@config.aws.fast_path_delete?)
+
+        @cloud_core.delete_vm(instance_id) do |instance_id|
+          @registry.delete_settings(instance_id)
+        end
       end
     end
 
@@ -504,14 +468,23 @@ module Bosh::AwsCloud
     # Information about AWS CPI, currently supported stemcell formats
     # @return [Hash] AWS CPI properties
     def info
-      @logger.info("Sending info:V2'")
-      {
-        'stemcell_formats' => %w(aws-raw aws-light),
-        'api_version' => @cpi_api_version
-      }
+      @cloud_core.info
     end
 
     private
+    def user_data(network_props)
+      user_data = {}
+
+      user_data[:registry] = {endpoint: @registry.endpoint}
+      network_with_dns = network_props.dns_networks.first
+      user_data[:dns] = {nameserver: network_with_dns.dns} unless network_with_dns.nil?
+
+      # If IPv6 network is present then send network setting up front so that agent can reconfigure networking stack
+      user_data[:networks] = Bosh::AwsCloud::AgentSettings.agent_network_spec(network_props) unless network_props.ipv6_networks.empty?
+      Base64.encode64(user_data.to_json).strip unless user_data.empty?
+
+      user_data
+    end
 
     def find_device_path_by_name(sd_name)
       xvd_name = sd_name.gsub(/^\/dev\/sd/, '/dev/xvd')
