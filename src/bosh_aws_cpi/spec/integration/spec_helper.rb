@@ -82,7 +82,7 @@ RSpec.configure do |rspec_config|
     allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(@registry)
     allow(@registry).to receive(:read_settings).and_return({})
 
-    @cpi = Bosh::AwsCloud::Cloud.new(
+    @cpi = Bosh::AwsCloud::CloudV1.new(
       'aws' => {
         'region' => @region,
         'default_key_name' => @default_key_name,

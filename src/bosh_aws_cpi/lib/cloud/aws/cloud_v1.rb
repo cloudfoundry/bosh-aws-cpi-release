@@ -476,8 +476,6 @@ module Bosh::AwsCloud
       # If IPv6 network is present then send network setting up front so that agent can reconfigure networking stack
       user_data[:networks] = Bosh::AwsCloud::AgentSettings.agent_network_spec(network_props) unless network_props.ipv6_networks.empty?
       Base64.encode64(user_data.to_json).strip unless user_data.empty?
-
-      user_data
     end
 
     def find_device_path_by_name(sd_name)
