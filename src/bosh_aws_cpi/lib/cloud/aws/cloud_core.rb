@@ -2,7 +2,7 @@ require 'cloud/aws/stemcell_finder'
 require 'uri'
 
 module Bosh::AwsCloud
-  class CloudCore < Bosh::Cloud
+  class CloudCore
     include Helpers
 
     CPI_API_VERSION = 2
@@ -18,7 +18,7 @@ module Bosh::AwsCloud
     # @param [Bosh::Cpi::Logger] logger AWS specific options
     def initialize(config, logger, volume_manager, az_selector)
       @config = config
-      @cpi_api_version = @config.api_version || CPI_API_VERSION
+      @cpi_api_version = @config.api_version
       @logger = logger
 
       @aws_provider = Bosh::AwsCloud::AwsProvider.new(@config.aws, @logger)
@@ -43,7 +43,7 @@ module Bosh::AwsCloud
       @logger.info("Sending info:V2'")
       {
         'stemcell_formats' => %w(aws-raw aws-light),
-        'api_version' => @cpi_api_version
+        'api_version' => CPI_API_VERSION
       }
     end
 

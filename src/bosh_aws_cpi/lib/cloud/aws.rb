@@ -52,7 +52,7 @@ module Bosh
     class Aws
       def create_cloud(cpi_api_version, cloud_properties)
         if cpi_api_version && cpi_api_version > 1
-          Bosh::AwsCloud::CloudV2.new(cpi_api_version, cloud_properties)
+          Bosh::AwsCloud::CloudV2.new(cloud_properties)
         else
           Bosh::AwsCloud::CloudV1.new(cloud_properties)
         end

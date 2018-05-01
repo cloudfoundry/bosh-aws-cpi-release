@@ -1,9 +1,9 @@
 require 'spec_helper'
 
 describe Bosh::AwsCloud::CloudV2 do
-  subject(:cloud) { described_class.new(cpi_version, options) }
+  subject(:cloud) { described_class.new(options) }
 
-  let(:cpi_version) { 2 }
+  let(:cloud_core) { instance_double(Bosh::AwsCloud::CloudCore) }
   let(:options) { mock_cloud_options['properties'] }
 
   let(:az_selector) { instance_double(Bosh::AwsCloud::AvailabilityZoneSelector) }
@@ -157,7 +157,7 @@ describe Bosh::AwsCloud::CloudV2 do
 
   describe '#info' do
     it 'returns correct info' do
-      expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light'], 'api_version' => cpi_version})
+      expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light'], 'api_version' => 2})
     end
   end
 

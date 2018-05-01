@@ -15,7 +15,7 @@ module Bosh::AwsCloud
     # @option options [Hash] aws AWS specific options
     # @option options [Hash] agent agent options
     # @option options [Hash] registry agent options
-    def initialize(cpi_api_version, options)
+    def initialize(options)
       super(options)
     end
 

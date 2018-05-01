@@ -190,7 +190,7 @@ describe Bosh::AwsCloud::CloudV1 do
           let(:cloud_core) { Bosh::AwsCloud::CloudCore.new(config, logger, volume_manager, az_selector) }
 
           it 'returns correct api_version in info' do
-            expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light'], 'api_version' => options['api_version']})
+            expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light'], 'api_version' => api_version})
           end
         end
       end

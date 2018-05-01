@@ -92,7 +92,7 @@ module Bosh::AwsCloud
       @aws = AwsConfig.new(config_hash['aws'] || {})
       @registry = RegistryConfig.new(config_hash['registry'] || {})
       @agent = AgentConfig.new(config_hash['agent'] || {})
-      @api_version = config_hash['api_version'] || nil
+      @api_version = config_hash.fetch('api_version', 1) # introduced V2
     end
 
     ##

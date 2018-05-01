@@ -87,7 +87,7 @@ describe Bosh::AwsCloud::CloudCore do
       end
 
       it 'returns correct api_version in info' do
-        expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light'], 'api_version' => options['api_version']})
+        expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light'], 'api_version' => api_version})
       end
     end
   end
