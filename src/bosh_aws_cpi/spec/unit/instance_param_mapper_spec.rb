@@ -316,7 +316,7 @@ module Bosh::AwsCloud
       end
 
       context 'when dns is provided by networks in networks_spec' do
-        let(:user_data) { Base64.encode64("{'networks' => #{Bosh::AwsCloud::AgentSettings.agent_network_spec(network_cloud_props)}}".to_json).strip }
+        let(:user_data) { Base64.encode64("{'networks' => #{agent_network_spec(network_cloud_props)}}".to_json).strip }
         let(:networks_spec) do
           {
             'net1' => {},
@@ -339,7 +339,7 @@ module Bosh::AwsCloud
       end
 
       context 'when IPv6 network address is present' do
-        let(:user_data) { Base64.encode64("{'networks' => #{Bosh::AwsCloud::AgentSettings.agent_network_spec(network_cloud_props)}}".to_json).strip }
+        let(:user_data) { Base64.encode64("{'networks' => #{agent_network_spec(network_cloud_props)}}".to_json).strip }
         let(:networks_spec) do
           {
             'net1' => {},
@@ -466,7 +466,7 @@ module Bosh::AwsCloud
         end
 
         context 'when the one manual network address is IPv6' do
-          let(:user_data) { Base64.encode64("{'networks' => #{Bosh::AwsCloud::AgentSettings.agent_network_spec(network_cloud_props)}}".to_json).strip }
+          let(:user_data) { Base64.encode64("{'networks' => #{agent_network_spec(network_cloud_props)}}".to_json).strip }
           let(:networks_spec) do
             {
               'net1' => {
@@ -694,7 +694,7 @@ module Bosh::AwsCloud
 
       context 'when a full spec is provided' do
         context 'with security group IDs' do
-          let(:user_data) { Base64.encode64("{'networks' => #{Bosh::AwsCloud::AgentSettings.agent_network_spec(network_cloud_props)}}".to_json).strip }
+          let(:user_data) { Base64.encode64("{'networks' => #{agent_network_spec(network_cloud_props)}}".to_json).strip }
           let(:vm_type) do
             {
               'instance_type' => 'fake-instance-type',
@@ -861,6 +861,16 @@ module Bosh::AwsCloud
     def mapping(input)
       instance_param_mapper.manifest_params = input
       instance_param_mapper.instance_params
+    end
+
+    def agent_network_spec(networks_cloud_props)
+      spec = networks_cloud_props.networks.map do |net|
+        settings = net.to_h
+        settings['use_dhcp'] = true
+
+        [net.name, settings]
+      end
+      Hash[spec]
     end
   end
 end

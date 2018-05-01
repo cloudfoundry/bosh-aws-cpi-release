@@ -4,19 +4,35 @@ require 'cloud_v2'
 
 module Bosh::AwsCloud
   class CloudV2 < Bosh::AwsCloud::CloudV1
-
     METADATA_TIMEOUT = 5 # in seconds
     DEVICE_POLL_TIMEOUT = 60 # in seconds
+    REGISTRY_REQUIRED = false
 
     ##
     # Initialize BOSH AWS CPI. The contents of sub-hashes are defined in the {file:README.md}
-    # @param [Integer] cpi_api_version API version to use for this CPI call
     # @param [Hash] options CPI options
     # @option options [Hash] aws AWS specific options
     # @option options [Hash] agent agent options
     # @option options [Hash] registry agent options
     def initialize(options)
       super(options)
+
+      @config = Bosh::AwsCloud::Config.build(options.dup.freeze, REGISTRY_REQUIRED)
+      @stemcell_api_version = @config.stemcell_api_version
+      @logger = Bosh::Clouds::Config.logger
+      request_id = options['aws']['request_id']
+      if request_id
+        @logger.set_request_id(request_id)
+      end
+
+      @registry = Bosh::Cpi::RegistryClient.new(
+        @config.registry.endpoint,
+        @config.registry.user,
+        @config.registry.password
+      )
+
+      @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector)
+      @props_factory = Bosh::AwsCloud::PropsFactory.new(@config)
     end
 
     ##
@@ -34,10 +50,25 @@ module Bosh::AwsCloud
     #   availability zone)
     # @param [optional, Hash] environment data to be merged into
     #   agent settings
-    # @return [Array] Contains VM ID, list of networks and disk_hints for attached disks
+    # @return [Array] Contains VM ID, and disk_hints for attached disks
     def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = [], environment = nil)
-      vm_cid = super(agent_id, stemcell_id, vm_type, network_spec, disk_locality, environment)
-      [vm_cid, [], {}]
+      with_thread_name("create_vm(#{agent_id}, ...)") do
+        network_props = @props_factory.network_props(network_spec)
+
+        registry = {endpoint: @registry.endpoint}
+        network_with_dns = network_props.dns_networks.first
+        dns = {nameserver: network_with_dns.dns} unless network_with_dns.nil?
+        registry_settings = AgentSettings.new(registry, network_props, dns)
+        registry_settings.environment = environment
+        registry_settings.agent_id = agent_id
+
+        instance_id, disk_hints = @cloud_core.create_vm(agent_id, stemcell_id, vm_type, network_props, registry_settings, disk_locality, environment) do
+        |instance_id, settings|
+          @registry.update_settings(instance_id, settings.agent_settings) if @stemcell_api_version < 2
+        end
+
+        [instance_id, disk_hints]
+      end
     end
 
     # Attaches a disk

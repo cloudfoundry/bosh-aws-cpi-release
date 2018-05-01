@@ -63,7 +63,7 @@ module Bosh::AwsCloud
     # @param [optional, Hash] environment data to be merged into
     #   agent settings
     # @return [String] EC2 instance id of the new virtual machine
-    def create_vm(agent_id, stemcell_id, vm_type, network_props, user_data, disk_locality = [], environment = nil)
+    def create_vm(agent_id, stemcell_id, vm_type, network_props, settings, disk_locality = [], environment = nil)
       vm_props = @props_factory.vm_props(vm_type)
 
       # do this early to fail fast
@@ -88,6 +88,10 @@ module Bosh::AwsCloud
           ephemeral_disk_base_snapshot
         ).mappings_and_info
 
+        settings.agent_disk_info = agent_info
+        settings.root_device_name = stemcell.root_device_name
+        settings.agent_config = @config.agent
+
         instance = @instance_manager.create(
           stemcell.image_id,
           vm_props,
@@ -95,7 +99,7 @@ module Bosh::AwsCloud
           (disk_locality || []),
           @config.aws.default_security_groups,
           block_device_mappings,
-          user_data
+          settings.encode(@cpi_api_version)
         )
 
         target_groups.each do |target_group_name|
@@ -112,9 +116,9 @@ module Bosh::AwsCloud
 
         NetworkConfigurator.new(network_props).configure(@ec2_resource, instance)
 
-        yield(instance.id, agent_id, network_props, environment, stemcell.root_device_name, agent_info, @config.agent) if block_given?
+        yield(instance.id, settings) if block_given?
 
-        instance.id
+        return instance.id, agent_info
       rescue => e # is this rescuing too much?
         logger.error(%Q[Failed to create instance: #{e.message}\n#{e.backtrace.join("\n")}])
         instance.terminate(@config.aws.fast_path_delete?) if instance

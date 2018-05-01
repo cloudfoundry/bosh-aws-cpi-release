@@ -54,6 +54,8 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
   let(:instance) {instance_double(Bosh::AwsCloud::Instance, id: 'fake-id')}
   let(:network_configurator) {instance_double(Bosh::AwsCloud::NetworkConfigurator)}
 
+  let(:agent_settings) {instance_double(Bosh::AwsCloud::AgentSettings).as_null_object}
+
   before do
     allow(Bosh::AwsCloud::InstanceManager).to receive(:new).and_return(instance_manager)
     allow(instance_manager).to receive(:create).and_return(instance)
@@ -78,7 +80,7 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
       expect(instance).to receive(:terminate)
 
       expect do
-        cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, user_data, disk_locality, environment) do
+        cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment) do
           raise 'CreateVM runtime error'
         end
       end.to raise_error RuntimeError, /CreateVM runtime error/
@@ -96,18 +98,18 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
       anything,
       anything
     ).and_return(instance)
-    expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, 'something', disk_locality, environment)).to eq('fake-id')
+    expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)).to eq(['fake-id', block_device_agent_info])
   end
 
   it 'should create an EC2 instance and return its id' do
     allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: instance, state: :running)
-    expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, 'user-data', disk_locality, environment)).to eq('fake-id')
+    expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)).to eq(['fake-id', block_device_agent_info])
   end
 
   it 'should configure the IP for the created instance according to the network specifications' do
     allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: instance, state: :running)
     expect(network_configurator).to receive(:configure).with(ec2, instance)
-    cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, 'user-data', disk_locality, environment)
+    cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)
   end
 
   context 'when specifying kms encryption for ephemeral device' do
@@ -127,6 +129,7 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
 
     before do
       allow(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(snapshot: temp_snapshot, state: 'completed')
+      allow(agent_settings).to receive(:encode).and_return('my-encoded-value')
     end
 
     it 'creates and deletes an encrypted volume and snapshot and sends the snapshot to block device manager' do
@@ -151,10 +154,10 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
         disk_locality,
         [],
         mappings,
-        'my user data'
+        'my-encoded-value'
       )
 
-      cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, 'my user data', disk_locality, environment)
+      cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)
     end
   end
 end

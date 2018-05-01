@@ -73,10 +73,10 @@ module Bosh::AwsCloud
   end
 
   class Config
-    attr_reader :aws, :registry, :agent, :api_version
+    attr_reader :aws, :registry, :agent, :api_version, :stemcell_api_version
 
-    def self.build(config_hash, validate_registry)
-      Config.validate(config_hash, validate_registry)
+    def self.build(config_hash, registry_required)
+      Config.validate(config_hash, registry_required)
       new(config_hash)
     end
 
@@ -93,6 +93,11 @@ module Bosh::AwsCloud
       @registry = RegistryConfig.new(config_hash['registry'] || {})
       @agent = AgentConfig.new(config_hash['agent'] || {})
       @api_version = config_hash.fetch('api_version', 1) # introduced V2
+      @stemcell_api_version = parse_stemcell_api_version(config_hash['aws'])
+    end
+
+    def parse_stemcell_api_version(aws_config_hash)
+      aws_config_hash.fetch('vm', {}).fetch('stemcell', {}).fetch('api_version', 1)
     end
 
     ##

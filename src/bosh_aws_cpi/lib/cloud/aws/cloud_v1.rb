@@ -2,7 +2,8 @@ require 'cloud/aws/stemcell_finder'
 require 'uri'
 
 module Bosh::AwsCloud
-  class CloudV1 < Bosh::Cloud
+  class CloudV1
+    include Bosh::CloudV1
     include Helpers
 
     CPI_API_VERSION = 2
@@ -101,21 +102,19 @@ module Bosh::AwsCloud
       with_thread_name("create_vm(#{agent_id}, ...)") do
         network_props = @props_factory.network_props(network_spec)
 
-        user_data = user_data(network_props)
+        registry = {endpoint: @registry.endpoint}
+        network_with_dns = network_props.dns_networks.first
+        dns = {nameserver: network_with_dns.dns} unless network_with_dns.nil?
+        registry_settings = AgentSettings.new(registry, network_props, dns)
+        registry_settings.environment = environment
+        registry_settings.agent_id = agent_id
 
-        @cloud_core.create_vm(agent_id, stemcell_id, vm_type, network_props, user_data, disk_locality, environment) do
-        |instance_id, agent_id, network_props, environment, root_device_name, agent_info, agent|
-          registry_settings = AgentSettings.new(
-            agent_id,
-            network_props,
-            environment,
-            root_device_name,
-            agent_info,
-            agent
-          )
-
-          @registry.update_settings(instance_id, registry_settings.settings)
+        instance_id, _ = @cloud_core.create_vm(agent_id, stemcell_id, vm_type, network_props, registry_settings, disk_locality, environment) do
+        |instance_id, settings|
+          @registry.update_settings(instance_id, settings.agent_settings)
         end
+
+        instance_id
       end
     end
 
@@ -466,18 +465,6 @@ module Bosh::AwsCloud
     end
 
     private
-    def user_data(network_props)
-      user_data = {}
-
-      user_data[:registry] = {endpoint: @registry.endpoint}
-      network_with_dns = network_props.dns_networks.first
-      user_data[:dns] = {nameserver: network_with_dns.dns} unless network_with_dns.nil?
-
-      # If IPv6 network is present then send network setting up front so that agent can reconfigure networking stack
-      user_data[:networks] = Bosh::AwsCloud::AgentSettings.agent_network_spec(network_props) unless network_props.ipv6_networks.empty?
-      Base64.encode64(user_data.to_json).strip unless user_data.empty?
-    end
-
     def find_device_path_by_name(sd_name)
       xvd_name = sd_name.gsub(/^\/dev\/sd/, '/dev/xvd')
 

@@ -180,13 +180,65 @@ describe Bosh::AwsCloud::CloudV2 do
 
     let(:disk_locality) { ['some', 'disk', 'locality'] }
     let(:environment) { 'environment' }
+    let(:agent_settings_double) { instance_double(Bosh::AwsCloud::AgentSettings)}
+    let(:registry) { instance_double(Bosh::Cpi::RegistryClient) }
 
     before do
-      allow_any_instance_of(Bosh::AwsCloud::CloudV1).to receive(:create_vm).and_return(instance.id)
+      allow(Bosh::AwsCloud::CloudCore).to receive(:new).and_return(cloud_core)
+      allow(cloud_core).to receive(:create_vm).and_return([instance.id, 'disk_hints'])
     end
 
-    it 'should create an EC2 instance and return its id' do
-      expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq([instance.id, [], {}])
+    it 'should create an EC2 instance and return its id and disk hints' do
+      expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq([instance.id, 'disk_hints'])
+    end
+
+    context 'when stemcell version is less than 2' do
+      let(:instance_id) {'instance-id'}
+      let(:agent_settings) do
+        {
+          'vm' => {
+            'name' => 'vm-rand0m'
+          },
+          'agent_id' => agent_id,
+          'networks' => {
+            'fake-network-name-1' => {
+              'type' => 'dynamic',
+              'use_dhcp' => true,
+            },
+            'fake-network-name-2' => {
+              'type' => 'manual',
+              'use_dhcp' => true,
+            }
+          },
+          'disks' => {
+            'system' => 'root name',
+            'ephemeral' => '/dev/sdz',
+            'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}],
+            'persistent' => {}
+          },
+          'env' => environment,
+          'baz' => 'qux'
+        }
+      end
+
+      before do
+        allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
+        allow(agent_settings_double).to receive(:agent_settings).and_return(agent_settings)
+        allow(cloud_core).to receive(:create_vm).and_yield(instance_id, agent_settings_double)
+        allow(registry).to receive(:endpoint).and_return('http://something.12.34.52')
+      end
+
+      it 'updates the registry' do
+        expect(registry).to receive(:update_settings).with(instance_id, agent_settings)
+        cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
+      end
+    end
+
+    context 'when stemcell version is 2 or greater' do
+      it 'should not update the registry' do
+        expect(registry).to_not receive(:update_settings)
+        cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
+      end
     end
   end
 

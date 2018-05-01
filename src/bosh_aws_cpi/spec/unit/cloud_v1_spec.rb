@@ -336,6 +336,7 @@ describe Bosh::AwsCloud::CloudV1 do
     let(:vm_type) { 'vm-type' }
     let(:disk_locality) { [] }
     let(:cloud_core) { instance_double(Bosh::AwsCloud::CloudCore) }
+    let(:agent_settings_double) {instance_double(Bosh::AwsCloud::AgentSettings)}
 
     before do
       allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
@@ -346,8 +347,6 @@ describe Bosh::AwsCloud::CloudV1 do
     end
 
     it 'updates the registry' do
-      allow(cloud_core).to receive(:create_vm).and_yield(instance_id, agent_id, networks_cloud_props, environment, root_device_name, agent_info, agent_config)
-
       agent_settings = {
         'vm' => {
           'name' => 'vm-rand0m'
@@ -372,6 +371,9 @@ describe Bosh::AwsCloud::CloudV1 do
         'env' => environment,
         'baz' => 'qux'
       }
+
+      allow(agent_settings_double).to receive(:agent_settings).and_return(agent_settings)
+      allow(cloud_core).to receive(:create_vm).and_yield(instance_id, agent_settings_double)
       expect(registry).to receive(:update_settings).with(instance_id, agent_settings)
 
       cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)

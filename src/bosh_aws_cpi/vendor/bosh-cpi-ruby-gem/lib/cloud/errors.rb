@@ -1,5 +1,6 @@
 module Bosh::Clouds
   class CpiError < StandardError; end
+  class CPIAPIVersionNotSupported < CpiError; end
   class NotImplemented < CpiError; end
   class NotSupported < CpiError; end
 
