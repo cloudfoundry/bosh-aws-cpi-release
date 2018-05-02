@@ -72,16 +72,29 @@ module Bosh::AwsCloud
     end
 
     # Attaches a disk
-    # @param [String] vm vm id that was once returned by {#create_vm}
-    # @param [String] disk disk id that was once returned by {#create_disk}
+    # @param [String] vm_id vm id that was once returned by {#create_vm}
+    # @param [String] disk_id disk id that was once returned by {#create_disk}
     # @param [Hash] disk_hints list of attached disks {#create_disk}
     # @return [String] hint for location of attached disk
-    def attach_disk(vm_id, disk_id, disk_hints={})
+    def attach_disk(vm_id, disk_id, disk_hints = {})
       # aws_cloud.attach_disk(vm_id, disk_id)
       super(vm_id, disk_id)
       #this will be replaced by metadata service calls
       settings = registry.read_settings(vm_id)
       settings['disks']['persistent'][disk_id]
+    end
+
+    ##
+    # Delete EC2 instance ("terminate" in AWS language) and wait until
+    # it reports as terminated
+    # @param [String] instance_id EC2 instance id
+    def delete_vm(instance_id)
+      with_thread_name("delete_vm(#{instance_id})") do
+        logger.info("Deleting instance '#{instance_id}'")
+        @cloud_core.delete_vm(instance_id) do |instance_id|
+          @registry.delete_settings(instance_id) if @stemcell_api_version < 2
+        end
+      end
     end
   end
 end

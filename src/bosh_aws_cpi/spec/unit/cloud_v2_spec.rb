@@ -166,6 +166,7 @@ describe Bosh::AwsCloud::CloudV2 do
     let(:agent_id) {'agent_id'}
     let(:stemcell_id) {'stemcell_id'}
     let(:vm_type) { {} }
+    let(:instance_id) {'instance-id'}
 
     let(:networks_spec) do
       {
@@ -182,10 +183,40 @@ describe Bosh::AwsCloud::CloudV2 do
     let(:environment) { 'environment' }
     let(:agent_settings_double) { instance_double(Bosh::AwsCloud::AgentSettings)}
     let(:registry) { instance_double(Bosh::Cpi::RegistryClient) }
+    let(:agent_settings) do
+      {
+        'vm' => {
+          'name' => 'vm-rand0m'
+        },
+        'agent_id' => agent_id,
+        'networks' => {
+          'fake-network-name-1' => {
+            'type' => 'dynamic',
+            'use_dhcp' => true,
+          },
+          'fake-network-name-2' => {
+            'type' => 'manual',
+            'use_dhcp' => true,
+          }
+        },
+        'disks' => {
+          'system' => 'root name',
+          'ephemeral' => '/dev/sdz',
+          'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}],
+          'persistent' => {}
+        },
+        'env' => environment,
+        'baz' => 'qux'
+      }
+    end
 
     before do
+      allow(agent_settings_double).to receive(:agent_settings).and_return(agent_settings)
+      allow(registry).to receive(:update_settings)
+      allow(registry).to receive(:endpoint).and_return('http://something.12.34.52')
+      allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
       allow(Bosh::AwsCloud::CloudCore).to receive(:new).and_return(cloud_core)
-      allow(cloud_core).to receive(:create_vm).and_return([instance.id, 'disk_hints'])
+      allow(cloud_core).to receive(:create_vm).and_return([instance.id, 'disk_hints']).and_yield(instance_id, agent_settings_double)
     end
 
     it 'should create an EC2 instance and return its id and disk hints' do
@@ -193,41 +224,6 @@ describe Bosh::AwsCloud::CloudV2 do
     end
 
     context 'when stemcell version is less than 2' do
-      let(:instance_id) {'instance-id'}
-      let(:agent_settings) do
-        {
-          'vm' => {
-            'name' => 'vm-rand0m'
-          },
-          'agent_id' => agent_id,
-          'networks' => {
-            'fake-network-name-1' => {
-              'type' => 'dynamic',
-              'use_dhcp' => true,
-            },
-            'fake-network-name-2' => {
-              'type' => 'manual',
-              'use_dhcp' => true,
-            }
-          },
-          'disks' => {
-            'system' => 'root name',
-            'ephemeral' => '/dev/sdz',
-            'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}],
-            'persistent' => {}
-          },
-          'env' => environment,
-          'baz' => 'qux'
-        }
-      end
-
-      before do
-        allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
-        allow(agent_settings_double).to receive(:agent_settings).and_return(agent_settings)
-        allow(cloud_core).to receive(:create_vm).and_yield(instance_id, agent_settings_double)
-        allow(registry).to receive(:endpoint).and_return('http://something.12.34.52')
-      end
-
       it 'updates the registry' do
         expect(registry).to receive(:update_settings).with(instance_id, agent_settings)
         cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
@@ -235,6 +231,20 @@ describe Bosh::AwsCloud::CloudV2 do
     end
 
     context 'when stemcell version is 2 or greater' do
+      let(:options) do
+        mock_cloud_properties_merge(
+          {
+            'aws' => {
+              'vm' => {
+                'stemcell' => {
+                  'api_version' => 2
+                }
+              }
+            }
+          }
+        )
+      end
+
       it 'should not update the registry' do
         expect(registry).to_not receive(:update_settings)
         cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
@@ -251,7 +261,6 @@ describe Bosh::AwsCloud::CloudV2 do
     let(:subnet) { instance_double(Aws::EC2::Subnet) }
     let(:fake_cloud_v1) {instance_double(Bosh::AwsCloud::CloudV1, :attach_disk => {})}
     let(:endpoint) {'http://registry:3333'}
-    # let(:registry) {instance_double(Bosh::Cpi::RegistryClient, :endpoint => endpoint, :read_setting => settings)}
     let(:settings) {
       {
         'foo' => 'bar',
@@ -268,7 +277,52 @@ describe Bosh::AwsCloud::CloudV2 do
     end
 
     it 'should attach an EC2 volume to an instance' do
-      expect(cloud.attach_disk(instance_id, volume_id, {})).to eq(device_name)
+      expect(subject.attach_disk(instance_id, volume_id)).to eq(device_name)
+    end
+  end
+
+  describe '#delete_vm' do
+    let(:instance_id){ 'i-test' }
+    let(:registry) { instance_double(Bosh::Cpi::RegistryClient) }
+
+    before do
+      allow(cloud_core).to receive(:delete_vm).and_return(instance_id).and_yield(instance_id)
+      allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
+      allow(Bosh::AwsCloud::CloudCore).to receive(:new).and_return(cloud_core)
+      allow(registry).to receive(:delete_settings)
+    end
+
+    it 'deletes the vm' do
+      expect(cloud_core).to receive(:delete_vm).with(instance_id)
+      expect(subject.delete_vm(instance_id)).to eq(instance_id)
+    end
+
+    context 'stemcell version is less than 2' do
+      it 'should update the registry' do
+        expect(registry).to receive(:delete_settings)
+        subject.delete_vm(instance_id)
+      end
+    end
+
+    context 'stemcell version is 2 or greater' do
+      let(:options) do
+        mock_cloud_properties_merge(
+          {
+            'aws' => {
+              'vm' => {
+                'stemcell' => {
+                  'api_version' => 2
+                }
+              }
+            }
+          }
+        )
+      end
+
+      it 'should not update the registry' do
+        expect(registry).to_not receive(:delete_settings)
+        subject.delete_vm(instance_id)
+      end
     end
   end
 end

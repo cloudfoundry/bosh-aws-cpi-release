@@ -41,6 +41,7 @@ end
 def mock_cloud_options_merge(override_options, base_hash = mock_cloud_options)
   merged_options = {}
   override_options ||= {}
+  base_hash ||= {}
 
   override_options.each do |key, value|
     if value.is_a? Hash
