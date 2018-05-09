@@ -211,7 +211,6 @@ module Bosh::AwsCloud
 
         'hs1.8xlarge' => [2000, 24],
 
-        # current generation
         'm3.medium' => [4, 1],
         'm3.large' => [32, 1],
         'm3.xlarge' => [40, 2],
