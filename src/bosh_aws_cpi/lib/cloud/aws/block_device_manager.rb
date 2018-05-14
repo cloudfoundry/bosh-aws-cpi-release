@@ -1,8 +1,8 @@
 module Bosh::AwsCloud
   class BlockDeviceManager
-    def self.default_instance_storage_disk_mapping
-      { device_name: '/dev/sdb', virtual_name: 'ephemeral0' }
-    end
+    DEFAULT_INSTANCE_STORAGE_DISK_MAPPING = { device_name: '/dev/sdb', virtual_name: 'ephemeral0' }.freeze
+    DEFAULT_NVME_EPHEMERAL_DEVICE_PATH = '/dev/nvme1n1'.freeze
+    NVME_EBS_BY_ID_DEVICE_PATH_PREFIX = '/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_'
 
     def initialize(logger, stemcell, vm_cloud_props, snapshot)
       @logger = logger
@@ -19,22 +19,46 @@ module Bosh::AwsCloud
       return mappings(info), agent_info(info)
     end
 
+    def self.device_path(device_name, instance_type, volume_id)
+      if BlockDeviceManager.requires_nvme_device(instance_type)
+        NVME_EBS_BY_ID_DEVICE_PATH_PREFIX + volume_id.sub('-', '')
+      else
+        device_name
+      end
+    end
+
+    def self.requires_nvme_device(instance_type)
+      instance_type = instance_type.nil? ? 'unspecified' : instance_type
+      instance_type =~ /^[cm]5\./
+    end
+
     private
 
     def mappings(info)
       instance_type = @vm_cloud_props.instance_type.nil? ? 'unspecified' : @vm_cloud_props.instance_type
-      if instance_type =~ /^i3./
-        info = info.reject {|device| device[:bosh_type] == 'raw_ephemeral' }
+      if instance_type =~ /^i3\./
+        info = info.reject { |device| device[:bosh_type] == 'raw_ephemeral' }
       end
 
       info.map { |entry| entry.reject { |k| k == :bosh_type } }
     end
 
     def agent_info(info)
-      info.group_by { |v| v[:bosh_type] }
-        .map { |type, devices| {type => devices.map { |device| { 'path' => device[:device_name]} }} }
-        .select { |elem| elem[nil].nil? }
-        .inject({}) { |a, b| a.merge(b) }
+      info.group_by { |v| v[:bosh_type] }.map do |type, devices|
+        {
+          type => devices.map do |device|
+            if BlockDeviceManager.requires_nvme_device(@vm_cloud_props.instance_type)
+              { 'path' => DEFAULT_NVME_EPHEMERAL_DEVICE_PATH }
+            else
+              { 'path' => device[:device_name] }
+            end
+          end
+        }
+      end.select do |elem|
+        elem[nil].nil?
+      end.inject({}) do |a, b|
+        a.merge(b)
+      end
     end
 
     def build_info
@@ -78,7 +102,7 @@ module Bosh::AwsCloud
         end
 
         @logger.debug('Use instance storage to create the virtual machine')
-        result = BlockDeviceManager.default_instance_storage_disk_mapping
+        result = DEFAULT_INSTANCE_STORAGE_DISK_MAPPING.dup
       else
         @logger.debug('Use EBS storage to create the virtual machine')
         disk_size = DiskInfo.default.size_in_mb

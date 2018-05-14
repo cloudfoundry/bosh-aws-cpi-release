@@ -284,7 +284,7 @@ module Bosh::AwsCloud
         update_agent_settings(instance) do |settings|
           settings['disks'] ||= {}
           settings['disks']['persistent'] ||= {}
-          settings['disks']['persistent'][disk_id] = device_name
+          settings['disks']['persistent'][disk_id] = BlockDeviceManager.device_path(device_name, instance.instance_type, disk_id)
         end
         logger.info("Attached `#{disk_id}' to `#{instance_id}'")
       end

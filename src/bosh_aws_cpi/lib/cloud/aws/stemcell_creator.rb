@@ -115,7 +115,7 @@ module Bosh::AwsCloud
         :architecture => @stemcell_props.architecture,
       )
 
-      params[:block_device_mappings].push(BlockDeviceManager.default_instance_storage_disk_mapping)
+      params[:block_device_mappings].push(BlockDeviceManager::DEFAULT_INSTANCE_STORAGE_DISK_MAPPING)
 
       params
     end
