@@ -98,12 +98,12 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
       anything,
       anything
     ).and_return(instance)
-    expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)).to eq(['fake-id', block_device_agent_info])
+    expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)).to eq(['fake-id', networks_cloud_props])
   end
 
-  it 'should create an EC2 instance and return its id' do
+  it 'should create an EC2 instance and return its id and network info' do
     allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: instance, state: :running)
-    expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)).to eq(['fake-id', block_device_agent_info])
+    expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)).to eq(['fake-id', networks_cloud_props])
   end
 
   it 'should configure the IP for the created instance according to the network specifications' do

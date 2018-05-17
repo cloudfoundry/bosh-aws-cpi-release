@@ -62,7 +62,7 @@ module Bosh::AwsCloud
     #   availability zone)
     # @param [optional, Hash] environment data to be merged into
     #   agent settings
-    # @return [String] EC2 instance id of the new virtual machine
+    # @return String, Hash - EC2 instance id of the new virtual machine, Network info
     def create_vm(agent_id, stemcell_id, vm_type, network_props, settings, disk_locality = [], environment = nil)
       vm_props = @props_factory.vm_props(vm_type)
 
@@ -81,14 +81,14 @@ module Bosh::AwsCloud
         stemcell = StemcellFinder.find_by_id(@ec2_resource, stemcell_id)
 
         ephemeral_disk_base_snapshot = temporary_snapshot(agent_id, vm_props)
-        block_device_mappings, agent_info = Bosh::AwsCloud::BlockDeviceManager.new(
+        block_device_mappings, agent_disk_info = Bosh::AwsCloud::BlockDeviceManager.new(
           @logger,
           stemcell,
           vm_props,
           ephemeral_disk_base_snapshot
         ).mappings_and_info
 
-        settings.agent_disk_info = agent_info
+        settings.agent_disk_info = agent_disk_info
         settings.root_device_name = stemcell.root_device_name
         settings.agent_config = @config.agent
 
@@ -118,7 +118,8 @@ module Bosh::AwsCloud
 
         yield(instance.id, settings) if block_given?
 
-        return instance.id, agent_info
+        #TODO: we should get network props from instance.network_interfaces
+        return instance.id, network_props
       rescue => e # is this rescuing too much?
         logger.error(%Q[Failed to create instance: #{e.message}\n#{e.backtrace.join("\n")}])
         instance.terminate(@config.aws.fast_path_delete?) if instance

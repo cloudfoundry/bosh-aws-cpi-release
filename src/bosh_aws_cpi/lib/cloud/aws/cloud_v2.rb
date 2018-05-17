@@ -50,7 +50,7 @@ module Bosh::AwsCloud
     #   availability zone)
     # @param [optional, Hash] environment data to be merged into
     #   agent settings
-    # @return [Array] Contains VM ID, and disk_hints for attached disks
+    # @return [Array] Contains VM ID, and Network info
     def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = [], environment = nil)
       with_thread_name("create_vm(#{agent_id}, ...)") do
         network_props = @props_factory.network_props(network_spec)
@@ -62,12 +62,13 @@ module Bosh::AwsCloud
         registry_settings.environment = environment
         registry_settings.agent_id = agent_id
 
-        instance_id, disk_hints = @cloud_core.create_vm(agent_id, stemcell_id, vm_type, network_props, registry_settings, disk_locality, environment) do
+        #TODO : should use networks from core create_vm in future
+        instance_id, networks = @cloud_core.create_vm(agent_id, stemcell_id, vm_type, network_props, registry_settings, disk_locality, environment) do
         |instance_id, settings|
           @registry.update_settings(instance_id, settings.agent_settings) if @stemcell_api_version < 2
         end
 
-        [instance_id, disk_hints]
+        [instance_id, network_spec]
       end
     end
 

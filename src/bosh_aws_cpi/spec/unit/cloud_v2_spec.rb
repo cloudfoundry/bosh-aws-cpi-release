@@ -216,11 +216,11 @@ describe Bosh::AwsCloud::CloudV2 do
       allow(registry).to receive(:endpoint).and_return('http://something.12.34.52')
       allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
       allow(Bosh::AwsCloud::CloudCore).to receive(:new).and_return(cloud_core)
-      allow(cloud_core).to receive(:create_vm).and_return([instance.id, 'disk_hints']).and_yield(instance_id, agent_settings_double)
+      allow(cloud_core).to receive(:create_vm).and_return([instance.id, "anything"]).and_yield(instance_id, agent_settings_double)
     end
 
     it 'should create an EC2 instance and return its id and disk hints' do
-      expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq([instance.id, 'disk_hints'])
+      expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)).to eq([instance.id, networks_spec])
     end
 
     context 'when stemcell version is less than 2' do
@@ -252,6 +252,7 @@ describe Bosh::AwsCloud::CloudV2 do
     end
   end
 
+  #TODO: next story to attach_disk https://www.pivotaltracker.com/story/show/155297724
   describe '#attach_disk' do
     let(:instance_id){ 'i-test' }
     let(:volume_id) { 'v-foobar' }
