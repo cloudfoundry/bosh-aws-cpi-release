@@ -5,8 +5,9 @@ describe Bosh::AwsCloud::CloudV2 do
 
   let(:cloud_core) { instance_double(Bosh::AwsCloud::CloudCore) }
   let(:options) { mock_cloud_options['properties'] }
-
   let(:az_selector) { instance_double(Bosh::AwsCloud::AvailabilityZoneSelector) }
+  let(:registry) { instance_double(Bosh::Cpi::RegistryClient) }
+  let(:endpoint) {'http://registry:3333'}
 
   before do
     allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
@@ -245,40 +246,65 @@ describe Bosh::AwsCloud::CloudV2 do
         )
       end
 
-      it 'should not update the registry' do
+      it 'should NOT update the registry' do
         expect(registry).to_not receive(:update_settings)
         cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
       end
     end
   end
 
-  #TODO: next story to attach_disk https://www.pivotaltracker.com/story/show/155297724
   describe '#attach_disk' do
     let(:instance_id){ 'i-test' }
-    let(:volume_id) { 'v-foobar' }
-    let(:device_name) { '/dev/sdf' }
-    let(:instance) { instance_double(Aws::EC2::Instance, :id => instance_id ) }
-    let(:volume) { instance_double(Aws::EC2::Volume, :id => volume_id) }
-    let(:subnet) { instance_double(Aws::EC2::Subnet) }
-    let(:fake_cloud_v1) {instance_double(Bosh::AwsCloud::CloudV1, :attach_disk => {})}
-    let(:endpoint) {'http://registry:3333'}
+    let(:volume_id) { 'new-disk' }
+    let(:device_name) { '/dev/sdg' }
     let(:settings) {
       {
         'foo' => 'bar',
         'disks' => {
           'persistent' => {
-            'v-foobar' => '/dev/sdf'
+            'existing-disk' => '/dev/sdf'
           }
         }
       }
     }
+
+    let(:expected_settings) {settings do |s| s['disk']['persistent'][volume_id] = device_name end}
+
     before do
-      allow_any_instance_of(Bosh::AwsCloud::CloudV1).to receive(:attach_disk).and_return({})
-      allow_any_instance_of(Bosh::Cpi::RegistryClient).to receive(:read_settings).and_return(settings)
+      allow(registry).to receive(:update_settings)
+      allow(registry).to receive(:read_settings).and_return(settings)
+      allow(registry).to receive(:endpoint).and_return('http://something.12.34.52')
+      allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
+
+      allow(Bosh::AwsCloud::CloudCore).to receive(:new).and_return(cloud_core)
+      allow(cloud_core).to receive(:attach_disk).and_return(device_name).and_yield(device_name)
     end
 
-    it 'should attach an EC2 volume to an instance' do
-      expect(subject.attach_disk(instance_id, volume_id)).to eq(device_name)
+    context 'when stemcell version is less than 2' do
+      it 'should update registry' do
+        expect(registry).to receive(:update_settings).with(instance_id, expected_settings)
+        expect(subject.attach_disk(instance_id, volume_id)).to eq(device_name)
+      end
+    end
+
+    context 'when stemcell version is 2 or greater' do
+      let(:options) do
+        mock_cloud_properties_merge(
+          {
+            'aws' => {
+              'vm' => {
+                'stemcell' => {
+                  'api_version' => 2
+                }
+              }
+            }
+          }
+        )
+      end
+      it 'should NOT update registry' do
+        expect(registry).to_not receive(:update_settings)
+        expect(subject.attach_disk(instance_id, volume_id)).to eq(device_name)
+      end
     end
   end
 

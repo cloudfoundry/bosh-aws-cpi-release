@@ -52,7 +52,7 @@ module Bosh::AwsCloud
     #   agent settings
     # @return [Array] Contains VM ID, and Network info
     def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = [], environment = nil)
-      with_thread_name("create_vm(#{agent_id}, ...)") do
+      with_thread_name("create_vm(#{agent_id}, ...):v2") do
         network_props = @props_factory.network_props(network_spec)
 
         registry = {endpoint: @registry.endpoint}
@@ -75,14 +75,20 @@ module Bosh::AwsCloud
     # Attaches a disk
     # @param [String] vm_id vm id that was once returned by {#create_vm}
     # @param [String] disk_id disk id that was once returned by {#create_disk}
-    # @param [Hash] disk_hints list of attached disks {#create_disk}
     # @return [String] hint for location of attached disk
-    def attach_disk(vm_id, disk_id, disk_hints = {})
-      # aws_cloud.attach_disk(vm_id, disk_id)
-      super(vm_id, disk_id)
-      #this will be replaced by metadata service calls
-      settings = registry.read_settings(vm_id)
-      settings['disks']['persistent'][disk_id]
+    def attach_disk(vm_id, disk_id)
+      with_thread_name("attach_disk(#{vm_id}, #{disk_id})") do
+        device_name = @cloud_core.attach_disk(vm_id, disk_id) do |device_name|
+          if @stemcell_api_version < 2
+            update_agent_settings(vm_id) do |settings|
+              settings['disks'] ||= {}
+              settings['disks']['persistent'] ||= {}
+              settings['disks']['persistent'][disk_id] = device_name
+            end
+          end
+        end
+        device_name
+      end
     end
 
     ##

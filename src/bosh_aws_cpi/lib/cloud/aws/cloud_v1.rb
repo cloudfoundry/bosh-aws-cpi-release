@@ -235,21 +235,15 @@ module Bosh::AwsCloud
     # @param [String] disk_id EBS volume id of the disk to attach
     def attach_disk(instance_id, disk_id)
       with_thread_name("attach_disk(#{instance_id}, #{disk_id})") do
-        instance = @ec2_resource.instance(instance_id)
-        volume = @ec2_resource.volume(disk_id)
-
-        device_name = @volume_manager.attach_ebs_volume(instance, volume)
-
-        update_agent_settings(instance) do |settings|
-          settings['disks'] ||= {}
-          settings['disks']['persistent'] ||= {}
-          settings['disks']['persistent'][disk_id] = device_name
+        _ = @cloud_core.attach_disk(instance_id, disk_id) do |device_name|
+          update_agent_settings(instance_id) do |settings|
+            settings['disks'] ||= {}
+            settings['disks']['persistent'] ||= {}
+            settings['disks']['persistent'][disk_id] = device_name
+          end
         end
-        logger.info("Attached `#{disk_id}' to `#{instance_id}'")
       end
-
       # log registry settings for debugging
-      logger.debug("updated registry settings: #{registry.read_settings(instance_id)}")
     end
 
     # Detach an EBS volume from an EC2 instance
@@ -266,7 +260,7 @@ module Bosh::AwsCloud
           @logger.info("Disk `#{disk_id}' not found while trying to detach it from vm `#{instance_id}'...")
         end
 
-        update_agent_settings(instance) do |settings|
+        update_agent_settings(instance.id) do |settings|
           settings['disks'] ||= {}
           settings['disks']['persistent'] ||= {}
           settings['disks']['persistent'].delete(disk_id)
@@ -480,14 +474,15 @@ module Bosh::AwsCloud
       cloud_error('Cannot find EBS volume on current instance')
     end
 
-    def update_agent_settings(instance)
+    def update_agent_settings(instance_id)
       unless block_given?
         raise ArgumentError, 'block is not provided'
       end
 
-      settings = registry.read_settings(instance.id)
+      settings = registry.read_settings(instance_id)
       yield settings
-      registry.update_settings(instance.id, settings)
+      registry.update_settings(instance_id, settings)
+      logger.debug("updated registry settings: #{registry.read_settings(instance_id)}")
     end
 
     def create_ami_for_stemcell(image_path, stemcell_cloud_props)

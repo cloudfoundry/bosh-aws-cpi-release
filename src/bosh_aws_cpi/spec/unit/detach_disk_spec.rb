@@ -3,13 +3,14 @@
 require "spec_helper"
 
 describe Bosh::AwsCloud::CloudV1 do
+  let(:instance_id) { 'i-test' }
 
   before(:each) do
     @registry = mock_registry
   end
 
   it "detaches EC2 volume from an instance" do
-    instance = double("instance", :id => "i-test")
+    instance = double("instance", :id => instance_id)
     volume = double("volume", :id => "v-foobar", :exists? => true, :state => 'available')
     attachment = double("attachment", :device => "/dev/sdf")
 
@@ -26,7 +27,7 @@ describe Bosh::AwsCloud::CloudV1 do
     expect(instance).to receive(:block_device_mappings).and_return(mappings)
 
     expect(volume).to receive(:detach_from_instance).
-      with(instance_id: 'i-test', device: "/dev/sdf", force: false).and_return(attachment)
+      with(instance_id: instance_id, device: "/dev/sdf", force: false).and_return(attachment)
 
     allow(Bosh::AwsCloud::SdkHelpers::VolumeAttachment).to receive(:new).and_return(attachment)
 
@@ -52,10 +53,11 @@ describe Bosh::AwsCloud::CloudV1 do
     }
 
     expect(@registry).to receive(:read_settings).
-      with("i-test").
+      with(instance_id).
       and_return(old_settings)
 
-    expect(@registry).to receive(:update_settings).with("i-test", new_settings)
+    expect(@registry).to receive(:update_settings).with(instance_id, new_settings)
+    expect(@registry).to receive(:read_settings).with("i-test").and_return(new_settings)
 
     cloud.detach_disk("i-test", "v-foobar")
   end
@@ -88,11 +90,11 @@ describe Bosh::AwsCloud::CloudV1 do
       }
     }
 
-    expect(@registry).to receive(:read_settings).
-      with("i-test").
-      and_return(old_settings)
+    expect(@registry).to receive(:read_settings).with("i-test").and_return(old_settings)
 
     expect(@registry).to receive(:update_settings).with("i-test", new_settings)
+    expect(@registry).to receive(:read_settings).with("i-test").and_return(new_settings)
+
 
     allow(volume).to receive(:state).and_raise(Aws::EC2::Errors::InvalidVolumeNotFound.new(nil, 'not-found'))
 

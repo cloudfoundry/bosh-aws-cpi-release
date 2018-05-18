@@ -84,13 +84,12 @@ module Bosh
     # Attaches a disk
     # @param [String] vm vm id that was once returned by {#create_vm}
     # @param [String] disk disk id that was once returned by {#create_disk}
-    # @param [Hash] disk_hints list of attached disks {#create_disk}
     # @return [String] hint for location of attached disk
     #
     # Sample return value for attach_disk
     # "/dev/sdd"
     #
-    def attach_disk(vm_id, disk_id, disk_hints)
+    def attach_disk(vm_id, disk_id)
       not_implemented(:attach_disk)
     end
 

@@ -129,6 +129,22 @@ module Bosh::AwsCloud
       end
     end
 
+    # Attaches a disk
+    # @param [String] instance_id vm id that was once returned by {#create_vm}
+    # @param [String] disk_id disk id that was once returned by {#create_disk}
+    # @return [String] hint for location of attached disk
+    def attach_disk(instance_id, disk_id)
+      instance = @ec2_resource.instance(instance_id)
+      volume = @ec2_resource.volume(disk_id)
+
+      device_name = @volume_manager.attach_ebs_volume(instance, volume)
+      logger.info("Attached `#{disk_id}' to `#{instance_id}'")
+
+      yield(device_name) if block_given?
+
+      return device_name
+    end
+
     def delete_vm(instance_id)
       @instance_manager.find(instance_id).terminate(@config.aws.fast_path_delete?)
 
@@ -136,6 +152,7 @@ module Bosh::AwsCloud
     end
 
     private
+
     def temporary_snapshot(agent_id, vm_cloud_props)
       if vm_cloud_props.custom_encryption?
         custom_kms_key_disk_config = VolumeProperties.new(
@@ -161,6 +178,5 @@ module Bosh::AwsCloud
         nil
       end
     end
-
   end
 end
