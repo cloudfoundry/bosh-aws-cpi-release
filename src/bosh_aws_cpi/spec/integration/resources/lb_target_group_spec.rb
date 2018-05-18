@@ -19,7 +19,6 @@ describe Bosh::AwsCloud::LBTargetGroup do
     else
       @instance_id = response
     end
-    end
   end
 
   after do
