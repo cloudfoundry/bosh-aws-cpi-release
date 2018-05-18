@@ -13,9 +13,11 @@ describe Bosh::AwsCloud::ClassicLB do
   let(:elb_name) { ENV.fetch('BOSH_AWS_ELB_ID') }
 
   before do
-    @instance_id = create_vm
+    response = create_vm
     if @cpi_api_version >=2
-      @instance_id = @instance_id['vm_cid']
+      @instance_id = response[0]
+    else
+      @instance_id = response
     end
   end
 

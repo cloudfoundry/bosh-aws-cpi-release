@@ -155,7 +155,7 @@ def vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: @cpi)
 
   # cpi check for custom cpi during tests
   if @cpi_api_version >= 2 && cpi == @cpi
-    instance_id = create_vm_response['vm_cid']
+    instance_id = create_vm_response[0]
   end
   
   expect(instance_id).not_to be_nil
