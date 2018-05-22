@@ -61,7 +61,7 @@ RSpec.configure do |rspec_config|
     @permissions_auditor_key_id     = ENV.fetch('BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID', nil)
     @permissions_auditor_secret_key = ENV.fetch('BOSH_AWS_PERMISSIONS_AUDITOR_SECRET_KEY', nil)
 
-    @cpi_api_version                = ENV.fetch('BOSH_CPI_API_VERSION', 1).to_i
+    @cpi_api_version                = ENV.fetch('BOSH_AWS_CPI_API_VERSION', 1).to_i
 
     logger = Bosh::Cpi::Logger.new(STDERR)
     Bosh::Clouds::Config.define_singleton_method(:logger) { logger }
