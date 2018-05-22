@@ -82,7 +82,7 @@ RSpec.configure do |rspec_config|
     allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(@registry)
     allow(@registry).to receive(:read_settings).and_return({})
 
-    @cpi = Bosh::AwsCloud::CloudV1.new(
+    cpi_options = {
       'aws' => {
         'region' => @region,
         'default_key_name' => @default_key_name,
@@ -98,26 +98,15 @@ RSpec.configure do |rspec_config|
         'user' => 'fake',
         'password' => 'fake'
       },
+    }
+
+    @cpi = Bosh::AwsCloud::CloudV1.new(
+      cpi_options
     )
 
     if @cpi_api_version >= 2
       @cpi = Bosh::AwsCloud::CloudV2.new(
-        @cpi_api_version,
-        'aws' => {
-          'region' => @region,
-          'default_key_name' => @default_key_name,
-          'default_security_groups' => get_security_group_ids,
-          'fast_path_delete' => 'yes',
-          'access_key_id' => @access_key_id,
-          'secret_access_key' => @secret_access_key,
-          'session_token' => @session_token,
-          'max_retries' => 8
-        },
-        'registry' => {
-          'endpoint' => 'fake',
-          'user' => 'fake',
-          'password' => 'fake'
-        },
+        cpi_options
       )
     end
 
