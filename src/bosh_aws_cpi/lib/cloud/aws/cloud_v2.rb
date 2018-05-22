@@ -91,6 +91,23 @@ module Bosh::AwsCloud
       end
     end
 
+    # Detach an EBS volume from an EC2 instance
+    # @param [String] instance_id EC2 instance id of the virtual machine to detach the disk from
+    # @param [String] disk_id EBS volume id of the disk to detach
+    def detach_disk(instance_id, disk_id)
+      with_thread_name("detach_disk(#{instance_id}, #{disk_id})") do
+        @cloud_core.detach_disk(instance_id, disk_id) do |disk_id|
+          if @stemcell_api_version < 2
+            update_agent_settings(instance_id) do |settings|
+              settings['disks'] ||= {}
+              settings['disks']['persistent'] ||= {}
+              settings['disks']['persistent'].delete(disk_id)
+            end
+          end
+        end
+      end
+    end
+
     ##
     # Delete EC2 instance ("terminate" in AWS language) and wait until
     # it reports as terminated

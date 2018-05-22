@@ -207,16 +207,7 @@ module Bosh::AwsCloud
     # @param [String] disk_id EBS volume UUID
     # @return [bool] whether the specific disk is there or not
     def has_disk?(disk_id)
-      with_thread_name("has_disk?(#{disk_id})") do
-        @logger.info("Check the presence of disk with id `#{disk_id}'...")
-        volume = @ec2_resource.volume(disk_id)
-        begin
-          volume.state
-        rescue Aws::EC2::Errors::InvalidVolumeNotFound
-          return false
-        end
-        true
-      end
+      @cloud_core.has_disk?(disk_id)
     end
 
     ##
@@ -243,7 +234,6 @@ module Bosh::AwsCloud
           end
         end
       end
-      # log registry settings for debugging
     end
 
     # Detach an EBS volume from an EC2 instance
@@ -251,22 +241,13 @@ module Bosh::AwsCloud
     # @param [String] disk_id EBS volume id of the disk to detach
     def detach_disk(instance_id, disk_id)
       with_thread_name("detach_disk(#{instance_id}, #{disk_id})") do
-        instance = @ec2_resource.instance(instance_id)
-        volume = @ec2_resource.volume(disk_id)
-
-        if has_disk?(disk_id)
-          @volume_manager.detach_ebs_volume(instance, volume)
-        else
-          @logger.info("Disk `#{disk_id}' not found while trying to detach it from vm `#{instance_id}'...")
+        @cloud_core.detach_disk(instance_id, disk_id) do |disk_id|
+          update_agent_settings(instance_id) do |settings|
+            settings['disks'] ||= {}
+            settings['disks']['persistent'] ||= {}
+            settings['disks']['persistent'].delete(disk_id)
+          end
         end
-
-        update_agent_settings(instance.id) do |settings|
-          settings['disks'] ||= {}
-          settings['disks']['persistent'] ||= {}
-          settings['disks']['persistent'].delete(disk_id)
-        end
-
-        logger.info("Detached `#{disk_id}' from `#{instance_id}'")
       end
     end
 

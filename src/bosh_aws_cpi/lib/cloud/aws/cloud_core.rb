@@ -151,6 +151,34 @@ module Bosh::AwsCloud
       yield instance_id if block_given?
     end
 
+    def detach_disk(instance_id, disk_id)
+      instance = @ec2_resource.instance(instance_id)
+      volume = @ec2_resource.volume(disk_id)
+
+      if has_disk?(disk_id)
+        @volume_manager.detach_ebs_volume(instance, volume)
+      else
+        @logger.info("Disk `#{disk_id}' not found while trying to detach it from vm `#{instance_id}'...")
+      end
+
+      yield(disk_id) if block_given?
+
+      logger.info("Detached `#{disk_id}' from `#{instance_id}'")
+    end
+
+    def has_disk?(disk_id)
+      with_thread_name("has_disk?(#{disk_id})") do
+        @logger.info("Check the presence of disk with id `#{disk_id}'...")
+        volume = @ec2_resource.volume(disk_id)
+        begin
+          volume.state
+        rescue Aws::EC2::Errors::InvalidVolumeNotFound
+          return false
+        end
+        true
+      end
+    end
+
     private
 
     def temporary_snapshot(agent_id, vm_cloud_props)

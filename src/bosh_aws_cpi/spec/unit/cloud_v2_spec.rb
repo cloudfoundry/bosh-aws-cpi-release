@@ -268,7 +268,17 @@ describe Bosh::AwsCloud::CloudV2 do
       }
     }
 
-    let(:expected_settings) {settings do |s| s['disk']['persistent'][volume_id] = device_name end}
+    let(:expected_settings) {
+      {
+        'foo' => 'bar',
+        'disks' => {
+          'persistent' => {
+            'existing-disk' => '/dev/sdf',
+            volume_id => device_name
+          }
+        }
+      }
+    }
 
     before do
       allow(registry).to receive(:update_settings)
@@ -306,6 +316,73 @@ describe Bosh::AwsCloud::CloudV2 do
         expect(subject.attach_disk(instance_id, volume_id)).to eq(device_name)
       end
     end
+  end
+
+  describe '#detach_disk' do
+    let(:instance_id){ 'i-test' }
+    let(:disk_id) { 'disk-to-be-deleted' }
+    let(:device_name) { '/dev/sdg' }
+    let(:settings) {
+      {
+        'foo' => 'bar',
+        'disks' => {
+          'persistent' => {
+            'existing-disk' => '/dev/sdf',
+            'disk-to-be-deleted' => '/dev/sdg'
+          }
+        }
+      }
+    }
+
+    let(:expected_settings) {
+      {
+        'foo' => 'bar',
+        'disks' => {
+          'persistent' => {
+            'existing-disk' => '/dev/sdf',
+          }
+        }
+      }
+    }
+
+    before do
+      allow(registry).to receive(:update_settings)
+      allow(registry).to receive(:read_settings).and_return(settings)
+      allow(registry).to receive(:endpoint).and_return('http://something.12.34.52')
+      allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
+
+      allow(Bosh::AwsCloud::CloudCore).to receive(:new).and_return(cloud_core)
+      allow(cloud_core).to receive(:detach_disk).and_yield(disk_id)
+      allow(cloud_core).to receive(:has_disk?).and_return(true)
+    end
+
+    context 'when stemcell version is less than 2' do
+      it 'should update registry' do
+        expect(registry).to receive(:update_settings).with(instance_id, expected_settings)
+        expect(subject.detach_disk(instance_id, disk_id))
+      end
+    end
+
+    context 'when stemcell version is 2 or greater' do
+      let(:options) do
+        mock_cloud_properties_merge(
+          {
+            'aws' => {
+              'vm' => {
+                'stemcell' => {
+                  'api_version' => 2
+                }
+              }
+            }
+          }
+        )
+      end
+      it 'should NOT update registry' do
+        expect(registry).to_not receive(:update_settings)
+        expect(subject.detach_disk(instance_id, disk_id))
+      end
+    end
+
   end
 
   describe '#delete_vm' do
