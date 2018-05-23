@@ -140,7 +140,7 @@ module Bosh::AwsCloud
       device_name = @volume_manager.attach_ebs_volume(instance, volume)
       logger.info("Attached `#{disk_id}' to `#{instance_id}'")
 
-      yield(device_name) if block_given?
+      yield(instance, device_name) if block_given?
 
       return device_name
     end

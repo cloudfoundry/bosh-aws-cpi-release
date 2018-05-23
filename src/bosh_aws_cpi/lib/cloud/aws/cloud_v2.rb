@@ -78,12 +78,12 @@ module Bosh::AwsCloud
     # @return [String] hint for location of attached disk
     def attach_disk(vm_id, disk_id)
       with_thread_name("attach_disk(#{vm_id}, #{disk_id})") do
-        device_name = @cloud_core.attach_disk(vm_id, disk_id) do |device_name|
+        device_name = @cloud_core.attach_disk(vm_id, disk_id) do |instance, device_name|
           if @stemcell_api_version < 2
             update_agent_settings(vm_id) do |settings|
               settings['disks'] ||= {}
               settings['disks']['persistent'] ||= {}
-              settings['disks']['persistent'][disk_id] = device_name
+              settings['disks']['persistent'][disk_id] = BlockDeviceManager.device_path(device_name, instance.instance_type, disk_id)
             end
           end
         end

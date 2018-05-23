@@ -255,6 +255,8 @@ describe Bosh::AwsCloud::CloudV2 do
 
   describe '#attach_disk' do
     let(:instance_id){ 'i-test' }
+    let(:instance_type) { 'm3.medium' }
+    let(:instance) { instance_double(Aws::EC2::Instance, :id => instance_id, instance_type: instance_type) }
     let(:volume_id) { 'new-disk' }
     let(:device_name) { '/dev/sdg' }
     let(:settings) {
@@ -287,7 +289,7 @@ describe Bosh::AwsCloud::CloudV2 do
       allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
 
       allow(Bosh::AwsCloud::CloudCore).to receive(:new).and_return(cloud_core)
-      allow(cloud_core).to receive(:attach_disk).and_return(device_name).and_yield(device_name)
+      allow(cloud_core).to receive(:attach_disk).and_return(device_name).and_yield(instance, device_name)
     end
 
     context 'when stemcell version is less than 2' do
@@ -311,6 +313,7 @@ describe Bosh::AwsCloud::CloudV2 do
           }
         )
       end
+
       it 'should NOT update registry' do
         expect(registry).to_not receive(:update_settings)
         expect(subject.attach_disk(instance_id, volume_id)).to eq(device_name)

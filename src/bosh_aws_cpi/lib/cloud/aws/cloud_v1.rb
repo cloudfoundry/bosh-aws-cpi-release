@@ -226,7 +226,7 @@ module Bosh::AwsCloud
     # @param [String] disk_id EBS volume id of the disk to attach
     def attach_disk(instance_id, disk_id)
       with_thread_name("attach_disk(#{instance_id}, #{disk_id})") do
-        _ = @cloud_core.attach_disk(instance_id, disk_id) do |device_name|
+        _ = @cloud_core.attach_disk(instance_id, disk_id) do |instance, device_name|
           update_agent_settings(instance_id) do |settings|
             settings['disks'] ||= {}
             settings['disks']['persistent'] ||= {}
