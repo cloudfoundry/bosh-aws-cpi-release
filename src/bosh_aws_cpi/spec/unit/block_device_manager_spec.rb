@@ -17,11 +17,12 @@ module Bosh::AwsCloud
       instance_double(Bosh::AwsCloud::AwsConfig)
     end
     let(:global_config) { instance_double(Bosh::AwsCloud::Config, aws: aws_config) }
+    let(:instance_type) { 'm3.xlarge' }
     let(:vm_type) do
       {
         'key_name' => 'bar',
         'availability_zone' => 'us-east-1a',
-        'instance_type' => 'm3.xlarge',
+        'instance_type' => instance_type,
         'raw_instance_storage' => false
       }
     end
@@ -51,6 +52,49 @@ module Bosh::AwsCloud
     end
 
     describe '#mappings_and_info' do
+      shared_examples 'NVMe required instance types' do
+        let(:expected_output) do
+          [
+            {
+              device_name: '/dev/sdb',
+              ebs: {
+                volume_size: 10,
+                volume_type: 'gp2',
+                delete_on_termination: true,
+              }
+            },
+            default_root,
+          ]
+        end
+        let(:expected_agent_info) do
+          {
+              'ephemeral' => [{ 'path' => '/dev/nvme1n1' }]
+          }
+        end
+
+        it 'returns an EBS volume with /dev/sdb' do
+          actual_output, _ = manager.mappings_and_info
+          expect(actual_output).to eq(expected_output)
+        end
+
+        it 'returns ephemeral disk settings to the agent with /dev/nvme1n1' do
+          _, actual_agent_info = manager.mappings_and_info
+          expect(actual_agent_info).to eq(expected_agent_info)
+        end
+      end
+
+      context 'when creating c5 instances' do
+        let(:instance_type) { 'c5.large' }
+
+        it_behaves_like 'NVMe required instance types'
+      end
+
+      context 'when creating m5 instances' do
+        let(:instance_type) { 'm5.xlarge' }
+
+        it_behaves_like 'NVMe required instance types'
+      end
+
       context 'when omitting the ephemeral disk' do
         context 'when instance type has instance storage' do
           let(:instance_type) { 'm3.xlarge' }
@@ -65,7 +109,7 @@ module Bosh::AwsCloud
 
           context 'when raw_instance_storage is false' do
             let(:raw_instance_storage) { false }
-            it 'returns an ebs volume with size determined by the instance_type' do
+            it 'returns an EBS volume with size determined by the instance_type' do
               actual_output, agent_info = manager.mappings_and_info
               expected_output = [
                 {
@@ -86,7 +130,7 @@ module Bosh::AwsCloud
           context 'when raw_instance_storage is true' do
             let(:raw_instance_storage) { true }
 
-            it 'returns an ebs volume with size 10GB and disks for each instance storage disk' do
+            it 'returns an EBS volume with size 10GB and disks for each instance storage disk' do
               actual_output, agent_info = manager.mappings_and_info
               expected_output = [default_root]
               instance_storage_disks = [
@@ -120,7 +164,7 @@ module Bosh::AwsCloud
             context 'and NVMe storage types' do
               let(:instance_type) { 'i3.4xlarge' }
 
-              it 'returns an ebs volume with size 10GB and NO disks NVMe instance storage' do
+              it 'returns an EBS volume with size 10GB and NO disks NVMe instance storage' do
                 actual_output, agent_info = manager.mappings_and_info
                 expected_output = [default_root]
                 instance_storage_disks = []
@@ -186,7 +230,7 @@ module Bosh::AwsCloud
             }
           end
 
-          it 'uses a default 10GB ebs storage for ephemeral disk' do
+          it 'uses a default 10GB EBS storage for ephemeral disk' do
             mappings, agent_info = manager.mappings_and_info
             ebs_disk = {
               device_name: '/dev/sdb',
@@ -233,7 +277,7 @@ module Bosh::AwsCloud
           }
         end
 
-        it 'returns an ebs with the specified ephemeral disk size' do
+        it 'returns an EBS with the specified ephemeral disk size' do
           manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props, nil)
 
           expected_output = [
@@ -266,7 +310,7 @@ module Bosh::AwsCloud
             }
           end
 
-          it 'returns disks for new ebs volume and instance storage disks' do
+          it 'returns disks for new EBS volume and instance storage disks' do
             expected_disks = [
               default_root,
               {
@@ -306,7 +350,7 @@ module Bosh::AwsCloud
             end
             let(:virtualization_type) { 'paravirtual' }
 
-            it 'returns disks for new ebs volume and instance storage disks under /dev/sd[c-z]' do
+            it 'returns disks for new EBS volume and instance storage disks under /dev/sd[c-z]' do
               expected_disks = [
                 default_root,
                 {
@@ -399,7 +443,7 @@ module Bosh::AwsCloud
           }
         end
 
-        it 'will add it to the ebs configuration' do
+        it 'will add it to the EBS configuration' do
           expected_output = [
             {
               device_name: '/dev/sdb',
@@ -442,7 +486,7 @@ module Bosh::AwsCloud
               )
             end
 
-            it 'will add snapshot snapshot_id to the ebs conbfiguration' do
+            it 'will add snapshot snapshot_id to the EBS conbfiguration' do
               expected_output = [
                 {
                   device_name: '/dev/sdb',

@@ -6,7 +6,8 @@ describe Bosh::AwsCloud::CloudV1 do
     @registry = mock_registry
   end
 
-  let(:instance) { instance_double(Aws::EC2::Instance, :id => 'i-test') }
+  let(:instance_type) { 'm3.medium' }
+  let(:instance) { instance_double(Aws::EC2::Instance, :id => 'i-test', instance_type: instance_type) }
   let(:volume) { instance_double(Aws::EC2::Volume, :id => 'v-foobar') }
   let(:subnet) { instance_double(Aws::EC2::Subnet) }
 
@@ -40,11 +41,7 @@ describe Bosh::AwsCloud::CloudV1 do
       }
     }
 
-    expect(@registry).to receive(:read_settings).
-      twice.
-      with('i-test').
-      and_return(old_settings)
-
+    expect(@registry).to receive(:read_settings).twice.with('i-test').and_return(old_settings)
     expect(@registry).to receive(:update_settings).with('i-test', new_settings)
 
     cloud.attach_disk('i-test', 'v-foobar')
@@ -97,6 +94,45 @@ describe Bosh::AwsCloud::CloudV1 do
     expect {
       cloud.attach_disk('i-test', 'v-foobar')
     }.to raise_error(Bosh::Clouds::CloudError, /too many disks attached/)
+  end
+
+  shared_examples 'NVMe required instance types' do
+    it 'should use specific nvme device path' do
+      attachment = instance_double(Bosh::AwsCloud::SdkHelpers::VolumeAttachment, device: '/dev/sdf')
+
+      fake_resp = double('attachment-resp')
+      expect(volume).to receive(:attach_to_instance).with(instance_id: "i-test", device: "/dev/sdf").and_return(fake_resp)
+      expect(Bosh::AwsCloud::SdkHelpers::VolumeAttachment).to receive(:new).with(fake_resp, cloud.ec2_resource).and_return(attachment)
+      expect(Bosh::AwsCloud::ResourceWait).to receive(:for_attachment).with(attachment: attachment, state: 'attached')
+
+
+      old_settings = { 'foo' => 'bar'}
+      new_settings = {
+        'foo' => 'bar',
+        'disks' => {
+          'persistent' => {
+            'v-foobar' => '/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_vfoobar'
+          }
+        }
+      }
+
+      expect(@registry).to receive(:read_settings).twice.with('i-test').and_return(old_settings)
+      expect(@registry).to receive(:update_settings).with('i-test', new_settings)
+
+      cloud.attach_disk('i-test', 'v-foobar')
+    end
+  end
+
+  context 'when attaching to c5 instance' do
+    let(:instance_type) { 'c5.large' }
+
+    it_behaves_like 'NVMe required instance types'
+  end
+
+  context 'when attaching to m5 instance' do
+    let(:instance_type) { 'm5.xlarge' }
+
+    it_behaves_like 'NVMe required instance types'
   end
 
   context 'when aws returns IncorrectState' do

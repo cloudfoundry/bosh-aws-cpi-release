@@ -93,6 +93,7 @@ module Bosh::AwsCloud
             :virtualization_type => @stemcell_props.virtualization_type,
             :root_device_name => '/dev/xvda',
             :sriov_net_support => 'simple',
+            :ena_support => true,
             :block_device_mappings => [
               {
                 :device_name => '/dev/xvda',
@@ -114,7 +115,7 @@ module Bosh::AwsCloud
         :architecture => @stemcell_props.architecture,
       )
 
-      params[:block_device_mappings].push(BlockDeviceManager.default_instance_storage_disk_mapping)
+      params[:block_device_mappings].push(BlockDeviceManager::DEFAULT_INSTANCE_STORAGE_DISK_MAPPING)
 
       params
     end

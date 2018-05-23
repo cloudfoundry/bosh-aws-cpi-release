@@ -111,6 +111,7 @@ module Bosh::AwsCloud
             },
           ])
           expect(params[:virtualization_type]).to eq('hvm')
+          expect(params[:ena_support]).to be(true)
         end
       end
     end
