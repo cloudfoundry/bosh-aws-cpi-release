@@ -152,6 +152,7 @@ def vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: @cpi)
 
   cpi.set_vm_metadata(instance_id, vm_metadata)
 
+
   yield(instance_id) if block_given?
 ensure
   cpi.delete_vm(instance_id) if instance_id

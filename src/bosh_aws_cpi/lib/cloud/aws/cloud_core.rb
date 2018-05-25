@@ -105,6 +105,7 @@ module Bosh::AwsCloud
         target_groups.each do |target_group_name|
           target_group = LBTargetGroup.new(client: @aws_provider.alb_client, group_name: target_group_name)
           target_group.register(instance.id)
+          puts "Registered #{instance.id} with #{target_group_name}"
         end
 
         requested_elbs.each do |requested_elb_name|
