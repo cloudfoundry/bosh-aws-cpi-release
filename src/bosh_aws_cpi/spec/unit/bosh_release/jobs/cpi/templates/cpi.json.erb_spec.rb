@@ -85,7 +85,7 @@ describe 'cpi.json.erb' do
   context 'when api_version is provided in the manifest' do
     let(:cpi_api_version) { 42 }
     before do
-      manifest['properties']['api_version'] = cpi_api_version
+      manifest['properties']['cpi_api_version'] = cpi_api_version
     end
 
     it 'renders the api_version' do
