@@ -254,7 +254,7 @@ describe Bosh::AwsCloud::CloudV1 do
       it 'registers new instance with target group' do
         vm_lifecycle do |instance_id|
           health_state = nil
-          20.times do
+          25.times do
             health = elb_v2_client.describe_target_health(
               {
                 target_group_arn: get_target_group_arn(@target_group_name),
@@ -267,7 +267,7 @@ describe Bosh::AwsCloud::CloudV1 do
             expect(health_description.target.id).to eq(instance_id)
             health_state = health_description.target_health.state
             break if health_state == 'unhealthy'
-            sleep(10)
+            sleep(15)
           end
           expect(health_state).to eq('unhealthy')
         end

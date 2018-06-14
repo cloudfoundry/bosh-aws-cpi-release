@@ -40,7 +40,7 @@ module Bosh::AwsCloud
     # @return [Hash] AWS CPI properties
     def info
       # TODO should this logger statement be removed?
-      @logger.info("Sending info:V2'")
+      @logger.info("Sending info:V2")
       {
         'stemcell_formats' => %w(aws-raw aws-light),
         'api_version' => CPI_API_VERSION

@@ -77,7 +77,7 @@ module Bosh::AwsCloud
     # @param [String] disk_id disk id that was once returned by {#create_disk}
     # @return [String] hint for location of attached disk
     def attach_disk(vm_id, disk_id)
-      with_thread_name("attach_disk(#{vm_id}, #{disk_id})") do
+      with_thread_name("attach_disk(#{vm_id}, #{disk_id}):v2") do
         device_name = @cloud_core.attach_disk(vm_id, disk_id) do |instance, device_name|
           if @stemcell_api_version < 2
             update_agent_settings(vm_id) do |settings|
@@ -95,7 +95,7 @@ module Bosh::AwsCloud
     # @param [String] instance_id EC2 instance id of the virtual machine to detach the disk from
     # @param [String] disk_id EBS volume id of the disk to detach
     def detach_disk(instance_id, disk_id)
-      with_thread_name("detach_disk(#{instance_id}, #{disk_id})") do
+      with_thread_name("detach_disk(#{instance_id}, #{disk_id}):v2") do
         @cloud_core.detach_disk(instance_id, disk_id) do |disk_id|
           if @stemcell_api_version < 2
             update_agent_settings(instance_id) do |settings|
@@ -113,7 +113,7 @@ module Bosh::AwsCloud
     # it reports as terminated
     # @param [String] instance_id EC2 instance id
     def delete_vm(instance_id)
-      with_thread_name("delete_vm(#{instance_id})") do
+      with_thread_name("delete_vm(#{instance_id}):v2") do
         logger.info("Deleting instance '#{instance_id}'")
         @cloud_core.delete_vm(instance_id) do |instance_id|
           @registry.delete_settings(instance_id) if @stemcell_api_version < 2
