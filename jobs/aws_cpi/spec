@@ -11,7 +11,7 @@ packages:
 - bosh_aws_cpi
 
 properties:
-  api_version:
+  cpi_api_version:
     description: api_version supported by cpi (can be used as an override for fallback).
     default: null
   aws.credentials_source:

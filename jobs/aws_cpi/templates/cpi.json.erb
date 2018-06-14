@@ -29,7 +29,7 @@ params = {
   }
 }
 
-if_p('api_version') do |api_version|
+if_p('cpi_api_version') do |api_version|
   params["cloud"]["properties"]["api_version"] = api_version
 end
 
