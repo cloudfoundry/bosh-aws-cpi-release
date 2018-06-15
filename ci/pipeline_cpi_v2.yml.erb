@@ -42,7 +42,7 @@ shared:
       INFRASTRUCTURE:     aws
       STEMCELL_NAME:      bosh-aws-xen-hvm-ubuntu-trusty-go_agent
       BAT_INFRASTRUCTURE: aws
-      BAT_NETWORKING:     manual
+      BAT_NETWORKING:     dynamic
       BAT_RSPEC_FLAGS:    "--tag ~multiple_manual_networks --tag ~root_partition"
 
   - &run-end-2-end
@@ -105,7 +105,7 @@ jobs:
         params: {file: version-semver/number}
       - task: build
         file: bosh-cpi-src/ci/tasks/build-candidate.yml
-      - put: bosh-cpi-dev-artifacts
+      - put: bosh-cpi-dev-artifacts-v2
         params: {file: candidate/*.tgz}
 
   - name: integration
@@ -114,27 +114,29 @@ jobs:
       - aggregate:
         - {trigger: true, passed: [build-cpi], get: bosh-cpi-src, resource: bosh-cpi-src}
       - <<: *create-environment
-      - aggregate:
-        - task: test-cpi-v2
-          file: bosh-cpi-src/ci/tasks/run-integration.yml
-          params:
-            AWS_ACCESS_KEY_ID:                       {{aws_access_key__cpi}}
-            AWS_SECRET_ACCESS_KEY:                   {{aws_secret_key__cpi}}
-            BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID:     {{aws_access_key__auditor}}
-            BOSH_AWS_PERMISSIONS_AUDITOR_SECRET_KEY: {{aws_secret_key__auditor}}
-            AWS_DEFAULT_REGION:                      {{aws_region__primary}}
-            BOSH_AWS_KMS_KEY_ARN:                    {{aws_kms_key_arn}}
-            BOSH_AWS_CPI_API_VERSION: 2
-        - task: test-cpi-v1
-          file: bosh-cpi-src/ci/tasks/run-integration.yml
-          params:
-            AWS_ACCESS_KEY_ID:                       {{aws_access_key__cpi}}
-            AWS_SECRET_ACCESS_KEY:                   {{aws_secret_key__cpi}}
-            BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID:     {{aws_access_key__auditor}}
-            BOSH_AWS_PERMISSIONS_AUDITOR_SECRET_KEY: {{aws_secret_key__auditor}}
-            AWS_DEFAULT_REGION:                      {{aws_region__primary}}
-            BOSH_AWS_KMS_KEY_ARN:                    {{aws_kms_key_arn}}
-            BOSH_AWS_CPI_API_VERSION: 1
+      #- aggregate:
+      - task: test-cpi-v2
+        file: bosh-cpi-src/ci/tasks/run-integration.yml
+        params:
+          AWS_ACCESS_KEY_ID:                       {{aws_access_key__cpi}}
+          AWS_SECRET_ACCESS_KEY:                   {{aws_secret_key__cpi}}
+          BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID:     {{aws_access_key__auditor}}
+          BOSH_AWS_PERMISSIONS_AUDITOR_SECRET_KEY: {{aws_secret_key__auditor}}
+          AWS_DEFAULT_REGION:                      {{aws_region__primary}}
+          BOSH_AWS_KMS_KEY_ARN:                    {{aws_kms_key_arn}}
+          BOSH_AWS_CPI_API_VERSION: 2
+      - <<: *destroy-environment
+      - <<: *create-environment
+      - task: test-cpi-v1
+        file: bosh-cpi-src/ci/tasks/run-integration.yml
+        params:
+          AWS_ACCESS_KEY_ID:                       {{aws_access_key__cpi}}
+          AWS_SECRET_ACCESS_KEY:                   {{aws_secret_key__cpi}}
+          BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID:     {{aws_access_key__auditor}}
+          BOSH_AWS_PERMISSIONS_AUDITOR_SECRET_KEY: {{aws_secret_key__auditor}}
+          AWS_DEFAULT_REGION:                      {{aws_region__primary}}
+          BOSH_AWS_KMS_KEY_ARN:                    {{aws_kms_key_arn}}
+          BOSH_AWS_CPI_API_VERSION: 1
     ensure:
       do:
         - <<: *ensure-terminated
@@ -158,7 +160,7 @@ jobs:
 <%
 stemcell_resources = [
   [{name: 'stemcell', resource: 'precompiled-stemcell-v1'}, {name: 'heavy-stemcell', resource: 'heavy-ubuntu-stemcell-v1'}],
-  [{name: 'stemcell', resource: 'heavy-ubuntu-stemcell-v2'},{name: 'heavy-stemcell', resource: 'heavy-ubuntu-stemcell-v2'}]
+  [{name: 'stemcell', resource: 'heavier-ubuntu-stemcell-v2'},{name: 'heavy-stemcell', resource: 'heavier-ubuntu-stemcell-v2'}]
 ]
 director_resources = [
   {name: 'bosh-release', resource: 'precompiled-bosh-release', ops_file: ''},
@@ -166,8 +168,8 @@ director_resources = [
 ]
 # we won't really have two of these -- it's the same code, but the above changes the version
 cpi_resources = [
-  {name: 'cpi-release', resource: 'bosh-cpi-dev-artifacts', passed: 'build-cpi'},
-  {name: 'cpi-release', resource: 'bosh-cpi-dev-artifacts', passed: 'build-cpi'}
+  {name: 'cpi-release', resource: 'bosh-cpi-dev-artifacts-v2', passed: 'build-cpi'},
+  {name: 'cpi-release', resource: 'bosh-cpi-dev-artifacts-v2', passed: 'build-cpi'}
 ]
 
 stemcell_resources.each_with_index do |s, s_idx|
@@ -177,38 +179,38 @@ stemcell_resources.each_with_index do |s, s_idx|
   - name: end-2-end-cpi<%= c_idx+1 %>-dir<%= d_idx+1 %>-sc<%= s_idx+1 %>
     serial: true
     plan:
-      - aggregate:
-        - {get: <%= c[:name] %>, trigger: true,  resource: <%= c[:resource] %>, passed: [<%= c[:passed]%>]}
-        - {get: <%= d[:name] %>, trigger: false, resource: <%= d[:resource] %>, passed: [<%= d[:passed]%>]}
-        - {get: bosh-cpi-src,    trigger: false, resource: bosh-cpi-src, passed: [build-cpi]}
-        - {get: <%= s.first[:name] %>, trigger: false, resource: <%= s.first[:resource] %>}
-        - {get: <%= s[1][:name] %>,  trigger: false, resource: <%= s[1][:resource] %>}
-        - {get: bosh-deployment, trigger: false}
-        - {get: pipelines,       trigger: true}
-        - {get: bosh-cli,        trigger: false}
-      - <<: *create-environment
+    - aggregate:
+      - {get: <%= c[:name] %>, trigger: true,  resource: <%= c[:resource] %>, passed: [<%= c[:passed]%>]}
+      - {get: <%= d[:name] %>, trigger: false, resource: <%= d[:resource] %>, passed: [<%= d[:passed]%>]}
+      - {get: bosh-cpi-src,    trigger: false, resource: bosh-cpi-src, passed: [build-cpi]}
+      - {get: <%= s.first[:name] %>, trigger: false, resource: <%= s.first[:resource] %>}
+      - {get: <%= s[1][:name] %>,  trigger: false, resource: <%= s[1][:resource] %>}
+      - {get: bosh-deployment, trigger: false}
+      - {get: pipelines,       trigger: true}
+      - {get: bosh-cli,        trigger: false}
+    - <<: *create-environment
+    - do:
+      - <<: *prepare-director
+        params:
+          <<: *prepare-director-params
+          OPTIONAL_OPS_FILE:  |
+            -o bosh-deployment/external-ip-with-registry-not-recommended.yml
+            -o pipelines/shared/assets/ops/remove-provider-cert.yml
+            -o bosh-deployment/experimental/blobstore-https.yml
+            -o pipelines/aws/assets/ops/iam-instance-profile-ops-file.yml
+            -o bosh-deployment/experimental/bpm.yml
+            <%= d[:ops_file]%>
+          CPI_VERSION: <%= c_idx+1 %>
       - do:
-        - <<: *prepare-director
-          params:
-            <<: *prepare-director-params
-            OPTIONAL_OPS_FILE:  |
-              -o bosh-deployment/external-ip-with-registry-not-recommended.yml
-              -o pipelines/shared/assets/ops/remove-provider-cert.yml
-              -o bosh-deployment/experimental/blobstore-https.yml
-              -o pipelines/aws/assets/ops/iam-instance-profile-ops-file.yml
-              -o bosh-deployment/experimental/bpm.yml
-              <%= d[:ops_file]%>
-            CPI_VERSION: <%= c_idx+1 %>
-        - do:
-            - <<: *deploy-director
-            - <<: *run-end-2-end
-          ensure:
-            do:
-              - <<: *teardown
-              - <<: *ensure-terminated
+          - <<: *deploy-director
+          - <<: *run-end-2-end
         ensure:
           do:
-            - <<: *destroy-environment
+            - <<: *teardown
+            - <<: *ensure-terminated
+      ensure:
+        do:
+          - <<: *destroy-environment
   - name: bats-cpi<%= c_idx+1 %>-dir<%= d_idx+1 %>-sc<%= s_idx+1 %>
     serial: true
     plan:
@@ -257,7 +259,7 @@ resource_types:
       repository: ljfranklin/terraform-resource
 
 resources:
-  - name: bosh-cpi-dev-artifacts
+  - name: bosh-cpi-dev-artifacts-v2
     type: s3
     source:
       regexp: bosh-aws-cpi-(\d+\.\d+\.\d+)\.tgz
@@ -298,10 +300,11 @@ resources:
   - name: bosh-dev-tarballs
     type: s3
     source:
-      bucket: bosh-toronto-cpi-v2
+      bucket: bosh-toronto-director-v2
       access_key_id: {{aws_access_key}}
       secret_access_key: {{aws_secret_key}}
       versioned_file: "bosh-dev-release.tgz"
+      region_name: us-west-1
   - name: environment
     type: terraform_type
     source:
@@ -343,12 +346,19 @@ resources:
 #      bucket: bosh-toronto-bag
 #      regexp: light-bosh-stemcell-(3363.12)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
 #      region_name: us-east-1
-  - name: heavy-ubuntu-stemcell-v2
+#  - name: heavy-ubuntu-stemcell-v2
+#    type: s3
+#    source:
+#      access_key_id: {{aws_access_key}}
+#      bucket: bosh-toronto-bag
+#      regexp: bosh-light-aws-stemcell-v2-toronto/TEST_LIGHT_STEMCELL_v2_light-bosh-stemcell-(.*)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
+#      secret_access_key: {{aws_secret_key}}
+  - name: heavier-ubuntu-stemcell-v2
     type: s3
     source:
       access_key_id: {{aws_access_key}}
       bucket: bosh-toronto-bag
-      regexp: bosh-registry-removal/stemcells/aws/bosh-stemcell-(.*)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
+      regexp: bosh-light-aws-stemcell-v2-toronto/TEST_LIGHT_STEMCELL_v2_light-bosh-stemcell-(.*)-v2-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
       secret_access_key: {{aws_secret_key}}
   - name: bats
     type: git
