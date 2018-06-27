@@ -158,7 +158,7 @@ end
 def route_exists?(route_table, expected_cidr, instance_id)
   4.times do
     route_table.reload
-    found_route = route_table.routes.any? { |r| r.destination_cidr_block == expected_cidr && r.instance_id == instance_id }
+    found_route = route_table.data.routes.any? { |r| r.destination_cidr_block == expected_cidr && r.instance_id == instance_id }
     return true if found_route
     sleep 0.5
   end

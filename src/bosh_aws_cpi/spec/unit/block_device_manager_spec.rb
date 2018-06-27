@@ -481,7 +481,6 @@ module Bosh::AwsCloud
               instance_double(
                 Aws::EC2::Snapshot,
                 id: 'snap-05e3175b7fc6cce4c',
-                exists?: true,
                 state: 'completed'
               )
             end
@@ -501,7 +500,7 @@ module Bosh::AwsCloud
               ]
 
               mappings, _agent_info = manager.mappings_and_info
-              expect(mappings).to  match_array(expected_output)
+              expect(mappings).to match_array(expected_output)
             end
           end
         end
