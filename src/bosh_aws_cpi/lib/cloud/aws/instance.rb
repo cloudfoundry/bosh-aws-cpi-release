@@ -112,11 +112,18 @@ module Bosh::AwsCloud
           table = tables.find { |t| t.id == definition.table_id }
           @logger.debug("Sending traffic for '#{definition.destination}' to '#{@aws_instance.id}' in '#{definition.table_id}'")
 
-          existing_route = table.routes.find do |route|
+          existing_route = table.data.routes.find do |route|
             !route.nil? && route.destination_cidr_block == definition.destination
           end
+
           if existing_route
-            existing_route.replace(instance_id: @aws_instance.id)
+            route = Aws::EC2::Route.new(
+              route_table_id: table.route_table_id,
+              destination_cidr_block: existing_route.destination_cidr_block,
+              data: table.data,
+              client: table.client,
+            )
+            route.replace(instance_id: @aws_instance.id)
           else
             table.create_route(destination_cidr_block: definition.destination, instance_id: @aws_instance.id)
           end

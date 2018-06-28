@@ -2,7 +2,10 @@ module Bosh
   module AwsCloud; end
 end
 
-require 'aws-sdk'
+require 'aws-sdk-ec2'
+require 'aws-sdk-elasticloadbalancing'
+require 'aws-sdk-elasticloadbalancingv2'
+
 require 'httpclient'
 require 'pp'
 require 'set'
