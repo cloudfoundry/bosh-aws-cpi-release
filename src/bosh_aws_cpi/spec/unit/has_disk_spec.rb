@@ -3,11 +3,11 @@ require 'spec_helper'
 describe Bosh::AwsCloud::Cloud do
   describe 'has_disk?' do
     context 'when disk is found' do
-      let(:disk) {instance_double(Aws::EC2::Volume, id: 'v-foo', exists?: true, state: 'available')}
+      let(:disk) {instance_double(Aws::EC2::Volume, id: 'v-foo', state: 'available')}
 
       it 'returns true' do
         cloud = mock_cloud do |ec2|
-          allow(ec2).to receive(:volume).with("v-foo").and_return(disk)
+          allow(ec2).to receive(:volume).with('v-foo').and_return(disk)
         end
 
         expect(cloud.has_disk?('v-foo')).to be(true)

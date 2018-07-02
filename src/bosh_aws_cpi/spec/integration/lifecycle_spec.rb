@@ -35,12 +35,12 @@ describe Bosh::AwsCloud::Cloud do
 
   before do
     begin
-      @ec2.instances({
+      @ec2.instances(
         filters: [
           { name: 'tag-key', values: ['delete_me'] },
           { name: 'instance-state-name', values: %w(stopped stopping running pending) }
         ]
-      }).each(&:terminate)
+      ).each(&:terminate)
     rescue Aws::EC2::Errors::InvalidInstanceIdNotFound
       # don't blow up tests if instance that we're trying to delete was not found
     end
@@ -84,9 +84,7 @@ describe Bosh::AwsCloud::Cloud do
         :secret_access_key => @secret_access_key,
         :session_token => @session_token,
       )
-      session = sts_client.get_session_token({
-        duration_seconds: 900,
-      }).to_h[:credentials]
+      session = sts_client.get_session_token(duration_seconds: 900).to_h[:credentials]
 
       described_class.new(
         'aws' => {

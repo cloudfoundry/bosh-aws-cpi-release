@@ -148,29 +148,36 @@ module Bosh::AwsCloud
 
     describe '#update_routing_tables' do
       let(:fake_vpc) { instance_double(Aws::EC2::Vpc) }
-      let(:fake_table) { instance_double(Aws::EC2::RouteTable, id: 'r-12345') }
+      let(:fake_route_table) { instance_double(Aws::EC2::RouteTable, route_table_id: 'r-12345', id: 'r-12345') }
+      let(:fake_route_table_type) { instance_double(Aws::EC2::Types::RouteTable, route_table_id: 'r-12345') }
+      let(:fake_route_type) { instance_double(Aws::EC2::Types::Route) }
+      let(:fake_routes) {[ fake_route_type ]}
       let(:fake_route) { instance_double(Aws::EC2::Route) }
-      let(:fake_routes) {[ fake_route ]}
 
       before do
         allow(aws_instance).to receive(:vpc).and_return(fake_vpc)
-        allow(fake_vpc).to receive(:route_tables).and_return([fake_table])
-        allow(fake_table).to receive(:routes).and_return(fake_routes)
-        allow(fake_route).to receive(:destination_cidr_block).and_return("10.0.0.0/16")
+        allow(fake_vpc).to receive(:route_tables).and_return([fake_route_table])
+        allow(fake_route_table).to receive(:data).and_return(fake_route_table_type)
+        allow(fake_route_table).to receive(:client)
+        allow(fake_route_table_type).to receive(:routes).and_return(fake_routes)
+        allow(fake_route_type).to receive(:destination_cidr_block).and_return("10.0.0.0/16")
+        allow(Aws::EC2::Route).to receive(:new).and_return(fake_route)
       end
+
       it 'updates the routing table entry with the instance ID when finding an existing route' do
-          destination = "10.0.0.0/16"
-          expect(fake_route).to receive(:replace).with(instance_id: instance_id)
-          instance.update_routing_tables [Bosh::AwsCloud::VMCloudProps::AdvertisedRoute.new(
-            "table_id" => "r-12345", "destination" => destination
-          )]
+        destination = "10.0.0.0/16"
+        expect(fake_route).to receive(:replace).with(instance_id: instance_id)
+        instance.update_routing_tables [Bosh::AwsCloud::VMCloudProps::AdvertisedRoute.new(
+          "table_id" => "r-12345", "destination" => destination
+        )]
       end
+
       it 'creates a routing table entry with the instance ID when the route does not exist' do
-          destination = "10.5.0.0/16"
-          expect(fake_table).to receive(:create_route).with(destination_cidr_block: destination, instance_id: instance_id)
-          instance.update_routing_tables [Bosh::AwsCloud::VMCloudProps::AdvertisedRoute.new(
-            "table_id" => "r-12345", "destination" => destination
-          )]
+        destination = "10.5.0.0/16"
+        expect(fake_route_table).to receive(:create_route).with(destination_cidr_block: destination, instance_id: instance_id)
+        instance.update_routing_tables [Bosh::AwsCloud::VMCloudProps::AdvertisedRoute.new(
+          "table_id" => "r-12345", "destination" => destination
+        )]
       end
     end
 
