@@ -37,9 +37,8 @@ module Bosh::AwsCloud
     let(:virtualization_type) { 'hvm' }
     let(:root_device_name) { '/dev/xvda' }
     let(:original_block_device_mappings) { [] }
-    let(:snapshot) { nil }
 
-    let(:manager) { BlockDeviceManager.new(logger, stemcell, vm_cloud_props, snapshot) }
+    let(:manager) { BlockDeviceManager.new(logger, stemcell, vm_cloud_props) }
 
     before do
       allow(aws_config).to receive(:default_iam_instance_profile)
@@ -278,7 +277,7 @@ module Bosh::AwsCloud
         end
 
         it 'returns an EBS with the specified ephemeral disk size' do
-          manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props, nil)
+          manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props)
 
           expected_output = [
             {
@@ -476,33 +475,23 @@ module Bosh::AwsCloud
           end
           let(:volume) { instance_double(Aws::EC2::Volume) }
 
-          context 'when snapshot is included' do
-            let(:snapshot) do
-              instance_double(
-                Aws::EC2::Snapshot,
-                id: 'snap-05e3175b7fc6cce4c',
-                exists?: true,
-                state: 'completed'
-              )
-            end
+          it 'will add encrypted and kms_key_id to the EBS conbfiguration' do
+            expected_output = [
+              {
+                device_name: '/dev/sdb',
+                ebs: {
+                  volume_size: 4,
+                  volume_type: 'gp2',
+                  delete_on_termination: true,
+                  encrypted: true,
+                  kms_key_id: 'arn:aws:kms:us-east-1:XXXXXX:key/e1c1f008-779b-4ebe-8116-0a34b77747dd'
+                }
+              },
+              default_root
+            ]
 
-            it 'will add snapshot snapshot_id to the EBS conbfiguration' do
-              expected_output = [
-                {
-                  device_name: '/dev/sdb',
-                  ebs: {
-                    volume_size: 4,
-                    volume_type: 'gp2',
-                    delete_on_termination: true,
-                    snapshot_id: 'snap-05e3175b7fc6cce4c'
-                  }
-                },
-                default_root
-              ]
-
-              mappings, _agent_info = manager.mappings_and_info
-              expect(mappings).to  match_array(expected_output)
-            end
+            mappings, _agent_info = manager.mappings_and_info
+            expect(mappings).to match_array(expected_output)
           end
         end
       end
@@ -651,7 +640,7 @@ module Bosh::AwsCloud
             vm_type['root_disk']['type'] = 'io1'
             vm_type['root_disk']['iops'] = 1000
 
-            manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props, nil)
+            manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props)
             expected_disks = []
 
             ephemeral_disks = [{

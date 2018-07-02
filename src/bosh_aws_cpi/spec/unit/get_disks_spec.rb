@@ -13,7 +13,7 @@ describe Bosh::AwsCloud::Cloud do
       expect(mock_instance).to receive(:block_device_mappings).and_return([
         double("device1",
           :device_name => "/dev/sda2",
-          :ebs => double(Aws::AutoScaling::Types::Ebs,
+          :ebs => double(Aws::EC2::Types::EbsBlockDevice,
             :volume_id => "vol-123",
             :status => "attaching",
             :attach_time => 'time',
@@ -27,7 +27,7 @@ describe Bosh::AwsCloud::Cloud do
         ),
         double("device3",
           :device_name => "/dev/sdb2",
-          :ebs => double(Aws::AutoScaling::Types::Ebs,
+          :ebs => double(Aws::EC2::Types::EbsBlockDevice,
             :volume_id => "vol-456",
             :status => "attaching",
             :attach_time => 'time',

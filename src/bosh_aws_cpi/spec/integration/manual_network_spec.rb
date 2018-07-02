@@ -293,6 +293,8 @@ describe Bosh::AwsCloud::Cloud do
             expect(snapshot_id).not_to be_nil
 
             snapshot = @cpi.ec2_resource.snapshot(snapshot_id)
+            expect(snapshot.description).to eq 'deployment/cpi_spec/0/sdf'
+
             snapshot_tags = array_key_value_to_hash(snapshot.tags)
             expect(snapshot_tags['device']).to eq '/dev/sdf'
             expect(snapshot_tags['agent_id']).to eq 'agent'
@@ -679,12 +681,6 @@ describe Bosh::AwsCloud::Cloud do
 
                 expect(ephemeral_disk.encrypted).to be(true)
                 expect(ephemeral_disk.kms_key_id).to eq(@kms_key_arn)
-
-                expect(ephemeral_disk.snapshot_id).not_to be_nil
-                expect {
-                  snapshot = my_cpi.ec2_resource.snapshot(ephemeral_disk.snapshot_id)
-                  snapshot.data
-                }.to raise_error(Aws::EC2::Errors::InvalidSnapshotNotFound)
               end
             end
           end
@@ -697,18 +693,21 @@ describe Bosh::AwsCloud::Cloud do
                 'ephemeral_disk' => {
                   'size' => 4 * 1024,
                   'encrypted' => true,
-                  'kms_key_arn' => 'invalid-kms-key-arn-only-for-testing-overwrite'
+                  'kms_key_arn' => @kms_key_arn_override,
                 }
               }
             end
 
             it 'should try to create ephemeral disk vm type cloud properties kms_key_arn' do
-              # It's faster to fail than providing another `kms_key_arn` and waiting for success
-              # if the property wasn't being overwritten it would NOT fail
-              # also no need to have another KMS key be provided in the tests
-              expect do
-                vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: my_cpi)
-              end.to raise_error(Aws::EC2::Errors::InvalidVolumeNotFound)
+              vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: my_cpi) do |instance_id|
+                block_device_mapping = my_cpi.ec2_resource.instance(instance_id).block_device_mappings
+                ephemeral_block_device = block_device_mapping.find { |entry| entry.device_name == '/dev/sdb' }
+
+                ephemeral_disk = my_cpi.ec2_resource.volume(ephemeral_block_device.ebs.volume_id)
+
+                expect(ephemeral_disk.encrypted).to be(true)
+                expect(ephemeral_disk.kms_key_id).to eq(@kms_key_arn_override)
+              end
             end
           end
         end

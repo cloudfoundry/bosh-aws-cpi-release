@@ -56,6 +56,7 @@ RSpec.configure do |rspec_config|
     @subnet_id                      = ENV.fetch('BOSH_AWS_SUBNET_ID')
     @subnet_zone                    = ENV.fetch('BOSH_AWS_SUBNET_ZONE')
     @kms_key_arn                    = ENV.fetch('BOSH_AWS_KMS_KEY_ARN')
+    @kms_key_arn_override           = ENV.fetch('BOSH_AWS_KMS_KEY_ARN_OVERRIDE')
     @region                         = ENV.fetch('BOSH_AWS_REGION', 'us-west-1')
     @default_key_name               = ENV.fetch('BOSH_AWS_DEFAULT_KEY_NAME', 'bosh')
     @ami                            = ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-866d3ee6')
@@ -158,7 +159,7 @@ end
 def route_exists?(route_table, expected_cidr, instance_id)
   4.times do
     route_table.reload
-    found_route = route_table.routes.any? { |r| r.destination_cidr_block == expected_cidr && r.instance_id == instance_id }
+    found_route = route_table.data.routes.any? { |r| r.destination_cidr_block == expected_cidr && r.instance_id == instance_id }
     return true if found_route
     sleep 0.5
   end

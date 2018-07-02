@@ -13,7 +13,6 @@ module Bosh
         @kms_key_arn = options[:kms_key_arn]
         @encrypted = options[:encrypted] || false
         @root_device_name = options[:root_device_name] || '/dev/xvda'
-        @snapshot_id = options[:snapshot_id]
         @tags = options[:tags] || []
       end
 
@@ -25,11 +24,8 @@ module Bosh
         }
 
         mapping[:iops] = @iops if @iops
-        if @snapshot_id
-          mapping[:snapshot_id] = @snapshot_id
-        else
-          mapping[:encrypted] = @encrypted if @encrypted
-        end
+        mapping[:encrypted] = @encrypted if @encrypted
+        mapping[:kms_key_id] = @kms_key_arn if @kms_key_arn
 
         { device_name: '/dev/sdb', ebs: mapping }
       end

@@ -7,6 +7,7 @@ set -e
 : ${AWS_DEFAULT_REGION:=us-west-1}
 : ${PROJECT_RUBY_VERSION:?}
 : ${BOSH_AWS_KMS_KEY_ARN:?}
+: ${BOSH_AWS_KMS_KEY_ARN_OVERRIDE:?}
 
 function destroy_env() {
   pushd "${RELEASE_DIR}/ci/assets/terraform"

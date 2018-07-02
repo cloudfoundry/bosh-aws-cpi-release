@@ -59,9 +59,9 @@ module Bosh::AwsCloud
       let(:block_devices) do
         [
           double(
-            Aws::AutoScaling::Types::BlockDeviceMapping,
+            Aws::EC2::Types::BlockDeviceMapping,
             device_name: 'fake-image-root-device',
-            ebs: double(Aws::AutoScaling::Types::Ebs, volume_size: 17)
+            ebs: double(Aws::EC2::Types::EbsBlockDevice, volume_size: 17)
           )
         ]
       end
