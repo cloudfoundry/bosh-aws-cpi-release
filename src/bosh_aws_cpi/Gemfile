@@ -1,6 +1,5 @@
 source 'https://rubygems.org'
 
-# gem 'aws-sdk',     '~>3.0.1'
 gem 'aws-sdk-ec2', '~>1.36'
 gem 'aws-sdk-autoscaling', '~>1.6'
 gem 'aws-sdk-elasticloadbalancing', '~>1.3'

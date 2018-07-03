@@ -1,5 +1,6 @@
 require 'spec_helper'
 require 'integration/helpers/ec2_helper'
+require 'aws-sdk-iam'
 
 def validate_minimum_permissions(logger)
   if @permissions_auditor_key_id && @permissions_auditor_secret_key
