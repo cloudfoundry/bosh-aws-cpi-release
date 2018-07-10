@@ -23,14 +23,20 @@ describe Bosh::AwsCloud::CloudV1 do
       end
 
       expect(volume).to receive(:attachments).and_return([attachment])
-      expect(volume).to receive(:create_snapshot).with('deployment/job/0/sdf').and_return(snapshot)
+      expect(volume).to receive(:create_snapshot).with(description: 'deployment/job/0/sdf').and_return(snapshot)
 
       expect(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(snapshot: snapshot, state: 'completed')
 
       expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(snapshot,
-        { 'agent_id' => 'agent', 'instance_id' => 'instance', 'director_name' => 'Test Director',
-          'director_uuid' => '6d06b0cc-2c08-43c5-95be-f1b2dd247e18', 'device' => '/dev/sdf', 'Name' => 'deployment/job/0/sdf'
-        }
+        'agent_id' => 'agent',
+        'instance_id' => 'instance',
+        'director_uuid' => '6d06b0cc-2c08-43c5-95be-f1b2dd247e18',
+        'deployment'=> 'deployment',
+        'device' => '/dev/sdf',
+        'director' => 'Test Director',
+        'instance_index'=> '0',
+        'instance_name'=> 'job/instance',
+        'Name' => 'deployment/job/0/sdf'
       )
 
       cloud.snapshot_disk('vol-xxxxxxxx', metadata)
@@ -52,15 +58,21 @@ describe Bosh::AwsCloud::CloudV1 do
 
 
       allow(volume).to receive(:attachments).and_return([attachment])
-      allow(volume).to receive(:create_snapshot).with('deployment/job/0/sdf').and_return(snapshot)
+      allow(volume).to receive(:create_snapshot).with(description: 'deployment/job/0/sdf').and_return(snapshot)
 
       allow(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(snapshot: snapshot, state: 'completed')
 
-
-      expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(snapshot,
-        { 'agent_id' => 'agent', 'instance_id' => 'instance', 'director_name' => 'Test Director',
-          'director_uuid' => '6d06b0cc-2c08-43c5-95be-f1b2dd247e18', 'device' => '/dev/sdf', 'Name' => 'deployment/job/0/sdf'
-        }
+      expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(
+        snapshot,
+        'agent_id' => 'agent',
+        'instance_id' => 'instance',
+        'director_uuid' => '6d06b0cc-2c08-43c5-95be-f1b2dd247e18',
+        'deployment'=> 'deployment',
+        'device' => '/dev/sdf',
+        'director' => 'Test Director',
+        'instance_index'=> '0',
+        'instance_name'=> 'job/instance',
+        'Name' => 'deployment/job/0/sdf',
       )
 
       cloud.snapshot_disk('vol-xxxxxxxx', metadata)
@@ -72,15 +84,22 @@ describe Bosh::AwsCloud::CloudV1 do
       end
 
       expect(volume).to receive(:attachments).and_return([])
-      expect(volume).to receive(:create_snapshot).with('deployment/job/0').and_return(snapshot)
+      expect(volume).to receive(:create_snapshot).with(description: 'deployment/job/0').and_return(snapshot)
 
       expect(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(
         snapshot: snapshot, state: 'completed'
       )
 
-      expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(snapshot,
-        { 'agent_id' => 'agent', 'instance_id' => 'instance', 'director_name' => 'Test Director',
-          'director_uuid' => '6d06b0cc-2c08-43c5-95be-f1b2dd247e18', 'Name' => 'deployment/job/0'}
+      expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(
+        snapshot,
+        'agent_id' => 'agent',
+        'instance_id' => 'instance',
+        'director_uuid' => '6d06b0cc-2c08-43c5-95be-f1b2dd247e18',
+        'deployment'=> 'deployment',
+        'director' => 'Test Director',
+        'instance_index'=> '0',
+        'instance_name'=> 'job/instance',
+        'Name' => 'deployment/job/0',
       )
 
       cloud.snapshot_disk('vol-xxxxxxxx', metadata)

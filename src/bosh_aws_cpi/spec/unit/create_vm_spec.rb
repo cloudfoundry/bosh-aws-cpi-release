@@ -31,7 +31,6 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
   let(:agent_id) {'007-agent'}
   let(:instance_id) {'instance-id'}
   let(:environment) {{}}
-
   let(:stemcell) {instance_double(Bosh::AwsCloud::Stemcell, root_device_name: 'root name', image_id: stemcell_id)}
   let(:stemcell_id) {'stemcell-id'}
 
@@ -110,54 +109,5 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
     allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: instance, state: :running)
     expect(network_configurator).to receive(:configure).with(ec2, instance)
     cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)
-  end
-
-  context 'when specifying kms encryption for ephemeral device' do
-    let(:encrypted_temp_disk_configuration) {{'encrypted' => true, 'kms_key_arn' => 'some-kms-key'}}
-    let(:vm_type) do
-      {
-        'instance_type' => 'm1.small',
-        'availability_zone' => 'us-east-1a',
-        'ephemeral_disk' => encrypted_temp_disk_configuration
-      }
-    end
-    let(:temp_volume) {instance_double(Aws::EC2::Volume)}
-    let(:temp_snapshot) {instance_double(Aws::EC2::Snapshot, id: 's-id')}
-    let(:vm_cloud_props) do
-      Bosh::AwsCloud::VMCloudProps.new({'ephemeral_disk' => {'encrypted' => true, 'kms_key_arn' => 'some-kms-key'}}, global_config)
-    end
-
-    before do
-      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(snapshot: temp_snapshot, state: 'completed')
-      allow(agent_settings).to receive(:encode).and_return('my-encoded-value')
-    end
-
-    it 'creates and deletes an encrypted volume and snapshot and sends the snapshot to block device manager' do
-      expect(volume_manager).to receive(:create_ebs_volume).with(hash_including({
-                                                                                  encrypted: true,
-                                                                                  kms_key_id: 'some-kms-key',
-                                                                                  tag_specifications: [{
-                                                                                                         resource_type: 'volume',
-                                                                                                         tags: [{key: 'ephemeral_disk_agent_id', value: "temp-vol-bosh-agent-#{agent_id}"}]
-                                                                                                       }]
-                                                                                })).and_return temp_volume
-      expect(temp_volume).to receive(:create_snapshot).and_return temp_snapshot
-      expect(temp_snapshot).to receive(:create_tags).with({tags: [{key: "ephemeral_disk_agent_id", value: "temp-snapshot-bosh-agent-#{agent_id}"}]})
-
-      expect(temp_snapshot).to receive(:delete)
-      expect(volume_manager).to receive(:delete_ebs_volume).with temp_volume
-
-      expect(instance_manager).to receive(:create).with(
-        stemcell_id,
-        vm_cloud_props,
-        networks_cloud_props,
-        disk_locality,
-        [],
-        mappings,
-        'my-encoded-value'
-      )
-
-      cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)
-    end
   end
 end

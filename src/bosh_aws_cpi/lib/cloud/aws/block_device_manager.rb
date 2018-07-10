@@ -4,10 +4,9 @@ module Bosh::AwsCloud
     DEFAULT_NVME_EPHEMERAL_DEVICE_PATH = '/dev/nvme1n1'.freeze
     NVME_EBS_BY_ID_DEVICE_PATH_PREFIX = '/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_'
 
-    def initialize(logger, stemcell, vm_cloud_props, snapshot)
+    def initialize(logger, stemcell, vm_cloud_props)
       @logger = logger
       @vm_cloud_props = vm_cloud_props
-      @snapshot_id = snapshot ? snapshot.id : nil
       @virtualization_type = stemcell.ami.virtualization_type
       @root_device_name = stemcell.ami.root_device_name
       @ami_block_device_names = stemcell.ami.block_device_mappings.map { |blk| blk.device_name }
@@ -117,8 +116,8 @@ module Bosh::AwsCloud
           size: disk_size,
           type: ephemeral_disk.type,
           iops: ephemeral_disk.iops,
-          snapshot_id: @snapshot_id,
-          encrypted: ephemeral_disk.encrypted
+          encrypted: ephemeral_disk.encrypted,
+          kms_key_arn: ephemeral_disk.kms_key_arn,
         ).ephemeral_disk_config
       end
 

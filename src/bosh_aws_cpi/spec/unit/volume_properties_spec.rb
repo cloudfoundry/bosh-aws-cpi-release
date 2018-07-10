@@ -21,14 +21,14 @@ module Bosh::AwsCloud
         subject(:volume_properties) {described_class.new(minimal_options)}
         it 'maps the properties to the disk' do
           vp = volume_properties.ephemeral_disk_config
-          expect(vp).to eq({
+          expect(vp).to eq(
             device_name: '/dev/sdb',
             ebs: {
               volume_size: 0,
               volume_type: 'gp2',
               delete_on_termination: true
             }
-          })
+          )
         end
       end
 
@@ -36,16 +36,17 @@ module Bosh::AwsCloud
         subject(:volume_properties) {described_class.new(maximal_options)}
         it 'maps the properties to the disk' do
           vp = volume_properties.ephemeral_disk_config
-          expect(vp).to eq({
+          expect(vp).to eq(
             device_name: '/dev/sdb',
             ebs: {
               volume_size: 2,
               volume_type: 'io1',
               iops: 1,
               encrypted: true,
+              kms_key_id: 'my_fake_kms_arn',
               delete_on_termination: true,
             }
-          })
+          )
         end
       end
     end
@@ -55,12 +56,12 @@ module Bosh::AwsCloud
         subject(:volume_properties) {described_class.new(minimal_options)}
         it 'returns the correct persistent_disk_config' do
           vp = volume_properties.persistent_disk_config
-          expect(vp).to eq({
+          expect(vp).to eq(
             size: 0,
             availability_zone: nil,
             volume_type: 'gp2',
             encrypted: false,
-          })
+          )
         end
       end
 
@@ -68,7 +69,7 @@ module Bosh::AwsCloud
         subject(:volume_properties) {described_class.new(maximal_options)}
         it 'returns the correct persistent_disk_config' do
           vp = volume_properties.persistent_disk_config
-          expect(vp).to eq({
+          expect(vp).to eq(
             size: 2,
             availability_zone: 'us-east-1a',
             volume_type: 'io1',
@@ -79,7 +80,7 @@ module Bosh::AwsCloud
               resource_type: 'volume',
               tags: [{name: "foo", value: "bar"}]
             }]
-          })
+          )
         end
       end
     end
@@ -89,13 +90,13 @@ module Bosh::AwsCloud
         subject(:volume_properties) {described_class.new(minimal_options)}
         it 'returns the correct root_disk_config' do
           vp = volume_properties.root_disk_config
-          expect(vp).to eq({
+          expect(vp).to eq(
             device_name: '/dev/xvda',
             ebs: {
               volume_type: 'gp2',
               delete_on_termination: true,
             }
-          })
+          )
         end
       end
 

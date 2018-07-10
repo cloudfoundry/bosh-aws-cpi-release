@@ -12,10 +12,6 @@ module Bosh::AwsCloud
       @elb_client = Aws::ElasticLoadBalancing::Client.new(@elb_params)
       @alb_client = Aws::ElasticLoadBalancingV2::Client.new(@elb_params)
 
-      # AWS Ruby SDK is threadsafe but Ruby autoload isn't,
-      # so we need to trigger eager autoload while constructing CPI
-      Aws.eager_autoload!
-
       # In SDK v2 the default is more request driven, while the old 'model way' lives in Resource.
       # Therefore in most cases Aws::EC2::Resource would replace the client.
       @ec2_params = initialize_params(@aws_config.ec2_endpoint)

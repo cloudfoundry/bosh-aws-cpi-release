@@ -80,12 +80,10 @@ module Bosh::AwsCloud
       begin
         stemcell = StemcellFinder.find_by_id(@ec2_resource, stemcell_id)
 
-        ephemeral_disk_base_snapshot = temporary_snapshot(agent_id, vm_props)
         block_device_mappings, agent_disk_info = Bosh::AwsCloud::BlockDeviceManager.new(
           @logger,
           stemcell,
           vm_props,
-          ephemeral_disk_base_snapshot
         ).mappings_and_info
 
         settings.agent_disk_info = agent_disk_info
@@ -125,8 +123,6 @@ module Bosh::AwsCloud
         logger.error(%Q[Failed to create instance: #{e.message}\n#{e.backtrace.join("\n")}])
         instance.terminate(@config.aws.fast_path_delete?) if instance
         raise e
-      ensure
-        ephemeral_disk_base_snapshot.delete if ephemeral_disk_base_snapshot
       end
     end
 
@@ -177,34 +173,6 @@ module Bosh::AwsCloud
           return false
         end
         true
-      end
-    end
-
-    private
-
-    def temporary_snapshot(agent_id, vm_cloud_props)
-      if vm_cloud_props.custom_encryption?
-        custom_kms_key_disk_config = VolumeProperties.new(
-          size: 1024,
-          type: vm_cloud_props.ephemeral_disk.type,
-          iops: vm_cloud_props.ephemeral_disk.iops,
-          encrypted: vm_cloud_props.ephemeral_disk.encrypted,
-          kms_key_arn: vm_cloud_props.ephemeral_disk.kms_key_arn,
-          az: vm_cloud_props.availability_zone,
-          tags: [{key: "ephemeral_disk_agent_id", value: "temp-vol-bosh-agent-#{agent_id}"}]
-        ).persistent_disk_config
-
-        volume = @volume_manager.create_ebs_volume(custom_kms_key_disk_config)
-        begin
-          snapshot = volume.create_snapshot
-          snapshot.create_tags(tags: [{key: "ephemeral_disk_agent_id", value: "temp-snapshot-bosh-agent-#{agent_id}"}])
-          ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
-        ensure
-          @volume_manager.delete_ebs_volume(volume)
-        end
-        snapshot
-      else
-        nil
       end
     end
   end

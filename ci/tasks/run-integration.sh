@@ -6,6 +6,7 @@ set -e
 : ${AWS_SECRET_ACCESS_KEY:?}
 : ${AWS_DEFAULT_REGION:?}
 : ${BOSH_AWS_KMS_KEY_ARN:?}
+: ${BOSH_AWS_KMS_KEY_ARN_OVERRIDE:?}
 
 # NOTE: To run with specific line numbers, set:
 # RSPEC_ARGUMENTS="spec/integration/lifecycle_spec.rb:mm:nn"
