@@ -154,7 +154,7 @@ jobs:
           delete_on_failure: true
           generate_random_name: true
           terraform_source: bosh-cpi-src/ci/assets/terraform
-          override_files: [bosh-cpi-src/ci/assets/terraform/e2e/template.tf]
+          override_files: [bosh-cpi-src/ci/assets/terraform/e2e/e2e.tf]
       - do:
         - <<: *prepare-director
           params:
