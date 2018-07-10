@@ -162,7 +162,7 @@ jobs:
 <%
 stemcell_resources = [
   [{name: 'stemcell', resource: 'precompiled-stemcell-v1'}, {name: 'heavy-stemcell', resource: 'heavy-ubuntu-stemcell-v1'}],
-  [{name: 'stemcell', resource: 'heavier-ubuntu-stemcell-v2'},{name: 'heavy-stemcell', resource: 'heavier-ubuntu-stemcell-v2'}]
+  [{name: 'stemcell', resource: 'precompiled-ubuntu-stemcell-v2'},{name: 'heavy-stemcell', resource: 'heavy-ubuntu-stemcell-v2'}]
 ]
 director_resources = [
   {name: 'bosh-release', resource: 'precompiled-bosh-release', ops_file: ''},
@@ -348,14 +348,12 @@ resources:
 #      bucket: bosh-toronto-bag
 #      regexp: light-bosh-stemcell-(3363.12)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
 #      region_name: us-east-1
-#  - name: heavy-ubuntu-stemcell-v2
-#    type: s3
-#    source:
-#      access_key_id: {{aws_access_key}}
-#      bucket: bosh-toronto-bag
-#      regexp: bosh-light-aws-stemcell-v2-toronto/TEST_LIGHT_STEMCELL_v2_light-bosh-stemcell-(.*)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
-#      secret_access_key: {{aws_secret_key}}
-  - name: heavier-ubuntu-stemcell-v2
+  - name: heavy-ubuntu-stemcell-v2
+    type: s3
+    source:
+      bucket: bosh-toronto-bag
+      regexp: bosh-registry-removal/stemcells/aws/bosh-stemcell-(.*)-aws-xen-hvm-ubuntu-trusty-go_agent.tgz
+  - name: precompiled-ubuntu-stemcell-v2
     type: s3
     source:
       access_key_id: {{aws_access_key}}
