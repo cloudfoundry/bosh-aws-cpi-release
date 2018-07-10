@@ -301,7 +301,8 @@ describe Bosh::AwsCloud::CloudV1 do
             expect(snapshot_tags['device']).to eq '/dev/sdf'
             expect(snapshot_tags['agent_id']).to eq 'agent'
             expect(snapshot_tags['instance_id']).to eq 'instance'
-            expect(snapshot_tags['director_name']).to eq 'Director'
+            expect(snapshot_tags['director']).to eq 'Director'
+            expect(snapshot_tags['director_name']).to be_nil
             expect(snapshot_tags['director_uuid']).to eq '6d06b0cc-2c08-43c5-95be-f1b2dd247e18'
             expect(snapshot_tags['Name']).to eq 'deployment/cpi_spec/0/sdf'
 
