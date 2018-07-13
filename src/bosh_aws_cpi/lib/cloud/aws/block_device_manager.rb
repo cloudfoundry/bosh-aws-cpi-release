@@ -1,7 +1,6 @@
 module Bosh::AwsCloud
   class BlockDeviceManager
     DEFAULT_INSTANCE_STORAGE_DISK_MAPPING = { device_name: '/dev/sdb', virtual_name: 'ephemeral0' }.freeze
-    DEFAULT_NVME_EPHEMERAL_DEVICE_PATH = '/dev/nvme1n1'.freeze
     NVME_EBS_BY_ID_DEVICE_PATH_PREFIX = '/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_'
 
     def initialize(logger, stemcell, vm_cloud_props)
@@ -46,11 +45,8 @@ module Bosh::AwsCloud
       info.group_by { |v| v[:bosh_type] }.map do |type, devices|
         {
           type => devices.map do |device|
-            if BlockDeviceManager.requires_nvme_device(@vm_cloud_props.instance_type)
-              { 'path' => DEFAULT_NVME_EPHEMERAL_DEVICE_PATH }
-            else
-              { 'path' => device[:device_name] }
-            end
+            @logger.info("Mapping device #{device.inspect} to path: #{device[:device_name].inspect}")
+            { 'path' => device[:device_name] }
           end
         }
       end.select do |elem|
