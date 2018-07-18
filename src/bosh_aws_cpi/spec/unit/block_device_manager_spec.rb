@@ -67,8 +67,12 @@ module Bosh::AwsCloud
         end
         let(:expected_agent_info) do
           {
-              'ephemeral' => [{ 'path' => '/dev/nvme1n1' }]
+              'ephemeral' => [{ 'path' => '/dev/sdb' }]
           }
+        end
+
+        let(:device_path) do
+          BlockDeviceManager.device_path('/dev/sdf', instance_type, 'vol-123')
         end
 
         it 'returns an EBS volume with /dev/sdb' do
@@ -76,9 +80,14 @@ module Bosh::AwsCloud
           expect(actual_output).to eq(expected_output)
         end
 
-        it 'returns ephemeral disk settings to the agent with /dev/nvme1n1' do
+        it 'returns ephemeral disk settings to the agent with /dev/sdb' do
           _, actual_agent_info = manager.mappings_and_info
           expect(actual_agent_info).to eq(expected_agent_info)
+        end
+
+        it 'returns persistent disk name by volume ID' do
+          expect(device_path)
+            .to eq('/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_vol123')
         end
       end
 
