@@ -275,13 +275,14 @@ describe Bosh::AwsCloud::CloudV1 do
     end
 
     context 'without existing disks' do
-      it 'should exercise the vm lifecycle' do
+      fit 'should exercise the vm lifecycle' do
         vm_lifecycle do |instance_id|
           begin
             volume_id = @cpi.create_disk(2048, {}, instance_id)
             expect(volume_id).not_to be_nil
             expect(@cpi.has_disk?(volume_id)).to be(true)
 
+            puts "---- pre attach disk ----"
             @cpi.attach_disk(instance_id, volume_id)
 
             snapshot_metadata = vm_metadata.merge(
@@ -293,9 +294,11 @@ describe Bosh::AwsCloud::CloudV1 do
             )
             snapshot_id = @cpi.snapshot_disk(volume_id, snapshot_metadata)
             expect(snapshot_id).not_to be_nil
+            puts "---- post attach disk, post snapshot_disk ----"
 
             snapshot = @cpi.ec2_resource.snapshot(snapshot_id)
             expect(snapshot.description).to eq 'deployment/cpi_spec/0/sdf'
+            puts "---- post snapshot_disk, check snapshot ----"
 
             snapshot_tags = array_key_value_to_hash(snapshot.tags)
             expect(snapshot_tags['device']).to eq '/dev/sdf'
