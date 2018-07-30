@@ -241,7 +241,6 @@ module Bosh::AwsCloud
     def detach_disk(instance_id, disk_id)
       with_thread_name("detach_disk(#{instance_id}, #{disk_id})") do
         @cloud_core.detach_disk(instance_id, disk_id) do |disk_id|
-          puts "-------- detach block ----------"
           update_agent_settings(instance_id) do |settings|
             settings['disks'] ||= {}
             settings['disks']['persistent'] ||= {}

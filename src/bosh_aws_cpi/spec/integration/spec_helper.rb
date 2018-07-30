@@ -141,14 +141,13 @@ def vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: @cpi)
     vm_disks,
     nil,
     )
-  puts "=== create vm response: #{create_vm_response}"
   instance_id = create_vm_response
 
   # cpi check for custom cpi during tests
   if @cpi_api_version >= 2 && cpi == @cpi
     instance_id = create_vm_response[0]
   end
-  
+
   expect(instance_id).not_to be_nil
   expect(cpi.has_vm?(instance_id)).to be(true)
 

@@ -183,7 +183,6 @@ describe 'the aws_cpi executable' do
     }
     it 'merges the context into the cloud_properties' do
       result = run_cpi({'method'=>'has_vm', 'arguments'=>['i-01f73de98ab33ad2f'], 'context'=> context, 'api_version'=>2})
-      puts "Result: #{result}"
       expect(result.keys).to eq(%w(result error log))
 
       expect(result['result']).to be_falsey
