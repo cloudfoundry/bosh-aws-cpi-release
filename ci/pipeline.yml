@@ -73,7 +73,7 @@ jobs:
         - {get: 2h,             trigger: true}
       - put: environment
         params:
-          env_name: bosh-aws-cpi/integration
+          env_name: bosh-aws-cpi-integration
           delete_on_failure: true
           generate_random_name: true
           terraform_source: bosh-cpi-src/ci/assets/terraform
@@ -92,7 +92,7 @@ jobs:
             - <<: *ensure-terminated
             - put: environment
               params:
-                env_name: bosh-aws-cpi/integration
+                env_name: bosh-aws-cpi-integration
                 action: destroy
                 env_name_file: environment/name
                 terraform_source: bosh-cpi-src/ci/assets/terraform
@@ -114,7 +114,7 @@ jobs:
         - {get: 2h,              trigger: true}
       - put: environment
         params:
-          env_name: bosh-aws-cpi/bats
+          env_name: bosh-aws-cpi-bats
           delete_on_failure: true
           generate_random_name: true
           terraform_source: bosh-cpi-src/ci/assets/terraform
@@ -137,7 +137,7 @@ jobs:
           do:
             - put: environment
               params:
-                env_name: bosh-aws-cpi/bats
+                env_name: bosh-aws-cpi-bats
                 action: destroy
                 env_name_file: environment/name
                 terraform_source: bosh-cpi-src/ci/assets/terraform
@@ -159,7 +159,7 @@ jobs:
         - {get: 2h,              trigger: true}
       - put: environment
         params:
-          env_name: bosh-aws-cpi/end-2-end
+          env_name: bosh-aws-cpi-end-2-end
           delete_on_failure: true
           generate_random_name: true
           terraform_source: bosh-cpi-src/ci/assets/terraform
@@ -183,7 +183,7 @@ jobs:
           do:
             - put: environment
               params:
-                env_name: bosh-aws-cpi/end-2-end
+                env_name: bosh-aws-cpi-end-2-end
                 action: destroy
                 env_name_file: environment/name
                 terraform_source: bosh-cpi-src/ci/assets/terraform
