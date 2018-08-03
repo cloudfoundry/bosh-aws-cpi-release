@@ -37,22 +37,6 @@ shared:
     params:
       BOSH_AWS_KMS_KEY_ARN: {{aws_kms_key_arn}}
 
-  - &create-environment
-    put: environment
-    params:
-      delete_on_failure: true
-      generate_random_name: true
-      terraform_source: bosh-cpi-src/ci/assets/terraform
-
-  - &destroy-environment
-    put: environment
-    params:
-      action: destroy
-      env_name_file: environment/name
-      terraform_source: bosh-cpi-src/ci/assets/terraform
-    get_params:
-      action: destroy
-
   - &ensure-terminated
     task: ensure-terminated
     file: bosh-cpi-src/ci/tasks/ensure-terminated.yml
@@ -87,7 +71,12 @@ jobs:
         - {trigger: true,  passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
         - {trigger: false, passed: [build-candidate], get: bosh-cpi-src, resource: bosh-cpi-src-in}
         - {get: 2h,             trigger: true}
-      - <<: *create-environment
+      - put: environment
+        params:
+          env_name: bosh-aws-cpi/integration
+          delete_on_failure: true
+          generate_random_name: true
+          terraform_source: bosh-cpi-src/ci/assets/terraform
       - task: test
         file: bosh-cpi-src/ci/tasks/run-integration.yml
         params:
@@ -101,7 +90,14 @@ jobs:
         ensure:
           do:
             - <<: *ensure-terminated
-            - <<: *destroy-environment
+            - put: environment
+              params:
+                env_name: bosh-aws-cpi/integration
+                action: destroy
+                env_name_file: environment/name
+                terraform_source: bosh-cpi-src/ci/assets/terraform
+              get_params:
+                action: destroy
 
   - name: bats
     serial: true
@@ -116,7 +112,12 @@ jobs:
         - {get: bosh-cli,        trigger: false}
         - {get: bats,            trigger: false}
         - {get: 2h,              trigger: true}
-      - <<: *create-environment
+      - put: environment
+        params:
+          env_name: bosh-aws-cpi/bats
+          delete_on_failure: true
+          generate_random_name: true
+          terraform_source: bosh-cpi-src/ci/assets/terraform
       - do:
         - <<: *prepare-director
           params:
@@ -134,7 +135,14 @@ jobs:
               - <<: *ensure-terminated
         ensure:
           do:
-            - <<: *destroy-environment
+            - put: environment
+              params:
+                env_name: bosh-aws-cpi/bats
+                action: destroy
+                env_name_file: environment/name
+                terraform_source: bosh-cpi-src/ci/assets/terraform
+              get_params:
+                action: destroy
 
   - name: end-2-end
     serial: true
@@ -151,6 +159,7 @@ jobs:
         - {get: 2h,              trigger: true}
       - put: environment
         params:
+          env_name: bosh-aws-cpi/end-2-end
           delete_on_failure: true
           generate_random_name: true
           terraform_source: bosh-cpi-src/ci/assets/terraform
@@ -172,7 +181,14 @@ jobs:
               - <<: *ensure-terminated
         ensure:
           do:
-            - <<: *destroy-environment
+            - put: environment
+              params:
+                env_name: bosh-aws-cpi/end-2-end
+                action: destroy
+                env_name_file: environment/name
+                terraform_source: bosh-cpi-src/ci/assets/terraform
+              get_params:
+                action: destroy
 
   - name: delivery
     plan:
