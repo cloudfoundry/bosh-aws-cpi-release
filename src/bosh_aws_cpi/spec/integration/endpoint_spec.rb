@@ -6,6 +6,7 @@ require 'open-uri'
 describe Bosh::AwsCloud::CloudV1 do
   let(:logger) { Bosh::Cpi::Logger.new(STDERR) }
   let(:non_existent_vm_id) { 'i-010fd20eb24f606ab' }
+  let(:mock_cpi_api_version) { 2 }
 
   describe 'specifying ec2 endpoint instead of region' do
     let(:cpi) do
@@ -24,7 +25,12 @@ describe Bosh::AwsCloud::CloudV1 do
           'endpoint' => 'fake',
           'user' => 'fake',
           'password' => 'fake'
-        }
+        },
+        'debug'=> {
+          'cpi'=> {
+            'api_version'=> mock_cpi_api_version
+          },
+        },
       )
     end
 
@@ -50,7 +56,12 @@ describe Bosh::AwsCloud::CloudV1 do
             'endpoint' => 'fake',
             'user' => 'fake',
             'password' => 'fake'
-          }
+          },
+          'debug'=> {
+            'cpi'=> {
+              'api_version'=> mock_cpi_api_version
+            },
+          },
         )
       end
 
@@ -79,7 +90,12 @@ describe Bosh::AwsCloud::CloudV1 do
             'endpoint' => 'fake',
             'user' => 'fake',
             'password' => 'fake'
-          }
+          },
+          'debug'=> {
+            'cpi'=> {
+              'api_version'=> mock_cpi_api_version
+            },
+          },
         )
       end
 
@@ -142,7 +158,12 @@ describe Bosh::AwsCloud::CloudV1 do
           'endpoint' => 'fake',
           'user' => 'fake',
           'password' => 'fake'
-        }
+        },
+        'debug'=> {
+          'cpi'=> {
+            'api_version'=> mock_cpi_api_version
+          },
+        },
       )
     end
 
@@ -207,7 +228,12 @@ describe Bosh::AwsCloud::CloudV1 do
             'endpoint' => 'fake',
             'user' => 'fake',
             'password' => 'fake'
-          }
+          },
+          'debug'=> {
+            'cpi'=> {
+              'api_version'=> mock_cpi_api_version
+            },
+          },
         )
       end
 

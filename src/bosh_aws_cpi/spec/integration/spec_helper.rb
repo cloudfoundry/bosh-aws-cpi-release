@@ -2,7 +2,7 @@ require 'spec_helper'
 require 'integration/helpers/ec2_helper'
 require 'aws-sdk-iam'
 
-
+MOCK_CPI_API_VERSION = 2
 def validate_minimum_permissions(logger)
   if @permissions_auditor_key_id && @permissions_auditor_secret_key
     sts_client = Aws::STS::Client.new(
@@ -99,6 +99,11 @@ RSpec.configure do |rspec_config|
         'endpoint' => 'fake',
         'user' => 'fake',
         'password' => 'fake'
+      },
+      'debug'=> {
+        'cpi'=> {
+          'api_version'=> MOCK_CPI_API_VERSION
+        },
       },
     }
 

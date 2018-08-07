@@ -34,6 +34,7 @@ describe Bosh::AwsCloud::CloudV1 do
   let(:security_groups) { get_security_group_ids }
   let(:registry) { instance_double(Bosh::Cpi::RegistryClient).as_null_object }
   let(:security_groups) { get_security_group_ids }
+  let(:mock_cpi_api_version) { 2 }
 
   let(:aws_config) do
     {
@@ -55,7 +56,12 @@ describe Bosh::AwsCloud::CloudV1 do
         'endpoint' => 'fake',
         'user' => 'fake',
         'password' => 'fake'
-      }
+      },
+      'debug'=> {
+        'cpi'=> {
+          'api_version'=> mock_cpi_api_version
+        },
+      },
     )
   end
 
@@ -149,7 +155,12 @@ describe Bosh::AwsCloud::CloudV1 do
               'endpoint' => 'fake',
               'user' => 'fake',
               'password' => 'fake'
-            }
+            },
+            'debug'=> {
+              'cpi'=> {
+                'api_version'=> mock_cpi_api_version
+              },
+            },
           )
         end
 
@@ -182,7 +193,12 @@ describe Bosh::AwsCloud::CloudV1 do
               'endpoint' => 'fake',
               'user' => 'fake',
               'password' => 'fake'
-            }
+            },
+            'debug'=> {
+              'cpi'=> {
+                'api_version'=> mock_cpi_api_version
+              },
+            },
           )
         end
 

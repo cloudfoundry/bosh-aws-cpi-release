@@ -9,6 +9,8 @@ describe 'the aws_cpi executable' do
     config_file.close
   end
 
+  let(:mock_cpi_api_version) { 2 }
+
   let(:config_file) { Tempfile.new('cloud_properties.yml') }
 
   let(:cloud_properties) do
@@ -28,7 +30,12 @@ describe 'the aws_cpi executable' do
             'endpoint' => 'fake',
             'user' => 'fake',
             'password' => 'fake'
-          }
+          },
+          'debug'=> {
+            'cpi'=> {
+              'api_version'=> mock_cpi_api_version
+            },
+          },
         }
       }
     }
@@ -51,7 +58,12 @@ describe 'the aws_cpi executable' do
               'endpoint' => 'fake',
               'user' => 'fake',
               'password' => 'fake'
-            }
+            },
+            'debug'=> {
+              'cpi'=> {
+                'api_version'=> mock_cpi_api_version
+              },
+            },
           }
         }
       }
@@ -83,7 +95,12 @@ describe 'the aws_cpi executable' do
               'endpoint' => 'fake',
               'user' => 'fake',
               'password' => 'fake'
-            }
+            },
+            'debug'=> {
+              'cpi'=> {
+                'api_version'=> mock_cpi_api_version
+              },
+            },
           }
         }
       }
@@ -164,7 +181,12 @@ describe 'the aws_cpi executable' do
               'endpoint' => 'fake',
               'user' => 'fake',
               'password' => 'fake'
-            }
+            },
+            'debug'=> {
+              'cpi'=> {
+                'api_version'=> mock_cpi_api_version
+              },
+            },
           }
         }
       }

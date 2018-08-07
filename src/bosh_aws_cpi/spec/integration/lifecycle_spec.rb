@@ -27,6 +27,7 @@ describe Bosh::AwsCloud::CloudV1 do
   let(:vm_type) { { 'instance_type' => instance_type, 'availability_zone' => @subnet_zone } }
   let(:security_groups) { get_security_group_ids }
   let(:registry) { instance_double(Bosh::Cpi::RegistryClient).as_null_object }
+  let(:mock_cpi_api_version) { 2 }
 
   before {
     allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
@@ -70,6 +71,11 @@ describe Bosh::AwsCloud::CloudV1 do
           'endpoint' => 'fake',
           'user' => 'fake',
           'password' => 'fake'
+        },
+        'debug'=> {
+          'cpi'=> {
+            'api_version'=> mock_cpi_api_version
+          },
         })
       end.to raise_error(/region/)
     end
@@ -100,7 +106,12 @@ describe Bosh::AwsCloud::CloudV1 do
           'endpoint' => 'fake',
           'user' => 'fake',
           'password' => 'fake'
-        }
+        },
+        'debug'=> {
+          'cpi'=> {
+            'api_version'=> mock_cpi_api_version
+          },
+        },
       )
     end
     it 'it can perform a AWS API call', :focus => true do
@@ -224,7 +235,12 @@ describe Bosh::AwsCloud::CloudV1 do
             'endpoint' => 'fake',
             'user' => 'fake',
             'password' => 'fake'
-          }
+          },
+          'debug'=> {
+            'cpi'=> {
+              'api_version'=> mock_cpi_api_version
+            },
+          },
         )
       end
 
