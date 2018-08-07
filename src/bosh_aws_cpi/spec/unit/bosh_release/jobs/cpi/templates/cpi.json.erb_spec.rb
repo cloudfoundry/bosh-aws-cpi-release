@@ -3,6 +3,7 @@ require 'json'
 
 describe 'cpi.json.erb' do
   let(:cpi_specification_file) { File.absolute_path(File.join(jobs_root, 'aws_cpi/spec')) }
+  let(:cpi_api_version) { 2 }
 
   subject(:parsed_json) do
     context_hash = YAML.load_file(cpi_specification_file)
@@ -76,7 +77,12 @@ describe 'cpi.json.erb' do
               }
             },
             'mbus'=>'nats://nats:nats-password@nats-address.example.com:4222'
-          }
+          },
+          'debug'=> {
+            'cpi'=> {
+              'api_version'=> cpi_api_version
+            },
+          },
         }
       }
     )
@@ -84,14 +90,28 @@ describe 'cpi.json.erb' do
 
   context 'when api_version is provided in the manifest' do
     let(:cpi_api_version) { 42 }
+
     before do
-      manifest['properties']['cpi_api_version'] = cpi_api_version
+      manifest['properties'].merge!({
+        'debug'=> {
+          'cpi'=> {
+            'api_version'=> cpi_api_version
+          },
+        },
+      })
     end
 
     it 'renders the api_version' do
-      expect(subject['cloud']['properties']['api_version']).to eq(cpi_api_version)
+      expect(subject['cloud']['properties']['debug']['cpi']['api_version']).to eq(42)
     end
   end
+
+  context 'when api_version is NOT provided in the manifest' do
+    it 'renders the DEFAULT api_version(2)' do
+      expect(subject['cloud']['properties']['debug']['cpi']['api_version']).to eq(cpi_api_version)
+    end
+  end
+
 
   context 'when the registry password includes special characters' do
     special_chars_password = '=!@#$%^&*/-+?='

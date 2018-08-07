@@ -7,7 +7,7 @@ require 'cloud/aws'
 MOCK_AWS_ACCESS_KEY_ID = 'foo'
 MOCK_AWS_SECRET_ACCESS_KEY = 'bar'
 PROJECT_RUBY_VERSION = ENV.fetch('PROJECT_RUBY_VERSION', '2.4.4')
-
+MOCK_CPI_API_VERSION = 2
 def mock_cloud_options
   {
     'plugin' => 'aws',
@@ -29,7 +29,12 @@ def mock_cloud_options
       'agent' => {
         'foo' => 'bar',
         'baz' => 'zaz'
-      }
+      },
+      'debug'=> {
+        'cpi'=> {
+          'api_version'=> MOCK_CPI_API_VERSION
+        },
+      },
     }
   }
 end

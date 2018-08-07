@@ -1,6 +1,7 @@
 require 'spec_helper'
 
 describe Bosh::AwsCloud::Config do
+  let(:cpi_api_version) { 2 }
   let(:options) do
     {
       'aws'=> {
@@ -40,11 +41,24 @@ describe Bosh::AwsCloud::Config do
         },
         'mbus'=> 'url'
       },
-      'api_version'=> 1
+      'debug'=> {
+        'cpi'=> {
+          'api_version'=> cpi_api_version
+        },
+      },
     }
   end
 
   describe 'registry validation' do
+    context 'when api_version is specified in options' do
+      let(:cpi_api_version) { 42 }
+      let(:registry_required) { false }
+
+      it 'should use the specified api_version' do
+        config = Bosh::AwsCloud::Config.build(options, registry_required)
+        expect(config.api_version).to eq(cpi_api_version)
+      end
+    end
 
     context 'when the registry should be a part of the required keys' do
       let(:registry_required) { true }
