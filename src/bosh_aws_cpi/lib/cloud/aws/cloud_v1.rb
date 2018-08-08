@@ -6,7 +6,7 @@ module Bosh::AwsCloud
     include Bosh::CloudV1
     include Helpers
 
-    CPI_API_VERSION = 2
+    API_VERSION = 1
     METADATA_TIMEOUT = 5 # in seconds
     DEVICE_POLL_TIMEOUT = 60 # in seconds
     VALIDATE_REGISTRY = true
@@ -41,7 +41,7 @@ module Bosh::AwsCloud
       @az_selector = AvailabilityZoneSelector.new(@ec2_resource)
       @volume_manager = Bosh::AwsCloud::VolumeManager.new(@logger, @aws_provider)
 
-      @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector)
+      @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector, API_VERSION)
 
       cloud_error('Please make sure the CPI has proper network access to AWS.') unless @aws_provider.aws_accessible?
 

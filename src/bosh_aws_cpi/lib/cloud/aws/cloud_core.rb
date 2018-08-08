@@ -5,7 +5,6 @@ module Bosh::AwsCloud
   class CloudCore
     include Helpers
 
-    CPI_API_VERSION = 2
     METADATA_TIMEOUT = 5 # in seconds
     DEVICE_POLL_TIMEOUT = 60 # in seconds
 
@@ -16,9 +15,10 @@ module Bosh::AwsCloud
     # Initialize BOSH AWS CPI. The contents of sub-hashes are defined in the {file:README.md}
     # @param [Bosh::AwsCloud::Config] config CPI Config options
     # @param [Bosh::Cpi::Logger] logger AWS specific options
-    def initialize(config, logger, volume_manager, az_selector)
+    def initialize(config, logger, volume_manager, az_selector, requested_api_version)
       @config = config
-      @cpi_api_version = @config.api_version
+      @supported_api_version = @config.supported_api_version
+      @requested_api_version = requested_api_version
       @logger = logger
 
       @aws_provider = Bosh::AwsCloud::AwsProvider.new(@config.aws, @logger)
@@ -39,11 +39,9 @@ module Bosh::AwsCloud
     # Information about AWS CPI, currently supported stemcell formats
     # @return [Hash] AWS CPI properties
     def info
-      # TODO should this logger statement be removed?
-      @logger.info("Sending info:V2")
       {
         'stemcell_formats' => %w(aws-raw aws-light),
-        'api_version' => CPI_API_VERSION
+        'api_version' => @supported_api_version
       }
     end
 
@@ -97,7 +95,7 @@ module Bosh::AwsCloud
           (disk_locality || []),
           @config.aws.default_security_groups,
           block_device_mappings,
-          settings.encode(@cpi_api_version)
+          settings.encode(@requested_api_version)
         )
 
         target_groups.each do |target_group_name|

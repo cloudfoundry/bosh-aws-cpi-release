@@ -2,7 +2,7 @@ require 'spec_helper'
 
 
 describe Bosh::AwsCloud::CloudCore, 'create_vm' do
-  subject(:cloud) { described_class.new(config, logger, volume_manager, az_selector) }
+  subject(:cloud) { described_class.new(config, logger, volume_manager, az_selector, api_version) }
   let(:ec2) {mock_ec2}
 
   let(:volume_manager) {instance_double(Bosh::AwsCloud::VolumeManager)}

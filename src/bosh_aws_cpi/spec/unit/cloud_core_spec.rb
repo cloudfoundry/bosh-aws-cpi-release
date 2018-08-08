@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 describe Bosh::AwsCloud::CloudCore do
-  subject(:cloud) {described_class.new(config, logger, volume_manager, az_selector)}
+  subject(:cloud) {described_class.new(config, logger, volume_manager, az_selector, api_version)}
 
   let(:volume_manager) {instance_double(Bosh::AwsCloud::VolumeManager)}
   let(:az_selector) {instance_double(Bosh::AwsCloud::AvailabilityZoneSelector)}

@@ -73,7 +73,9 @@ module Bosh::AwsCloud
   end
 
   class Config
-    attr_reader :aws, :registry, :agent, :api_version, :stemcell_api_version
+    MAX_SUPPORTED_API_VERSION = 2
+
+    attr_reader :aws, :registry, :agent, :stemcell_api_version
 
     def self.build(config_hash, registry_required)
       Config.validate(config_hash, registry_required)
@@ -85,6 +87,12 @@ module Bosh::AwsCloud
       Config.validate_credentials_source(config_hash)
     end
 
+    def supported_api_version
+      # TODO: Log warning that they are using higher debug version vs max supported version
+      expected_version = @debug_api_version || MAX_SUPPORTED_API_VERSION
+      [expected_version, MAX_SUPPORTED_API_VERSION].min
+    end
+
     private
 
     def initialize(config_hash)
@@ -92,7 +100,7 @@ module Bosh::AwsCloud
       @aws = AwsConfig.new(config_hash['aws'] || {})
       @registry = RegistryConfig.new(config_hash['registry'] || {})
       @agent = AgentConfig.new(config_hash['agent'] || {})
-      @api_version = config_hash['debug']['cpi']['api_version']
+      @debug_api_version = config_hash['debug']['cpi']['api_version']
       @stemcell_api_version = parse_stemcell_api_version(config_hash['aws'])
     end
 

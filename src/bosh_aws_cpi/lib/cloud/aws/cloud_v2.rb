@@ -7,6 +7,7 @@ module Bosh::AwsCloud
     METADATA_TIMEOUT = 5 # in seconds
     DEVICE_POLL_TIMEOUT = 60 # in seconds
     REGISTRY_REQUIRED = false
+    API_VERSION = 2
 
     ##
     # Initialize BOSH AWS CPI. The contents of sub-hashes are defined in the {file:README.md}
@@ -31,7 +32,7 @@ module Bosh::AwsCloud
         @config.registry.password
       )
 
-      @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector)
+      @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector, API_VERSION)
       @props_factory = Bosh::AwsCloud::PropsFactory.new(@config)
     end
 

@@ -1,7 +1,7 @@
 require 'spec_helper'
 
 describe Bosh::AwsCloud::Config do
-  let(:cpi_api_version) { 2 }
+  let(:debug_api_version) { nil }
   let(:options) do
     {
       'aws'=> {
@@ -43,20 +43,30 @@ describe Bosh::AwsCloud::Config do
       },
       'debug'=> {
         'cpi'=> {
-          'api_version'=> cpi_api_version
+          'api_version'=> debug_api_version
         },
       },
     }
   end
 
   describe 'registry validation' do
-    context 'when api_version is specified in options' do
-      let(:cpi_api_version) { 42 }
+    context 'when `debug.cpi.api_version` is specified in options' do
+      let(:debug_api_version) { 1 }
       let(:registry_required) { false }
 
       it 'should use the specified api_version' do
         config = Bosh::AwsCloud::Config.build(options, registry_required)
-        expect(config.api_version).to eq(cpi_api_version)
+        expect(config.supported_api_version).to eq(debug_api_version)
+      end
+
+      context 'when specified version is greater then MAX_SUPPORTED_API_VERSION' do
+        let(:debug_api_version) { 42 }
+        let(:registry_required) { false }
+
+        it 'should use MAX_SUPPORTED_API_VERSION' do
+          config = Bosh::AwsCloud::Config.build(options, registry_required)
+          expect(config.supported_api_version).to eq(Bosh::AwsCloud::Config::MAX_SUPPORTED_API_VERSION)
+        end
       end
     end
 
@@ -116,7 +126,11 @@ describe Bosh::AwsCloud::Config do
               },
               'mbus'=> 'url'
             },
-            'api_version'=> 1
+            'debug'=> {
+              'cpi'=> {
+                'api_version'=> debug_api_version
+              },
+            },
           }
         end
 
