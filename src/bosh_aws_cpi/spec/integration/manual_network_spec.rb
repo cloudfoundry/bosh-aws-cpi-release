@@ -270,7 +270,7 @@ describe Bosh::AwsCloud::CloudV1 do
       it 'registers new instance with target group' do
         vm_lifecycle do |instance_id|
           health_state = nil
-          25.times do
+          30.times do
             health = elb_v2_client.describe_target_health(
               {
                 target_group_arn: get_target_group_arn(@target_group_name),
@@ -291,7 +291,7 @@ describe Bosh::AwsCloud::CloudV1 do
     end
 
     context 'without existing disks' do
-      fit 'should exercise the vm lifecycle' do
+      it 'should exercise the vm lifecycle' do
         vm_lifecycle do |instance_id|
           begin
             volume_id = @cpi.create_disk(2048, {}, instance_id)
@@ -327,7 +327,7 @@ describe Bosh::AwsCloud::CloudV1 do
 
           ensure
             @cpi.delete_snapshot(snapshot_id) if snapshot_id
-            Bosh::Common.retryable(tries: 20, on: Bosh::Clouds::DiskNotAttached, sleep: lambda { |n, _| [2**(n-1), 30].min }) do
+            Bosh::Common.retryable(tries: 25, on: Bosh::Clouds::DiskNotAttached, sleep: lambda { |n, _| [2**(n-1), 30].min }) do
               @cpi.detach_disk(instance_id, volume_id) if instance_id && volume_id
               true
             end
