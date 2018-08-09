@@ -4,10 +4,8 @@ groups:
     jobs:
     - build-cpi
     - compile-bosh-release
-    - integration
-<% [1,2].each do |c| [1,2].each do |d| [1,2].each do |s| %>
-    - bats-cpi<%= c %>-dir<%= d %>-sc<%= s %><% end; end; end %>
-<% [1,2].each do |c| [1,2].each do |d| [1,2].each do |s| %>
+    - integration<% [1,2].each do |c| [1,2].each do |d| [1,2].each do |s| %>
+    - bats-cpi<%= c %>-dir<%= d %>-sc<%= s %><% end; end; end %><% [1,2].each do |c| [1,2].each do |d| [1,2].each do |s| %>
     - end-2-end-cpi<%= c %>-dir<%= d %>-sc<%= s %><% end; end; end %>
   - name: bosh-aws-cpi-v2
     jobs:
@@ -15,12 +13,10 @@ groups:
     - compile-bosh-release
     - integration
   - name: bats
-    jobs:
-<% [1,2].each do |c| [1,2].each do |d| [1,2].each do |s| %>
+    jobs:<% [1,2].each do |c| [1,2].each do |d| [1,2].each do |s| %>
     - bats-cpi<%= c %>-dir<%= d %>-sc<%= s %><% end; end; end %>
   - name: e2e
-    jobs:
-<% [1,2].each do |c| [1,2].each do |d| [1,2].each do |s| %>
+    jobs:<% [1,2].each do |c| [1,2].each do |d| [1,2].each do |s| %>
     - end-2-end-cpi<%= c %>-dir<%= d %>-sc<%= s %><% end; end; end %>
 
 shared:
@@ -183,8 +179,8 @@ stemcell_resources.each_with_index do |s, s_idx|
     serial: true
     plan:
     - aggregate:
-      - {get: <%= c[:name] %>, trigger: true,  resource: <%= c[:resource] %>, passed: [<%= c[:passed]%>]}
-      - {get: <%= d[:name] %>, trigger: false, resource: <%= d[:resource] %>, passed: [<%= d[:passed]%>]}
+      - {get: <%= c[:name] %>, trigger: true,  resource: <%= c[:resource] %>, passed: [bats-cpi<%= c_idx+1 %>-dir<%= d_idx+1 %>-sc<%= s_idx+1 %>]}
+      - {get: <%= d[:name] %>, trigger: false, resource: <%= d[:resource] %>, passed: [bats-cpi<%= c_idx+1 %>-dir<%= d_idx+1 %>-sc<%= s_idx+1 %>]}
       - {get: bosh-cpi-src,    trigger: false, resource: bosh-cpi-src, passed: [build-cpi]}
       - {get: <%= s.first[:name] %>, trigger: false, resource: <%= s.first[:resource] %>}
       - {get: <%= s[1][:name] %>,  trigger: false, resource: <%= s[1][:resource] %>}
@@ -254,7 +250,6 @@ stemcell_resources.each_with_index do |s, s_idx|
   end
 end
 %>
-
 resource_types:
   - name: terraform_type
     type: docker-image
