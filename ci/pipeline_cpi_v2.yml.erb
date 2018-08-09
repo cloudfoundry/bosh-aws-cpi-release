@@ -1,5 +1,14 @@
 ---
 groups:
+  - name: all-jobs
+    jobs:
+    - build-cpi
+    - compile-bosh-release
+    - integration
+<% [1,2].each do |c| [1,2].each do |d| [1,2].each do |s| %>
+    - bats-cpi<%= c %>-dir<%= d %>-sc<%= s %><% end; end; end %>
+<% [1,2].each do |c| [1,2].each do |d| [1,2].each do |s| %>
+    - end-2-end-cpi<%= c %>-dir<%= d %>-sc<%= s %><% end; end; end %>
   - name: bosh-aws-cpi-v2
     jobs:
     - build-cpi
@@ -11,15 +20,6 @@ groups:
     - bats-cpi<%= c %>-dir<%= d %>-sc<%= s %><% end; end; end %>
   - name: e2e
     jobs:
-<% [1,2].each do |c| [1,2].each do |d| [1,2].each do |s| %>
-    - end-2-end-cpi<%= c %>-dir<%= d %>-sc<%= s %><% end; end; end %>
-  - name: all
-    jobs:
-    - build-cpi
-    - compile-bosh-release
-    - integration
-<% [1,2].each do |c| [1,2].each do |d| [1,2].each do |s| %>
-    - bats-cpi<%= c %>-dir<%= d %>-sc<%= s %><% end; end; end %>
 <% [1,2].each do |c| [1,2].each do |d| [1,2].each do |s| %>
     - end-2-end-cpi<%= c %>-dir<%= d %>-sc<%= s %><% end; end; end %>
 
@@ -57,6 +57,7 @@ shared:
       delete_on_failure: true
       generate_random_name: true
       terraform_source: bosh-cpi-src/ci/assets/terraform
+      override_files: [bosh-cpi-src/ci/assets/terraform/e2e/e2e.tf]
 
   - &destroy-environment
     put: environment
