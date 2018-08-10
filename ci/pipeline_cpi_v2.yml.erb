@@ -181,12 +181,12 @@ stemcell_resources.each_with_index do |s, s_idx|
     - aggregate:
       - {get: <%= c[:name] %>, trigger: true,  resource: <%= c[:resource] %>, passed: [bats-cpi<%= c_idx+1 %>-dir<%= d_idx+1 %>-sc<%= s_idx+1 %>]}
       - {get: <%= d[:name] %>, trigger: false, resource: <%= d[:resource] %>, passed: [bats-cpi<%= c_idx+1 %>-dir<%= d_idx+1 %>-sc<%= s_idx+1 %>]}
-      - {get: bosh-cpi-src,    trigger: false, resource: bosh-cpi-src, passed: [build-cpi]}
-      - {get: <%= s.first[:name] %>, trigger: false, resource: <%= s.first[:resource] %>}
-      - {get: <%= s[1][:name] %>,  trigger: false, resource: <%= s[1][:resource] %>}
-      - {get: bosh-deployment, trigger: false}
-      - {get: pipelines,       trigger: true}
-      - {get: bosh-cli,        trigger: false}
+      - {get: bosh-cpi-src,    trigger: false, resource: bosh-cpi-src, passed: [bats-cpi<%= c_idx+1 %>-dir<%= d_idx+1 %>-sc<%= s_idx+1 %>]}
+      - {get: <%= s[0][:name] %>, trigger: false, resource: <%= s[0][:resource] %>, passed: [bats-cpi<%= c_idx+1 %>-dir<%= d_idx+1 %>-sc<%= s_idx+1 %>]}
+      - {get: <%= s[1][:name] %>, trigger: false, resource: <%= s[1][:resource] %>, passed: [bats-cpi<%= c_idx+1 %>-dir<%= d_idx+1 %>-sc<%= s_idx+1 %>]}
+      - {get: bosh-deployment, trigger: false, passed: [bats-cpi<%= c_idx+1 %>-dir<%= d_idx+1 %>-sc<%= s_idx+1 %>]}
+      - {get: pipelines,       trigger: true, passed: [bats-cpi<%= c_idx+1 %>-dir<%= d_idx+1 %>-sc<%= s_idx+1 %>]}
+      - {get: bosh-cli,        trigger: true, passed: [bats-cpi<%= c_idx+1 %>-dir<%= d_idx+1 %>-sc<%= s_idx+1 %>]}
     - <<: *create-environment
     - do:
       - <<: *prepare-director
@@ -217,10 +217,12 @@ stemcell_resources.each_with_index do |s, s_idx|
         - {get: <%= c[:name] %>, trigger: true,  resource: <%= c[:resource] %>, passed: [<%= c[:passed]%>]}
         - {get: <%= d[:name] %>, trigger: false, resource: <%= d[:resource] %>, passed: [<%= d[:passed]%>]}
         - {get: bosh-cpi-src,    trigger: false, resource: bosh-cpi-src, passed: [build-cpi]}
-        - {get: <%= s.first[:name] %>, trigger: false, resource: <%= s.first[:resource] %>}
+        - {get: <%= s[0][:name] %>, trigger: false, resource: <%= s[0][:resource] %>}
+        # s[1]: just for better visualization for the pipeline; not actually used
+        - {get: <%= s[1][:name] %>, trigger: false, resource: <%= s[1][:resource] %>}
         - {get: bosh-deployment, trigger: false}
         - {get: pipelines,       trigger: true}
-        - {get: bosh-cli,        trigger: false}
+        - {get: bosh-cli,        trigger: true}
         - {get: bats,            trigger: false}
       - <<: *create-environment
       - do:
@@ -319,8 +321,8 @@ resources:
   - name: bosh-cli
     type: s3
     source:
-      regexp: bosh-cli-([0-9.]+)-linux-amd64
-      bucket: bosh-cli-artifacts
+      regexp: bosh-registry-removal/bosh-cli/alpha-bosh-cli-5.999.([0-9]+)-linux-amd64
+      bucket: bosh-toronto-bag
       region_name: us-east-1
   - name: pipelines
     type: git
