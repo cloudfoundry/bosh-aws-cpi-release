@@ -159,6 +159,8 @@ module Bosh::AwsCloud
         cloud_error("Timed out waiting for #{desc} to be #{target_state}, took #{time_passed}s") if retries == tries
       end
 
+      errors << Aws::EC2::Errors::RequestLimitExceeded
+
       state = nil
       Bosh::Retryable.new(tries: tries, sleep: sleep_cb, on: errors, ensure: ensure_cb).retryer do
         resource.reload
