@@ -24,7 +24,7 @@ describe Bosh::AwsCloud::CloudV1 do
         it 'raises an error' do
           expect { cloud }.to raise_error(
               ArgumentError,
-              'missing configuration parameters > aws:default_key_name, aws:max_retries, registry:endpoint, registry:user, registry:password'
+              'missing configuration parameters > aws:default_key_name, aws:max_retries'
             )
         end
       end
@@ -165,36 +165,6 @@ describe Bosh::AwsCloud::CloudV1 do
         end
       end
 
-      describe '#info' do
-        let(:volume_manager) { instance_double(Bosh::AwsCloud::VolumeManager) }
-        let(:az_selector) { instance_double(Bosh::AwsCloud::AvailabilityZoneSelector) }
-        let(:api_version) { 2 }
-        let(:options) { mock_cloud_options['properties'] }
-        let(:validate_registry) { true }
-        let(:config) { Bosh::AwsCloud::Config.build(options, validate_registry) }
-        let(:logger) { Bosh::Clouds::Config.logger }
-        let(:cloud_core) { Bosh::AwsCloud::CloudCore.new(config, logger, volume_manager, az_selector) }
-
-        it 'returns correct info with default api_version' do
-          expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light'], 'api_version' => api_version})
-        end
-
-        context 'when api_version is specified in config json' do
-          let(:options) do
-            mock_cloud_properties_merge(
-              'api_version' => 42
-            )
-          end
-
-          let(:config) { Bosh::AwsCloud::Config.build(options, validate_registry) }
-          let(:cloud_core) { Bosh::AwsCloud::CloudCore.new(config, logger, volume_manager, az_selector) }
-
-          it 'returns correct api_version in info' do
-            expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light'], 'api_version' => api_version})
-          end
-        end
-      end
-
       context 'when disk type is not provided' do
         let(:cloud_properties) { {} }
         let(:disk_size) { 1025 }
@@ -214,6 +184,35 @@ describe Bosh::AwsCloud::CloudV1 do
 
           cloud.create_disk(disk_size, cloud_properties, 42)
         end
+      end
+    end
+  end
+
+  describe '#info' do
+    let(:volume_manager) { instance_double(Bosh::AwsCloud::VolumeManager) }
+    let(:az_selector) { instance_double(Bosh::AwsCloud::AvailabilityZoneSelector) }
+    let(:api_version) { 2 }
+    let(:options) { mock_cloud_options['properties'] }
+    let(:config) { Bosh::AwsCloud::Config.build(options, validate_registry) }
+    let(:logger) { Bosh::Clouds::Config.logger }
+    let(:cloud_core) { Bosh::AwsCloud::CloudCore.new(config, logger, volume_manager, az_selector, api_version) }
+
+    it 'returns correct info with default api_version' do
+      expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light'], 'api_version' => api_version})
+    end
+
+    context 'when api_version is specified in config json' do
+      let(:options) do
+        mock_cloud_properties_merge(
+          'api_version' => 42
+        )
+      end
+
+      let(:config) { Bosh::AwsCloud::Config.build(options) }
+      let(:cloud_core) { Bosh::AwsCloud::CloudCore.new(config, logger, volume_manager, az_selector, api_version) }
+
+      it 'returns correct api_version in info' do
+        expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light'], 'api_version' => api_version})
       end
     end
   end

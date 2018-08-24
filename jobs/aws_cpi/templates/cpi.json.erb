@@ -16,18 +16,21 @@ params = {
         "encrypted" => p('aws.encrypted'),
         "kms_key_arn" => p('aws.kms_key_arn', nil)
       },
-      "registry" => {
-        "endpoint" => "http://#{p('registry.username')}:#{ERB::Util.url_encode(p('registry.password'))}@#{p('registry.host')}:#{p('registry.port')}",
-        "user" => p('registry.username'),
-        "password" => p('registry.password')
-      },
-
       "agent" => {
         "ntp" => p('ntp')
       }
     }
   }
 }
+
+if_p('registry.username', 'registry.password', 'registry.host', 'registry.port') do
+  params['cloud']['properties']['registry'] = {
+      "endpoint" => "http://#{p('registry.username')}:#{ERB::Util.url_encode(p('registry.password'))}@#{p('registry.host')}:#{p('registry.port')}",
+      "user" => p('registry.username'),
+      "password" => p('registry.password')
+  }
+end
+
 params["cloud"]["properties"]["debug"] = {
   'cpi'=> {
     'api_version'=> p('debug.cpi.api_version', 2)

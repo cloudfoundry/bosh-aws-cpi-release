@@ -77,13 +77,13 @@ module Bosh::AwsCloud
 
     attr_reader :aws, :registry, :agent, :stemcell_api_version
 
-    def self.build(config_hash, registry_required)
-      Config.validate(config_hash, registry_required)
+    def self.build(config_hash)
+      Config.validate(config_hash)
       new(config_hash)
     end
 
-    def self.validate(config_hash, validate_registry)
-      Config.validate_options(config_hash, validate_registry)
+    def self.validate(config_hash)
+      Config.validate_options(config_hash)
       Config.validate_credentials_source(config_hash)
     end
 
@@ -112,10 +112,10 @@ module Bosh::AwsCloud
     # Checks if options passed to CPI are valid and can actually
     # be used to create all required data structures etc.
     #
-    def self.validate_options(options, validate_registry)
+    def self.validate_options(options)
       missing_keys = []
 
-      required_keys(validate_registry).each_pair do |key, values|
+      required_keys(options.has_key?('registry')).each_pair do |key, values|
         values.each do |value|
           if (!options.has_key?(key) || !options[key].has_key?(value))
             missing_keys << "#{key}:#{value}"
@@ -156,13 +156,8 @@ module Bosh::AwsCloud
 
     def self.required_keys(registry_required)
       required_keys = {'aws' => ['default_key_name', 'max_retries']}
-
-      registry_keys = {}
-      if registry_required
-        registry_keys = {'registry' => ['endpoint', 'user', 'password']}
-      end
-
-      required_keys.merge(registry_keys).freeze
+      required_keys = {'registry' => ['endpoint', 'user', 'password']} if registry_required
+      required_keys
     end
   end
 end

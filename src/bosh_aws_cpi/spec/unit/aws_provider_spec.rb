@@ -1,15 +1,12 @@
 require 'spec_helper'
 
-
-
 describe Bosh::AwsCloud::AwsProvider do
   let(:options) do
     opts = mock_cloud_options['properties']
     opts
   end
   let(:logger) { Bosh::Clouds::Config.logger}
-  let(:validate_registry) { true }
-  let(:config) { Bosh::AwsCloud::Config.build(options.dup.freeze, validate_registry) }
+  let(:config) { Bosh::AwsCloud::Config.build(options.dup.freeze) }
   let(:params) do
     {
       credentials: config.aws.credentials,

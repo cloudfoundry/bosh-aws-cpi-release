@@ -9,7 +9,6 @@ module Bosh::AwsCloud
     API_VERSION = 1
     METADATA_TIMEOUT = 5 # in seconds
     DEVICE_POLL_TIMEOUT = 60 # in seconds
-    VALIDATE_REGISTRY = true
 
     attr_reader :ec2_resource
     attr_reader :registry
@@ -22,7 +21,8 @@ module Bosh::AwsCloud
     # @option options [Hash] agent agent options
     # @option options [Hash] registry agent options
     def initialize(options)
-      @config = Bosh::AwsCloud::Config.build(options.dup.freeze, VALIDATE_REGISTRY)
+      @options = options.dup.freeze
+      @config = Bosh::AwsCloud::Config.build(@options)
       @logger = Bosh::Clouds::Config.logger
       request_id = options['aws']['request_id']
       if request_id
@@ -416,6 +416,8 @@ module Bosh::AwsCloud
     # Information about AWS CPI, currently supported stemcell formats
     # @return [Hash] AWS CPI properties
     def info
+      @config = Bosh::AwsCloud::Config.build(@options)
+      @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector, API_VERSION)
       @cloud_core.info
     end
 

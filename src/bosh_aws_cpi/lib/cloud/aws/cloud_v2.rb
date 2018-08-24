@@ -6,7 +6,6 @@ module Bosh::AwsCloud
   class CloudV2 < Bosh::AwsCloud::CloudV1
     METADATA_TIMEOUT = 5 # in seconds
     DEVICE_POLL_TIMEOUT = 60 # in seconds
-    REGISTRY_REQUIRED = false
     API_VERSION = 2
 
     ##
@@ -18,7 +17,7 @@ module Bosh::AwsCloud
     def initialize(options)
       super(options)
 
-      @config = Bosh::AwsCloud::Config.build(options.dup.freeze, REGISTRY_REQUIRED)
+      @config = Bosh::AwsCloud::Config.build(options.dup.freeze)
       @stemcell_api_version = @config.stemcell_api_version
       @logger = Bosh::Clouds::Config.logger
       request_id = options['aws']['request_id']

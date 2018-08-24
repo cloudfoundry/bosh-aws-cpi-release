@@ -8,8 +8,7 @@ describe Bosh::AwsCloud::CloudCore do
   let(:api_version) {2}
   let(:logger) {Bosh::Clouds::Config.logger}
   let(:options) {mock_cloud_options['properties']}
-  let(:validate_registry) {true}
-  let(:config) {Bosh::AwsCloud::Config.build(options, validate_registry)}
+  let(:config) {Bosh::AwsCloud::Config.build(options)}
   let(:az_selector) {instance_double(Bosh::AwsCloud::AvailabilityZoneSelector)}
 
   before do
@@ -30,7 +29,7 @@ describe Bosh::AwsCloud::CloudCore do
         it 'raises an error' do
           expect {cloud}.to raise_error(
                               ArgumentError,
-                              'missing configuration parameters > aws:default_key_name, aws:max_retries, registry:endpoint, registry:user, registry:password'
+                              'missing configuration parameters > aws:default_key_name, aws:max_retries'
                             )
         end
       end

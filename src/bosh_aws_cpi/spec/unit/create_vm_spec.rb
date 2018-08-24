@@ -1,6 +1,5 @@
 require 'spec_helper'
 
-
 describe Bosh::AwsCloud::CloudCore, 'create_vm' do
   subject(:cloud) { described_class.new(config, logger, volume_manager, az_selector, api_version) }
   let(:ec2) {mock_ec2}
@@ -10,8 +9,7 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
   let(:api_version) {2}
   let(:logger) {Bosh::Clouds::Config.logger}
   let(:options) {mock_cloud_options['properties']}
-  let(:validate_registry) {true}
-  let(:config) {Bosh::AwsCloud::Config.build(options, validate_registry)}
+  let(:config) {Bosh::AwsCloud::Config.build(options)}
   let(:az_selector) {instance_double(Bosh::AwsCloud::AvailabilityZoneSelector)}
 
   let(:global_config) {instance_double(Bosh::AwsCloud::Config, aws: Bosh::AwsCloud::AwsConfig.new({}))}

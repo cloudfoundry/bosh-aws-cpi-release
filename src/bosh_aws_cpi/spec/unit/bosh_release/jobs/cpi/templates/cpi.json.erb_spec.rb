@@ -375,6 +375,18 @@ describe 'cpi.json.erb' do
       end
     end
   end
+
+  context 'when registry is NOT provided' do
+    before do
+      properties = manifest['properties']
+      properties.delete('registry')
+      manifest['properties'] = properties
+    end
+
+    it 'should NOT add registry in options' do
+      expect(subject['cloud']['properties']['registry']).to eq(nil)
+    end
+  end
 end
 
 class TemplateEvaluationContext
