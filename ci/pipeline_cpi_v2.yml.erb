@@ -3,14 +3,12 @@ groups:
   - name: all-jobs
     jobs:
     - build-cpi
-    - compile-bosh-release
     - integration<% [1,2].each do |c| [1,2].each do |d| [1,2].each do |s| %>
     - bats-cpi<%= c %>-dir<%= d %>-sc<%= s %><% end; end; end %><% [1,2].each do |c| [1,2].each do |d| [1,2].each do |s| %>
     - end-2-end-cpi<%= c %>-dir<%= d %>-sc<%= s %><% end; end; end %>
   - name: bosh-aws-cpi-v2
     jobs:
     - build-cpi
-    - compile-bosh-release
     - integration
   - name: bats
     jobs:<% [1,2].each do |c| [1,2].each do |d| [1,2].each do |s| %>
@@ -141,21 +139,6 @@ jobs:
         - <<: *ensure-terminated
         - <<: *destroy-environment
 
-  - name: compile-bosh-release
-    serial: true
-    plan:
-      - aggregate:
-          - {get: bosh-dev-version, resource: bosh-dev-version}
-          - {get: bosh-src, trigger: true, resource: bosh-src-in}
-          - {get: bosh-cli}
-          - {get: bosh-cpi-src, resource: bosh-cpi-src}
-      - task: compile-bosh-release
-        file: bosh-cpi-src/ci/tasks/build-bosh-dev.yml
-      - put: bosh-release
-        resource: bosh-dev-tarballs
-        params:
-          file: "release/bosh-dev-release-for-cpi-refactor.tgz"
-
 <%
 stemcell_resources = [
   [{name: 'stemcell', resource: 'precompiled-stemcell-v1'}, {name: 'heavy-stemcell', resource: 'heavy-ubuntu-stemcell-v1'}],
@@ -163,7 +146,7 @@ stemcell_resources = [
 ]
 director_resources = [
   {name: 'bosh-release', resource: 'precompiled-bosh-release', ops_file: ''},
-  {name: 'bosh-release', resource: 'bosh-dev-tarballs', passed: 'compile-bosh-release', ops_file: '-o pipelines/aws/assets/ops/director_cpi_version.yml'}
+  {name: 'bosh-release', resource: 'bosh-dev-tarballs', ops_file: '-o pipelines/aws/assets/ops/director_cpi_version.yml'}
 ]
 # we won't really have two of these -- it's the same code, but the above changes the version
 cpi_resources = [
@@ -275,14 +258,6 @@ resources:
       ignore_paths:
         - .final_builds/**/*.yml
         - releases/**/*.yml
-  - name: bosh-src-in
-    type: git
-    source:
-      uri: https://github.com/cloudfoundry/bosh.git
-      branch: external-cpi-refactor
-      ignore_paths:
-        - .final_builds/**/*.yml
-        - releases/**/*.yml
   - name: version-semver
     type: semver
     source:
@@ -290,13 +265,7 @@ resources:
       bucket:            bosh-toronto-cpi-v2
       access_key_id:     {{aws_access_key}}
       secret_access_key: {{aws_secret_key}}
-  - name: bosh-dev-version
-    type: semver
-    source:
-      bucket: bosh-toronto-cpi-v2
-      key: version
-      access_key_id: {{aws_access_key}}
-      secret_access_key: {{aws_secret_key}}
+
   - name: bosh-dev-tarballs
     type: s3
     source:
