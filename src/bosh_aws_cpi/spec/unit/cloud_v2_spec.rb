@@ -68,6 +68,18 @@ describe Bosh::AwsCloud::CloudV2 do
           expect(config.region).to eq('fake-region')
         end
       end
+
+      context 'when registry settings are not present' do
+        before(:each) do
+          options.delete('registry')
+        end
+
+        it 'should use a disabled registry client' do
+          expect(Bosh::AwsCloud::DisabledRegistryClient).to receive(:new)
+          expect(Bosh::Cpi::RegistryClient).to_not receive(:new)
+          expect { cloud }.to_not raise_error
+        end
+      end
     end
   end
 

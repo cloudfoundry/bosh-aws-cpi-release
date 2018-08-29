@@ -93,6 +93,10 @@ module Bosh::AwsCloud
       [expected_version, MAX_SUPPORTED_API_VERSION].min
     end
 
+    def registry_configured?
+      !registry.endpoint.nil?
+    end
+
     private
 
     def initialize(config_hash)

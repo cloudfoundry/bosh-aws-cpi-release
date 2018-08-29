@@ -29,12 +29,10 @@ describe Bosh::AwsCloud::CloudV1 do
   let(:registry) { instance_double(Bosh::Cpi::RegistryClient).as_null_object }
   let(:mock_cpi_api_version) { 2 }
 
-  before {
+  before do
     allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
     allow(registry).to receive(:read_settings).and_return({})
-  }
 
-  before do
     begin
       @ec2.instances(
         filters: [
@@ -45,14 +43,40 @@ describe Bosh::AwsCloud::CloudV1 do
     rescue Aws::EC2::Errors::InvalidInstanceIdNotFound
       # don't blow up tests if instance that we're trying to delete was not found
     end
+    allow(Bosh::Clouds::Config).to receive_messages(logger: logger)
   end
 
-  before { allow(Bosh::Clouds::Config).to receive_messages(logger: logger) }
   let(:logs) { STDOUT }
   let(:logger) {Bosh::Cpi::Logger.new(logs) }
 
 
   extend Bosh::Cpi::CompatibilityHelpers
+
+  context 'when config does not have registry settings' do
+    it 'raises an error from the disable registry client' do
+      cpi_options = {
+        'aws' => {
+          'region' => @region,
+          'default_key_name' => @default_key_name,
+          'default_security_groups' => get_security_group_ids,
+          'fast_path_delete' => 'yes',
+          'access_key_id' => @access_key_id,
+          'secret_access_key' => @secret_access_key,
+          'session_token' => @session_token,
+          'max_retries' => 8
+        },
+        'debug'=> {
+          'cpi'=> {
+            'api_version'=> MOCK_CPI_API_VERSION
+          },
+        },
+      }
+
+      cpi = described_class.new(cpi_options)
+
+      expect { cpi.create_vm('agent_id', 'stemcell_id', 'vm_type', 'network') }.to raise_error
+    end
+  end
 
   describe 'instantiating the CPI with invalid endpoint or region' do
     it 'raises an Bosh::Clouds::CloudError' do

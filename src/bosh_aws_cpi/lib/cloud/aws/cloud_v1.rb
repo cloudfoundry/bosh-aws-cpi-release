@@ -21,19 +21,22 @@ module Bosh::AwsCloud
     # @option options [Hash] agent agent options
     # @option options [Hash] registry agent options
     def initialize(options)
-      @options = options.dup.freeze
-      @config = Bosh::AwsCloud::Config.build(@options)
+      @config = Bosh::AwsCloud::Config.build(options.dup.freeze)
       @logger = Bosh::Clouds::Config.logger
       request_id = options['aws']['request_id']
       if request_id
         @logger.set_request_id(request_id)
       end
 
-      @registry = Bosh::Cpi::RegistryClient.new(
-        @config.registry.endpoint,
-        @config.registry.user,
-        @config.registry.password
-      )
+      if @config.registry_configured?
+        @registry = Bosh::Cpi::RegistryClient.new(
+          @config.registry.endpoint,
+          @config.registry.user,
+          @config.registry.password
+        )
+      else
+        @registry = Bosh::AwsCloud::DisabledRegistryClient.new
+      end
 
       @aws_provider = Bosh::AwsCloud::AwsProvider.new(@config.aws, @logger)
       @ec2_client = @aws_provider.ec2_client
@@ -416,7 +419,6 @@ module Bosh::AwsCloud
     # Information about AWS CPI, currently supported stemcell formats
     # @return [Hash] AWS CPI properties
     def info
-      @config = Bosh::AwsCloud::Config.build(@options)
       @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector, API_VERSION)
       @cloud_core.info
     end

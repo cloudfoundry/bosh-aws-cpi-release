@@ -17,22 +17,7 @@ module Bosh::AwsCloud
     def initialize(options)
       super(options)
 
-      @config = Bosh::AwsCloud::Config.build(options.dup.freeze)
       @stemcell_api_version = @config.stemcell_api_version
-      @logger = Bosh::Clouds::Config.logger
-      request_id = options['aws']['request_id']
-      if request_id
-        @logger.set_request_id(request_id)
-      end
-
-      @registry = Bosh::Cpi::RegistryClient.new(
-        @config.registry.endpoint,
-        @config.registry.user,
-        @config.registry.password
-      )
-
-      @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector, API_VERSION)
-      @props_factory = Bosh::AwsCloud::PropsFactory.new(@config)
     end
 
     ##
