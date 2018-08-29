@@ -35,7 +35,7 @@ module Bosh::AwsCloud
           @config.registry.password
         )
       else
-        @registry = Bosh::AwsCloud::DisabledRegistryClient.new
+        @registry = Bosh::AwsCloud::RegistryDisabledClient.new
       end
 
       @aws_provider = Bosh::AwsCloud::AwsProvider.new(@config.aws, @logger)

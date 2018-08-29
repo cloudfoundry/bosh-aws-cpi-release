@@ -120,7 +120,6 @@ describe 'the aws_cpi executable' do
     }
     let(:cpi_api_version) { 2 }
 
-
     context 'when the wrong arguments are passed to CPI' do
       it 'should raise error' do
         result = run_cpi({'method'=>'create_vm',

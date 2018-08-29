@@ -75,7 +75,7 @@ describe Bosh::AwsCloud::CloudV2 do
         end
 
         it 'should use a disabled registry client' do
-          expect(Bosh::AwsCloud::DisabledRegistryClient).to receive(:new)
+          expect(Bosh::AwsCloud::RegistryDisabledClient).to receive(:new)
           expect(Bosh::Cpi::RegistryClient).to_not receive(:new)
           expect { cloud }.to_not raise_error
         end
