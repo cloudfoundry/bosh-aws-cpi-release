@@ -112,7 +112,7 @@ module Bosh::AwsCloud
       @iam_instance_profile = cloud_properties['iam_instance_profile'] || global_config.aws.default_iam_instance_profile
       @placement_group = cloud_properties['placement_group']
       @tenancy = Tenancy.new(cloud_properties['tenancy'])
-      @auto_assign_public_ip = !!cloud_properties['auto_assign_public_ip']
+      @auto_assign_public_ip = cloud_properties['auto_assign_public_ip']
       @advertised_routes = (cloud_properties['advertised_routes'] || []).map do |route|
         AdvertisedRoute.new(route)
       end
