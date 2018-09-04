@@ -3,6 +3,7 @@ require 'spec_helper'
 describe Bosh::AwsCloud::CloudV2 do
   subject(:cloud) { described_class.new(options) }
 
+  let(:cloud_api_version) { 2 }
   let(:cloud_core) { instance_double(Bosh::AwsCloud::CloudCore) }
   let(:options) { mock_cloud_options['properties'] }
   let(:az_selector) { instance_double(Bosh::AwsCloud::AvailabilityZoneSelector) }
@@ -15,6 +16,12 @@ describe Bosh::AwsCloud::CloudV2 do
   end
 
   describe '#initialize' do
+    it 'should initialize cloud_core with API_VERSION 2' do
+      allow(Bosh::AwsCloud::CloudCore).to receive(:new).and_return(cloud_core)
+      expect(Bosh::AwsCloud::CloudCore).to receive(:new).with(anything, anything, anything, anything, cloud_api_version).and_return(cloud_core)
+      described_class.new(options)
+    end
+
     describe 'validating initialization options' do
       context 'when required options are missing' do
         let(:options) do

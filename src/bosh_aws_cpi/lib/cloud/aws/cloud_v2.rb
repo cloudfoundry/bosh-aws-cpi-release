@@ -18,6 +18,7 @@ module Bosh::AwsCloud
       super(options)
 
       @stemcell_api_version = @config.stemcell_api_version
+      @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector, API_VERSION)
     end
 
     ##
