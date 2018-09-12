@@ -16,10 +16,25 @@ describe Bosh::AwsCloud::CloudV2 do
   end
 
   describe '#initialize' do
-    it 'should initialize cloud_core with API_VERSION 2' do
-      allow(Bosh::AwsCloud::CloudCore).to receive(:new).and_return(cloud_core)
-      expect(Bosh::AwsCloud::CloudCore).to receive(:new).with(anything, anything, anything, anything, cloud_api_version).and_return(cloud_core)
-      described_class.new(options)
+    context 'if stemcell api_version is 2' do
+      let(:options) do
+        mock_cloud_properties_merge(
+          {
+            'aws' => {
+              'vm' => {
+                'stemcell' => {
+                  'api_version' => 2
+                }
+              }
+            }
+          }
+        )
+      end
+      it 'should initialize cloud_core with agent_version 2' do
+        allow(Bosh::AwsCloud::CloudCore).to receive(:new).and_return(cloud_core)
+        expect(Bosh::AwsCloud::CloudCore).to receive(:new).with(anything, anything, anything, anything, cloud_api_version).and_return(cloud_core)
+        described_class.new(options)
+      end
     end
 
     describe 'validating initialization options' do
@@ -244,6 +259,30 @@ describe Bosh::AwsCloud::CloudV2 do
     end
 
     context 'when stemcell version is less than 2' do
+      let(:user_data) do
+        {
+          'registry' => 'https://registy.com',
+          'dns' => '',
+          'networks' => {}
+        }
+      end
+      let(:options) do
+        mock_cloud_properties_merge(
+          {
+            'aws' => {
+              'vm' => {
+                'stemcell' => {
+                  'api_version' => 1
+                }
+              }
+            }
+          }
+        )
+      end
+      before do
+        allow(agent_settings_double).to receive(:settings_for_version).with(1).and_return(user_data)
+        allow(agent_settings_double).to receive(:user_data).and_return(user_data)
+      end
       it 'updates the registry' do
         expect(registry).to receive(:update_settings).with(instance_id, agent_settings)
         cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)

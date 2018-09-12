@@ -326,7 +326,7 @@ describe Bosh::AwsCloud::CloudV1 do
       @volume_id = @cpi.create_disk(2048, {})
     end
 
-    after (:each) do
+    after(:each) do
       @cpi.delete_disk(@volume_id) if @volume_id
     end
 
