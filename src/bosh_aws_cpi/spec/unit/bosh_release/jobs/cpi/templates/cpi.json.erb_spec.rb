@@ -112,7 +112,6 @@ describe 'cpi.json.erb' do
     end
   end
 
-
   context 'when the registry password includes special characters' do
     special_chars_password = '=!@#$%^&*/-+?='
     before do
@@ -385,6 +384,18 @@ describe 'cpi.json.erb' do
 
     it 'should NOT add registry in options' do
       expect(subject['cloud']['properties']['registry']).to eq(nil)
+    end
+  end
+
+  context 'when nats password is NOT provided' do
+    before do
+      properties = manifest['properties']['nats']
+      properties.delete('password')
+      manifest['properties']['nats'] = properties
+    end
+
+    it 'should NOT add nats username and password in mbus url' do
+      expect(subject['cloud']['properties']['agent']['mbus']).to eq('nats://nats-address.example.com:4222')
     end
   end
 end

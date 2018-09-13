@@ -101,7 +101,11 @@ end
 if_p('agent.mbus') do |mbus|
   agent_params["mbus"] = mbus
 end.else_if_p('nats') do
-  agent_params["mbus"] = "nats://#{p('nats.user')}:#{p('nats.password')}@#{p(['agent.nats.address', 'nats.address'])}:#{p('nats.port')}"
+  if_p('nats.password') do |password|
+    agent_params["mbus"] = "nats://#{p('nats.user')}:#{password}@#{p(['agent.nats.address', 'nats.address'])}:#{p('nats.port')}"
+  end.else do
+    agent_params["mbus"] = "nats://#{p(['agent.nats.address', 'nats.address'])}:#{p('nats.port')}"
+  end
 end
 
 JSON.dump(params)
