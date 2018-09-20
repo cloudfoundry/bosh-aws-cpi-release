@@ -7,7 +7,7 @@ module Bosh::AwsCloud
     describe '.for_instance' do
       let(:instance) { double(Aws::EC2::Instance, id: 'i-1234', data: 'some-data', exists?: true) }
 
-      before(:each) do
+      before do
         allow(instance).to receive(:reload)
       end
 
@@ -71,7 +71,7 @@ module Bosh::AwsCloud
       let(:volume) { double(Aws::EC2::Volume, id: 'vol-1234', data: 'some-data', exists?: true) }
       let(:instance) { double(Aws::EC2::Instance, id: 'i-5678', data: 'some-data', exists?: true) }
       let(:attachment) { double(SdkHelpers::VolumeAttachment, volume: volume, instance: instance, device: '/dev/sda1', data: 'some-data', exists?: true) }
-      before (:each) do
+      before do
         allow(attachment).to receive(:reload)
       end
 
@@ -110,7 +110,7 @@ module Bosh::AwsCloud
 
     describe '.for_volume' do
       let(:volume) { double(Aws::EC2::Volume, id: 'v-123', data: 'some-data', exists?: true) }
-      before (:each) do
+      before do
         allow(volume).to receive(:reload)
       end
 
@@ -152,7 +152,7 @@ module Bosh::AwsCloud
 
     describe '.for_snapshot' do
       let(:snapshot) { double(Aws::EC2::Snapshot, id: 'snap-123', data: 'some-data', exists?: true) }
-      before (:each) do
+      before do
         allow(snapshot).to receive(:reload)
       end
 
@@ -177,7 +177,7 @@ module Bosh::AwsCloud
 
     describe '.for_image' do
       let(:image) { double(Aws::EC2::Image, id: 'ami-123', data: 'some-data', exists?: true) }
-      before (:each) do
+      before do
         allow(image).to receive(:reload)
       end
 
@@ -287,6 +287,30 @@ module Bosh::AwsCloud
 
         it 'raises a ResourceNotFound error' do
           expect { subject.for_resource(args) }.to raise_error(Aws::EC2::Errors::ResourceNotFound)
+        end
+      end
+
+      context 'when we exceed request limit' do
+        let(:instance) { double(Aws::EC2::Instance, id: 'i-1234', data: 'some-data', exists?: true) }
+
+        before do
+          allow(instance).to receive(:reload)
+          call_count = 0
+          allow(instance).to receive(:state) do
+            case call_count += 1
+            when 1
+              'running'
+            when 2
+              raise Aws::EC2::Errors::RequestLimitExceeded.new(nil, 'error')
+            else
+              'terminated'
+            end
+          end
+        end
+
+        it 'rescues the error and retries after a backoff' do
+          described_class.for_instance(instance: instance, state: 'terminated')
+          expect(instance).to have_received(:state).exactly(3).times
         end
       end
 
