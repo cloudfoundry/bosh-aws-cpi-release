@@ -72,36 +72,13 @@ describe Bosh::AwsCloud::Config do
         }
       end
 
-      it 'should pass if the registry option is passed in' do
-        expect{Bosh::AwsCloud::Config.validate(options)}.to_not raise_error
-      end
-
       it 'claims registry is configured' do
         config = Bosh::AwsCloud::Config.build(options)
         expect(config.registry_configured?).to be_truthy
       end
-
-      it 'should fail validation if user is missing' do
-        options['registry'].delete('user')
-        expect{Bosh::AwsCloud::Config.validate(options)}.to raise_error(ArgumentError, "missing configuration parameters > registry:user")
-      end
-
-      it 'should fail validation if endpoint is missing' do
-        options['registry'].delete('endpoint')
-        expect{Bosh::AwsCloud::Config.validate(options)}.to raise_error(ArgumentError, "missing configuration parameters > registry:endpoint")
-      end
-
-      it 'should fail validation if password is missing' do
-        options['registry'].delete('password')
-        expect{Bosh::AwsCloud::Config.validate(options)}.to raise_error(ArgumentError, "missing configuration parameters > registry:password")
-      end
     end
 
     context 'when registry is not defined in config' do
-      it 'should not raise an error during validate' do
-        expect{Bosh::AwsCloud::Config.validate(options)}.to_not raise_error
-      end
-
       it 'should claim registry is not configured' do
         config = Bosh::AwsCloud::Config.build(options)
         expect(config.registry_configured?).to be_falsey

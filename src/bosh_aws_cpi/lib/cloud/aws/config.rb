@@ -119,7 +119,7 @@ module Bosh::AwsCloud
     def self.validate_options(options)
       missing_keys = []
 
-      required_keys(options.has_key?('registry')).each_pair do |key, values|
+      required_keys.each_pair do |key, values|
         values.each do |value|
           if (!options.has_key?(key) || !options[key].has_key?(value))
             missing_keys << "#{key}:#{value}"
@@ -158,9 +158,8 @@ module Bosh::AwsCloud
       end
     end
 
-    def self.required_keys(registry_required)
+    def self.required_keys
       required_keys = {'aws' => ['default_key_name', 'max_retries']}
-      required_keys = {'registry' => ['endpoint', 'user', 'password']} if registry_required
       required_keys
     end
   end

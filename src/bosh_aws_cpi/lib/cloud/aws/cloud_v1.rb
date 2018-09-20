@@ -102,10 +102,12 @@ module Bosh::AwsCloud
     #   agent settings
     # @return [String] EC2 instance id of the new virtual machine
     def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = [], environment = nil)
+      raise Bosh::Clouds::CloudError, "Cannot create VM without registry with CPI v1. Registry not configured." unless @config.registry_configured?
+
       with_thread_name("create_vm(#{agent_id}, ...)") do
         network_props = @props_factory.network_props(network_spec)
 
-        registry = {endpoint: @registry.endpoint}
+        registry = {endpoint: @config.registry.endpoint}
         network_with_dns = network_props.dns_networks.first
         dns = {nameserver: network_with_dns.dns} unless network_with_dns.nil?
         registry_settings = AgentSettings.new(registry, network_props, dns)

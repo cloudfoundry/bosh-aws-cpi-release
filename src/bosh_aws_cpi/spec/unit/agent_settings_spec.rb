@@ -197,6 +197,18 @@ describe Bosh::AwsCloud::AgentSettings do
         expect(decoded).to eq(expected_settings)
       end
     end
+
+    context 'when registry is not supplied' do
+      let(:registry) { nil }
+
+      before do
+        expected_settings.delete('registry')
+      end
+
+      it 'does not add registry settings to user data' do
+        expect(subject.settings_for_version(version)).to eq(expected_settings)
+      end
+    end
   end
 
   describe 'cpi api version invalid' do

@@ -44,11 +44,12 @@ module Bosh::AwsCloud
     end
 
     def user_data
-      {
-        'registry' => @registry,
+      userdata = {
         'dns' => @dns,
         'networks' => @networks
       }
+      userdata.merge!({'registry' => @registry}) unless @registry.nil?
+      userdata
     end
 
     def encode(version)

@@ -65,6 +65,19 @@ describe Bosh::AwsCloud::CloudV1 do
           expect(config.region).to eq('fake-region')
         end
       end
+
+      context 'when registry settings are not present' do
+        before(:each) do
+          options.delete('registry')
+        end
+
+        it 'should use a disabled registry client' do
+          expect(Bosh::AwsCloud::RegistryDisabledClient).to receive(:new)
+          expect(Bosh::Cpi::RegistryClient).to_not receive(:new)
+          expect { cloud }.to_not raise_error
+        end
+      end
+
     end
   end
 
@@ -376,6 +389,18 @@ describe Bosh::AwsCloud::CloudV1 do
       expect(registry).to receive(:update_settings).with(instance_id, agent_settings)
 
       cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
+    end
+
+    context 'when registry is not configured' do
+      before do
+        options.delete('registry')
+      end
+
+      it 'raises an error' do
+        expect {
+          cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
+        }.to raise_error(/Cannot create VM without registry with CPI v1. Registry not configured./)
+      end
     end
   end
 end

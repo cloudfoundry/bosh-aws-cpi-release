@@ -160,7 +160,7 @@ describe 'cpi.json.erb' do
       expect(subject['cloud']['properties']['aws']['session_token']).to be_nil
     end
 
-    context 'incluing a session_token' do
+    context 'including a session_token' do
       before do
         manifest['properties']['aws'].merge!({
           'session_token' => 'some token'
@@ -375,6 +375,16 @@ describe 'cpi.json.erb' do
     end
   end
 
+  context 'when no blobstore is provided' do
+    before do
+      manifest['properties'].delete('blobstore')
+    end
+
+    it 'should NOT add any blobstore properties' do
+      expect(subject['cloud']['properties']['blobstore']).to be_nil
+    end
+  end
+
   context 'when registry is NOT provided' do
     before do
       properties = manifest['properties']
@@ -387,15 +397,25 @@ describe 'cpi.json.erb' do
     end
   end
 
-  context 'when nats password is NOT provided' do
+  context 'when partial registry is provided' do
     before do
-      properties = manifest['properties']['nats']
-      properties.delete('password')
-      manifest['properties']['nats'] = properties
+      manifest['properties']['registry'].delete('username')
     end
 
-    it 'should NOT add nats username and password in mbus url' do
-      expect(subject['cloud']['properties']['agent']['mbus']).to eq('nats://nats-address.example.com:4222')
+    it 'raises template rendering error' do
+      expect {
+        subject
+      }.to raise_error(/Can't find property 'registry.username'/)
+    end
+  end
+
+  context 'when nats information is not provided' do
+    before do
+      manifest['properties'].delete('nats')
+    end
+
+    it 'should NOT add mbus properties' do
+      expect(subject['cloud']['properties']['agent']['mbus']).to be_nil
     end
   end
 end

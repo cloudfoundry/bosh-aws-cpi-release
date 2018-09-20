@@ -42,15 +42,17 @@ module Bosh::AwsCloud
       with_thread_name("create_vm(#{agent_id}, ...):v2") do
         network_props = @props_factory.network_props(network_spec)
 
-        registry = {endpoint: @registry.endpoint}
+        registry, dns = nil
+        registry = {endpoint: @config.registry.endpoint} if @config.registry_configured?
+
         network_with_dns = network_props.dns_networks.first
         dns = {nameserver: network_with_dns.dns} unless network_with_dns.nil?
-        registry_settings = AgentSettings.new(registry, network_props, dns)
-        registry_settings.environment = environment
-        registry_settings.agent_id = agent_id
+        agent_settings = AgentSettings.new(registry, network_props, dns)
+        agent_settings.environment = environment
+        agent_settings.agent_id = agent_id
 
         #TODO : should use networks from core create_vm in future
-        instance_id, networks = @cloud_core.create_vm(agent_id, stemcell_id, vm_type, network_props, registry_settings, disk_locality, environment) do
+        instance_id, networks = @cloud_core.create_vm(agent_id, stemcell_id, vm_type, network_props, agent_settings, disk_locality, environment) do
         |instance_id, settings|
           @registry.update_settings(instance_id, settings.agent_settings) if @stemcell_api_version < 2
         end
