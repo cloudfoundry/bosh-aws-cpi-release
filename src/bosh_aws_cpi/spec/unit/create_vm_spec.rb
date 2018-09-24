@@ -98,13 +98,30 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
     expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)).to eq(['fake-id', networks_cloud_props])
   end
 
+  it 'uses the requested api version to encode agent settings' do
+    expect(agent_settings).to receive(:encode).with(api_version)
+    cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)
+  end
+
+  it 'passes the encoded agent settings to the InstanceManager' do
+    allow(agent_settings).to receive(:encode).and_return('my encoded settings')
+    expect(instance_manager).to receive(:create).with(
+      anything,
+      anything,
+      anything,
+      anything,
+      anything,
+      anything,
+      'my encoded settings'
+    ).and_return(instance)
+    expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)).to eq(['fake-id', networks_cloud_props])
+  end
+
   it 'should create an EC2 instance and return its id and network info' do
-    allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: instance, state: :running)
     expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)).to eq(['fake-id', networks_cloud_props])
   end
 
   it 'should configure the IP for the created instance according to the network specifications' do
-    allow(Bosh::AwsCloud::ResourceWait).to receive(:for_instance).with(instance: instance, state: :running)
     expect(network_configurator).to receive(:configure).with(ec2, instance)
     cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)
   end

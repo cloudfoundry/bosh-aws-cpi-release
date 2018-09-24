@@ -104,7 +104,7 @@ module Bosh::AwsCloud
       @aws = AwsConfig.new(config_hash['aws'] || {})
       @registry = RegistryConfig.new(config_hash['registry'] || {})
       @agent = AgentConfig.new(config_hash['agent'] || {})
-      @debug_api_version = config_hash['debug']['cpi']['api_version']
+      @debug_api_version = config_hash.fetch('debug',{}).fetch('cpi', {}).fetch('api_version', MAX_SUPPORTED_API_VERSION)
       @stemcell_api_version = parse_stemcell_api_version(config_hash['aws'])
     end
 

@@ -266,6 +266,7 @@ describe Bosh::AwsCloud::CloudV2 do
           'networks' => {}
         }
       end
+
       let(:options) do
         mock_cloud_properties_merge(
           {
@@ -279,13 +280,29 @@ describe Bosh::AwsCloud::CloudV2 do
           }
         )
       end
+
       before do
         allow(agent_settings_double).to receive(:settings_for_version).with(1).and_return(user_data)
         allow(agent_settings_double).to receive(:user_data).and_return(user_data)
       end
+
       it 'updates the registry' do
         expect(registry).to receive(:update_settings).with(instance_id, agent_settings)
         cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
+      end
+
+      context 'when the registry is not defined' do
+        let(:options) do
+          props = mock_cloud_options['properties']
+          props.delete('registry')
+          props
+        end
+
+        it 'raises an error' do
+          expect {
+            cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
+          }.to raise_error('Cannot create VM without registry with CPI v2 and stemcell api version 1. Registry not configured.')
+        end
       end
     end
 

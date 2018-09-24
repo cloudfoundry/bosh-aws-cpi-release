@@ -7,6 +7,7 @@ module Bosh::AwsCloud
     METADATA_TIMEOUT = 5 # in seconds
     DEVICE_POLL_TIMEOUT = 60 # in seconds
     API_VERSION = 2
+    STEMCELL_NO_REGISTRY = 2
 
     ##
     # Initialize BOSH AWS CPI. The contents of sub-hashes are defined in the {file:README.md}
@@ -17,9 +18,8 @@ module Bosh::AwsCloud
     def initialize(options)
       super(options)
 
-      @stemcell_api_version = @config.stemcell_api_version
-      agent_api_version = @stemcell_api_version >= 2 ? 2 : 1
-      @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector, agent_api_version)
+      @stemcell_api_version = [@config.stemcell_api_version, STEMCELL_NO_REGISTRY].min
+      @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector, @stemcell_api_version)
     end
 
     ##
@@ -39,6 +39,8 @@ module Bosh::AwsCloud
     #   agent settings
     # @return [Array] Contains VM ID, and Network info
     def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = [], environment = nil)
+      raise Bosh::Clouds::CloudError, "Cannot create VM without registry with CPI v2 and stemcell api version #{@stemcell_api_version}. Registry not configured." if !@config.registry_configured? && @stemcell_api_version < 2
+
       with_thread_name("create_vm(#{agent_id}, ...):v2") do
         network_props = @props_factory.network_props(network_spec)
 

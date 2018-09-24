@@ -15,10 +15,13 @@ module Bosh::AwsCloud
     # Initialize BOSH AWS CPI. The contents of sub-hashes are defined in the {file:README.md}
     # @param [Bosh::AwsCloud::Config] config CPI Config options
     # @param [Bosh::Cpi::Logger] logger AWS specific options
-    def initialize(config, logger, volume_manager, az_selector, requested_api_version)
+    # @param [Bosh::AwsCloud::VolumeManager] volume manager
+    # @param [Bosh::AwsCloud::AvailabilityZoneSelector] az selector
+    # @param [Integer] Stemcell api version
+    def initialize(config, logger, volume_manager, az_selector, stemcell_api_version)
       @config = config
       @supported_api_version = @config.supported_api_version
-      @requested_api_version = requested_api_version
+      @stemcell_api_version = stemcell_api_version
       @logger = logger
 
       @aws_provider = Bosh::AwsCloud::AwsProvider.new(@config.aws, @logger)
@@ -95,7 +98,7 @@ module Bosh::AwsCloud
           (disk_locality || []),
           @config.aws.default_security_groups,
           block_device_mappings,
-          settings.encode(@requested_api_version)
+          settings.encode(@stemcell_api_version)
         )
 
         target_groups.each do |target_group_name|

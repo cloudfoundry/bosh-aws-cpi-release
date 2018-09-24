@@ -63,7 +63,7 @@ module Bosh::AwsCloud
         when 1
           user_data
         else
-          raise Bosh::Clouds::CPIAPIVersionNotSupported, "CPI API version '#{version}' is not supported."
+          raise Bosh::Clouds::CPIAPIVersionNotSupported, "Stemcell API version '#{version}' is not supported."
       end
     end
 
