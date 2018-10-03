@@ -357,12 +357,13 @@ describe Bosh::AwsCloud::CloudV2 do
       }
     }
 
+    let(:nvm_device_path) { device_name }
+
     before do
       allow(registry).to receive(:update_settings)
       allow(registry).to receive(:read_settings).and_return(settings)
       allow(registry).to receive(:endpoint).and_return('http://something.12.34.52')
       allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
-
       allow(Bosh::AwsCloud::CloudCore).to receive(:new).and_return(cloud_core)
       allow(cloud_core).to receive(:attach_disk).and_return(device_name).and_yield(instance, device_name)
     end
@@ -371,6 +372,27 @@ describe Bosh::AwsCloud::CloudV2 do
       it 'should update registry' do
         expect(registry).to receive(:update_settings).with(instance_id, expected_settings)
         expect(subject.attach_disk(instance_id, volume_id)).to eq(device_name)
+      end
+
+      context 'when NVME Device is specified (m5.x/c5.x)' do
+        let(:instance_type) { 'm5.medium' }
+        let(:nvm_device_path) {"/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_"+volume_id.sub('-', '')}
+        let(:expected_settings) {
+          {
+            'foo' => 'bar',
+            'disks' => {
+              'persistent' => {
+                'existing-disk' => '/dev/sdf',
+                volume_id => nvm_device_path
+              }
+            }
+          }
+        }
+
+        it 'should return NVME device path' do
+          expect(registry).to receive(:update_settings).with(instance_id, expected_settings)
+          expect(subject.attach_disk(instance_id, volume_id)).to eq(nvm_device_path)
+        end
       end
     end
 
@@ -392,6 +414,27 @@ describe Bosh::AwsCloud::CloudV2 do
       it 'should NOT update registry' do
         expect(registry).to_not receive(:update_settings)
         expect(subject.attach_disk(instance_id, volume_id)).to eq(device_name)
+      end
+
+      context 'when NVME Device is specified (m5.x/c5.x)' do
+        let(:instance_type) { 'm5.medium' }
+        let(:nvm_device_path) {"/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_"+volume_id.sub('-', '')}
+        let(:expected_settings) {
+          {
+            'foo' => 'bar',
+            'disks' => {
+              'persistent' => {
+                'existing-disk' => '/dev/sdf',
+                volume_id => nvm_device_path
+              }
+            }
+          }
+        }
+
+        it 'should return NVME device path' do
+          expect(registry).to_not receive(:update_settings)
+          expect(subject.attach_disk(instance_id, volume_id)).to eq(nvm_device_path)
+        end
       end
     end
   end
