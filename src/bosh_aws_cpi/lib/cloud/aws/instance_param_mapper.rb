@@ -89,7 +89,7 @@ module Bosh::AwsCloud
         end
       end
 
-      nic[:associate_public_ip_address] = vm_type.auto_assign_public_ip if vm_type.auto_assign_public_ip
+      nic[:associate_public_ip_address] = vm_type.auto_assign_public_ip unless vm_type.auto_assign_public_ip.nil?
 
       nic[:device_index] = 0 unless nic.empty?
       params[:network_interfaces] = [nic] unless nic.empty?

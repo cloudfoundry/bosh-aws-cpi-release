@@ -465,6 +465,30 @@ module Bosh::AwsCloud
           end
         end
 
+        context 'when associate_public_ip_address is false' do
+          let(:vm_type) { { 'auto_assign_public_ip' => false } }
+          let(:input) do
+            {
+                vm_type: vm_cloud_props,
+                networks_spec: network_cloud_props,
+            }
+          end
+          let(:output) do
+            {
+                network_interfaces: [
+                    {
+                        associate_public_ip_address: false,
+                        device_index: 0
+                    }
+                ]
+            }
+          end
+
+          it 'adds the option to the output' do
+            expect(mapping(input)).to eq(output)
+          end
+        end
+
         context 'when the one manual network address is IPv6' do
           let(:user_data) { Base64.encode64("{'networks' => #{agent_network_spec(network_cloud_props)}}".to_json).strip }
           let(:networks_spec) do
