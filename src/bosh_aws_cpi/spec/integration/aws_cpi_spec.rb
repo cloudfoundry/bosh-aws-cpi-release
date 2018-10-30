@@ -9,6 +9,8 @@ describe 'the aws_cpi executable' do
     config_file.close
   end
 
+  let(:mock_cpi_api_version) { 2 }
+
   let(:config_file) { Tempfile.new('cloud_properties.yml') }
 
   let(:cloud_properties) do
@@ -28,7 +30,12 @@ describe 'the aws_cpi executable' do
             'endpoint' => 'fake',
             'user' => 'fake',
             'password' => 'fake'
-          }
+          },
+          'debug'=> {
+            'cpi'=> {
+              'api_version'=> mock_cpi_api_version
+            },
+          },
         }
       }
     }
@@ -51,14 +58,19 @@ describe 'the aws_cpi executable' do
               'endpoint' => 'fake',
               'user' => 'fake',
               'password' => 'fake'
-            }
+            },
+            'debug'=> {
+              'cpi'=> {
+                'api_version'=> mock_cpi_api_version
+              },
+            },
           }
         }
       }
     end
 
     it 'will not evaluate anything that causes an exception and will return the proper message to stdout' do
-      result = run_cpi({'method'=>'ping', 'arguments'=>[], 'context'=>{'director_uuid' => 'abc123'}})
+      result = run_cpi({'method'=>'ping', 'arguments'=>[], 'context'=>{'director_uuid' => 'abc123', 'api_version' => 2}})
 
       expect(result.keys).to eq(%w(result error log))
 
@@ -69,6 +81,71 @@ describe 'the aws_cpi executable' do
       expect(result['error']['type']).to eq('Unknown')
 
       expect(result['log']).to include('backtrace')
+    end
+  end
+
+  context 'when cpi_api_version is provided by director' do
+    let(:cloud_properties) {
+      {
+        'cloud' => {
+          'properties' => {
+            'aws' => {
+            },
+            'registry' => {
+              'endpoint' => 'fake',
+              'user' => 'fake',
+              'password' => 'fake'
+            },
+            'debug'=> {
+              'cpi'=> {
+                'api_version'=> mock_cpi_api_version
+              },
+            },
+          }
+        }
+      }
+    }
+    let(:context) {
+      {
+        'director_uuid' => 'abc123',
+        'access_key_id' => @access_key_id,
+        'secret_access_key' => @secret_access_key,
+        'session_token' => @session_token,
+        'region' => @region,
+        'default_key_name' => 'default_key_name',
+        'fast_path_delete' => 'yes',
+        'max_retries' => 0,
+        'api_version' => cpi_api_version
+      }
+    }
+    let(:cpi_api_version) { 2 }
+
+    context 'when the wrong arguments are passed to CPI' do
+      it 'should raise error' do
+        result = run_cpi({'method'=>'create_vm',
+                          'arguments'=>['agent-01f73de98ab33ad2f'],
+                          'context'=> context,
+                          'api_version' => cpi_api_version})
+
+        expect(result.keys).to eq(%w(result error log))
+        expect(result['result']).to be_falsey
+        expect(result['error']['type']).to eq('InvalidCall')
+        expect(result['error']['message']).to include('Arguments are not correct')
+        expect(result['log']).to include('cloud_v2')
+      end
+    end
+
+    context 'when correct arguments are provided (not implemented methods)' do
+      it 'should forward it cloud V1' do
+          result = run_cpi({'method'=>'has_vm',
+                            'arguments'=>['i-01f73de98ab33ad2f'],
+                            'context'=> context,
+                            'api_version' => cpi_api_version})
+
+          expect(result.keys).to eq(%w(result error log))
+          expect(result['result']).to be_falsey
+          expect(result['error']).to be_nil
+      end
     end
   end
 
@@ -103,7 +180,12 @@ describe 'the aws_cpi executable' do
               'endpoint' => 'fake',
               'user' => 'fake',
               'password' => 'fake'
-            }
+            },
+            'debug'=> {
+              'cpi'=> {
+                'api_version'=> mock_cpi_api_version
+              },
+            },
           }
         }
       }
@@ -121,8 +203,7 @@ describe 'the aws_cpi executable' do
       }
     }
     it 'merges the context into the cloud_properties' do
-      result = run_cpi({'method'=>'has_vm', 'arguments'=>['i-01f73de98ab33ad2f'], 'context'=> context})
-
+      result = run_cpi({'method'=>'has_vm', 'arguments'=>['i-01f73de98ab33ad2f'], 'context'=> context, 'api_version'=>2})
       expect(result.keys).to eq(%w(result error log))
 
       expect(result['result']).to be_falsey

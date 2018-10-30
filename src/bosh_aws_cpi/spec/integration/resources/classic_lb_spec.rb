@@ -11,10 +11,18 @@ describe Bosh::AwsCloud::ClassicLB do
   end
 
   let(:elb_name) { ENV.fetch('BOSH_AWS_ELB_ID') }
-  let(:instance_id) { create_vm }
+
+  before do
+    response = create_vm
+    if @cpi_api_version >=2
+      @instance_id = response[0]
+    else
+      @instance_id = response
+    end
+  end
 
   after do
-    delete_vm(instance_id)
+    delete_vm(@instance_id)
   end
 
   it 'registers new instance with ELB' do
@@ -23,7 +31,8 @@ describe Bosh::AwsCloud::ClassicLB do
       elb_name: elb_name,
     )
 
-    lb.register(instance_id)
+
+    lb.register(@instance_id)
 
     lbs = elb_v1_client.describe_load_balancers(
       load_balancer_names: [
@@ -36,6 +45,6 @@ describe Bosh::AwsCloud::ClassicLB do
     lb_instances = lbs.first.instances
     expect(lb_instances.length).to eq(1), "Expected to find 1 LB Instance, but did not: #{lb_instances.inspect}"
 
-    expect(lb_instances.first.instance_id).to eq(instance_id)
+    expect(lb_instances.first.instance_id).to eq(@instance_id)
   end
 end

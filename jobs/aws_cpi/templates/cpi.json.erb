@@ -16,17 +16,25 @@ params = {
         "encrypted" => p('aws.encrypted'),
         "kms_key_arn" => p('aws.kms_key_arn', nil)
       },
-      "registry" => {
-        "endpoint" => "http://#{p('registry.username')}:#{ERB::Util.url_encode(p('registry.password'))}@#{p('registry.host')}:#{p('registry.port')}",
-        "user" => p('registry.username'),
-        "password" => p('registry.password')
-      },
-
       "agent" => {
         "ntp" => p('ntp')
       }
     }
   }
+}
+has_registry = !p(['registry.username', 'registry.password', 'registry.host'], nil).nil?
+if has_registry
+  params['cloud']['properties']['registry'] = {
+      "endpoint" => "http://#{p('registry.username')}:#{ERB::Util.url_encode(p('registry.password'))}@#{p('registry.host')}:#{p('registry.port')}",
+      "user" => p('registry.username'),
+      "password" => p('registry.password')
+  }
+end
+
+params["cloud"]["properties"]["debug"] = {
+  'cpi'=> {
+    'api_version'=> p('debug.cpi.api_version', 2)
+  },
 }
 
 if_p('aws.stemcell.kernel_id') do |kernel_id|
@@ -47,7 +55,8 @@ params["cloud"]["properties"]["aws"]["region"] = p('aws.region')
 
 agent_params = params["cloud"]["properties"]["agent"]
 
-if_p('blobstore') do
+blobstore_defined = p('blobstore.provider') != 'dav' || !p(['blobstore.agent.user', 'blobstore.agent.password', 'agent.blobstore.address', 'blobstore.address'], nil).nil?
+if blobstore_defined
   agent_params["blobstore"] = {
        "provider" => p('blobstore.provider'),
        "options" => {}
@@ -92,8 +101,11 @@ end
 
 if_p('agent.mbus') do |mbus|
   agent_params["mbus"] = mbus
-end.else_if_p('nats') do
-  agent_params["mbus"] = "nats://#{p('nats.user')}:#{p('nats.password')}@#{p(['agent.nats.address', 'nats.address'])}:#{p('nats.port')}"
+end.else do
+  nats_defined = !p(['agent.nats.address', 'nats.address', 'nats.password'], nil).nil?
+  if nats_defined
+    agent_params["mbus"] = "nats://#{p('nats.user')}:#{p('nats.password')}@#{p(['agent.nats.address', 'nats.address'])}:#{p('nats.port')}"
+  end
 end
 
 JSON.dump(params)

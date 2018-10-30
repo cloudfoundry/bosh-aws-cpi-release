@@ -2,7 +2,7 @@
 
 require 'spec_helper'
 
-describe Bosh::AwsCloud::Cloud do
+describe Bosh::AwsCloud::CloudV1 do
   let(:volume) { double(Aws::EC2::Volume, id: 'v-foo') }
   let(:cloud) do
     mock_cloud do |ec2|

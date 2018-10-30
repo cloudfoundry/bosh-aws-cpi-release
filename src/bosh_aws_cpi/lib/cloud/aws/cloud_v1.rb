@@ -2,9 +2,11 @@ require 'cloud/aws/stemcell_finder'
 require 'uri'
 
 module Bosh::AwsCloud
-  class Cloud < Bosh::Cloud
+  class CloudV1
+    include Bosh::CloudV1
     include Helpers
 
+    API_VERSION = 1
     METADATA_TIMEOUT = 5 # in seconds
     DEVICE_POLL_TIMEOUT = 60 # in seconds
 
@@ -20,29 +22,33 @@ module Bosh::AwsCloud
     # @option options [Hash] registry agent options
     def initialize(options)
       @config = Bosh::AwsCloud::Config.build(options.dup.freeze)
-
       @logger = Bosh::Clouds::Config.logger
       request_id = options['aws']['request_id']
       if request_id
         @logger.set_request_id(request_id)
       end
 
+      if @config.registry_configured?
+        @registry = Bosh::Cpi::RegistryClient.new(
+          @config.registry.endpoint,
+          @config.registry.user,
+          @config.registry.password
+        )
+      else
+        @registry = Bosh::AwsCloud::RegistryDisabledClient.new
+      end
+
       @aws_provider = Bosh::AwsCloud::AwsProvider.new(@config.aws, @logger)
       @ec2_client = @aws_provider.ec2_client
       @ec2_resource = @aws_provider.ec2_resource
+      @az_selector = AvailabilityZoneSelector.new(@ec2_resource)
+      @volume_manager = Bosh::AwsCloud::VolumeManager.new(@logger, @aws_provider)
+
+      @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector, API_VERSION)
 
       cloud_error('Please make sure the CPI has proper network access to AWS.') unless @aws_provider.aws_accessible?
 
-      @az_selector = AvailabilityZoneSelector.new(@ec2_resource)
-
-      @registry = Bosh::Cpi::RegistryClient.new(
-        @config.registry.endpoint,
-        @config.registry.user,
-        @config.registry.password
-      )
-
-      @volume_manager = Bosh::AwsCloud::VolumeManager.new(@logger, @aws_provider)
-      @instance_manager = InstanceManager.new(@ec2_resource, registry, @logger)
+      @instance_manager = InstanceManager.new(@ec2_resource, @logger)
       @instance_type_mapper = InstanceTypeMapper.new
 
       @props_factory = Bosh::AwsCloud::PropsFactory.new(@config)
@@ -54,6 +60,10 @@ module Bosh::AwsCloud
     # and thus memoizing it.
     def current_vm_id
       begin
+        #xxxx = coreCloud.current_vm_id()
+        # process xxxx based on version
+        # return based on version
+
         return @current_vm_id if @current_vm_id
 
         http_client = HTTPClient.new
@@ -92,69 +102,23 @@ module Bosh::AwsCloud
     #   agent settings
     # @return [String] EC2 instance id of the new virtual machine
     def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = [], environment = nil)
+      raise Bosh::Clouds::CloudError, "Cannot create VM without registry with CPI v1. Registry not configured." unless @config.registry_configured?
+
       with_thread_name("create_vm(#{agent_id}, ...)") do
-        vm_props = @props_factory.vm_props(vm_type)
         network_props = @props_factory.network_props(network_spec)
 
-        # do this early to fail fast
-        target_groups = vm_props.lb_target_groups
-        unless target_groups.empty?
-          @aws_provider.alb_accessible?
+        registry = {endpoint: @config.registry.endpoint}
+        network_with_dns = network_props.dns_networks.first
+        dns = {nameserver: network_with_dns.dns} unless network_with_dns.nil?
+        registry_settings = AgentSettings.new(registry, network_props, dns)
+        registry_settings.environment = environment
+        registry_settings.agent_id = agent_id
+
+        instance_id, _ = @cloud_core.create_vm(agent_id, stemcell_id, vm_type, network_props, registry_settings, disk_locality, environment) do
+        |instance_id, settings|
+          @registry.update_settings(instance_id, settings.agent_settings)
         end
-
-        requested_elbs = vm_props.elbs
-        unless requested_elbs.empty?
-          @aws_provider.elb_accessible?
-        end
-
-        begin
-          stemcell = StemcellFinder.find_by_id(@ec2_resource, stemcell_id)
-
-          block_device_mappings, agent_info = Bosh::AwsCloud::BlockDeviceManager.new(
-            @logger,
-            stemcell,
-            vm_props,
-          ).mappings_and_info
-
-          instance = @instance_manager.create(
-            stemcell.image_id,
-            vm_props,
-            network_props,
-            (disk_locality || []),
-            @config.aws.default_security_groups,
-            block_device_mappings
-          )
-
-          target_groups.each do |target_group_name|
-            target_group = LBTargetGroup.new(client: @aws_provider.alb_client, group_name: target_group_name)
-            target_group.register(instance.id)
-          end
-
-          requested_elbs.each do |requested_elb_name|
-            requested_elb = ClassicLB.new(client: @aws_provider.elb_client, elb_name: requested_elb_name)
-            requested_elb.register(instance.id)
-          end
-
-          logger.info("Creating new instance '#{instance.id}'")
-
-          NetworkConfigurator.new(network_props).configure(@ec2_resource, instance)
-
-          registry_settings = AgentSettings.new(
-            agent_id,
-            network_props,
-            environment,
-            stemcell.root_device_name,
-            agent_info,
-            @config.agent
-          )
-          registry.update_settings(instance.id, registry_settings.settings)
-
-          instance.id
-        rescue => e # is this rescuing too much?
-          logger.error(%Q[Failed to create instance: #{e.message}\n#{e.backtrace.join("\n")}])
-          instance.terminate(@config.aws.fast_path_delete?) if instance
-          raise e
-        end
+        instance_id
       end
     end
 
@@ -165,7 +129,10 @@ module Bosh::AwsCloud
     def delete_vm(instance_id)
       with_thread_name("delete_vm(#{instance_id})") do
         logger.info("Deleting instance '#{instance_id}'")
-        @instance_manager.find(instance_id).terminate(@config.aws.fast_path_delete?)
+
+        @cloud_core.delete_vm(instance_id) do |instance_id|
+          @registry.delete_settings(instance_id)
+        end
       end
     end
 
@@ -244,16 +211,7 @@ module Bosh::AwsCloud
     # @param [String] disk_id EBS volume UUID
     # @return [bool] whether the specific disk is there or not
     def has_disk?(disk_id)
-      with_thread_name("has_disk?(#{disk_id})") do
-        @logger.info("Check the presence of disk with id `#{disk_id}'...")
-        volume = @ec2_resource.volume(disk_id)
-        begin
-          volume.state
-        rescue Aws::EC2::Errors::InvalidVolumeNotFound
-          return false
-        end
-        true
-      end
+      @cloud_core.has_disk?(disk_id)
     end
 
     ##
@@ -272,21 +230,14 @@ module Bosh::AwsCloud
     # @param [String] disk_id EBS volume id of the disk to attach
     def attach_disk(instance_id, disk_id)
       with_thread_name("attach_disk(#{instance_id}, #{disk_id})") do
-        instance = @ec2_resource.instance(instance_id)
-        volume = @ec2_resource.volume(disk_id)
-
-        device_name = @volume_manager.attach_ebs_volume(instance, volume)
-
-        update_agent_settings(instance) do |settings|
-          settings['disks'] ||= {}
-          settings['disks']['persistent'] ||= {}
-          settings['disks']['persistent'][disk_id] = BlockDeviceManager.device_path(device_name, instance.instance_type, disk_id)
+        _ = @cloud_core.attach_disk(instance_id, disk_id) do |instance, device_name|
+          update_agent_settings(instance_id) do |settings|
+            settings['disks'] ||= {}
+            settings['disks']['persistent'] ||= {}
+            settings['disks']['persistent'][disk_id] = BlockDeviceManager.device_path(device_name, instance.instance_type, disk_id)
+          end
         end
-        logger.info("Attached `#{disk_id}' to `#{instance_id}'")
       end
-
-      # log registry settings for debugging
-      logger.debug("updated registry settings: #{registry.read_settings(instance_id)}")
     end
 
     # Detach an EBS volume from an EC2 instance
@@ -294,22 +245,13 @@ module Bosh::AwsCloud
     # @param [String] disk_id EBS volume id of the disk to detach
     def detach_disk(instance_id, disk_id)
       with_thread_name("detach_disk(#{instance_id}, #{disk_id})") do
-        instance = @ec2_resource.instance(instance_id)
-        volume = @ec2_resource.volume(disk_id)
-
-        if has_disk?(disk_id)
-          @volume_manager.detach_ebs_volume(instance, volume)
-        else
-          @logger.info("Disk `#{disk_id}' not found while trying to detach it from vm `#{instance_id}'...")
+        @cloud_core.detach_disk(instance_id, disk_id) do |disk_id|
+          update_agent_settings(instance_id) do |settings|
+            settings['disks'] ||= {}
+            settings['disks']['persistent'] ||= {}
+            settings['disks']['persistent'].delete(disk_id)
+          end
         end
-
-        update_agent_settings(instance) do |settings|
-          settings['disks'] ||= {}
-          settings['disks']['persistent'] ||= {}
-          settings['disks']['persistent'].delete(disk_id)
-        end
-
-        logger.info("Detached `#{disk_id}' from `#{instance_id}'")
       end
     end
 
@@ -367,7 +309,6 @@ module Bosh::AwsCloud
         end
 
         TagManager.tags(snapshot, metadata)
-
         ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
         snapshot.id
       end
@@ -480,13 +421,11 @@ module Bosh::AwsCloud
     # Information about AWS CPI, currently supported stemcell formats
     # @return [Hash] AWS CPI properties
     def info
-      {
-        'stemcell_formats' => %w(aws-raw aws-light)
-      }
+      @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector, API_VERSION)
+      @cloud_core.info
     end
 
     private
-
     def find_device_path_by_name(sd_name)
       xvd_name = sd_name.gsub(/^\/dev\/sd/, '/dev/xvd')
 
@@ -502,14 +441,15 @@ module Bosh::AwsCloud
       cloud_error('Cannot find EBS volume on current instance')
     end
 
-    def update_agent_settings(instance)
+    def update_agent_settings(instance_id)
       unless block_given?
         raise ArgumentError, 'block is not provided'
       end
 
-      settings = registry.read_settings(instance.id)
+      settings = registry.read_settings(instance_id)
       yield settings
-      registry.update_settings(instance.id, settings)
+      registry.update_settings(instance_id, settings)
+      logger.debug("updated registry settings: #{registry.read_settings(instance_id)}")
     end
 
     def create_ami_for_stemcell(image_path, stemcell_cloud_props)

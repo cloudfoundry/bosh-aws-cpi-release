@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Bosh::AwsCloud::Cloud, '#set_vm_metadata' do
+describe Bosh::AwsCloud::CloudV1, '#set_vm_metadata' do
   let(:instance) { instance_double(Aws::EC2::Instance, :id => 'i-foobar') }
 
   before :each do

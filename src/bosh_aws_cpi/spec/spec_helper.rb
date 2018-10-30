@@ -7,7 +7,7 @@ require 'cloud/aws'
 MOCK_AWS_ACCESS_KEY_ID = 'foo'
 MOCK_AWS_SECRET_ACCESS_KEY = 'bar'
 PROJECT_RUBY_VERSION = ENV.fetch('PROJECT_RUBY_VERSION', '2.4.4')
-
+MOCK_CPI_API_VERSION = 2
 def mock_cloud_options
   {
     'plugin' => 'aws',
@@ -29,7 +29,12 @@ def mock_cloud_options
       'agent' => {
         'foo' => 'bar',
         'baz' => 'zaz'
-      }
+      },
+      'debug'=> {
+        'cpi'=> {
+          'api_version'=> MOCK_CPI_API_VERSION
+        },
+      },
     }
   }
 end
@@ -41,6 +46,7 @@ end
 def mock_cloud_options_merge(override_options, base_hash = mock_cloud_options)
   merged_options = {}
   override_options ||= {}
+  base_hash ||= {}
 
   override_options.each do |key, value|
     if value.is_a? Hash
@@ -71,7 +77,7 @@ def mock_cloud(options = nil)
 
   yield ec2 if block_given?
 
-  Bosh::AwsCloud::Cloud.new(options || mock_cloud_options['properties'])
+  Bosh::AwsCloud::CloudV1.new(options || mock_cloud_options['properties'])
 end
 
 def mock_ec2

@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Bosh::AwsCloud::Cloud do
+describe Bosh::AwsCloud::CloudV1 do
   subject(:cloud) { described_class.new(options) }
 
   let(:options) { mock_cloud_options['properties'] }
@@ -24,7 +24,7 @@ describe Bosh::AwsCloud::Cloud do
         it 'raises an error' do
           expect { cloud }.to raise_error(
               ArgumentError,
-              'missing configuration parameters > aws:default_key_name, aws:max_retries, registry:endpoint, registry:user, registry:password'
+              'missing configuration parameters > aws:default_key_name, aws:max_retries'
             )
         end
       end
@@ -65,6 +65,19 @@ describe Bosh::AwsCloud::Cloud do
           expect(config.region).to eq('fake-region')
         end
       end
+
+      context 'when registry settings are not present' do
+        before(:each) do
+          options.delete('registry')
+        end
+
+        it 'should use a disabled registry client' do
+          expect(Bosh::AwsCloud::RegistryDisabledClient).to receive(:new)
+          expect(Bosh::Cpi::RegistryClient).to_not receive(:new)
+          expect { cloud }.to_not raise_error
+        end
+      end
+
     end
   end
 
@@ -85,7 +98,7 @@ describe Bosh::AwsCloud::Cloud do
       let(:ec2_client) { instance_double(Aws::EC2::Client) }
       let(:volume_resp) { instance_double(Aws::EC2::Types::Volume, volume_id: 'fake-volume-id') }
       let(:volume) { instance_double(Aws::EC2::Volume, id: 'fake-volume-id') }
-      let(:volume_manager) { Bosh::AWsCloud::VolumeManager.new() }
+      let(:volume_manager) { instance_double(Bosh::AwsCloud::VolumeManager) }
       before do
         # cloud.instance_variable_set(:@ec2_client, ec2_client)
         volume_manager = cloud.instance_variable_get(:@volume_manager)
@@ -165,12 +178,6 @@ describe Bosh::AwsCloud::Cloud do
         end
       end
 
-      describe '#info' do
-        it 'returns correct info' do
-          expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light']})
-        end
-      end
-
       context 'when disk type is not provided' do
         let(:cloud_properties) { {} }
         let(:disk_size) { 1025 }
@@ -190,6 +197,35 @@ describe Bosh::AwsCloud::Cloud do
 
           cloud.create_disk(disk_size, cloud_properties, 42)
         end
+      end
+    end
+  end
+
+  describe '#info' do
+    let(:volume_manager) { instance_double(Bosh::AwsCloud::VolumeManager) }
+    let(:az_selector) { instance_double(Bosh::AwsCloud::AvailabilityZoneSelector) }
+    let(:api_version) { 2 }
+    let(:options) { mock_cloud_options['properties'] }
+    let(:config) { Bosh::AwsCloud::Config.build(options, validate_registry) }
+    let(:logger) { Bosh::Clouds::Config.logger }
+    let(:cloud_core) { Bosh::AwsCloud::CloudCore.new(config, logger, volume_manager, az_selector, api_version) }
+
+    it 'returns correct info with default api_version' do
+      expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light'], 'api_version' => api_version})
+    end
+
+    context 'when api_version is specified in config json' do
+      let(:options) do
+        mock_cloud_properties_merge(
+          'api_version' => 42
+        )
+      end
+
+      let(:config) { Bosh::AwsCloud::Config.build(options) }
+      let(:cloud_core) { Bosh::AwsCloud::CloudCore.new(config, logger, volume_manager, az_selector, api_version) }
+
+      it 'returns correct api_version in info' do
+        expect(cloud.info).to eq({'stemcell_formats' => ['aws-raw', 'aws-light'], 'api_version' => api_version})
       end
     end
   end
@@ -276,6 +312,95 @@ describe Bosh::AwsCloud::Cloud do
       expect {
         cloud.configure_networks('i-foobar', {})
       }.to raise_error Bosh::Clouds::NotSupported
+    end
+  end
+
+  describe '#create_vm' do
+    let(:registry) { instance_double(Bosh::Cpi::RegistryClient) }
+
+    let(:global_config) { instance_double(Bosh::AwsCloud::Config, aws: Bosh::AwsCloud::AwsConfig.new({})) }
+    let(:networks_spec) do
+      {
+        'fake-network-name-1' => {
+          'type' => 'dynamic'
+        },
+        'fake-network-name-2' => {
+          'type' => 'manual'
+        }
+      }
+    end
+    let(:networks_cloud_props) do
+      Bosh::AwsCloud::NetworkCloudProps.new(networks_spec, global_config)
+    end
+    let(:environment) { {} }
+    let(:agent_id) { '007-agent' }
+    let(:instance_id) { 'instance-id' }
+    let(:root_device_name) { 'root name' }
+    let(:agent_info) do
+      {
+        'ephemeral' => [{'path' => '/dev/sdz'}],
+        'raw_ephemeral' => [{'path'=>'/dev/xvdba'}, {'path'=>'/dev/xvdbb'}]
+      }
+    end
+    let(:agent_config) { {'baz' => 'qux'} }
+
+    let(:stemcell_id) { 'stemcell-id' }
+    let(:vm_type) { 'vm-type' }
+    let(:disk_locality) { [] }
+    let(:cloud_core) { instance_double(Bosh::AwsCloud::CloudCore) }
+    let(:agent_settings_double) {instance_double(Bosh::AwsCloud::AgentSettings)}
+
+    before do
+      allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
+      allow(registry).to receive(:endpoint).and_return('http://something.12.34.52')
+      allow(SecureRandom).to receive(:uuid).and_return('rand0m')
+
+      allow(Bosh::AwsCloud::CloudCore).to receive(:new).and_return(cloud_core)
+    end
+
+    it 'updates the registry' do
+      agent_settings = {
+        'vm' => {
+          'name' => 'vm-rand0m'
+        },
+        'agent_id' => agent_id,
+        'networks' => {
+          'fake-network-name-1' => {
+            'type' => 'dynamic',
+            'use_dhcp' => true,
+          },
+          'fake-network-name-2' => {
+            'type' => 'manual',
+            'use_dhcp' => true,
+          }
+        },
+        'disks' => {
+          'system' => 'root name',
+          'ephemeral' => '/dev/sdz',
+          'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}],
+          'persistent' => {}
+        },
+        'env' => environment,
+        'baz' => 'qux'
+      }
+
+      allow(agent_settings_double).to receive(:agent_settings).and_return(agent_settings)
+      allow(cloud_core).to receive(:create_vm).and_yield(instance_id, agent_settings_double)
+      expect(registry).to receive(:update_settings).with(instance_id, agent_settings)
+
+      cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
+    end
+
+    context 'when registry is not configured' do
+      before do
+        options.delete('registry')
+      end
+
+      it 'raises an error' do
+        expect {
+          cloud.create_vm(agent_id, stemcell_id, vm_type, networks_spec, disk_locality, environment)
+        }.to raise_error(/Cannot create VM without registry with CPI v1. Registry not configured./)
+      end
     end
   end
 end

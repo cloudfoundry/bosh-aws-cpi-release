@@ -29,7 +29,7 @@ GEM
     bosh_common (1.3262.24.0)
       logging (~> 1.8.2)
       semi_semantic (~> 1.2.0)
-    bosh_cpi (2.4.1)
+    bosh_cpi (2.5.0)
       httpclient (~> 2.8.3)
       membrane (~> 1.1.0)
     byebug (9.1.0)
@@ -86,7 +86,7 @@ DEPENDENCIES
   aws-sdk-elasticloadbalancingv2 (~> 1.11)
   aws-sdk-iam (~> 1.5)
   bosh_common (= 1.3262.24.0)
-  bosh_cpi (~> 2.4)
+  bosh_cpi
   netaddr
   pry-byebug (~> 3.4)
   rake (~> 12.0)

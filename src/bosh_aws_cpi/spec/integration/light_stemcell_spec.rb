@@ -2,10 +2,11 @@ require 'integration/spec_helper'
 require 'bosh/cpi/logger'
 require 'cloud'
 
-describe Bosh::AwsCloud::Cloud do
+describe Bosh::AwsCloud::CloudV1 do
   let(:ami) { hvm_ami }
   let(:hvm_ami) { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-9c91b7fc') }
   let(:registry) { instance_double(Bosh::Cpi::RegistryClient).as_null_object }
+  let(:mock_cpi_api_version) { 2 }
   let(:aws_config) do
     {
       'region' => @region,
@@ -20,13 +21,18 @@ describe Bosh::AwsCloud::Cloud do
     }
   end
   let(:cpi) do
-    Bosh::AwsCloud::Cloud.new(
+    Bosh::AwsCloud::CloudV1.new(
       'aws' => aws_config,
       'registry' => {
         'endpoint' => 'fake',
         'user' => 'fake',
         'password' => 'fake'
-      }
+      },
+      'debug'=> {
+        'cpi'=> {
+          'api_version'=> mock_cpi_api_version
+        },
+      },
     )
   end
   let(:logs) { STDOUT }

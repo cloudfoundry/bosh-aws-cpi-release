@@ -73,7 +73,9 @@ module Bosh::AwsCloud
   end
 
   class Config
-    attr_reader :aws, :registry, :agent
+    MAX_SUPPORTED_API_VERSION = 2
+
+    attr_reader :aws, :registry, :agent, :stemcell_api_version
 
     def self.build(config_hash)
       Config.validate(config_hash)
@@ -85,6 +87,16 @@ module Bosh::AwsCloud
       Config.validate_credentials_source(config_hash)
     end
 
+    def supported_api_version
+      # TODO: Log warning that they are using higher debug version vs max supported version
+      expected_version = @debug_api_version || MAX_SUPPORTED_API_VERSION
+      [expected_version, MAX_SUPPORTED_API_VERSION].min
+    end
+
+    def registry_configured?
+      !registry.endpoint.nil?
+    end
+
     private
 
     def initialize(config_hash)
@@ -92,6 +104,12 @@ module Bosh::AwsCloud
       @aws = AwsConfig.new(config_hash['aws'] || {})
       @registry = RegistryConfig.new(config_hash['registry'] || {})
       @agent = AgentConfig.new(config_hash['agent'] || {})
+      @debug_api_version = config_hash.fetch('debug',{}).fetch('cpi', {}).fetch('api_version', MAX_SUPPORTED_API_VERSION)
+      @stemcell_api_version = parse_stemcell_api_version(config_hash['aws'])
+    end
+
+    def parse_stemcell_api_version(aws_config_hash)
+      aws_config_hash.fetch('vm', {}).fetch('stemcell', {}).fetch('api_version', 1)
     end
 
     ##
@@ -101,7 +119,7 @@ module Bosh::AwsCloud
     def self.validate_options(options)
       missing_keys = []
 
-      REQUIRED_KEYS.each_pair do |key, values|
+      required_keys.each_pair do |key, values|
         values.each do |value|
           if (!options.has_key?(key) || !options[key].has_key?(value))
             missing_keys << "#{key}:#{value}"
@@ -111,7 +129,7 @@ module Bosh::AwsCloud
 
       raise ArgumentError, "missing configuration parameters > #{missing_keys.join(', ')}" unless missing_keys.empty?
 
-      if !options['aws'].has_key?('region') && ! (options['aws'].has_key?('ec2_endpoint') && options['aws'].has_key?('elb_endpoint'))
+      if !options['aws'].has_key?('region') && !(options['aws'].has_key?('ec2_endpoint') && options['aws'].has_key?('elb_endpoint'))
         raise ArgumentError, 'missing configuration parameters > aws:region, or aws:ec2_endpoint and aws:elb_endpoint'
       end
     end
@@ -140,10 +158,9 @@ module Bosh::AwsCloud
       end
     end
 
-    REQUIRED_KEYS = {
-      'aws' => ['default_key_name', 'max_retries'],
-      'registry' => ['endpoint', 'user', 'password'],
-    }.freeze
-
+    def self.required_keys
+      required_keys = {'aws' => ['default_key_name', 'max_retries']}
+      required_keys
+    end
   end
 end

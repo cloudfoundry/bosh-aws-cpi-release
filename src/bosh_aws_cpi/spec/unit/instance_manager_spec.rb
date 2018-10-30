@@ -6,10 +6,11 @@ module Bosh::AwsCloud
     let(:aws_client) { instance_double(Aws::EC2::Client) }
     before { allow(ec2).to receive(:client).and_return(aws_client) }
 
-    let(:registry) { instance_double(Bosh::Cpi::RegistryClient, :endpoint => 'http://...', :update_settings => nil) }
     let(:param_mapper) { instance_double(InstanceParamMapper) }
-    let(:instance_manager) { InstanceManager.new(ec2, registry, logger) }
+    let(:instance_manager) { InstanceManager.new(ec2, logger) }
     let(:logger) { Logger.new('/dev/null') }
+
+    let(:user_data) { { password: 'secret' } }
 
     describe '#create' do
       let(:fake_aws_subnet) { instance_double(Aws::EC2::Subnet, id: 'sub-123456', availability_zone: 'us-east-1a') }
@@ -71,7 +72,7 @@ module Bosh::AwsCloud
       let(:fake_instance_params) do
         {
           fake: 'instance-params',
-          user_data: { password: 'secret' },
+          user_data: user_data,
           defaults: {
             access_key_id: 'AWSKEYID',
             secret_access_key: 'AWSSECRET',
@@ -115,6 +116,26 @@ module Bosh::AwsCloud
         allow(instance).to receive(:update_routing_tables)
       end
 
+      context 'when user_data is defined as a parameter' do
+        let(:user_data) { {'unicorns' => 'have rainbow hair'} }
+
+        it 'should use user_data when building the instance params' do
+          allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
+          allow(aws_client).to receive(:run_instances)
+
+          expect(param_mapper).to receive(:manifest_params=).with(hash_including(user_data: user_data))
+          instance_manager.create(
+            stemcell_id,
+            vm_cloud_props,
+            networks_cloud_props,
+            disk_locality,
+            default_options,
+            fake_block_device_mappings,
+            user_data
+          )
+        end
+      end
+
       it 'should ask AWS to create an instance in the given region, with parameters built up from the given arguments' do
         allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
@@ -125,7 +146,8 @@ module Bosh::AwsCloud
           networks_cloud_props,
           disk_locality,
           default_options,
-          fake_block_device_mappings
+          fake_block_device_mappings,
+          user_data
         )
       end
 
@@ -141,7 +163,8 @@ module Bosh::AwsCloud
             networks_cloud_props,
             disk_locality,
             default_options,
-             fake_block_device_mappings
+            fake_block_device_mappings,
+            user_data
           )
         end
 
@@ -212,7 +235,8 @@ module Bosh::AwsCloud
             networks_cloud_props,
             disk_locality,
             default_options,
-            fake_block_device_mappings
+            fake_block_device_mappings,
+            user_data
           )
         end
 
@@ -228,7 +252,8 @@ module Bosh::AwsCloud
                 networks_cloud_props,
                 disk_locality,
                 default_options,
-                fake_block_device_mappings
+                fake_block_device_mappings,
+                user_data
               )
             }.to raise_error(Bosh::Clouds::VMCreationFailed, /Spot instance creation failed/)
 
@@ -262,7 +287,8 @@ module Bosh::AwsCloud
                 networks_cloud_props,
                 disk_locality,
                 default_options,
-                fake_block_device_mappings
+                fake_block_device_mappings,
+                user_data
               )
             end
 
@@ -278,7 +304,8 @@ module Bosh::AwsCloud
                 networks_cloud_props,
                 disk_locality,
                 default_options,
-                fake_block_device_mappings
+                fake_block_device_mappings,
+                user_data
               )
             end
           end
@@ -300,7 +327,8 @@ module Bosh::AwsCloud
             networks_cloud_props,
             disk_locality,
             default_options,
-            fake_block_device_mappings
+            fake_block_device_mappings,
+            user_data
           )
         end
       end
@@ -323,7 +351,8 @@ module Bosh::AwsCloud
             networks_cloud_props,
             disk_locality,
             default_options,
-            fake_block_device_mappings
+            fake_block_device_mappings,
+            user_data
           )
         end
       end
@@ -348,7 +377,8 @@ module Bosh::AwsCloud
           networks_cloud_props,
           disk_locality,
           default_options,
-          fake_block_device_mappings
+          fake_block_device_mappings,
+          user_data
         )
       end
 
@@ -373,7 +403,8 @@ module Bosh::AwsCloud
               networks_cloud_props,
               disk_locality,
               default_options,
-              fake_block_device_mappings
+              fake_block_device_mappings,
+              user_data
             )
           }.to raise_error(create_err)
         end
@@ -395,7 +426,8 @@ module Bosh::AwsCloud
               networks_cloud_props,
               disk_locality,
               default_options,
-              fake_block_device_mappings
+              fake_block_device_mappings,
+              user_data
             )
           }.to raise_error(Bosh::AwsCloud::AbruptlyTerminated)
         end
@@ -416,7 +448,8 @@ module Bosh::AwsCloud
                 networks_cloud_props,
                 disk_locality,
                 default_options,
-                fake_block_device_mappings
+                fake_block_device_mappings,
+                user_data
               )
             }.to raise_error(create_err)
           end
@@ -432,8 +465,8 @@ module Bosh::AwsCloud
       it 'returns found instance (even though it might not exist)' do
         instance = instance_double(Bosh::AwsCloud::Instance)
 
-        allow(Instance).to receive(:new).
-          with(aws_instance, registry, logger).
+        allow(Bosh::AwsCloud::Instance).to receive(:new).
+          with(aws_instance, logger).
           and_return(instance)
 
         expect(instance_manager.find(instance_id)).to eq(instance)

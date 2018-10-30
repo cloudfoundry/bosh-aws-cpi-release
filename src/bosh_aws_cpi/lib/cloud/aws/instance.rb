@@ -2,9 +2,8 @@ module Bosh::AwsCloud
   class Instance
     include Helpers
 
-    def initialize(aws_instance, registry, logger)
+    def initialize(aws_instance, logger)
       @aws_instance = aws_instance
-      @registry = registry
       @logger = logger
     end
 
@@ -79,8 +78,8 @@ module Bosh::AwsCloud
         @logger.warn("Failed to terminate instance '#{@aws_instance.id}' because it was not found: #{e.inspect}")
         raise Bosh::Clouds::VMNotFound, "VM `#{@aws_instance.id}' not found"
       ensure
+        #TODO move this into v1
         @logger.info("Deleting instance settings for '#{@aws_instance.id}'")
-        @registry.delete_settings(@aws_instance.id)
       end
 
       if fast

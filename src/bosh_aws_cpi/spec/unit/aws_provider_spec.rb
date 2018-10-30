@@ -1,7 +1,5 @@
 require 'spec_helper'
 
-
-
 describe Bosh::AwsCloud::AwsProvider do
   let(:options) do
     opts = mock_cloud_options['properties']

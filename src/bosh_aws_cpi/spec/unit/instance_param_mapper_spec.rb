@@ -4,6 +4,7 @@ require 'base64'
 module Bosh::AwsCloud
   describe InstanceParamMapper do
     let(:instance_param_mapper) { InstanceParamMapper.new(security_group_mapper) }
+    let(:user_data) { {} }
     let(:security_group_mapper) { SecurityGroupMapper.new(ec2_resource) }
     let(:ec2_resource) { instance_double(Aws::EC2::Resource) }
     let(:security_groups) do
@@ -298,15 +299,16 @@ module Bosh::AwsCloud
         end
       end
 
-      context 'when registry_endpoint is provided' do
+      context 'user_data should be present in instance_params' do
+        let(:user_data) { Base64.encode64('{"registry":{"endpoint":"example.com"}}').strip }
         let(:input) do
           {
             vm_type: vm_cloud_props,
             networks_spec: network_cloud_props,
-            registry_endpoint: 'example.com'
+            user_data: user_data
           }
         end
-        let(:output) { { user_data: Base64.encode64('{"registry":{"endpoint":"example.com"}}').strip } }
+        let(:output) { { user_data: user_data } }
 
         it 'maps to Base64 encoded user_data.registry.endpoint' do
           expect(mapping(input)).to eq(output)
@@ -314,6 +316,7 @@ module Bosh::AwsCloud
       end
 
       context 'when dns is provided by networks in networks_spec' do
+        let(:user_data) { Base64.encode64("{'networks' => #{agent_network_spec(network_cloud_props)}}".to_json).strip }
         let(:networks_spec) do
           {
             'net1' => {},
@@ -324,10 +327,11 @@ module Bosh::AwsCloud
         let(:input) do
           {
             vm_type: vm_cloud_props,
-            networks_spec: network_cloud_props
+            networks_spec: network_cloud_props,
+            user_data: user_data
           }
         end
-        let(:output) { { user_data: Base64.encode64('{"dns":{"nameserver":"1.1.1.1"}}').strip } }
+        let(:output) { { user_data: user_data } }
 
         it 'maps to Base64 encoded user_data.dns, from the first matching network' do
           expect(mapping(input)).to eq(output)
@@ -335,6 +339,7 @@ module Bosh::AwsCloud
       end
 
       context 'when IPv6 network address is present' do
+        let(:user_data) { Base64.encode64("{'networks' => #{agent_network_spec(network_cloud_props)}}".to_json).strip }
         let(:networks_spec) do
           {
             'net1' => {},
@@ -345,18 +350,13 @@ module Bosh::AwsCloud
         let(:input) do
           {
             vm_type: vm_cloud_props,
-            networks_spec: network_cloud_props
+            networks_spec: network_cloud_props,
+            user_data: user_data
           }
         end
         let(:output) do
           {
-            user_data: Base64.encode64(JSON.dump(
-              'networks' => {
-                'net1' => { 'use_dhcp' => true},
-                'net2' => { 'ip' => '1.1.1.1', 'use_dhcp' => true},
-                'net3' => { 'ip' => '2006::1', 'use_dhcp' => true},
-              }
-            )).strip
+            user_data: user_data
           }
         end
 
@@ -490,6 +490,7 @@ module Bosh::AwsCloud
         end
 
         context 'when the one manual network address is IPv6' do
+          let(:user_data) { Base64.encode64("{'networks' => #{agent_network_spec(network_cloud_props)}}".to_json).strip }
           let(:networks_spec) do
             {
               'net1' => {
@@ -501,21 +502,19 @@ module Bosh::AwsCloud
               }
             }
           end
-          let(:input) do
-            {
+          let(:input) do {
               vm_type: vm_cloud_props,
-              networks_spec: network_cloud_props
+              networks_spec: network_cloud_props,
+              user_data: user_data
             }
           end
           let(:output) do
             {
-              network_interfaces: [
-                {
+              network_interfaces: [{
                   ipv_6_addresses: [{ipv_6_address: '2006::1' }],
                   device_index: 0
-                }
-              ],
-              user_data: Base64.encode64('{"networks":{"net1":{"type":"dynamic","use_dhcp":true},"net2":{"type":"manual","ip":"2006::1","use_dhcp":true}}}').strip
+              }],
+              user_data: user_data
             }
           end
 
@@ -719,6 +718,7 @@ module Bosh::AwsCloud
 
       context 'when a full spec is provided' do
         context 'with security group IDs' do
+          let(:user_data) { Base64.encode64("{'networks' => #{agent_network_spec(network_cloud_props)}}".to_json).strip }
           let(:vm_type) do
             {
               'instance_type' => 'fake-instance-type',
@@ -749,8 +749,8 @@ module Bosh::AwsCloud
                 dynamic_subnet_id => 'region-1a'
               },
               volume_zones: ['region-1a', 'region-1a'],
-              registry_endpoint: 'example.com',
-              block_device_mappings: ['fake-device']
+              block_device_mappings: ['fake-device'],
+              user_data: user_data
             }
           end
           let(:output) do
@@ -771,7 +771,7 @@ module Bosh::AwsCloud
                   groups: ['sg-12345678', 'sg-23456789'],
                 }
               ],
-              user_data: Base64.encode64('{"registry":{"endpoint":"example.com"},"dns":{"nameserver":"8.8.8.8"}}').strip,
+              user_data: user_data,
               block_device_mappings: ['fake-device']
             }
           end
@@ -794,7 +794,7 @@ module Bosh::AwsCloud
       it 'raises an exception if any required properties are not provided' do
         required_inputs = [
           'stemcell_id',
-          'registry_endpoint',
+          'user_data',
           'cloud_properties.instance_type',
           'cloud_properties.availability_zone',
           '\(cloud_properties.key_name or global default_key_name\)',
@@ -836,6 +836,7 @@ module Bosh::AwsCloud
     end
 
     describe '#validate' do
+      let(:user_data) { Base64.encode64('{"registry":{"endpoint":"example.com"}}').strip }
       let(:vm_type) do
         {
           'instance_type' => 'fake-instance-type',
@@ -858,11 +859,24 @@ module Bosh::AwsCloud
           stemcell_id: 'ami-something',
           vm_type: vm_cloud_props,
           networks_spec: network_cloud_props,
-          registry_endpoint: 'example.com',
+          user_data: user_data
         }
         expect {
           instance_param_mapper.validate
         }.to_not raise_error
+      end
+
+      context 'invalid input' do
+        it 'raises an exception' do
+          instance_param_mapper.manifest_params = {
+            stemcell_id: 'ami-something',
+            vm_type: vm_cloud_props,
+            networks_spec: network_cloud_props,
+          }
+          expect {
+            instance_param_mapper.validate
+          }.to raise_error Bosh::Clouds::CloudError, /Missing properties: user_data/
+        end
       end
     end
 
@@ -871,6 +885,16 @@ module Bosh::AwsCloud
     def mapping(input)
       instance_param_mapper.manifest_params = input
       instance_param_mapper.instance_params
+    end
+
+    def agent_network_spec(networks_cloud_props)
+      spec = networks_cloud_props.networks.map do |net|
+        settings = net.to_h
+        settings['use_dhcp'] = true
+
+        [net.name, settings]
+      end
+      Hash[spec]
     end
   end
 end

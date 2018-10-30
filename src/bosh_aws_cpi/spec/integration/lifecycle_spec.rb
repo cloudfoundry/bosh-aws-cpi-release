@@ -4,7 +4,7 @@ require 'tempfile'
 require 'bosh/cpi/logger'
 require 'cloud'
 
-describe Bosh::AwsCloud::Cloud do
+describe 'lifecycle test' do
   before(:all) do
     @manual_ip          = ENV.fetch('BOSH_AWS_LIFECYCLE_MANUAL_IP')
     @elb_id             = ENV.fetch('BOSH_AWS_ELB_ID')
@@ -27,13 +27,12 @@ describe Bosh::AwsCloud::Cloud do
   let(:vm_type) { { 'instance_type' => instance_type, 'availability_zone' => @subnet_zone } }
   let(:security_groups) { get_security_group_ids }
   let(:registry) { instance_double(Bosh::Cpi::RegistryClient).as_null_object }
-
-  before {
-    allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
-    allow(registry).to receive(:read_settings).and_return({})
-  }
+  let(:mock_cpi_api_version) { 2 }
 
   before do
+    allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
+    allow(registry).to receive(:read_settings).and_return({})
+
     begin
       @ec2.instances(
         filters: [
@@ -44,19 +43,103 @@ describe Bosh::AwsCloud::Cloud do
     rescue Aws::EC2::Errors::InvalidInstanceIdNotFound
       # don't blow up tests if instance that we're trying to delete was not found
     end
+    allow(Bosh::Clouds::Config).to receive_messages(logger: logger)
   end
 
-  before { allow(Bosh::Clouds::Config).to receive_messages(logger: logger) }
   let(:logs) { STDOUT }
   let(:logger) {Bosh::Cpi::Logger.new(logs) }
 
 
   extend Bosh::Cpi::CompatibilityHelpers
 
+  context 'when config does not have registry settings' do
+    let(:cpi_options) {
+      {
+        'aws' => {
+          'region' => @region,
+          'default_key_name' => @default_key_name,
+          'default_security_groups' => get_security_group_ids,
+          'fast_path_delete' => 'yes',
+          'access_key_id' => @access_key_id,
+          'secret_access_key' => @secret_access_key,
+          'session_token' => @session_token,
+          'max_retries' => 8
+        },
+      }
+    }
+
+    let(:network_spec) do
+      {
+        'default' => {
+          'type' => 'dynamic',
+          'cloud_properties' => { 'subnet' => @subnet_id }
+        }
+      }
+    end
+
+    it 'raises an error' do
+      cpi = Bosh::AwsCloud::CloudV1.new(cpi_options)
+      expect { cpi.create_vm('agent_id', 'stemcell_id', 'vm_type', 'network') }.to raise_error(/Cannot create VM without registry with CPI v1. Registry not configured./)
+    end
+
+    context 'stemcell is specified as v2' do
+      let(:cpi_options) {
+        {
+          'aws' => {
+            'region' => @region,
+            'default_key_name' => @default_key_name,
+            'default_security_groups' => get_security_group_ids,
+            'fast_path_delete' => 'yes',
+            'access_key_id' => @access_key_id,
+            'secret_access_key' => @secret_access_key,
+            'session_token' => @session_token,
+            'max_retries' => 8,
+            'vm' => {'stemcell' => {'api_version' => 2}},
+          },
+        }
+      }
+
+      it 'does not raise an error when cloudv2 is used' do
+        cpi = Bosh::AwsCloud::CloudV2.new(cpi_options)
+        expect { vm_lifecycle(cpi: cpi) }.to_not raise_error
+      end
+    end
+
+    context 'stemcell is specified as v1' do
+      let(:cpi_options) {
+        {
+          'aws' => {
+            'region' => @region,
+            'default_key_name' => @default_key_name,
+            'default_security_groups' => get_security_group_ids,
+            'fast_path_delete' => 'yes',
+            'access_key_id' => @access_key_id,
+            'secret_access_key' => @secret_access_key,
+            'session_token' => @session_token,
+            'max_retries' => 8,
+            'vm' => {'stemcell' => {'api_version' => 1}},
+          },
+        }
+      }
+
+      it 'raises an error due to attempting to use the registry' do
+        cpi = Bosh::AwsCloud::CloudV2.new(cpi_options)
+        expect { cpi.create_vm('agent_id', 'stemcell_id', 'vm_type', 'network') }.to raise_error(/Cannot create VM without registry with CPI v2 and stemcell api version 1. Registry not configured./)
+      end
+    end
+
+    context 'stemcell is not specified' do
+      it 'raises an error due to attempting to use the registry' do
+        cpi = Bosh::AwsCloud::CloudV2.new(cpi_options)
+        expect { cpi.create_vm('agent_id', 'stemcell_id', 'vm_type', 'network') }.to raise_error(/Cannot create VM without registry with CPI v2 and stemcell api version 1. Registry not configured./)
+      end
+    end
+  end
+
   describe 'instantiating the CPI with invalid endpoint or region' do
     it 'raises an Bosh::Clouds::CloudError' do
       expect do
-        described_class.new('aws' => {
+        @cpi.class.new('aws' => {
           'region' => 'invalid-region',
           'default_key_name' => 'blah',
           'default_security_groups' => 'blah',
@@ -70,6 +153,11 @@ describe Bosh::AwsCloud::Cloud do
           'endpoint' => 'fake',
           'user' => 'fake',
           'password' => 'fake'
+        },
+        'debug'=> {
+          'cpi'=> {
+            'api_version'=> mock_cpi_api_version
+          },
         })
       end.to raise_error(/region/)
     end
@@ -86,7 +174,7 @@ describe Bosh::AwsCloud::Cloud do
       )
       session = sts_client.get_session_token(duration_seconds: 900).to_h[:credentials]
 
-      described_class.new(
+      @cpi.class.new(
         'aws' => {
           'region' => @region,
           'default_key_name' => @default_key_name,
@@ -100,7 +188,12 @@ describe Bosh::AwsCloud::Cloud do
           'endpoint' => 'fake',
           'user' => 'fake',
           'password' => 'fake'
-        }
+        },
+        'debug'=> {
+          'cpi'=> {
+            'api_version'=> mock_cpi_api_version
+          },
+        },
       )
     end
     it 'it can perform a AWS API call', :focus => true do
@@ -209,21 +302,28 @@ describe Bosh::AwsCloud::Cloud do
 
     context 'with security groups names' do
       let(:sg_name_cpi) do
-        described_class.new(
-          'aws' => {
-            'default_security_groups' => get_security_group_names(@subnet_id),
-            'region' => @region,
-            'default_key_name' => @default_key_name,
-            'fast_path_delete' => 'yes',
-            'access_key_id' => @access_key_id,
-            'secret_access_key' => @secret_access_key,
-            'session_token' => @session_token,
-            'max_retries' => 8
-          },
-          'registry' => {
-            'endpoint' => 'fake',
-            'user' => 'fake',
-            'password' => 'fake'
+        @cpi.class.new(
+          {
+            'aws' => {
+              'default_security_groups' => get_security_group_names(@subnet_id),
+              'region' => @region,
+              'default_key_name' => @default_key_name,
+              'fast_path_delete' => 'yes',
+              'access_key_id' => @access_key_id,
+              'secret_access_key' => @secret_access_key,
+              'session_token' => @session_token,
+              'max_retries' => 8
+            },
+            'registry' => {
+              'endpoint' => 'fake',
+              'user' => 'fake',
+              'password' => 'fake'
+            },
+            'debug'=> {
+              'cpi'=> {
+                'api_version'=> mock_cpi_api_version
+              },
+            },
           }
         )
       end
@@ -286,7 +386,7 @@ describe Bosh::AwsCloud::Cloud do
       @volume_id = @cpi.create_disk(2048, {})
     end
 
-    after (:each) do
+    after(:each) do
       @cpi.delete_disk(@volume_id) if @volume_id
     end
 

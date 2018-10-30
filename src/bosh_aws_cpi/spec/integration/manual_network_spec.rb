@@ -5,7 +5,7 @@ require 'bosh/cpi/logger'
 require 'cloud'
 require 'netaddr'
 
-describe Bosh::AwsCloud::Cloud do
+describe Bosh::AwsCloud::CloudV1 do
   before(:all) do
     @elb_id             = ENV.fetch('BOSH_AWS_ELB_ID')
     @target_group_name  = ENV.fetch('BOSH_AWS_TARGET_GROUP_NAME')
@@ -34,6 +34,7 @@ describe Bosh::AwsCloud::Cloud do
   let(:security_groups) { get_security_group_ids }
   let(:registry) { instance_double(Bosh::Cpi::RegistryClient).as_null_object }
   let(:security_groups) { get_security_group_ids }
+  let(:mock_cpi_api_version) { 2 }
 
   let(:aws_config) do
     {
@@ -49,13 +50,18 @@ describe Bosh::AwsCloud::Cloud do
     }
   end
   let(:my_cpi) do
-    Bosh::AwsCloud::Cloud.new(
+    Bosh::AwsCloud::CloudV1.new(
       'aws' => aws_config,
       'registry' => {
         'endpoint' => 'fake',
         'user' => 'fake',
         'password' => 'fake'
-      }
+      },
+      'debug'=> {
+        'cpi'=> {
+          'api_version'=> mock_cpi_api_version
+        },
+      },
     )
   end
 
@@ -131,7 +137,7 @@ describe Bosh::AwsCloud::Cloud do
 
       context 'when request_id is present in the context' do
         let(:endpoint_configured_cpi) do
-          Bosh::AwsCloud::Cloud.new(
+          Bosh::AwsCloud::CloudV1.new(
             'aws' => {
               'region' => @region,
               'ec2_endpoint' => "https://ec2.#{@region}.amazonaws.com",
@@ -149,7 +155,12 @@ describe Bosh::AwsCloud::Cloud do
               'endpoint' => 'fake',
               'user' => 'fake',
               'password' => 'fake'
-            }
+            },
+            'debug'=> {
+              'cpi'=> {
+                'api_version'=> mock_cpi_api_version
+              },
+            },
           )
         end
 
@@ -165,7 +176,7 @@ describe Bosh::AwsCloud::Cloud do
 
       context 'when request_id is NOT present in the context' do
         let(:endpoint_configured_cpi) do
-          Bosh::AwsCloud::Cloud.new(
+          Bosh::AwsCloud::CloudV1.new(
             'aws' => {
               'region' => @region,
               'ec2_endpoint' => "https://ec2.#{@region}.amazonaws.com",
@@ -182,7 +193,12 @@ describe Bosh::AwsCloud::Cloud do
               'endpoint' => 'fake',
               'user' => 'fake',
               'password' => 'fake'
-            }
+            },
+            'debug'=> {
+              'cpi'=> {
+                'api_version'=> mock_cpi_api_version
+              },
+            },
           )
         end
 
@@ -254,18 +270,20 @@ describe Bosh::AwsCloud::Cloud do
       it 'registers new instance with target group' do
         vm_lifecycle do |instance_id|
           health_state = nil
-          20.times do
-            health_description = elb_v2_client.describe_target_health(
+          30.times do
+            health = elb_v2_client.describe_target_health(
               {
                 target_group_arn: get_target_group_arn(@target_group_name),
                 targets: [id: instance_id]
               }
-            ).target_health_descriptions.first
+            ).target_health_descriptions
+
+            health_description = health.first
 
             expect(health_description.target.id).to eq(instance_id)
             health_state = health_description.target_health.state
             break if health_state == 'unhealthy'
-            sleep(3)
+            sleep(15)
           end
           expect(health_state).to eq('unhealthy')
         end
@@ -280,6 +298,7 @@ describe Bosh::AwsCloud::Cloud do
             expect(volume_id).not_to be_nil
             expect(@cpi.has_disk?(volume_id)).to be(true)
 
+            # ---- pre attach disk ----
             @cpi.attach_disk(instance_id, volume_id)
 
             snapshot_metadata = vm_metadata.merge(
@@ -291,28 +310,24 @@ describe Bosh::AwsCloud::Cloud do
             )
             snapshot_id = @cpi.snapshot_disk(volume_id, snapshot_metadata)
             expect(snapshot_id).not_to be_nil
+            # ---- post attach disk, post snapshot_disk ----
 
             snapshot = @cpi.ec2_resource.snapshot(snapshot_id)
             expect(snapshot.description).to eq 'deployment/cpi_spec/0/sdf'
+            # ---- post snapshot_disk, check snapshot ----
 
             snapshot_tags = array_key_value_to_hash(snapshot.tags)
             expect(snapshot_tags['device']).to eq '/dev/sdf'
             expect(snapshot_tags['agent_id']).to eq 'agent'
             expect(snapshot_tags['instance_id']).to eq 'instance'
-            expect(snapshot_tags['instance_name']).to eq 'cpi_spec/instance'
-            expect(snapshot_tags['instance_index']).to eq '0'
             expect(snapshot_tags['director']).to eq 'Director'
-            expect(snapshot_tags['director_uuid']).to eq '6d06b0cc-2c08-43c5-95be-f1b2dd247e18'
-            expect(snapshot_tags['deployment']).to eq 'deployment'
-            expect(snapshot_tags['Name']).to eq 'deployment/cpi_spec/0/sdf'
-            expect(snapshot_tags['custom1']).to eq 'custom_value1'
-            expect(snapshot_tags['custom2']).to eq 'custom_value2'
             expect(snapshot_tags['director_name']).to be_nil
-            expect(snapshot_tags['index']).to be_nil
-            expect(snapshot_tags['job']).to be_nil
+            expect(snapshot_tags['director_uuid']).to eq '6d06b0cc-2c08-43c5-95be-f1b2dd247e18'
+            expect(snapshot_tags['Name']).to eq 'deployment/cpi_spec/0/sdf'
+
           ensure
             @cpi.delete_snapshot(snapshot_id) if snapshot_id
-            Bosh::Common.retryable(tries: 20, on: Bosh::Clouds::DiskNotAttached, sleep: lambda { |n, _| [2**(n-1), 30].min }) do
+            Bosh::Common.retryable(tries: 25, on: Bosh::Clouds::DiskNotAttached, sleep: lambda { |n, _| [2**(n-1), 30].min }) do
               @cpi.detach_disk(instance_id, volume_id) if instance_id && volume_id
               true
             end
@@ -911,7 +926,7 @@ describe Bosh::AwsCloud::Cloud do
       it 'should wait for 10 mins to attach disk/delete disk ignoring VolumeInUse error' do
         begin
           stemcell_id = @cpi.create_stemcell('/not/a/real/path', {'ami' => {@region => ami}})
-          vm_id = @cpi.create_vm(
+          vm_id = create_vm(
             nil,
             stemcell_id,
             vm_type,
@@ -929,7 +944,7 @@ describe Bosh::AwsCloud::Cloud do
           @cpi.delete_vm(vm_id)
           vm_id = nil
 
-          new_vm_id = @cpi.create_vm(
+          new_vm_id = create_vm(
             nil,
             stemcell_id,
             vm_type,
@@ -974,5 +989,14 @@ describe Bosh::AwsCloud::Cloud do
         end
       end
     end
+
+    def create_vm(*args)
+      vm_id = @cpi.create_vm(*args)
+      if @cpi_api_version >= 2
+        vm_id = vm_id.first
+      end
+      vm_id
+    end
+
   end
 end

@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Bosh::AwsCloud::Cloud do
+describe Bosh::AwsCloud::CloudV1 do
   describe '#delete_snapshot' do
     let(:snapshot) { double(Aws::EC2::Snapshot, id: 'snap-xxxxxxxx') }
 

@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe Bosh::AwsCloud::Cloud do
+describe Bosh::AwsCloud::CloudV1 do
   describe '#snapshot_disk' do
     let(:volume) { double(Aws::EC2::Volume, id: 'vol-xxxxxxxx') }
     let(:snapshot) { double(Aws::EC2::Snapshot, id: 'snap-xxxxxxxx') }
@@ -61,7 +61,6 @@ describe Bosh::AwsCloud::Cloud do
       allow(volume).to receive(:create_snapshot).with(description: 'deployment/job/0/sdf').and_return(snapshot)
 
       allow(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(snapshot: snapshot, state: 'completed')
-
 
       expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(
         snapshot,

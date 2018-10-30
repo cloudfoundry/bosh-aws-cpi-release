@@ -6,16 +6,15 @@ module Bosh::AwsCloud
   class InstanceManager
     include Helpers
 
-    def initialize(ec2, registry, logger)
+    def initialize(ec2, logger)
       @ec2 = ec2
-      @registry = registry
       @logger = logger
 
       security_group_mapper = SecurityGroupMapper.new(@ec2)
       @param_mapper = InstanceParamMapper.new(security_group_mapper)
     end
 
-    def create(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, default_security_groups, block_device_mappings)
+    def create(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, default_security_groups, block_device_mappings, user_data)
       abruptly_terminated_retries = 2
       begin
         instance_params = build_instance_params(
@@ -23,6 +22,7 @@ module Bosh::AwsCloud
           vm_cloud_props,
           networks_cloud_props,
           block_device_mappings,
+          user_data,
           disk_locality,
           default_security_groups
         )
@@ -36,7 +36,7 @@ module Bosh::AwsCloud
         @logger.info("Creating new instance with: #{redacted_instance_params.inspect}")
 
         aws_instance = create_aws_instance(instance_params, vm_cloud_props)
-        instance = Bosh::AwsCloud::Instance.new(aws_instance, @registry, @logger)
+        instance = Bosh::AwsCloud::Instance.new(aws_instance, @logger)
 
         babysit_instance_creation(instance, vm_cloud_props)
       rescue => e
@@ -55,7 +55,7 @@ module Bosh::AwsCloud
 
     # @param [String] instance_id EC2 instance id
     def find(instance_id)
-      Instance.new(@ec2.instance(instance_id), @registry, @logger)
+      Bosh::AwsCloud::Instance.new(@ec2.instance(instance_id), @logger)
     end
 
     private
@@ -82,13 +82,13 @@ module Bosh::AwsCloud
       end
     end
 
-    def build_instance_params(stemcell_id, vm_cloud_props, networks_cloud_props, block_device_mappings, disk_locality = [], default_security_groups = [])
+    def build_instance_params(stemcell_id, vm_cloud_props, networks_cloud_props, block_device_mappings, user_data, disk_locality = [], default_security_groups = [])
       volume_zones = (disk_locality || []).map { |volume_id| @ec2.volume(volume_id).availability_zone }
 
       @param_mapper.manifest_params = {
         stemcell_id: stemcell_id,
         vm_type: vm_cloud_props,
-        registry_endpoint: @registry.endpoint,
+        user_data: user_data,
         networks_spec: networks_cloud_props,
         default_security_groups: default_security_groups,
         volume_zones: volume_zones,
