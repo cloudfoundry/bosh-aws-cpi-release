@@ -190,16 +190,6 @@ jobs:
               get_params:
                 action: destroy
 
-  - name: delivery
-    plan:
-      - aggregate:
-        - {get: bosh-cpi-release,  trigger: true,  resource: bosh-cpi-dev-artifacts, passed: [end-2-end, bats, integration]}
-        - {get: bosh-cpi-src, trigger: false, resource: bosh-cpi-src-in, passed: [end-2-end, bats, integration]}
-      - put: tracker-output
-        params:
-          repos:
-          - bosh-cpi-src
-
   - name: promote-candidate
     plan:
       - aggregate:
@@ -310,12 +300,6 @@ resources:
     source:
       uri: https://github.com/cloudfoundry/bosh-acceptance-tests.git
       branch: master
-  - name: tracker-output
-    type: tracker
-    source:
-      token: {{tracker_api_token}}
-      project_id: {{tracker_project_id}}
-      tracker_url: https://www.pivotaltracker.com
   - name: bosh-deployment
     type: git
     source:
