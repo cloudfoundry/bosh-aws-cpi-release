@@ -6,7 +6,6 @@ groups:
       - integration
       - bats
       - end-2-end
-      - delivery
       - promote-candidate
 
 shared:
