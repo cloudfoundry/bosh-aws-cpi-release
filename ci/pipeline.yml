@@ -69,7 +69,7 @@ jobs:
       - aggregate:
         - {trigger: true,  passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
         - {trigger: false, passed: [build-candidate], get: bosh-cpi-src, resource: bosh-cpi-src-in}
-        - {get: 2h,             trigger: true}
+        - {get: 24h,             trigger: true}
       - put: environment
         params:
           env_name: bosh-aws-cpi-integration
@@ -110,7 +110,7 @@ jobs:
         - {get: pipelines,       trigger: false}
         - {get: bosh-cli,        trigger: false}
         - {get: bats,            trigger: false}
-        - {get: 2h,              trigger: true}
+        - {get: 24h,              trigger: true}
       - put: environment
         params:
           env_name: bosh-aws-cpi-bats
@@ -155,7 +155,7 @@ jobs:
         - {get: bosh-deployment, trigger: false}
         - {get: pipelines,       trigger: false}
         - {get: bosh-cli,        trigger: false}
-        - {get: 2h,              trigger: true}
+        - {get: 24h,              trigger: true}
       - put: environment
         params:
           env_name: bosh-aws-cpi-end-2-end
