@@ -2,17 +2,7 @@
 groups:
   - name: all-jobs
     jobs:
-    - build-cpi
     - integration
-    - bats-dir1-cpi1-sc2
-    - bats-dir2-cpi2-sc1
-    - bats-dir2-cpi1-sc1
-  - name: bosh-aws-cpi-v2
-    jobs:
-    - build-cpi
-    - integration
-  - name: bats
-    jobs:
     - bats-dir1-cpi1-sc2
     - bats-dir2-cpi2-sc1
     - bats-dir2-cpi1-sc1
@@ -59,27 +49,13 @@ shared:
     file: pipelines/shared/tasks/teardown.yml
 
 jobs:
-  - name: build-cpi
-    serial: true
-    plan:
-      - aggregate:
-        - {trigger: true, get: bosh-cpi-src, resource: bosh-cpi-src}
-        - {trigger: false, get: version-semver, params: {bump: patch}}
-        - {trigger: false, get: bosh-cli, resource: bosh-cli-alpha}
-      - put: version-semver
-        params: {file: version-semver/number}
-      - task: build
-        file: bosh-cpi-src/ci/tasks/build-candidate.yml
-      - put: bosh-cpi-build-artifacts
-        params: {file: candidate/*.tgz}
-
   - name: integration
     serial: true
     plan:
       - aggregate:
-        - {trigger: true, passed: [build-cpi], get: bosh-cpi-src, resource: bosh-cpi-src}
+        - {trigger: false, get: bosh-cpi-src, resource: bosh-cpi-src}
+        - {get: bosh-cpi-build-artifacts, trigger: true}
       - <<: *create-environment
-      #- aggregate:
       - task: test-cpi-v2
         file: bosh-cpi-src/ci/tasks/run-integration.yml
         params:
@@ -116,21 +92,21 @@ combos = [
     cpi_version: 1,
     stemcell: { name: 'stemcell', resource: 'light-ubuntu-stemcell-v2', stemcell_name: 'bosh-aws-xen-hvm-ubuntu-xenial-go_agent' },
     director: { name: 'bosh-release', resource: 'precompiled-v1-bosh-release', ops_file: ''},
-    cpi: { name: 'cpi-release', resource: 'boshio-cpi-v1', passed: '', version: '72'}
+    cpi: { name: 'cpi-release', resource: 'boshio-cpi-v1', version: '72'}
   },
   {
     name: 'dir2-cpi2-sc1',
     cpi_version: 2,
     stemcell: { name: 'stemcell', resource: 'light-ubuntu-stemcell-v1', stemcell_name: 'bosh-aws-xen-hvm-ubuntu-trusty-go_agent' },
     director: { name: 'bosh-release', resource: 'bosh-dev-tarballs', ops_file: '-o pipelines/aws/assets/ops/director_cpi_version.yml'},
-    cpi: { name: 'cpi-release', resource: 'bosh-cpi-build-artifacts', passed: 'build-cpi', version: ''}
+    cpi: { name: 'cpi-release', resource: 'bosh-cpi-build-artifacts', version: ''}
   },
   {
     name: 'dir2-cpi1-sc1',
     cpi_version: 1,
     stemcell: { name: 'stemcell', resource: 'light-ubuntu-stemcell-v1', stemcell_name: 'bosh-aws-xen-hvm-ubuntu-trusty-go_agent' },
     director: { name: 'bosh-release', resource: 'bosh-dev-tarballs', ops_file: '-o pipelines/aws/assets/ops/director_cpi_version.yml'},
-    cpi: { name: 'cpi-release', resource: 'boshio-cpi-v1', passed: '', version: '72'}
+    cpi: { name: 'cpi-release', resource: 'boshio-cpi-v1', version: '72'}
   }
 ]
 
@@ -141,9 +117,10 @@ combos.each do |combo|
     serial: true
     plan:
       - aggregate:
-        - {get: <%= combo[:cpi][:name] %>, trigger: true,  resource: <%= combo[:cpi][:resource] %>, passed: [<%= combo[:cpi][:passed]%>]}
+        - {get: <%= combo[:cpi][:name] %>, trigger: true, resource: <%= combo[:cpi][:resource] %> }
         - {get: <%= combo[:director][:name] %>, trigger: true, resource: <%= combo[:director][:resource] %> }
-        - {get: bosh-cpi-src,    trigger: false, resource: bosh-cpi-src, passed: [build-cpi]}
+        - {get: bosh-cpi-src,    trigger: false, resource: bosh-cpi-src }
+        - {get: bosh-cpi-build-artifacts, trigger: true }
         - {get: <%= combo[:stemcell][:name] %>, trigger: true, resource: <%= combo[:stemcell][:resource] %>}
         - {get: bosh-deployment, trigger: false}
         - {get: pipelines,       trigger: true}
@@ -208,13 +185,6 @@ resources:
       bucket: bosh-aws-cpi-pipeline
       regexp: bosh-aws-cpi-(\d+\.\d+\.\d+)\.tgz
       region_name: us-east-1
-  - name: version-semver
-    type: semver
-    source:
-      key:               current-version # dev-release version
-      bucket:            bosh-toronto-cpi-v2
-      access_key_id:     {{aws_access_key}}
-      secret_access_key: {{aws_secret_key}}
   - name: bosh-dev-tarballs
     type: s3
     source:
