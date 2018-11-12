@@ -213,9 +213,9 @@ resource_types:
       repository: ljfranklin/terraform-resource
 
 resources:
-  - name: 2h
+  - name: 24h
     type: time
-    source: {interval: 2h}
+    source: {interval: 24h}
   - name: bosh-cpi-dev-artifacts
     type: s3
     source:
