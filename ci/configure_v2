@@ -1,7 +1,0 @@
-tmp=$(mktemp)
-erb pipeline_cpi_v2.yml.erb > $tmp
-
-fly -t cpi sp -p bosh-aws-cpi-v2-2 \
-  -c $tmp \
-  -l <( lpass show --notes "bosh aws cpi v2 ci secrets") -l <( lpass show --notes "aws cpi concourse secrets")
-rm $tmp
