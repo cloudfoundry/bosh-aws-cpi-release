@@ -25,9 +25,9 @@ describe Bosh::AwsCloud::CloudV1, '#set_vm_metadata' do
     metadata = { job: 'fake-job', index: 'fake-index', director: 'fake-director' }
 
     expected_tags = { 'job' => 'fake-job', 'index' => 'fake-index', 'director' => 'fake-director', 'Name' => 'fake-job/fake-index' }
-    expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(instance, expected_tags)
-    expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(root_disk, expected_tags)
-    expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(ephemeral_disk, expected_tags)
+    expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(instance, expected_tags)
+    expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(root_disk, expected_tags)
+    expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(ephemeral_disk, expected_tags)
 
     @cloud.set_vm_metadata('i-foobar', metadata)
   end
@@ -36,9 +36,9 @@ describe Bosh::AwsCloud::CloudV1, '#set_vm_metadata' do
     metadata = { compiling: 'linux' }
 
     expected_tags = { 'compiling' => 'linux', 'Name' => 'compiling/linux' }
-    expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(instance, expected_tags)
-    expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(root_disk, expected_tags)
-    expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(ephemeral_disk, expected_tags)
+    expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(instance, expected_tags)
+    expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(root_disk, expected_tags)
+    expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(ephemeral_disk, expected_tags)
 
     @cloud.set_vm_metadata('i-foobar', metadata)
   end
@@ -47,9 +47,9 @@ describe Bosh::AwsCloud::CloudV1, '#set_vm_metadata' do
     metadata = { 'job' => 'fake-job', 'index' => 'fake-index' }
 
     expected_tags = { 'job' => 'fake-job', 'index' => 'fake-index', 'Name' => 'fake-job/fake-index' }
-    expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(instance, expected_tags)
-    expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(root_disk, expected_tags)
-    expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(ephemeral_disk, expected_tags)
+    expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(instance, expected_tags)
+    expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(root_disk, expected_tags)
+    expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(ephemeral_disk, expected_tags)
 
     @cloud.set_vm_metadata('i-foobar', metadata)
   end
@@ -59,9 +59,9 @@ describe Bosh::AwsCloud::CloudV1, '#set_vm_metadata' do
       metadata = { name: 'fake-name' }
 
       expected_tags = { 'Name' => 'fake-name' }
-      expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(instance, expected_tags)
-      expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(root_disk, expected_tags)
-      expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(ephemeral_disk, expected_tags)
+      expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(instance, expected_tags)
+      expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(root_disk, expected_tags)
+      expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(ephemeral_disk, expected_tags)
 
       @cloud.set_vm_metadata('i-foobar', metadata)
     end
@@ -70,9 +70,9 @@ describe Bosh::AwsCloud::CloudV1, '#set_vm_metadata' do
       metadata = { name: 'fake-name', job: 'fake-job', index: 'fake-index' }
 
       expected_tags = { 'job' => 'fake-job', 'index' => 'fake-index', 'Name' => 'fake-name' }
-      expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(instance, expected_tags)
-      expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(root_disk, expected_tags)
-      expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(ephemeral_disk, expected_tags)
+      expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(instance, expected_tags)
+      expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(root_disk, expected_tags)
+      expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(ephemeral_disk, expected_tags)
 
       @cloud.set_vm_metadata('i-foobar', metadata)
     end
@@ -81,9 +81,9 @@ describe Bosh::AwsCloud::CloudV1, '#set_vm_metadata' do
       metadata = { name: 'fake-name', compiling: 'linux' }
 
       expected_tags = { 'compiling' => 'linux', 'Name' => 'fake-name' }
-      expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(instance, expected_tags)
-      expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(root_disk, expected_tags)
-      expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(ephemeral_disk, expected_tags)
+      expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(instance, expected_tags)
+      expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(root_disk, expected_tags)
+      expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(ephemeral_disk, expected_tags)
 
       @cloud.set_vm_metadata('i-foobar', metadata)
     end

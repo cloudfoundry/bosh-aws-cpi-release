@@ -173,14 +173,14 @@ module Bosh::AwsCloud
       end
 
       begin
-        TagManager.tags(instance, metadata)
+        TagManager.create_tags(instance, metadata)
       rescue Aws::EC2::Errors::TagLimitExceeded => e
         logger.error("could not tag #{instance.id}: #{e.message}")
       end
 
       get_volume_ids_for_vm(instance).each do |volume_id|
         begin
-          TagManager.tags(@ec2_resource.volume(volume_id), metadata)
+          TagManager.create_tags(@ec2_resource.volume(volume_id), metadata)
         rescue Aws::EC2::Errors::TagLimitExceeded => e
           logger.error("could not tag volume #{volume_id}: #{e.message}")
         end
@@ -273,7 +273,7 @@ module Bosh::AwsCloud
       with_thread_name("set_disk_metadata(#{disk_id}, ...)") do
         begin
           volume = @ec2_resource.volume(disk_id)
-          TagManager.tags(volume, metadata)
+          TagManager.create_tags(volume, metadata)
         rescue Aws::EC2::Errors::TagLimitExceeded => e
           logger.error("could not tag #{volume.id}: #{e.message}")
         end
@@ -308,11 +308,11 @@ module Bosh::AwsCloud
           'Name' => name.join('/')
         )
 
-        ['director_name', 'index', 'job'].each do |tag|
+        %w[director_name index job].each do |tag|
           metadata.delete(tag)
         end
 
-        TagManager.tags(snapshot, metadata)
+        TagManager.create_tags(snapshot, metadata)
         ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
         snapshot.id
       end

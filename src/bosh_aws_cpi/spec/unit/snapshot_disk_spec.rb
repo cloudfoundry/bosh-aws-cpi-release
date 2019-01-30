@@ -5,17 +5,17 @@ describe Bosh::AwsCloud::CloudV1 do
     let(:volume) { double(Aws::EC2::Volume, id: 'vol-xxxxxxxx') }
     let(:snapshot) { double(Aws::EC2::Snapshot, id: 'snap-xxxxxxxx') }
     let(:attachment) { double(Aws::EC2::Types::VolumeAttachment, device: '/dev/sdf') }
-    let(:metadata) {
+    let(:metadata) do
       {
-          agent_id: 'agent',
-          instance_id: 'instance',
-          director_name: 'Test Director',
-          director_uuid: '6d06b0cc-2c08-43c5-95be-f1b2dd247e18',
-          deployment: 'deployment',
-          job: 'job',
-          index: '0'
+        agent_id: 'agent',
+        instance_id: 'instance',
+        director_name: 'Test Director',
+        director_uuid: '6d06b0cc-2c08-43c5-95be-f1b2dd247e18',
+        deployment: 'deployment',
+        job: 'job',
+        index: '0'
       }
-    }
+    end
 
     it 'should take a snapshot of a disk' do
       cloud = mock_cloud do |ec2|
@@ -27,7 +27,7 @@ describe Bosh::AwsCloud::CloudV1 do
 
       expect(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(snapshot: snapshot, state: 'completed')
 
-      expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(snapshot,
+      expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(snapshot,
         'agent_id' => 'agent',
         'instance_id' => 'instance',
         'director_uuid' => '6d06b0cc-2c08-43c5-95be-f1b2dd247e18',
@@ -56,23 +56,22 @@ describe Bosh::AwsCloud::CloudV1 do
         'index' => '0'
       }
 
-
       allow(volume).to receive(:attachments).and_return([attachment])
       allow(volume).to receive(:create_snapshot).with(description: 'deployment/job/0/sdf').and_return(snapshot)
 
       allow(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(snapshot: snapshot, state: 'completed')
 
-      expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(
+      expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(
         snapshot,
         'agent_id' => 'agent',
         'instance_id' => 'instance',
         'director_uuid' => '6d06b0cc-2c08-43c5-95be-f1b2dd247e18',
-        'deployment'=> 'deployment',
+        'deployment' => 'deployment',
         'device' => '/dev/sdf',
         'director' => 'Test Director',
-        'instance_index'=> '0',
-        'instance_name'=> 'job/instance',
-        'Name' => 'deployment/job/0/sdf',
+        'instance_index' => '0',
+        'instance_name' => 'job/instance',
+        'Name' => 'deployment/job/0/sdf'
       )
 
       cloud.snapshot_disk('vol-xxxxxxxx', metadata)
@@ -90,16 +89,16 @@ describe Bosh::AwsCloud::CloudV1 do
         snapshot: snapshot, state: 'completed'
       )
 
-      expect(Bosh::AwsCloud::TagManager).to receive(:tags).with(
+      expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(
         snapshot,
         'agent_id' => 'agent',
         'instance_id' => 'instance',
         'director_uuid' => '6d06b0cc-2c08-43c5-95be-f1b2dd247e18',
-        'deployment'=> 'deployment',
+        'deployment' => 'deployment',
         'director' => 'Test Director',
-        'instance_index'=> '0',
-        'instance_name'=> 'job/instance',
-        'Name' => 'deployment/job/0',
+        'instance_index' => '0',
+        'instance_name' => 'job/instance',
+        'Name' => 'deployment/job/0'
       )
 
       cloud.snapshot_disk('vol-xxxxxxxx', metadata)

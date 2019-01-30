@@ -9,11 +9,10 @@ module Bosh::AwsCloud
     def self.tag(taggable, key, value)
       return if key.nil? || value.nil?
 
-      tags(taggable, key => value)
+      create_tags(taggable, key => value)
     end
 
-    def self.tags(taggable, tags)
-      # TODO: rename to "create_tags" or "update_tags"
+    def self.create_tags(taggable, tags)
       return if tags.nil? || tags.keys.empty?
 
       errors = [Aws::EC2::Errors::InvalidAMIIDNotFound,
@@ -23,7 +22,7 @@ module Bosh::AwsCloud
       begin
         Bosh::Common.retryable(tries: 30, on: errors) do
           logger.info("attempting to tag object: #{taggable.id}")
-          taggable.create_tags(tags: format_tags(tags))
+          taggable.create_tags(create_tags: format_tags(tags))
           true
         end
       rescue Aws::EC2::Errors::InvalidParameterValue => e
