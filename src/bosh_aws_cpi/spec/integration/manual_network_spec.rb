@@ -26,8 +26,8 @@ describe Bosh::AwsCloud::CloudV1 do
   let(:eip)                               { ENV.fetch('BOSH_AWS_ELASTIC_IP') }
   let(:ipv6_ip)                           { ENV.fetch('BOSH_AWS_MANUAL_IPV6_IP') }
   let(:instance_type) { instance_type_with_ephemeral }
-  let(:user_defined_tags) { {custom1: 'custom_value1', custom2: 'custom_value2'} }
-  let(:vm_metadata) { { deployment: 'deployment', job: 'cpi_spec', index: '0', delete_me: 'please'}.merge(user_defined_tags) }
+  let(:user_defined_tags) { { custom1: 'custom_value1', custom2: 'custom_value2' } }
+  let(:vm_metadata) { { deployment: 'deployment', job: 'cpi_spec', index: '0', delete_me: 'please' }.merge(user_defined_tags) }
   let(:disks) { [] }
   let(:network_spec) { {} }
   let(:vm_type) { { 'instance_type' => instance_type, 'availability_zone' => @subnet_zone } }
@@ -57,25 +57,25 @@ describe Bosh::AwsCloud::CloudV1 do
         'user' => 'fake',
         'password' => 'fake'
       },
-      'debug'=> {
-        'cpi'=> {
-          'api_version'=> mock_cpi_api_version
-        },
-      },
+      'debug' => {
+        'cpi' => {
+          'api_version' => mock_cpi_api_version
+        }
+      }
     )
   end
 
-  before {
+  before do
     allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
     allow(registry).to receive(:read_settings).and_return({})
-  }
+  end
 
   before do
     begin
       @ec2.instances(
         filters: [
           { name: 'tag-key', values: ['delete_me'] },
-          { name: 'instance-state-name', values: %w(stopped stopping running pending) }
+          { name: 'instance-state-name', values: %w[stopped stopping running pending] }
         ]
       ).each(&:terminate)
     rescue Aws::EC2::Errors::InvalidInstanceIdNotFound
@@ -86,16 +86,16 @@ describe Bosh::AwsCloud::CloudV1 do
     manual_ips = NetAddr::CIDR.create(@manual_subnet_cidr).enumerate
     ip_addresses = manual_ips.first(manual_ips.size - 1).drop(7)
 
-    @ip_semaphore.synchronize {
-      ip_addresses = ip_addresses - @already_used
+    @ip_semaphore.synchronize do
+      ip_addresses -= @already_used
       @manual_ip = ip_addresses[rand(ip_addresses.size)]
       @already_used << @manual_ip
-    }
+    end
   end
 
   before { allow(Bosh::Clouds::Config).to receive_messages(logger: logger) }
   let(:logs) { STDOUT }
-  let(:logger) {Bosh::Cpi::Logger.new(logs) }
+  let(:logger) { Bosh::Cpi::Logger.new(logs) }
 
   extend Bosh::Cpi::CompatibilityHelpers
 
@@ -117,18 +117,17 @@ describe Bosh::AwsCloud::CloudV1 do
           'ipv6' => {
             'type' => 'manual',
             'ip' => ipv6_ip,
-            'cloud_properties' => {'subnet' => @manual_subnet_id}
+            'cloud_properties' => { 'subnet' => @manual_subnet_id }
           }
         }
       end
 
       it 'is configured with the expected IPv6 address' do
         vm_lifecycle do |vm_id|
-          resp = @cpi.ec2_resource.client.describe_instances({filters: [ {name: 'instance-id', values: [vm_id]}]})
+          resp = @cpi.ec2_resource.client.describe_instances(filters: [{ name: 'instance-id', values: [vm_id] }])
           expect(resp.reservations[0].instances[0].network_interfaces[0].ipv_6_addresses[0].ipv_6_address).to eq(ipv6_ip)
         end
       end
-
     end
 
     describe 'logging request_id' do
@@ -156,17 +155,17 @@ describe Bosh::AwsCloud::CloudV1 do
               'user' => 'fake',
               'password' => 'fake'
             },
-            'debug'=> {
-              'cpi'=> {
-                'api_version'=> mock_cpi_api_version
-              },
-            },
+            'debug' => {
+              'cpi' => {
+                'api_version' => mock_cpi_api_version
+              }
+            }
           )
         end
 
         it 'logs request_id' do
           begin
-            stemcell_id = endpoint_configured_cpi.create_stemcell('/not/a/real/path', {'ami' => {'us-east-1' => ami}})
+            stemcell_id = endpoint_configured_cpi.create_stemcell('/not/a/real/path', 'ami' => { 'us-east-1' => ami })
             expect(logs.string).to include('req_id 419877')
           ensure
             endpoint_configured_cpi.delete_stemcell(stemcell_id) if stemcell_id
@@ -194,17 +193,17 @@ describe Bosh::AwsCloud::CloudV1 do
               'user' => 'fake',
               'password' => 'fake'
             },
-            'debug'=> {
-              'cpi'=> {
-                'api_version'=> mock_cpi_api_version
-              },
-            },
+            'debug' => {
+              'cpi' => {
+                'api_version' => mock_cpi_api_version
+              }
+            }
           )
         end
 
         it 'does NOT log request_id' do
           begin
-            stemcell_id = endpoint_configured_cpi.create_stemcell('/not/a/real/path', {'ami' => {'us-east-1' => ami}})
+            stemcell_id = endpoint_configured_cpi.create_stemcell('/not/a/real/path', 'ami' => { 'us-east-1' => ami })
             expect(logs.string).to_not include('req_id: 419877')
           ensure
             endpoint_configured_cpi.delete_stemcell(stemcell_id) if stemcell_id
@@ -226,14 +225,14 @@ describe Bosh::AwsCloud::CloudV1 do
           access_key_id: @access_key_id,
           secret_access_key: @secret_access_key,
           session_token:  @session_token,
-          region: @region,
+          region: @region
         )
       end
 
       it 'registers new instance with elb' do
         vm_lifecycle do |vm_id|
-          instance_ids = elb_client.describe_load_balancers({:load_balancer_names => [@elb_id]}).load_balancer_descriptions
-            .first.instances.map { |i| i.instance_id }
+          instance_ids = elb_client.describe_load_balancers(load_balancer_names: [@elb_id]).load_balancer_descriptions
+                                   .first.instances.map(&:instance_id)
 
           expect(instance_ids).to include(vm_id)
         end
@@ -243,8 +242,8 @@ describe Bosh::AwsCloud::CloudV1 do
           ensure_no_instances_registered_with_elb(elb_client, @elb_id)
         end
 
-        instances = elb_client.describe_load_balancers({:load_balancer_names => [@elb_id]}).load_balancer_descriptions
-          .first.instances
+        instances = elb_client.describe_load_balancers(load_balancer_names: [@elb_id]).load_balancer_descriptions
+                              .first.instances
 
         expect(instances).to be_empty
       end
@@ -263,7 +262,7 @@ describe Bosh::AwsCloud::CloudV1 do
           access_key_id: @access_key_id,
           secret_access_key: @secret_access_key,
           session_token:  @session_token,
-          region: @region,
+          region: @region
         )
       end
 
@@ -272,10 +271,8 @@ describe Bosh::AwsCloud::CloudV1 do
           health_state = nil
           30.times do
             health = elb_v2_client.describe_target_health(
-              {
-                target_group_arn: get_target_group_arn(@target_group_name),
-                targets: [id: instance_id]
-              }
+              target_group_arn: get_target_group_arn(@target_group_name),
+              targets: [id: instance_id]
             ).target_health_descriptions
 
             health_description = health.first
@@ -283,6 +280,7 @@ describe Bosh::AwsCloud::CloudV1 do
             expect(health_description.target.id).to eq(instance_id)
             health_state = health_description.target_health.state
             break if health_state == 'unhealthy'
+
             sleep(15)
           end
           expect(health_state).to eq('unhealthy')
@@ -306,7 +304,7 @@ describe Bosh::AwsCloud::CloudV1 do
               instance_id: 'instance',
               agent_id: 'agent',
               director_name: 'Director',
-              director_uuid: '6d06b0cc-2c08-43c5-95be-f1b2dd247e18',
+              director_uuid: '6d06b0cc-2c08-43c5-95be-f1b2dd247e18'
             )
             snapshot_id = @cpi.snapshot_disk(volume_id, snapshot_metadata)
             expect(snapshot_id).not_to be_nil
@@ -324,10 +322,9 @@ describe Bosh::AwsCloud::CloudV1 do
             expect(snapshot_tags['director_name']).to be_nil
             expect(snapshot_tags['director_uuid']).to eq '6d06b0cc-2c08-43c5-95be-f1b2dd247e18'
             expect(snapshot_tags['Name']).to eq 'deployment/cpi_spec/0/sdf'
-
           ensure
             @cpi.delete_snapshot(snapshot_id) if snapshot_id
-            Bosh::Common.retryable(tries: 25, on: Bosh::Clouds::DiskNotAttached, sleep: lambda { |n, _| [2**(n-1), 30].min }) do
+            Bosh::Common.retryable(tries: 25, on: Bosh::Clouds::DiskNotAttached, sleep: ->(n, _) { [2**(n - 1), 30].min }) do
               @cpi.detach_disk(instance_id, volume_id) if instance_id && volume_id
               true
             end
@@ -350,7 +347,7 @@ describe Bosh::AwsCloud::CloudV1 do
               @cpi.attach_disk(instance_id, volume_id)
               expect(@cpi.get_disks(instance_id)).to include(volume_id)
             ensure
-              Bosh::Common.retryable(tries: 20, on: Bosh::Clouds::DiskNotAttached, sleep: lambda { |n, _| [2**(n-1), 30].min }) do
+              Bosh::Common.retryable(tries: 20, on: Bosh::Clouds::DiskNotAttached, sleep: ->(n, _) { [2**(n - 1), 30].min }) do
                 @cpi.detach_disk(instance_id, volume_id)
                 true
               end
@@ -361,7 +358,7 @@ describe Bosh::AwsCloud::CloudV1 do
               @cpi.attach_disk(instance_id, volume_id)
               expect(@cpi.get_disks(instance_id)).to include(volume_id)
             ensure
-              Bosh::Common.retryable(tries: 20, on: Bosh::Clouds::DiskNotAttached, sleep: lambda { |n, _| [2**(n-1), 30].min }) do
+              Bosh::Common.retryable(tries: 20, on: Bosh::Clouds::DiskNotAttached, sleep: ->(n, _) { [2**(n - 1), 30].min }) do
                 @cpi.detach_disk(instance_id, volume_id)
                 true
               end
@@ -411,21 +408,19 @@ describe Bosh::AwsCloud::CloudV1 do
 
     context 'when global config has encrypted true' do
       def check_encrypted_disk(cpi, cloud_properties, encrypted, kms_key_arn = nil)
-        begin
-          # NOTE: if provided KMS key does not exist, this method will throw Aws::EC2::Errors::InvalidVolumeNotFound
-          # https://www.pivotaltracker.com/story/show/137931593
-          volume_id = cpi.create_disk(2048, cloud_properties)
-          expect(volume_id).not_to be_nil
-          expect(cpi.has_disk?(volume_id)).to be(true)
+        # NOTE: if provided KMS key does not exist, this method will throw Aws::EC2::Errors::InvalidVolumeNotFound
+        # https://www.pivotaltracker.com/story/show/137931593
+        volume_id = cpi.create_disk(2048, cloud_properties)
+        expect(volume_id).not_to be_nil
+        expect(cpi.has_disk?(volume_id)).to be(true)
 
-          encrypted_volume = cpi.ec2_resource.volume(volume_id)
-          expect(encrypted_volume.encrypted).to be(encrypted)
-          unless kms_key_arn.nil?
-            expect(encrypted_volume.kms_key_id).to eq(kms_key_arn)
-          end
-        ensure
-          cpi.delete_disk(volume_id) if volume_id
+        encrypted_volume = cpi.ec2_resource.volume(volume_id)
+        expect(encrypted_volume.encrypted).to be(encrypted)
+        unless kms_key_arn.nil?
+          expect(encrypted_volume.kms_key_id).to eq(kms_key_arn)
         end
+      ensure
+        cpi.delete_disk(volume_id) if volume_id
       end
 
       let(:aws_config) do
@@ -513,7 +508,7 @@ describe Bosh::AwsCloud::CloudV1 do
     it 'can create optimized magnetic disks' do
       begin
         minimum_magnetic_disk_size = 500 * 1024
-        volume_id = @cpi.create_disk(minimum_magnetic_disk_size, {'type' => 'sc1'})
+        volume_id = @cpi.create_disk(minimum_magnetic_disk_size, 'type' => 'sc1')
         expect(volume_id).not_to be_nil
         expect(@cpi.has_disk?(volume_id)).to be(true)
 
@@ -530,7 +525,7 @@ describe Bosh::AwsCloud::CloudV1 do
           'instance_type' => instance_type,
           'availability_zone' => @subnet_zone,
           'ephemeral_disk' => {
-            'size' => 4 * 1024,
+            'size' => 4 * 1024
           }
         }
       end
@@ -591,7 +586,7 @@ describe Bosh::AwsCloud::CloudV1 do
         it 'should not contain a block_device_mapping for /dev/sdb' do
           vm_lifecycle do |instance_id|
             block_device_mapping = @cpi.ec2_resource.instance(instance_id).block_device_mappings
-            ebs_ephemeral = block_device_mapping.any? {|entry| entry.device_name == '/dev/sdb'}
+            ebs_ephemeral = block_device_mapping.any? { |entry| entry.device_name == '/dev/sdb' }
 
             expect(ebs_ephemeral).to eq(false)
           end
@@ -652,7 +647,7 @@ describe Bosh::AwsCloud::CloudV1 do
           it 'creates an unencrypted ephemeral disk' do
             vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: my_cpi) do |instance_id|
               block_device_mapping = my_cpi.ec2_resource.instance(instance_id).block_device_mappings
-              ephemeral_block_device = block_device_mapping.find {|entry| entry.device_name == '/dev/sdb'}
+              ephemeral_block_device = block_device_mapping.find { |entry| entry.device_name == '/dev/sdb' }
 
               ephemeral_disk = my_cpi.ec2_resource.volume(ephemeral_block_device.ebs.volume_id)
 
@@ -708,7 +703,7 @@ describe Bosh::AwsCloud::CloudV1 do
                 'ephemeral_disk' => {
                   'size' => 4 * 1024,
                   'encrypted' => true,
-                  'kms_key_arn' => @kms_key_arn_override,
+                  'kms_key_arn' => @kms_key_arn_override
                 }
               }
             end
@@ -814,7 +809,7 @@ describe Bosh::AwsCloud::CloudV1 do
               'instance_type' => instance_type,
               'availability_zone' => @subnet_zone,
               'root_disk' => {
-                'size' => root_disk_size,
+                'size' => root_disk_size
               }
             }
           end
@@ -857,7 +852,7 @@ describe Bosh::AwsCloud::CloudV1 do
                 'availability_zone' => @subnet_zone,
                 'root_disk' => {
                   'size' => root_disk_size,
-                  'type' => root_disk_type,
+                  'type' => root_disk_type
                 }
               }
             end
@@ -925,7 +920,7 @@ describe Bosh::AwsCloud::CloudV1 do
     context 'when vm with attached disk is removed' do
       it 'should wait for 10 mins to attach disk/delete disk ignoring VolumeInUse error' do
         begin
-          stemcell_id = @cpi.create_stemcell('/not/a/real/path', {'ami' => {@region => ami}})
+          stemcell_id = @cpi.create_stemcell('/not/a/real/path', 'ami' => { @region => ami })
           vm_id = create_vm(
             nil,
             stemcell_id,
@@ -953,9 +948,9 @@ describe Bosh::AwsCloud::CloudV1 do
             nil
           )
 
-          expect {
+          expect do
             @cpi.attach_disk(new_vm_id, disk_id)
-          }.to_not raise_error
+          end.to_not raise_error
 
           expect(@cpi.get_disks(new_vm_id)).to include(disk_id)
         ensure
@@ -970,10 +965,10 @@ describe Bosh::AwsCloud::CloudV1 do
     it 'will not raise error when detaching a non-existing disk' do
       # Detaching a non-existing disk from vm should NOT raise error
       vm_lifecycle do |instance_id|
-        expect {
+        expect do
           # long-gone volume id used, avoids `Aws::EC2::Errors::InvalidParameterValue`
           @cpi.detach_disk(instance_id, 'vol-092cfeeb61c2cf243')
-        }.to_not raise_error
+        end.to_not raise_error
       end
     end
 
@@ -981,22 +976,27 @@ describe Bosh::AwsCloud::CloudV1 do
       it 'correctly sets the tags set by #set_vm_metadata' do
         vm_lifecycle do |instance_id|
           instance = @cpi.ec2_resource.instance(instance_id)
+
           tags = array_key_value_to_hash(instance.tags)
           expect(tags['deployment']).to eq('deployment')
           expect(tags['job']).to eq('cpi_spec')
           expect(tags['index']).to eq('0')
           expect(tags['delete_me']).to eq('please')
+
+          expect(instance.block_device_mappings.length).to eq(2) # root disk and ephemeral disk
+          instance.block_device_mappings.each do |device|
+            volume = @cpi.ec2_resource.volume(device.ebs.volume_id)
+            volume_tags = array_key_value_to_hash(volume.tags)
+            expect(volume_tags).to eq(tags)
+          end
         end
       end
     end
 
     def create_vm(*args)
       vm_id = @cpi.create_vm(*args)
-      if @cpi_api_version >= 2
-        vm_id = vm_id.first
-      end
+      vm_id = vm_id.first if @cpi_api_version >= 2
       vm_id
     end
-
   end
 end

@@ -59,30 +59,28 @@ module Bosh::AwsCloud
     # instance id cannot change while current process is running
     # and thus memoizing it.
     def current_vm_id
-      begin
-        #xxxx = coreCloud.current_vm_id()
-        # process xxxx based on version
-        # return based on version
+      # xxxx = coreCloud.current_vm_id()
+      # process xxxx based on version
+      # return based on version
 
-        return @current_vm_id if @current_vm_id
+      return @current_vm_id if @current_vm_id
 
-        http_client = HTTPClient.new
-        http_client.connect_timeout = METADATA_TIMEOUT
-        # Using 169.254.169.254 is an EC2 convention for getting
-        # instance metadata
-        uri = 'http://169.254.169.254/latest/meta-data/instance-id/'
+      http_client = HTTPClient.new
+      http_client.connect_timeout = METADATA_TIMEOUT
+      # Using 169.254.169.254 is an EC2 convention for getting
+      # instance metadata
+      uri = 'http://169.254.169.254/latest/meta-data/instance-id/'
 
-        response = http_client.get(uri)
-        unless response.status == 200
-          cloud_error('Instance metadata endpoint returned ' \
-                      "HTTP #{response.status}")
-        end
-
-        @current_vm_id = response.body
-      rescue HTTPClient::TimeoutError
-        cloud_error('Timed out reading instance metadata, ' \
-                    'please make sure CPI is running on EC2 instance')
+      response = http_client.get(uri)
+      unless response.status == 200
+        cloud_error('Instance metadata endpoint returned ' \
+                    "HTTP #{response.status}")
       end
+
+      @current_vm_id = response.body
+    rescue HTTPClient::TimeoutError
+      cloud_error('Timed out reading instance metadata, ' \
+                  'please make sure CPI is running on EC2 instance')
     end
 
     ##
@@ -102,20 +100,19 @@ module Bosh::AwsCloud
     #   agent settings
     # @return [String] EC2 instance id of the new virtual machine
     def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = [], environment = nil)
-      raise Bosh::Clouds::CloudError, "Cannot create VM without registry with CPI v1. Registry not configured." unless @config.registry_configured?
+      raise Bosh::Clouds::CloudError, 'Cannot create VM without registry with CPI v1. Registry not configured.' unless @config.registry_configured?
 
       with_thread_name("create_vm(#{agent_id}, ...)") do
         network_props = @props_factory.network_props(network_spec)
 
-        registry = {endpoint: @config.registry.endpoint}
+        registry = { endpoint: @config.registry.endpoint }
         network_with_dns = network_props.dns_networks.first
-        dns = {nameserver: network_with_dns.dns} unless network_with_dns.nil?
+        dns = { nameserver: network_with_dns.dns } unless network_with_dns.nil?
         registry_settings = AgentSettings.new(registry, network_props, dns)
         registry_settings.environment = environment
         registry_settings.agent_id = agent_id
 
-        instance_id, _ = @cloud_core.create_vm(agent_id, stemcell_id, vm_type, network_props, registry_settings, disk_locality, environment) do
-        |instance_id, settings|
+        instance_id, = @cloud_core.create_vm(agent_id, stemcell_id, vm_type, network_props, registry_settings, disk_locality, environment) do |instance_id, settings|
           @registry.update_settings(instance_id, settings.agent_settings)
         end
         instance_id
@@ -175,7 +172,19 @@ module Bosh::AwsCloud
         metadata['Name'] = "compiling/#{metadata['compiling']}"
       end
 
-      TagManager.tags(instance, metadata)
+      begin
+        TagManager.tags(instance, metadata)
+      rescue Aws::EC2::Errors::TagLimitExceeded => e
+        logger.error("could not tag #{instance.id}: #{e.message}")
+      end
+
+      get_volume_ids_for_vm(instance).each do |volume_id|
+        begin
+          TagManager.tags(@ec2_resource.volume(volume_id), metadata)
+        rescue Aws::EC2::Errors::TagLimitExceeded => e
+          logger.error("could not tag volume #{volume_id}: #{e.message}")
+        end
+      end
     rescue Aws::EC2::Errors::TagLimitExceeded => e
       logger.error("could not tag #{instance.id}: #{e.message}")
     end
@@ -187,7 +196,8 @@ module Bosh::AwsCloud
     #        of the VM that this disk will be attached to
     # @return [String] created EBS volume id
     def create_disk(size, cloud_properties, instance_id = nil)
-      raise ArgumentError, 'disk size needs to be an integer' unless size.kind_of?(Integer)
+      raise ArgumentError, 'disk size needs to be an integer' unless size.is_a?(Integer)
+
       with_thread_name("create_disk(#{size}, #{instance_id})") do
         props = @props_factory.disk_props(cloud_properties)
 
@@ -256,13 +266,7 @@ module Bosh::AwsCloud
     end
 
     def get_disks(vm_id)
-      disks = []
-      @ec2_resource.instance(vm_id).block_device_mappings.each do |block_device|
-        if block_device.ebs
-          disks << block_device.ebs.volume_id
-        end
-      end
-      disks
+      get_volume_ids_for_vm(@ec2_resource.instance(vm_id))
     end
 
     def set_disk_metadata(disk_id, metadata)
@@ -379,7 +383,7 @@ module Bosh::AwsCloud
             encrypted_image = @ec2_resource.image(encrypted_image_id)
             ResourceWait.for_image(image: encrypted_image, state: 'available')
 
-            return "#{encrypted_image_id}"
+            return encrypted_image_id.to_s
           end
 
           "#{available_image.id} light"
@@ -426,6 +430,7 @@ module Bosh::AwsCloud
     end
 
     private
+
     def find_device_path_by_name(sd_name)
       xvd_name = sd_name.gsub(/^\/dev\/sd/, '/dev/xvd')
 
@@ -435,6 +440,7 @@ module Bosh::AwsCloud
         elsif File.blockdev?(xvd_name)
           return xvd_name
         end
+
         sleep(1)
       end
 
@@ -442,9 +448,7 @@ module Bosh::AwsCloud
     end
 
     def update_agent_settings(instance_id)
-      unless block_given?
-        raise ArgumentError, 'block is not provided'
-      end
+      raise ArgumentError, 'block is not provided' unless block_given?
 
       settings = registry.read_settings(instance_id)
       yield settings
@@ -463,7 +467,7 @@ module Bosh::AwsCloud
         instance = @ec2_resource.instance(director_vm_id)
         unless instance.exists?
           cloud_error(
-            "Could not locate the current VM with id '#{director_vm_id}'." +
+            "Could not locate the current VM with id '#{director_vm_id}'." \
                 'Ensure that the current VM is located in the same region as configured in the manifest.'
           )
         end
@@ -488,6 +492,11 @@ module Bosh::AwsCloud
           @volume_manager.delete_ebs_volume(volume)
         end
       end
+    end
+
+    def get_volume_ids_for_vm(vm_instance)
+      vm_instance.block_device_mappings.select(&:ebs)
+                 .map { |block_device| block_device.ebs.volume_id }
     end
   end
 end
