@@ -1,4 +1,4 @@
-# frozen_string_literal: true
+#frozen_string_literal: true
 
 require 'spec_helper'
 
@@ -7,7 +7,7 @@ describe Bosh::AwsCloud::TagManager do
 
   it 'should trim key and value length' do
     expect(instance).to receive(:create_tags) do |args|
-      tag = args[:create_tags].first
+      tag = args[:tags].first
       expect(tag[:key].size).to eq(127)
       expect(tag[:value].size).to eq(255)
     end
@@ -16,10 +16,10 @@ describe Bosh::AwsCloud::TagManager do
   end
 
   it 'casts key and value to strings' do
-    expect(instance).to receive(:create_tags).with(create_tags: [key: 'key', value: 'value'])
+    expect(instance).to receive(:create_tags).with(tags: [key: 'key', value: 'value'])
     Bosh::AwsCloud::TagManager.tag(instance, :key, :value)
 
-    expect(instance).to receive(:create_tags).with(create_tags: [key: 'key', value: '8'])
+    expect(instance).to receive(:create_tags).with(tags: [key: 'key', value: '8'])
     Bosh::AwsCloud::TagManager.tag(instance, :key, 8)
   end
 
@@ -60,7 +60,7 @@ describe Bosh::AwsCloud::TagManager do
 
   it 'should create all tags' do
     expect(instance).to receive(:create_tags).with(
-      create_tags: [{ key: 'key1', value: 'value1' }, { key: 'key2', value: 'value2' }]
+      tags: [{ key: 'key1', value: 'value1' }, { key: 'key2', value: 'value2' }]
     )
 
     Bosh::AwsCloud::TagManager.create_tags(instance, 'key1' => 'value1', 'key2' => 'value2')
@@ -68,7 +68,7 @@ describe Bosh::AwsCloud::TagManager do
 
   it 'should create all tags that has non nil keys' do
     expect(instance).to receive(:create_tags).with(
-      create_tags: [{ key: 'key2', value: 'value2' }]
+      tags: [{ key: 'key2', value: 'value2' }]
     )
 
     Bosh::AwsCloud::TagManager.create_tags(instance, nil => 'value1', 'key2' => 'value2')
@@ -76,7 +76,7 @@ describe Bosh::AwsCloud::TagManager do
 
   it 'should create all tags that has non nil values' do
     expect(instance).to receive(:create_tags).with(
-      create_tags: [{ key: 'key2', value: 'value2' }]
+      tags: [{ key: 'key2', value: 'value2' }]
     )
 
     Bosh::AwsCloud::TagManager.create_tags(instance, 'key1' => nil, 'key2' => 'value2')

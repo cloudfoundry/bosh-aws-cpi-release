@@ -49,7 +49,7 @@ describe Bosh::AwsCloud::CloudV1 do
     end
 
     expect(volume).to receive(:delete)
-    expect(volume).to receive(:create_tags).with(create_tags: [{ key: 'Name', value: 'to be deleted' }])
+    expect(volume).to receive(:create_tags).with(tags: [{ key: 'Name', value: 'to be deleted' }])
     expect(Bosh::AwsCloud::ResourceWait).not_to receive(:for_volume)
 
     cloud.delete_disk('v-foo')

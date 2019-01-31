@@ -22,7 +22,7 @@ module Bosh::AwsCloud
       begin
         Bosh::Common.retryable(tries: 30, on: errors) do
           logger.info("attempting to tag object: #{taggable.id}")
-          taggable.create_tags(create_tags: format_tags(tags))
+          taggable.create_tags(tags: format_tags(tags))
           true
         end
       rescue Aws::EC2::Errors::InvalidParameterValue => e
