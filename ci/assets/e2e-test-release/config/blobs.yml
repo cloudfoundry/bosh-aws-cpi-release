@@ -1,9 +1,8 @@
----
 awscli/awscli-bundle.zip:
-  object_id: a50c9c5a-47ee-4896-aa9e-8ebca9a38f36
-  sha: 95b38729dcb07acb692283de7013823e8aa75a9b
-  size: 6879872
+  size: 6880860
+  object_id: 654f59bb-208c-4257-5d42-f5b5ca59a93e
+  sha: 1e425b0fc1efccbcf2c3ae0679b6e66ad85d82dd
 jq/jq-linux64:
+  size: 3027945
   object_id: a35c7427-f377-4369-809f-7f4d2443d507
   sha: d8e36831c3c94bb58be34dd544f44a6c6cb88568
-  size: 3027945
