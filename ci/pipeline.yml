@@ -25,7 +25,7 @@ shared:
     file: pipelines/shared/tasks/run-bats.yml
     params:
       INFRASTRUCTURE:     aws
-      STEMCELL_NAME:      bosh-aws-xen-hvm-ubuntu-trusty-go_agent
+      STEMCELL_NAME:      bosh-aws-xen-hvm-ubuntu-xenial-go_agent
       BAT_INFRASTRUCTURE: aws
       BAT_NETWORKING:     manual
       BAT_RSPEC_FLAGS:    "--tag ~multiple_manual_networks --tag ~root_partition"
@@ -282,7 +282,6 @@ resources:
     source:
       bucket: bosh-compiled-release-tarballs
       regexp: bosh-(\d+.\d+.\d+)-ubuntu-xenial-(250.\d+).*.tgz
-      # regexp: release-bosh-(260)-on-ubuntu-trusty-stemcell-3309-20161111043646.tgz
   - name: light-stemcell
     type: s3
     source:
