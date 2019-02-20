@@ -422,6 +422,17 @@ module Bosh::AwsCloud
       }
     end
 
+    ##
+    # Creates a external_ip
+    #
+    #
+    # @return [Hash] contains 'public_ip' and additional attribute which we dont care about
+    def create_external_ip()
+      allocated_address = @ec2_client.allocate_address()
+      raise "Not able to create elastic ip: #{allocated_address}" unless allocated_address['public_ip']
+      allocated_address
+    end
+
     # Information about AWS CPI, currently supported stemcell formats
     # @return [Hash] AWS CPI properties
     def info
