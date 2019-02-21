@@ -403,4 +403,17 @@ describe Bosh::AwsCloud::CloudV1 do
       end
     end
   end
+
+  describe '#create_external_ip' do
+    let(:ec2_client) { instance_double(Aws::EC2::Client) }
+    let(:allocate_address_response) { {'public_ip'=> '192.168.50.6'} }
+    before do
+      allow(Aws::EC2::Client).to receive(:new).and_return(ec2_client)
+      allow(ec2_client).to receive(:allocate_address).and_return(allocate_address_response)
+    end
+    it 'creates an ip' do
+      public_ip = cloud.create_external_ip()
+      expect(public_ip).to eq(allocate_address_response['public_ip'])
+    end
+  end
 end
