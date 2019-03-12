@@ -103,6 +103,12 @@ module Bosh::AwsCloud
         it_behaves_like 'NVMe required instance types'
       end
 
+      context 'when creating p3dn.24xlarge instances' do
+        let(:instance_type) { 'p3dn.24xlarge' }
+
+        it_behaves_like 'NVMe required instance types'
+      end
+
       context 'when omitting the ephemeral disk' do
         context 'when instance type has instance storage' do
           let(:instance_type) { 'm3.xlarge' }

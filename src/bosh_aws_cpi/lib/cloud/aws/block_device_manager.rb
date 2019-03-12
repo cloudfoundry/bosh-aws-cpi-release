@@ -3,6 +3,11 @@ module Bosh::AwsCloud
     DEFAULT_INSTANCE_STORAGE_DISK_MAPPING = { device_name: '/dev/sdb', virtual_name: 'ephemeral0' }.freeze
     NVME_EBS_BY_ID_DEVICE_PATH_PREFIX = '/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_'
 
+    # Newer, nitro-based instances use NVMe storage volumes.
+    # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#ec2-nitro-instances
+    NVME_INSTANCE_FAMILIES = %w[a1 c5 c5d m5 m5a m5d r5 r5a r5d t3 z1d].freeze
+    NVME_INSTANCE_TYPES = %w[p3dn.24xlarge].freeze
+
     def initialize(logger, stemcell, vm_cloud_props)
       @logger = logger
       @vm_cloud_props = vm_cloud_props
@@ -27,7 +32,9 @@ module Bosh::AwsCloud
 
     def self.requires_nvme_device(instance_type)
       instance_type = instance_type.nil? ? 'unspecified' : instance_type
-      instance_type =~ /^[cm]5\./
+      instance_family = instance_type.split(".")[0]
+
+      NVME_INSTANCE_TYPES.include?(instance_type) || NVME_INSTANCE_FAMILIES.include?(instance_family)
     end
 
     private
