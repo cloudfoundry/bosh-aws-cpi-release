@@ -10,7 +10,7 @@ resource "aws_elb" "e2e" {
 
   subnets = ["${aws_subnet.manual.id}"]
 
-  tags {
+  tags = {
     Name = "${var.env_name}-e2e"
   }
 }

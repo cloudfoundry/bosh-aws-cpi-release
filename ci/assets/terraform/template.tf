@@ -20,7 +20,7 @@ data "aws_availability_zones" "available" {}
 resource "aws_vpc" "default" {
   assign_generated_ipv6_cidr_block = true
   cidr_block = "10.0.0.0/16"
-  tags {
+  tags = {
     Name = "${var.env_name}"
   }
 }
@@ -28,7 +28,7 @@ resource "aws_vpc" "default" {
 # Create an internet gateway to give our subnet access to the outside world
 resource "aws_internet_gateway" "default" {
   vpc_id = "${aws_vpc.default.id}"
-  tags {
+  tags = {
     Name = "${var.env_name}"
   }
 }
@@ -40,7 +40,7 @@ resource "aws_route_table" "default" {
     gateway_id = "${aws_internet_gateway.default.id}"
   }
 
-  tags {
+  tags = {
     Name = "${var.env_name}"
   }
 }
@@ -67,7 +67,7 @@ resource "aws_subnet" "default" {
   depends_on = ["aws_internet_gateway.default"]
   availability_zone = "${data.aws_availability_zones.available.names[0]}"
 
-  tags {
+  tags = {
     Name = "${var.env_name}"
   }
 
@@ -81,7 +81,7 @@ resource "aws_subnet" "backup" {
   depends_on = ["aws_internet_gateway.default"]
   availability_zone = "${data.aws_availability_zones.available.names[1]}"
 
-  tags {
+  tags = {
     Name = "${var.env_name}"
   }
 }
@@ -93,7 +93,7 @@ resource "aws_subnet" "manual" {
   depends_on = ["aws_internet_gateway.default"]
   availability_zone = "${data.aws_availability_zones.available.names[0]}"
 
-  tags {
+  tags = {
     Name = "${var.env_name}"
   }
 
@@ -126,7 +126,7 @@ resource "aws_network_acl" "allow_all" {
     to_port = 0
   }
 
-  tags {
+  tags = {
     Name = "${var.env_name}"
   }
 }
@@ -152,7 +152,7 @@ resource "aws_security_group" "allow_all" {
       "0.0.0.0/0"]
   }
 
-  tags {
+  tags = {
     Name = "${var.env_name}"
   }
 }
@@ -176,7 +176,7 @@ resource "aws_elb" "default" {
 
   subnets = ["${aws_subnet.default.id}"]
 
-  tags {
+  tags = {
     Name = "${var.env_name}"
   }
 }
@@ -188,7 +188,7 @@ resource "aws_alb" "default" {
     "${aws_subnet.backup.id}"
   ]
 
-  tags {
+  tags = {
     Name = "${var.env_name}"
   }
 }
@@ -205,7 +205,7 @@ resource "aws_alb_target_group" "default" {
     matcher  = "200"
   }
 
-  tags {
+  tags = {
     Name = "${var.env_name}"
   }
 }
