@@ -182,7 +182,7 @@ resource "aws_elb" "default" {
 }
 
 # Create a new application load balancer
-resource "aws_alb" "default" {
+resource "aws_lb" "default" {
   subnets = [
     "${aws_subnet.default.id}",
     "${aws_subnet.backup.id}"
@@ -193,7 +193,7 @@ resource "aws_alb" "default" {
   }
 }
 
-resource "aws_alb_target_group" "default" {
+resource "aws_lb_target_group" "default" {
   name = "${var.env_name}"
   port = "80"
   protocol = "HTTP"
@@ -210,7 +210,7 @@ resource "aws_alb_target_group" "default" {
   }
 }
 
-resource "aws_alb_listener" "default" {
+resource "aws_lb_listener" "default" {
   load_balancer_arn = "${aws_alb.default.arn}"
   port = "80"
   protocol = "HTTP"
