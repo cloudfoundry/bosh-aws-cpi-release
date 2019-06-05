@@ -283,11 +283,9 @@ resources:
       bucket: bosh-compiled-release-tarballs
       regexp: bosh-(\d+.\d+.\d+)-ubuntu-xenial-(250.\d+).*.tgz
   - name: light-stemcell
-    type: s3
+    type: bosh-io-stemcell
     source:
-      bucket: bosh-aws-light-stemcells
-      regexp: light-bosh-stemcell-(250.\d+)-aws-xen-hvm-ubuntu-xenial-go_agent.tgz
-      region_name: us-east-1
+      name: bosh-aws-xen-hvm-ubuntu-xenial-go_agent
   - name: heavy-stemcell
     type: bosh-io-stemcell
     source:
