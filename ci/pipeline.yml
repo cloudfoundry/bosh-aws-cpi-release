@@ -52,7 +52,7 @@ jobs:
 - name: build-candidate
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - {trigger: true, get: bosh-cpi-src, resource: bosh-cpi-src-in}
     - {trigger: false, get: version-semver, params: {bump: patch}}
     - {trigger: false, get: bosh-cli}
@@ -66,7 +66,7 @@ jobs:
 - name: integration
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - {trigger: true,  passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
     - {trigger: false, passed: [build-candidate], get: bosh-cpi-src, resource: bosh-cpi-src-in}
     - {get: 24h,             trigger: true}
@@ -101,7 +101,7 @@ jobs:
 - name: bats
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - {get: cpi-release,     trigger: true,  resource: bosh-cpi-dev-artifacts, passed: [build-candidate]}
     - {get: bosh-release,    trigger: false}
     - {get: bosh-cpi-src,    trigger: false, resource: bosh-cpi-src-in, passed: [build-candidate]}
@@ -146,7 +146,7 @@ jobs:
 - name: end-2-end
   serial: true
   plan:
-  - aggregate:
+  - in_parallel:
     - {get: cpi-release,     trigger: true,  resource: bosh-cpi-dev-artifacts, passed: [build-candidate]}
     - {get: bosh-release,    trigger: false}
     - {get: bosh-cpi-src,    trigger: false, resource: bosh-cpi-src-in, passed: [build-candidate]}
@@ -191,7 +191,7 @@ jobs:
 
 - name: promote-candidate
   plan:
-  - aggregate:
+  - in_parallel:
     - {get: bosh-cpi-release,  trigger: false, resource: bosh-cpi-dev-artifacts, passed: [end-2-end, bats, integration]}
     - {get: bosh-cpi-src, trigger: false, resource: bosh-cpi-src-in, passed: [end-2-end, bats, integration]}
     - {trigger: false, get: release-version-semver, params: {bump: major}}
