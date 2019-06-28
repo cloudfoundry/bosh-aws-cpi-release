@@ -19,18 +19,6 @@ module Bosh::AwsCloud
       @ec2_resource = Aws::EC2::Resource.new(client: @ec2_client)
     end
 
-    def aws_accessible?
-      # make an arbitrary HTTP request to ensure we can connect and creds are valid
-      @ec2_resource.subnets.first
-      true
-    rescue Seahorse::Client::NetworkingError => e
-      @logger.error("Failed to connect to AWS: #{e.inspect}\n#{e.backtrace.join("\n")}")
-      err = "Unable to create a connection to AWS. Please check your provided settings: Region '#{@aws_config.region || 'Not provided'}', Endpoint '#{@aws_config.ec2_endpoint || 'Not provided'}'."
-      cloud_error("#{err}\nIaaS Error: #{e.inspect}")
-    rescue Net::OpenTimeout
-      false
-    end
-
     def alb_accessible?
       # make an arbitrary HTTP request to ensure we can connect and creds are valid
       @alb_client.describe_load_balancers(page_size: 1)

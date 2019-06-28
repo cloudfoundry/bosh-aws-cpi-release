@@ -28,8 +28,6 @@ module Bosh::AwsCloud
       @ec2_client = @aws_provider.ec2_client
       @ec2_resource = @aws_provider.ec2_resource
 
-      cloud_error('Please make sure the CPI has proper network access to AWS.') unless @aws_provider.aws_accessible?
-
       @az_selector = az_selector
       @volume_manager = volume_manager
 

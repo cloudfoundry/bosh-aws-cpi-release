@@ -46,8 +46,6 @@ module Bosh::AwsCloud
 
       @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector, API_VERSION)
 
-      cloud_error('Please make sure the CPI has proper network access to AWS.') unless @aws_provider.aws_accessible?
-
       @instance_manager = InstanceManager.new(@ec2_resource, @logger)
       @instance_type_mapper = InstanceTypeMapper.new
 
