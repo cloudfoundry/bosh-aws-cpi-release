@@ -112,6 +112,7 @@ module Bosh::AwsCloud
         allow(ec2).to receive(:instance).with('i-12345678').and_return(aws_instance)
 
         allow(Instance).to receive(:new).and_return(instance)
+        allow(instance).to receive(:wait_until_exists)
         allow(instance).to receive(:wait_for_running)
         allow(instance).to receive(:update_routing_tables)
       end

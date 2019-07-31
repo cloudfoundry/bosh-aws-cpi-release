@@ -44,6 +44,18 @@ module Bosh::AwsCloud
       )
     end
 
+    def wait_until_exists
+      # describe_instances will have no reservations in the response if the instance does not exist yet
+      begin
+        @logger.info("Waiting for instance to exist...")
+        @aws_instance = @aws_instance.wait_until_exists
+      rescue Aws::Waiters::Errors::TooManyAttemptsError
+        message = "Timed out waiting for instance '#{@aws_instance.id}' to exist"
+        @logger.warn(message)
+        raise Bosh::Clouds::VMCreationFailed.new(true), message
+      end
+    end
+
     def wait_for_running
       # If we time out, it is because the instance never gets from state running to started,
       # so we signal the director that it is ok to retry the operation. At the moment this

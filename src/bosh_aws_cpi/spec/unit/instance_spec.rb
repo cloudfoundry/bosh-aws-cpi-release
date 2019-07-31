@@ -57,6 +57,27 @@ module Bosh::AwsCloud
       end
     end
 
+    describe '#wait_until_exists' do
+      let(:aws_updated_instance) { instance_double(Aws::EC2::Instance, id: 'same-id', data: 'data-with-reservation') }
+      it 'waits for instance to exist' do
+        expect(aws_instance).to receive(:wait_until_exists).and_return(aws_updated_instance)
+        instance.wait_until_exists
+        expect(instance.id).to eq('same-id')
+      end
+
+      context 'when the operation times out' do
+        it 'raises and logs an error' do
+          expect(aws_instance).to receive(:wait_until_exists)
+                                      .and_raise(Aws::Waiters::Errors::TooManyAttemptsError.new(1))
+
+          expect(logger).to receive(:warn).with(/Timed out waiting for instance '#{instance_id}' to exist/)
+          expect {
+            instance.wait_until_exists
+          }.to raise_error(Bosh::Clouds::VMCreationFailed, /Timed out waiting for instance '#{instance_id}' to exist/)
+        end
+      end
+    end
+
     describe '#wait_for_running' do
       it 'waits for instance state to be running' do
         expect(ResourceWait).to receive(:for_instance).with(
