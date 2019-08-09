@@ -4,69 +4,6 @@ module Bosh::AwsCloud
   describe ResourceWait do
     before { allow(Kernel).to receive(:sleep) }
 
-    describe '.for_instance' do
-      let(:instance) { double(Aws::EC2::Instance, id: 'i-1234', data: 'some-data', exists?: true) }
-
-      before do
-        allow(instance).to receive(:reload)
-      end
-
-      context 'deletion' do
-        it 'should wait until the state is terminated' do
-          expect(instance).to receive(:state).and_return('shutting_down')
-          expect(instance).to receive(:state).and_return('shutting_down')
-          expect(instance).to receive(:state).and_return('terminated')
-
-          described_class.for_instance(instance: instance, state: 'terminated')
-        end
-      end
-
-      context 'creation' do
-        context 'when EC2 fails to find an instance' do
-          it 'should wait until the state is running' do
-            expect(instance).to receive(:state).and_raise(Aws::EC2::Errors::InvalidInstanceIDNotFound.new(nil, 'not-found'))
-            expect(instance).to receive(:state).and_return('pending')
-            expect(instance).to receive(:state).and_return('running')
-
-            described_class.for_instance(instance: instance, state: 'running')
-          end
-        end
-
-        context 'when resource is not found' do
-          it 'should wait until the state is running' do
-            expect(instance).to receive(:state).and_raise(Aws::EC2::Errors::ResourceNotFound.new(nil, 'not-found'))
-            expect(instance).to receive(:state).and_return('pending')
-            expect(instance).to receive(:state).and_return('running')
-
-            described_class.for_instance(instance: instance, state: 'running')
-          end
-        end
-
-        context 'AWS terminates the instance' do
-          it 'should fail if it wasn\'t terminated with /some matcher/' do
-            expect(instance).to receive(:state).and_return('pending')
-            expect(instance).to receive(:state).and_return('pending')
-            expect(instance).to receive(:state).and_return('terminated')
-            expect(instance).to receive(:state_reason).and_return(double("state_reason", message: 'bad things are afoot'))
-
-            expect(ResourceWait.logger).to receive(:error).with(/state changed from 'starting' to 'terminated'/)
-            expect {
-              described_class.for_instance(instance: instance, state: 'running')
-            }.to raise_error Bosh::Clouds::VMCreationFailed, /failed to create: state changed from 'starting' to 'terminated' with reason: 'bad things are afoot'/
-          end
-
-          it 'should raise Bosh::AwsCloud::AbruptlyTerminated' do
-            expect(instance).to receive(:state).and_return('terminated')
-            expect(instance).to receive(:state_reason).and_return(double("state_reason", message: 'Server.InternalError: Internal error on launch'))
-
-            expect {
-              described_class.for_instance(instance: instance, state: 'running')
-            }.to raise_error Bosh::AwsCloud::AbruptlyTerminated, /Server.InternalError: Internal error on launch/
-          end
-        end
-      end
-    end
-
     describe '.for_attachment' do
       let(:volume) { double(Aws::EC2::Volume, id: 'vol-1234', data: 'some-data', exists?: true) }
       let(:instance) { double(Aws::EC2::Instance, id: 'i-5678', data: 'some-data', exists?: true) }
@@ -291,26 +228,26 @@ module Bosh::AwsCloud
       end
 
       context 'when we exceed request limit' do
-        let(:instance) { double(Aws::EC2::Instance, id: 'i-1234', data: 'some-data', exists?: true) }
+        let(:volume) { double(Aws::EC2::Volume, id: 'i-1234', data: 'some-data', exists?: true) }
 
         before do
-          allow(instance).to receive(:reload)
+          allow(volume).to receive(:reload)
           call_count = 0
-          allow(instance).to receive(:state) do
+          allow(volume).to receive(:state) do
             case call_count += 1
             when 1
-              'running'
+              'deleted'
             when 2
               raise Aws::EC2::Errors::RequestLimitExceeded.new(nil, 'error')
             else
-              'terminated'
+              'available'
             end
           end
         end
 
         it 'rescues the error and retries after a backoff' do
-          described_class.for_instance(instance: instance, state: 'terminated')
-          expect(instance).to have_received(:state).exactly(3).times
+          described_class.for_volume(volume: volume, state: 'available')
+          expect(volume).to have_received(:state).exactly(3).times
         end
       end
 

@@ -89,8 +89,6 @@ module Bosh::AwsCloud
         allow(param_mapper).to receive(:validate)
         instance_manager.instance_variable_set('@param_mapper', param_mapper)
 
-        allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: 'running')
-
         allow(ec2).to receive(:subnets).with(
           filters: [{
             name: 'subnet-id',
@@ -113,7 +111,7 @@ module Bosh::AwsCloud
 
         allow(Instance).to receive(:new).and_return(instance)
         allow(instance).to receive(:wait_until_exists)
-        allow(instance).to receive(:wait_for_running)
+        allow(instance).to receive(:wait_until_running)
         allow(instance).to receive(:update_routing_tables)
       end
 
@@ -320,7 +318,7 @@ module Bosh::AwsCloud
 
           expect(instance).not_to receive(:disable_dest_check)
           expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
-          expect(instance).to receive(:wait_for_running)
+          expect(instance).to receive(:wait_until_running)
 
           instance_manager.create(
             stemcell_id,
@@ -344,7 +342,7 @@ module Bosh::AwsCloud
 
           expect(instance).to receive(:disable_dest_check)
           expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
-          expect(instance).to receive(:wait_for_running)
+          expect(instance).to receive(:wait_until_running)
 
           instance_manager.create(
             stemcell_id,
@@ -369,7 +367,6 @@ module Bosh::AwsCloud
         expect(aws_client).to receive(:run_instances)
           .with(run_instances_params).and_return('run-instances-response')
 
-        allow(ResourceWait).to receive(:for_instance).with(instance: aws_instance, state: :running)
         expect(logger).to receive(:warn).with(/IP address was in use/).once
 
         instance_manager.create(
@@ -393,7 +390,7 @@ module Bosh::AwsCloud
           allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
           expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
-          expect(instance).to receive(:wait_for_running).and_raise(create_err)
+          expect(instance).to receive(:wait_until_running).and_raise(create_err)
 
           expect(instance).to receive(:terminate).with(no_args)
 
@@ -416,7 +413,7 @@ module Bosh::AwsCloud
           expect(Instance).to receive(:new).exactly(3).times
 
           expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response').exactly(3).times
-          expect(instance).to receive(:wait_for_running).and_raise(Bosh::AwsCloud::AbruptlyTerminated, 'Server.InternalError: Internal error on launch').exactly(3).times
+          expect(instance).to receive(:wait_until_running).and_raise(Bosh::AwsCloud::AbruptlyTerminated, 'Server.InternalError: Internal error on launch').exactly(3).times
           expect(logger).to receive(:warn).with(/Failed to configure instance 'fake-instance-id'/).exactly(3).times
           expect(logger).to receive(:warn).with(/'fake-instance-id' was abruptly terminated, attempting to re-create/).twice
 
@@ -440,7 +437,7 @@ module Bosh::AwsCloud
             allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
             expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
-            expect(instance).to receive(:wait_for_running).and_raise(create_err)
+            expect(instance).to receive(:wait_until_running).and_raise(create_err)
 
             expect {
               instance_manager.create(

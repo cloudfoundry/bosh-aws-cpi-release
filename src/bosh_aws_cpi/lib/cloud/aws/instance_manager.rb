@@ -65,7 +65,7 @@ module Bosh::AwsCloud
         # We need to wait here for the instance to be running, as if we are going to
         # attach to a load balancer, the instance must be running.
         instance.wait_until_exists
-        instance.wait_for_running
+        instance.wait_until_running
         instance.update_routing_tables(vm_cloud_props.advertised_routes)
         instance.disable_dest_check unless vm_cloud_props.source_dest_check
       rescue => e

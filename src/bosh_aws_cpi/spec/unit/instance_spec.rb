@@ -59,6 +59,7 @@ module Bosh::AwsCloud
 
     describe '#wait_until_exists' do
       let(:aws_updated_instance) { instance_double(Aws::EC2::Instance, id: 'same-id', data: 'data-with-reservation') }
+
       it 'waits for instance to exist' do
         expect(aws_instance).to receive(:wait_until_exists).and_return(aws_updated_instance)
         instance.wait_until_exists
@@ -68,7 +69,7 @@ module Bosh::AwsCloud
       context 'when the operation times out' do
         it 'raises and logs an error' do
           expect(aws_instance).to receive(:wait_until_exists)
-                                      .and_raise(Aws::Waiters::Errors::TooManyAttemptsError.new(1))
+            .and_raise(Aws::Waiters::Errors::TooManyAttemptsError.new(1))
 
           expect(logger).to receive(:warn).with(/Timed out waiting for instance '#{instance_id}' to exist/)
           expect {
@@ -78,23 +79,23 @@ module Bosh::AwsCloud
       end
     end
 
-    describe '#wait_for_running' do
-      it 'waits for instance state to be running' do
-        expect(ResourceWait).to receive(:for_instance).with(
-          instance: aws_instance,
-          state: 'running',
-        )
-        instance.wait_for_running
+    describe '#wait_until_running' do
+      let(:aws_updated_instance) { instance_double(Aws::EC2::Instance, id: 'same-id', data: 'data-with-reservation') }
+
+      it 'waits for the instance to be running' do
+        expect(aws_instance).to receive(:wait_until_running).and_return(aws_updated_instance)
+        instance.wait_until_running
+        expect(instance.id).to eq('same-id')
       end
 
       context 'when the operation times out' do
         it 'raises and logs an error' do
-          expect(ResourceWait).to receive(:for_instance)
-            .and_raise(Bosh::Common::RetryCountExceeded)
+          expect(aws_instance).to receive(:wait_until_running)
+            .and_raise(Aws::Waiters::Errors::TooManyAttemptsError.new(1))
 
           expect(logger).to receive(:warn).with(/Timed out waiting for instance/)
           expect {
-            instance.wait_for_running
+            instance.wait_until_running
           }.to raise_error(Bosh::Clouds::VMCreationFailed, /Timed out waiting for instance/)
         end
       end
@@ -103,9 +104,7 @@ module Bosh::AwsCloud
     describe '#terminate' do
       it 'should terminate an instance given the id' do
         expect(aws_instance).to receive(:terminate).with(no_args).ordered
-
-        expect(ResourceWait).to receive(:for_instance).
-          with(instance: aws_instance, state: 'terminated').ordered
+        expect(aws_instance).to receive(:wait_until_terminated).ordered
 
         instance.terminate
       end
@@ -126,19 +125,13 @@ module Bosh::AwsCloud
       end
 
       context 'when instance is already terminated when bosh checks for the state' do
-        before do
+        it 'logs a message and considers the instance to be terminated' do
           # AWS returns NotFound error if instance no longer exists in AWS console
           # (This could happen when instance was deleted very quickly and BOSH didn't catch the terminated state)
           expect(aws_instance).to receive(:terminate).with(no_args).ordered
-        end
-
-        it 'logs a message and considers the instance to be terminated' do
-          expect(aws_instance).to receive(:reload)
 
           err = Aws::EC2::Errors::InvalidInstanceIDNotFound.new(nil, 'not-found')
-          allow(aws_instance).to receive(:state).
-            with(no_args).and_raise(err)
-
+          expect(aws_instance).to receive(:wait_until_terminated).with(no_args).ordered.and_raise(err)
           expect(logger).to receive(:debug).with("Failed to find terminated instance '#{instance_id}' after deletion: #{err.inspect}")
 
           instance.terminate

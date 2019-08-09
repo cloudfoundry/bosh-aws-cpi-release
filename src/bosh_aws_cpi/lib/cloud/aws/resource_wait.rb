@@ -10,35 +10,6 @@ module Bosh::AwsCloud
     MAX_SLEEP_TIME = 15
     DEFAULT_WAIT_ATTEMPTS = 600 / MAX_SLEEP_TIME # 10 minutes
 
-    def self.for_instance(args)
-      raise ArgumentError, "args should be a Hash, but `#{args.class}' given" unless args.is_a?(Hash)
-      instance = args.fetch(:instance) { raise ArgumentError, 'instance object required' }
-      target_state = args.fetch(:state) { raise ArgumentError, 'state symbol required' }
-      valid_states = ['running', 'terminated']
-      validate_states(valid_states, target_state)
-
-      ignored_errors = []
-      if target_state == 'running'
-        ignored_errors << Aws::EC2::Errors::InvalidInstanceIDNotFound
-        ignored_errors << Aws::EC2::Errors::ResourceNotFound
-      end
-
-      new.for_resource(resource: instance, errors: ignored_errors, target_state: target_state) do |instance_state|
-        current_state = instance_state
-        if target_state == 'running' && current_state == 'terminated'
-        state_change_message = instance.state_reason.message
-          if state_change_message == 'Server.InternalError: Internal error on launch'
-            raise Bosh::AwsCloud::AbruptlyTerminated.new(true), state_change_message
-          end
-          message = "Instance '#{instance.id}' failed to create: state changed from 'starting' to 'terminated' with reason: '#{state_change_message}'"
-          logger.error(message)
-          raise Bosh::Clouds::VMCreationFailed.new(true), message
-        else
-          current_state == target_state
-        end
-      end
-    end
-
     def self.for_attachment(args)
       attachment = args.fetch(:attachment) { raise ArgumentError, 'attachment object required' }
       target_state = args.fetch(:state) { raise ArgumentError, 'state symbol required' }

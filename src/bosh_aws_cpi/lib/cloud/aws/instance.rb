@@ -56,14 +56,14 @@ module Bosh::AwsCloud
       end
     end
 
-    def wait_for_running
+    def wait_until_running
       # If we time out, it is because the instance never gets from state running to started,
       # so we signal the director that it is ok to retry the operation. At the moment this
       # forever (until the operation is cancelled by the user).
       begin
         @logger.info("Waiting for instance to be ready...")
-        ResourceWait.for_instance(instance: @aws_instance, state: 'running')
-      rescue Bosh::Common::RetryCountExceeded
+        @aws_instance = @aws_instance.wait_until_running
+      rescue Aws::Waiters::Errors::TooManyAttemptsError
         message = "Timed out waiting for instance '#{@aws_instance.id}' to be running"
         @logger.warn(message)
         raise Bosh::Clouds::VMCreationFailed.new(true), message
@@ -102,7 +102,7 @@ module Bosh::AwsCloud
 
       begin
         @logger.info("Deleting instance '#{@aws_instance.id}'")
-        ResourceWait.for_instance(instance: @aws_instance, state: 'terminated')
+        @aws_instance = @aws_instance.wait_until_terminated
       rescue Aws::EC2::Errors::InvalidInstanceIDNotFound => e
         @logger.debug("Failed to find terminated instance '#{@aws_instance.id}' after deletion: #{e.inspect}")
         # It's OK, just means that instance has already been deleted
