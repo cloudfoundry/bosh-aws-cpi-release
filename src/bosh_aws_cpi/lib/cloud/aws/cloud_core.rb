@@ -28,8 +28,6 @@ module Bosh::AwsCloud
       @ec2_client = @aws_provider.ec2_client
       @ec2_resource = @aws_provider.ec2_resource
 
-      cloud_error('Please make sure the CPI has proper network access to AWS.') unless @aws_provider.aws_accessible?
-
       @az_selector = az_selector
       @volume_manager = volume_manager
 
@@ -132,8 +130,8 @@ module Bosh::AwsCloud
     # @param [String] disk_id disk id that was once returned by {#create_disk}
     # @return [String] hint for location of attached disk
     def attach_disk(instance_id, disk_id)
-      instance = @ec2_resource.instance(instance_id)
-      volume = @ec2_resource.volume(disk_id)
+      instance = AwsProvider.with_aws { @ec2_resource.instance(instance_id) }
+      volume = AwsProvider.with_aws { @ec2_resource.volume(disk_id) }
 
       device_name = @volume_manager.attach_ebs_volume(instance, volume)
       logger.info("Attached `#{disk_id}' to `#{instance_id}'")
@@ -150,8 +148,8 @@ module Bosh::AwsCloud
     end
 
     def detach_disk(instance_id, disk_id)
-      instance = @ec2_resource.instance(instance_id)
-      volume = @ec2_resource.volume(disk_id)
+      instance = AwsProvider.with_aws { @ec2_resource.instance(instance_id) }
+      volume = AwsProvider.with_aws { @ec2_resource.volume(disk_id) }
 
       if has_disk?(disk_id)
         @volume_manager.detach_ebs_volume(instance, volume)
@@ -167,7 +165,7 @@ module Bosh::AwsCloud
     def has_disk?(disk_id)
       with_thread_name("has_disk?(#{disk_id})") do
         @logger.info("Check the presence of disk with id `#{disk_id}'...")
-        volume = @ec2_resource.volume(disk_id)
+        volume = AwsProvider.with_aws { @ec2_resource.volume(disk_id) }
         begin
           volume.state
         rescue Aws::EC2::Errors::InvalidVolumeNotFound

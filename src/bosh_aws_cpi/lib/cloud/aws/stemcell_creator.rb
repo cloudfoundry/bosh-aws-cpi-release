@@ -23,7 +23,14 @@ module Bosh::AwsCloud
 
       # the top-level ec2 class' ImageCollection.create does not support the full set of params
       params = image_params(snapshot.id)
-      image = resource.images(filters: [{name: 'image-id', values: [resource.client.register_image(params).image_id]}]).first
+      image = AwsProvider.with_aws do
+        resource.images(
+          filters: [{
+            name: 'image-id',
+            values: [resource.client.register_image(params).image_id]
+          }]
+        ).first
+      end
       ResourceWait.for_image(image: image, state: 'available')
 
       TagManager.tag(image, 'Name', params[:description]) if params[:description]

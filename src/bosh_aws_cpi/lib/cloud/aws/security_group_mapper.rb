@@ -38,7 +38,7 @@ module Bosh::AwsCloud
 
     def existing_groups_for_subnet(subnet_id)
       # NOTE: We call #to_a to ensure the EC2 client makes a single request.
-      @ec2_resource.subnet(subnet_id).vpc.security_groups.to_a
+      AwsProvider.with_aws { @ec2_resource.subnet(subnet_id).vpc.security_groups.to_a }
     end
 
     def is_id?(input)

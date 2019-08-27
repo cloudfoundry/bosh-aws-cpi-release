@@ -28,7 +28,7 @@ module Bosh::AwsCloud
 
       begin
         # the top-level ec2 class does not support spot instance methods
-        @spot_instance_requests = @ec2.client.request_spot_instances(spot_request_spec)
+        @spot_instance_requests = AwsProvider.with_aws { @ec2.client.request_spot_instances(spot_request_spec) }
         @logger.debug("Got spot instance requests: #{@spot_instance_requests.inspect}")
       rescue => e
         message = "Failed to get spot instance request: #{e.inspect}"
@@ -61,7 +61,7 @@ module Bosh::AwsCloud
             end
           when 'active'
             @logger.info("Spot request instances fulfilled: #{status.inspect}")
-            instance = @ec2.instance(status.instance_id)
+            instance = AwsProvider.with_aws { @ec2.instance(status.instance_id) }
         end
       end
 
@@ -72,9 +72,11 @@ module Bosh::AwsCloud
 
     def spot_instance_request_status
       @logger.debug('Checking state of spot instance requests...')
-      response = @ec2.client.describe_spot_instance_requests(
-        spot_instance_request_ids: spot_instance_request_ids
-      )
+      response = AwsProvider.with_aws do
+        @ec2.client.describe_spot_instance_requests(
+          spot_instance_request_ids: spot_instance_request_ids
+        )
+      end
       status = response.spot_instance_requests[0] # There is only ever 1
       @logger.debug("Spot instance request status: #{status.inspect}")
       status
@@ -92,9 +94,11 @@ module Bosh::AwsCloud
 
     def cancel_pending_spot_requests
       @logger.warn("Failed to create spot instance: #{@spot_instance_requests.inspect}. Cancelling request...")
-      cancel_response = @ec2.client.cancel_spot_instance_requests(
-        spot_instance_request_ids: spot_instance_request_ids
-      )
+      cancel_response = AwsProvider.with_aws do
+        @ec2.client.cancel_spot_instance_requests(
+          spot_instance_request_ids: spot_instance_request_ids
+        )
+      end
       @logger.warn("Spot cancel request returned: #{cancel_response.inspect}")
     end
   end

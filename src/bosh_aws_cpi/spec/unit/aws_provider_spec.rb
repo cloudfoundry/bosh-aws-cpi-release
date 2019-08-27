@@ -13,10 +13,11 @@ describe Bosh::AwsCloud::AwsProvider do
       retry_limit: 8,
       logger: logger,
       log_level: :debug,
-      region: 'us-east-1'
+      region: 'us-east-1',
     }
   end
   let(:ec2_client) { instance_double(Aws::EC2::Client) }
+  let(:ec2_resource) { instance_double(Aws::EC2::Resource) }
 
   def configures_client_with_params
     expect(Aws::ElasticLoadBalancing::Client).to receive(:new).with(params)
@@ -28,6 +29,37 @@ describe Bosh::AwsCloud::AwsProvider do
   end
 
   it { configures_client_with_params }
+
+  context 'when aws raises an OpenTimeout error' do
+    before do
+      allow(ec2_resource).to receive(:instance).and_raise(Net::OpenTimeout)
+    end
+
+    it 'raises the exception' do
+      expect {
+        Bosh::AwsCloud::AwsProvider.with_aws do
+          ec2_resource.instance('fake-id')
+        end
+      }.to raise_error(Bosh::Clouds::CloudError,
+        'Please make sure the CPI has proper network access to AWS.')
+    end
+  end
+
+  context 'when aws raises a NetworkingError' do
+    before do
+      error = Seahorse::Client::NetworkingError.new(RuntimeError.new('networking issue'))
+      allow(ec2_resource).to receive(:instance).and_raise(error)
+    end
+
+    it 'raises the exception' do
+      expect {
+        Bosh::AwsCloud::AwsProvider.with_aws do
+          ec2_resource.instance('fake-id')
+        end
+      }.to raise_error(Bosh::Clouds::CloudError,
+        /Unable to create a connection to AWS. Please check your provided settings: Region and Endpoint.\nIaaS Error:/)
+    end
+  end
 
   context 'with endpoints set' do
     context 'with scheme' do

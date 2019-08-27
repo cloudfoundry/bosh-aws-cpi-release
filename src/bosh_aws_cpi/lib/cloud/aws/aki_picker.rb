@@ -21,22 +21,24 @@ module Bosh::AwsCloud
     private
 
     def fetch_akis(architecture)
-      @resource.images(
-        filters: [
-          {
-            name: 'architecture',
-            values: [architecture],
-          },
-          {
-            name: 'image-type',
-            values: ['kernel'],
-          },
-          {
-            name: 'owner-alias',
-            values: ['amazon'],
-          },
-        ],
-      )
+      AwsProvider.with_aws do
+        @resource.images(
+          filters: [
+            {
+              name: 'architecture',
+              values: [architecture],
+            },
+            {
+              name: 'image-type',
+              values: ['kernel'],
+            },
+            {
+              name: 'owner-alias',
+              values: ['amazon'],
+            },
+          ],
+        )
+      end
     end
 
     def regexp(root_device_name)

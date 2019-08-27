@@ -55,15 +55,17 @@ module Bosh::AwsCloud
       end
 
       # AWS accounts that support both EC2-VPC and EC2-Classic platform access explicitly require allocation_id instead of public_ip
-      addresses = ec2.client.describe_addresses(
-        public_ips: [@vip_network.ip],
-        filters: [
-          name: 'domain',
-          values: [
-            'vpc'
+      addresses = AwsProvider.with_aws do
+        ec2.client.describe_addresses(
+          public_ips: [@vip_network.ip],
+          filters: [
+            name: 'domain',
+            values: [
+              'vpc'
+            ]
           ]
-        ]
-      ).addresses
+        ).addresses
+      end
       found_address = addresses.first
       cloud_error("Elastic IP with VPC scope not found with address '#{@vip_network.ip}'") if found_address.nil?
 
@@ -78,9 +80,11 @@ module Bosh::AwsCloud
       # API call will fail in that case.
 
       errors = [Aws::EC2::Errors::IncorrectInstanceState, Aws::EC2::Errors::InvalidInstanceID]
-      Bosh::Common.retryable(tries: 10, sleep: 1, on: errors) do
-        ec2.client.associate_address(instance_id: instance.id, allocation_id: allocation_id)
-        true # need to return true to end the retries
+      AwsProvider.with_aws do
+        Bosh::Common.retryable(tries: 10, sleep: 1, on: errors) do
+          ec2.client.associate_address(instance_id: instance.id, allocation_id: allocation_id)
+          true # need to return true to end the retries
+        end
       end
     end
   end

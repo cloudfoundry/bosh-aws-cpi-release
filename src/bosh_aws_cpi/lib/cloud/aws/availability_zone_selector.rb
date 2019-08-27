@@ -18,7 +18,7 @@ module Bosh::AwsCloud
 
     def select_availability_zone(instance_id)
       if instance_id
-        @resource.instance(instance_id).placement.availability_zone
+        AwsProvider.with_aws { @resource.instance(instance_id).placement.availability_zone }
       else
         random_availability_zone
       end
@@ -28,7 +28,9 @@ module Bosh::AwsCloud
 
     def random_availability_zone
       zones = []
-      @resource.client.describe_availability_zones['availability_zones'].each { |az| zones << az['zone_name']}
+      AwsProvider.with_aws do
+        @resource.client.describe_availability_zones['availability_zones'].each { |az| zones << az['zone_name']}
+      end
       zones[Random.rand(zones.size)]
     end
   end

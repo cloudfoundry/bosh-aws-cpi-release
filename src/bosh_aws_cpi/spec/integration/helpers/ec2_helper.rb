@@ -37,7 +37,7 @@ module IntegrationHelpers
   end
 
   def get_security_group_ids
-    security_groups = @ec2.subnet(@subnet_id).vpc.security_groups
+    security_groups = AwsProvider.with_aws { @ec2.subnet(@subnet_id).vpc.security_groups }
     security_groups.map { |sg| sg.id }
   end
 end

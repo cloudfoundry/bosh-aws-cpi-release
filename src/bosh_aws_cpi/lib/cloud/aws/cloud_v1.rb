@@ -46,8 +46,6 @@ module Bosh::AwsCloud
 
       @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector, API_VERSION)
 
-      cloud_error('Please make sure the CPI has proper network access to AWS.') unless @aws_provider.aws_accessible?
-
       @instance_manager = InstanceManager.new(@ec2_resource, @logger)
       @instance_type_mapper = InstanceTypeMapper.new
 
@@ -159,7 +157,7 @@ module Bosh::AwsCloud
     def set_vm_metadata(vm, metadata)
       metadata = Hash[metadata.map { |key, value| [key.to_s, value] }]
 
-      instance = @ec2_resource.instance(vm)
+      instance = AwsProvider.with_aws { @ec2_resource.instance(vm) }
 
       job = metadata['job']
       index = metadata['index']
@@ -180,7 +178,8 @@ module Bosh::AwsCloud
 
       get_volume_ids_for_vm(instance).each do |volume_id|
         begin
-          TagManager.create_tags(@ec2_resource.volume(volume_id), metadata)
+          taggable = AwsProvider.with_aws { @ec2_resource.volume(volume_id) }
+          TagManager.create_tags(taggable, metadata)
         rescue Aws::EC2::Errors::TagLimitExceeded => e
           logger.error("could not tag volume #{volume_id}: #{e.message}")
         end
@@ -230,7 +229,7 @@ module Bosh::AwsCloud
     # @raise [Bosh::Clouds::CloudError] if disk is not in available state
     def delete_disk(disk_id)
       with_thread_name("delete_disk(#{disk_id})") do
-        volume = @ec2_resource.volume(disk_id)
+        volume = AwsProvider.with_aws { @ec2_resource.volume(disk_id) }
         @volume_manager.delete_ebs_volume(volume, @config.aws.fast_path_delete?)
       end
     end
@@ -266,13 +265,14 @@ module Bosh::AwsCloud
     end
 
     def get_disks(vm_id)
-      get_volume_ids_for_vm(@ec2_resource.instance(vm_id))
+      vm = AwsProvider.with_aws { @ec2_resource.instance(vm_id) }
+      get_volume_ids_for_vm(vm)
     end
 
     def set_disk_metadata(disk_id, metadata)
       with_thread_name("set_disk_metadata(#{disk_id}, ...)") do
         begin
-          volume = @ec2_resource.volume(disk_id)
+          volume = AwsProvider.with_aws { @ec2_resource.volume(disk_id) }
           TagManager.create_tags(volume, metadata)
         rescue Aws::EC2::Errors::TagLimitExceeded => e
           logger.error("could not tag #{volume.id}: #{e.message}")
@@ -287,7 +287,7 @@ module Bosh::AwsCloud
       metadata = Hash[metadata.map { |key, value| [key.to_s, value] }]
 
       with_thread_name("snapshot_disk(#{disk_id})") do
-        volume = @ec2_resource.volume(disk_id)
+        volume = AwsProvider.with_aws { @ec2_resource.volume(disk_id) }
         devices = []
         volume.attachments.each { |attachment| devices << attachment.device }
 
@@ -322,7 +322,7 @@ module Bosh::AwsCloud
     # @param [String] snapshot_id snapshot id to delete
     def delete_snapshot(snapshot_id)
       with_thread_name("delete_snapshot(#{snapshot_id})") do
-        snapshot = @ec2_resource.snapshot(snapshot_id)
+        snapshot = AwsProvider.with_aws { @ec2_resource.snapshot(snapshot_id) }
         begin
           snapshot.delete
         rescue Aws::EC2::Errors::InvalidSnapshotNotFound => e
@@ -362,12 +362,14 @@ module Bosh::AwsCloud
 
         if props.is_light?
           # select the correct image for the configured ec2 client
-          available_image = @ec2_resource.images(
-            filters: [{
-              name: 'image-id',
-              values: props.ami_ids
-            }]
-          ).first
+          available_image = AwsProvider.with_aws do
+            @ec2_resource.images(
+              filters: [{
+                name: 'image-id',
+                values: props.ami_ids
+              }]
+            ).first
+          end
           raise Bosh::Clouds::CloudError, "Stemcell does not contain an AMI in region #{@config.aws.region}" unless available_image
 
           if props.encrypted
@@ -380,7 +382,7 @@ module Bosh::AwsCloud
             )
 
             encrypted_image_id = copy_image_result.image_id
-            encrypted_image = @ec2_resource.image(encrypted_image_id)
+            encrypted_image = AwsProvider.with_aws { @ec2_resource.image(encrypted_image_id) }
             ResourceWait.for_image(image: encrypted_image, state: 'available')
 
             return encrypted_image_id.to_s
@@ -464,7 +466,7 @@ module Bosh::AwsCloud
         instance = nil
         volume = nil
 
-        instance = @ec2_resource.instance(director_vm_id)
+        instance = AwsProvider.with_aws { @ec2_resource.instance(director_vm_id) }
         unless instance.exists?
           cloud_error(
             "Could not locate the current VM with id '#{director_vm_id}'." \

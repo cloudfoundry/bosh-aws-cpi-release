@@ -55,7 +55,8 @@ module Bosh::AwsCloud
 
     # @param [String] instance_id EC2 instance id
     def find(instance_id)
-      Bosh::AwsCloud::Instance.new(@ec2.instance(instance_id), @logger)
+      instance = AwsProvider.with_aws { @ec2.instance(instance_id) }
+      Bosh::AwsCloud::Instance.new(instance, @logger)
     end
 
     private
@@ -84,7 +85,9 @@ module Bosh::AwsCloud
     end
 
     def build_instance_params(stemcell_id, vm_cloud_props, networks_cloud_props, block_device_mappings, user_data, disk_locality = [], default_security_groups = [])
-      volume_zones = (disk_locality || []).map { |volume_id| @ec2.volume(volume_id).availability_zone }
+      volume_zones = AwsProvider.with_aws do
+        (disk_locality || []).map { |volume_id| @ec2.volume(volume_id).availability_zone }
+      end
 
       @param_mapper.manifest_params = {
         stemcell_id: stemcell_id,
@@ -135,8 +138,8 @@ module Bosh::AwsCloud
         if error.class == Aws::EC2::Errors::InvalidIPAddressInUse
           @logger.warn("IP address was in use: #{error}")
         end
-        resp = @ec2.client.run_instances(instance_params)
-        @ec2.instance(get_created_instance_id(resp))
+        resp = AwsProvider.with_aws { @ec2.client.run_instances(instance_params) }
+        AwsProvider.with_aws { @ec2.instance(get_created_instance_id(resp)) }
       end
     end
 
@@ -152,12 +155,14 @@ module Bosh::AwsCloud
       subnet_ids = networks_cloud_props.filter('dynamic', 'manual').map do |net|
         net.subnet if net.cloud_properties?
       end
-      filtered_subnets = @ec2.subnets(
-        filters: [{
-          name: 'subnet-id',
-          values: subnet_ids
-        }]
-      )
+      filtered_subnets = AwsProvider.with_aws do
+        @ec2.subnets(
+          filters: [{
+            name: 'subnet-id',
+            values: subnet_ids
+          }]
+        )
+      end
 
       filtered_subnets.inject({}) do |mapping, subnet|
         mapping[subnet.id] = subnet.availability_zone

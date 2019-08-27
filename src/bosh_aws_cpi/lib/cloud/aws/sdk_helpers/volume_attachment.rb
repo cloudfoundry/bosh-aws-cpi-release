@@ -10,8 +10,8 @@ module Bosh::AwsCloud::SdkHelpers
     attr_reader :device
 
     def initialize(attachment, resource_client)
-      @volume = resource_client.volume(attachment.volume_id)
-      @instance = resource_client.instance(attachment.instance_id)
+      @volume = AwsProvider.with_aws { resource_client.volume(attachment.volume_id) }
+      @instance = AwsProvider.with_aws { resource_client.instance(attachment.instance_id) }
       @device = attachment.device
     end
 
