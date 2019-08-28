@@ -184,7 +184,7 @@ describe Bosh::AwsCloud::CloudV1 do
       end
       let(:volume) { instance_double(Aws::EC2::Volume, :id => 'vol-xxxxxxxx') }
       let(:stemcell) { instance_double(Bosh::AwsCloud::Stemcell, :id => 'ami-xxxxxxxx') }
-      let(:instance) { instance_double(Aws::EC2::Instance) }
+      let(:instance) { instance_double(Aws::EC2::Instance, instance_type: 'instance-type') }
       let(:aws_config) do
         instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}, encrypted: false, kms_key_arn: nil)
       end
@@ -218,7 +218,7 @@ describe Bosh::AwsCloud::CloudV1 do
 
         expect(volume_manager).to receive(:create_ebs_volume).with(disk_config).and_return(volume)
         expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
-        expect(cloud).to receive(:find_device_path_by_name).with('/dev/sdh').and_return('ebs')
+        expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with('/dev/sdh', instance.instance_type, volume.id).and_return('ebs')
 
         expect(creator).to receive(:create).with(volume, 'ebs', '/tmp/foo').and_return(stemcell)
 
@@ -250,7 +250,7 @@ describe Bosh::AwsCloud::CloudV1 do
 
           expect(volume_manager).to receive(:create_ebs_volume).with(disk_config).and_return(volume)
           expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
-          expect(cloud).to receive(:find_device_path_by_name).with('/dev/sdh').and_return('ebs')
+          expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with('/dev/sdh', instance.instance_type, volume.id).and_return('ebs')
 
           allow(creator).to receive(:create)
           expect(creator).to receive(:create).with(volume, 'ebs', '/tmp/foo').and_return(stemcell)
@@ -303,7 +303,7 @@ describe Bosh::AwsCloud::CloudV1 do
 
             expect(volume_manager).to receive(:create_ebs_volume).with(disk_config).and_return(volume)
             expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
-            expect(cloud).to receive(:find_device_path_by_name).with('/dev/sdh').and_return('ebs')
+            expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with('/dev/sdh', instance.instance_type, volume.id).and_return('ebs')
 
             expect(creator).to receive(:create).with(volume, 'ebs', '/tmp/foo').and_return(stemcell)
 
@@ -352,7 +352,7 @@ describe Bosh::AwsCloud::CloudV1 do
 
             expect(volume_manager).to receive(:create_ebs_volume).with(disk_config).and_return(volume)
             expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
-            expect(cloud).to receive(:find_device_path_by_name).with('/dev/sdh').and_return('ebs')
+            expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with('/dev/sdh', instance.instance_type, volume.id).and_return('ebs')
 
             expect(creator).to receive(:create).with(volume, 'ebs', '/tmp/foo').and_return(stemcell)
 
@@ -383,7 +383,7 @@ describe Bosh::AwsCloud::CloudV1 do
 
           expect(volume_manager).to receive(:create_ebs_volume).with(disk_config).and_return(volume)
           expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return('/dev/sdh')
-          expect(cloud).to receive(:find_device_path_by_name).with('/dev/sdh').and_return('ebs')
+          expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with('/dev/sdh', instance.instance_type, volume.id).and_return('ebs')
 
           expect(creator).to receive(:create).with(volume, 'ebs', '/tmp/foo').and_return(stemcell)
 
@@ -435,25 +435,6 @@ describe Bosh::AwsCloud::CloudV1 do
           it 'should create an unencrypted stemcell' do
             test_for_unencrypted_root_disk
           end
-        end
-      end
-
-      describe '#find_device_path_by_name' do
-        it 'should locate ebs volume on the current instance and return the device name' do
-          cloud = mock_cloud
-
-          allow(File).to receive(:blockdev?).with('/dev/sdf').and_return(true)
-
-          expect(cloud.send(:find_device_path_by_name, '/dev/sdf')).to eq('/dev/sdf')
-        end
-
-        it 'should locate ebs volume on the current instance and return the virtual device name' do
-          cloud = mock_cloud
-
-          allow(File).to receive(:blockdev?).with('/dev/sdf').and_return(false)
-          allow(File).to receive(:blockdev?).with('/dev/xvdf').and_return(true)
-
-          expect(cloud.send(:find_device_path_by_name, '/dev/sdf')).to eq('/dev/xvdf')
         end
       end
     end

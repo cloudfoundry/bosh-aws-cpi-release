@@ -431,22 +431,6 @@ module Bosh::AwsCloud
 
     private
 
-    def find_device_path_by_name(sd_name)
-      xvd_name = sd_name.gsub(/^\/dev\/sd/, '/dev/xvd')
-
-      DEVICE_POLL_TIMEOUT.times do
-        if File.blockdev?(sd_name)
-          return sd_name
-        elsif File.blockdev?(xvd_name)
-          return xvd_name
-        end
-
-        sleep(1)
-      end
-
-      cloud_error('Cannot find EBS volume on current instance')
-    end
-
     def update_agent_settings(instance_id)
       raise ArgumentError, 'block is not provided' unless block_given?
 
@@ -481,8 +465,14 @@ module Bosh::AwsCloud
         volume = @volume_manager.create_ebs_volume(disk_config)
         sd_name = @volume_manager.attach_ebs_volume(instance, volume)
 
+        device_path = BlockDeviceManager.device_path(
+          sd_name,
+          instance.instance_type,
+          volume.id
+        )
+
         logger.info("Creating stemcell with: '#{volume.id}' and '#{stemcell_cloud_props.inspect}'")
-        creator.create(volume, find_device_path_by_name(sd_name), image_path).id
+        creator.create(volume, device_path, image_path).id
       rescue => e
         logger.error(e)
         raise e
