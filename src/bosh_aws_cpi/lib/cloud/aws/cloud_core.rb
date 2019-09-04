@@ -65,16 +65,8 @@ module Bosh::AwsCloud
     def create_vm(agent_id, stemcell_id, vm_type, network_props, settings, disk_locality = [], environment = nil)
       vm_props = @props_factory.vm_props(vm_type)
 
-      # do this early to fail fast
       target_groups = vm_props.lb_target_groups
-      unless target_groups.empty?
-        @aws_provider.alb_accessible?
-      end
-
       requested_elbs = vm_props.elbs
-      unless requested_elbs.empty?
-        @aws_provider.elb_accessible?
-      end
 
       begin
         stemcell = StemcellFinder.find_by_id(@ec2_resource, stemcell_id)
