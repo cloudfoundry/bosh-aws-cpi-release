@@ -139,7 +139,7 @@ describe 'lifecycle test' do
   describe 'instantiating the CPI with invalid endpoint or region' do
     it 'raises an Bosh::Clouds::CloudError' do
       expect do
-        @cpi.class.new('aws' => {
+        cpi = Bosh::AwsCloud::CloudV2.new('aws' => {
           'region' => 'invalid-region',
           'default_key_name' => 'blah',
           'default_security_groups' => 'blah',
@@ -159,6 +159,7 @@ describe 'lifecycle test' do
             'api_version'=> mock_cpi_api_version
           },
         })
+        cpi.has_vm?('my-vm')
       end.to raise_error(/region/)
     end
   end

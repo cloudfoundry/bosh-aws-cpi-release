@@ -15,7 +15,6 @@ describe Bosh::AwsCloud::CloudV1 do
     mock_cloud do |ec2|
       allow(ec2).to receive(:instance).with('i-test').and_return(instance)
       allow(ec2).to receive(:volume).with('v-foobar').and_return(volume)
-      allow(ec2).to receive(:subnets).and_return([subnet])
     end
   end
 

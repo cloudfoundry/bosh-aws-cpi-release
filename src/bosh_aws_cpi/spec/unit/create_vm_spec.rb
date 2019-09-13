@@ -65,7 +65,6 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
     allow(props_factory).to receive(:network_props).with(networks_spec).and_return(networks_cloud_props)
 
     allow(Aws::EC2::Resource).to receive(:new).and_return(ec2)
-    allow(ec2).to receive(:subnets).and_return([double('subnet')])
 
     allow(Bosh::AwsCloud::Stemcell).to receive(:find).with(ec2, stemcell_id).and_return(stemcell)
     allow(Bosh::AwsCloud::NetworkConfigurator).to receive(:new).with(networks_cloud_props).and_return(network_configurator)

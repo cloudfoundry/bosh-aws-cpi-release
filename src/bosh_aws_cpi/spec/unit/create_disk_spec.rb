@@ -20,7 +20,6 @@ describe Bosh::AwsCloud::CloudV1 do
       @ec2 = _ec2
       allow(@ec2).to receive(:instance).with('i-test').and_return(instance)
       allow(@ec2).to receive(:config).and_return('fake-config')
-      allow(@ec2).to receive(:subnets).and_return([double('subnet')])
     end
 
     allow(@ec2.client).to receive(:create_volume).and_return(volume_resp)

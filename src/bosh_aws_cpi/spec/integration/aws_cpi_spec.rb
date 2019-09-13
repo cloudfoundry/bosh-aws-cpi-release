@@ -70,7 +70,7 @@ describe 'the aws_cpi executable' do
     end
 
     it 'will not evaluate anything that causes an exception and will return the proper message to stdout' do
-      result = run_cpi({'method'=>'ping', 'arguments'=>[], 'context'=>{'director_uuid' => 'abc123', 'api_version' => 2}})
+      result = run_cpi({'method'=>'has_vm', 'arguments'=>['my-vm'], 'context'=>{'director_uuid' => 'abc123', 'api_version' => 2}})
 
       expect(result.keys).to eq(%w(result error log))
 
@@ -153,7 +153,7 @@ describe 'the aws_cpi executable' do
     let(:cloud_properties) { {} }
 
     it 'will return an appropriate error message when passed an invalid config file' do
-      result = run_cpi({'method'=>'ping', 'arguments'=>[], 'context'=>{'director_uuid' => 'abc123'}})
+      result = run_cpi({'method'=>'has_vm', 'arguments'=>['my-vm'], 'context'=>{'director_uuid' => 'abc123'}})
 
       expect(result.keys).to eq(%w(result error log))
 

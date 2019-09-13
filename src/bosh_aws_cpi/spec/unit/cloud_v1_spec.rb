@@ -8,7 +8,6 @@ describe Bosh::AwsCloud::CloudV1 do
 
   before do
     allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
-    allow_any_instance_of(Aws::EC2::Resource).to receive(:subnets).and_return([double('subnet')])
   end
 
   describe '#initialize' do
