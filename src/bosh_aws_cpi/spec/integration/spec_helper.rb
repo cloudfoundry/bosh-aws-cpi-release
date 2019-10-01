@@ -145,7 +145,7 @@ def vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: @cpi)
     network_spec,
     vm_disks,
     nil
-    )
+  )
   instance_id = create_vm_response
 
   if create_vm_response.is_a?(Array)

@@ -107,9 +107,9 @@ describe 'lifecycle test' do
 
     context 'environment is supplied' do
       it 'creates a vm with tags' do
-        environment = { 'bosh' => { 'tags' => {'tag1' => 'value1'} } }
+        environment = { 'bosh' => { 'tags' => { 'tag1' => 'value1' } } }
         cpi = Bosh::AwsCloud::CloudV2.new(cpi_options)
-        instance_id, _ = cpi.create_vm(nil, stemcell_id, vm_type, network_spec, vm_disks, environment)
+        instance_id, _ = cpi.create_vm(nil, @stemcell_id, vm_type, network_spec, disks, environment)
         instance = cpi.ec2_resource.instance(instance_id)
         expect(instance.tags).to_not be_nil
       end

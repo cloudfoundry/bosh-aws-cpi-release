@@ -68,12 +68,14 @@ module Bosh::AwsCloud
       }
 
       if @manifest_params[:tags]
-        params.merge!({
-          tag_specifications: {
-            resource_type: 'instance',
-            tags: @manifest_params[:tags].map { |k,v| {key: k, value: v} }
-          }
-        })
+        params.merge!(
+          tag_specifications: [
+            {
+              resource_type: 'instance',
+              tags: @manifest_params[:tags].map { |k, v| { key: k, value: v } }
+            }
+          ]
+        )
       end
 
       az = availability_zone
