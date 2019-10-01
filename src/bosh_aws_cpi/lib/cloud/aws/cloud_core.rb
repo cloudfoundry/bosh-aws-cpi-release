@@ -81,6 +81,11 @@ module Bosh::AwsCloud
         settings.root_device_name = stemcell.root_device_name
         settings.agent_config = @config.agent
 
+        tags = {}
+        if environment && environment['bosh'] && environment['bosh']['tags']
+          tags = environment['bosh']['tags']
+        end
+
         instance = @instance_manager.create(
           stemcell.image_id,
           vm_props,
@@ -88,7 +93,8 @@ module Bosh::AwsCloud
           (disk_locality || []),
           @config.aws.default_security_groups,
           block_device_mappings,
-          settings.encode(@stemcell_api_version)
+          settings.encode(@stemcell_api_version),
+          tags
         )
 
         target_groups.each do |target_group_name|

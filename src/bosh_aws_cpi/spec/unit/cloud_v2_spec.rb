@@ -214,7 +214,15 @@ describe Bosh::AwsCloud::CloudV2 do
     end
 
     let(:disk_locality) { ['some', 'disk', 'locality'] }
-    let(:environment) { 'environment' }
+    let(:environment) do 
+      {
+        'bosh' => {
+          'group' => "",
+          'groups' => [],
+          'tags' => {'tag' => 'tag_value'},
+        }
+      }
+    end
     let(:agent_settings_double) { instance_double(Bosh::AwsCloud::AgentSettings)}
     let(:registry) { instance_double(Bosh::Cpi::RegistryClient) }
     let(:agent_settings) do

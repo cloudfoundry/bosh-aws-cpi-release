@@ -28,7 +28,15 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
   end
   let(:agent_id) {'007-agent'}
   let(:instance_id) {'instance-id'}
-  let(:environment) {{}}
+  let(:environment) do
+    {
+      'bosh' => {
+        'group' => '',
+        'groups' => [],
+        'tags' => {'tag' => 'tag_value'},
+      }
+    }
+  end
   let(:stemcell) {instance_double(Bosh::AwsCloud::Stemcell, root_device_name: 'root name', image_id: stemcell_id)}
   let(:stemcell_id) {'stemcell-id'}
 
@@ -92,6 +100,7 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
       anything,
       anything,
       anything,
+      anything,
       anything
     ).and_return(instance)
     expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)).to eq(['fake-id', networks_cloud_props])
@@ -111,7 +120,8 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
       anything,
       anything,
       anything,
-      'my encoded settings'
+      'my encoded settings',
+      anything,
     ).and_return(instance)
     expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)).to eq(['fake-id', networks_cloud_props])
   end
@@ -122,6 +132,20 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
 
   it 'should configure the IP for the created instance according to the network specifications' do
     expect(network_configurator).to receive(:configure).with(ec2, instance)
+    cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)
+  end
+
+  it 'should include tags from the environment' do
+    expect(instance_manager).to receive(:create).with(
+      anything,
+      anything,
+      anything,
+      anything,
+      anything,
+      anything,
+      anything,
+      { 'tag' => 'tag_value' }
+    )
     cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)
   end
 end

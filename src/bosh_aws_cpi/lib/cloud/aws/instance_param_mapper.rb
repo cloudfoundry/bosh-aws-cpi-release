@@ -64,8 +64,17 @@ module Bosh::AwsCloud
         key_name: vm_type.key_name,
         iam_instance_profile: iam_instance_profile,
         user_data: @manifest_params[:user_data],
-        block_device_mappings: @manifest_params[:block_device_mappings]
+        block_device_mappings: @manifest_params[:block_device_mappings],
       }
+
+      if @manifest_params[:tags]
+        params.merge!({
+          tag_specifications: {
+            resource_type: 'instance',
+            tags: @manifest_params[:tags].map { |k,v| {key: k, value: v} }
+          }
+        })
+      end
 
       az = availability_zone
       placement = {}
@@ -80,7 +89,7 @@ module Bosh::AwsCloud
       nic[:groups] = sg unless sg.nil? || sg.empty?
       nic[:subnet_id] = subnet_id if subnet_id
 
-      # Only supporting one IP address for now (either IPv4 or IPv6)
+      # only supporting one ip address for now (either ipv4 or ipv6)
       if private_ip_address
         if ipv6_address?(private_ip_address)
           nic[:ipv_6_addresses] = [{ipv_6_address: private_ip_address}]

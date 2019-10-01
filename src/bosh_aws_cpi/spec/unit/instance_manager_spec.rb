@@ -82,6 +82,7 @@ module Bosh::AwsCloud
       let(:run_instances_params) do
         fake_instance_params.merge(min_count: 1, max_count: 1)
       end
+      let(:tags) { {'tag' => 'tag_value'} }
 
       before do
         allow(param_mapper).to receive(:instance_params).and_return(fake_instance_params)
@@ -130,7 +131,8 @@ module Bosh::AwsCloud
             disk_locality,
             default_options,
             fake_block_device_mappings,
-            user_data
+            user_data,
+            tags
           )
         end
       end
@@ -146,7 +148,8 @@ module Bosh::AwsCloud
           disk_locality,
           default_options,
           fake_block_device_mappings,
-          user_data
+          user_data,
+          tags
         )
       end
 
@@ -163,7 +166,8 @@ module Bosh::AwsCloud
             disk_locality,
             default_options,
             fake_block_device_mappings,
-            user_data
+            user_data,
+            tags
           )
         end
 
@@ -235,7 +239,8 @@ module Bosh::AwsCloud
             disk_locality,
             default_options,
             fake_block_device_mappings,
-            user_data
+            user_data,
+            tags
           )
         end
 
@@ -252,7 +257,8 @@ module Bosh::AwsCloud
                 disk_locality,
                 default_options,
                 fake_block_device_mappings,
-                user_data
+                user_data,
+                tags
               )
             }.to raise_error(Bosh::Clouds::VMCreationFailed, /Spot instance creation failed/)
 
@@ -287,7 +293,8 @@ module Bosh::AwsCloud
                 disk_locality,
                 default_options,
                 fake_block_device_mappings,
-                user_data
+                user_data,
+                tags
               )
             end
 
@@ -304,7 +311,8 @@ module Bosh::AwsCloud
                 disk_locality,
                 default_options,
                 fake_block_device_mappings,
-                user_data
+                user_data,
+                tags
               )
             end
           end
@@ -327,7 +335,8 @@ module Bosh::AwsCloud
             disk_locality,
             default_options,
             fake_block_device_mappings,
-            user_data
+            user_data,
+            tags
           )
         end
       end
@@ -351,7 +360,8 @@ module Bosh::AwsCloud
             disk_locality,
             default_options,
             fake_block_device_mappings,
-            user_data
+            user_data,
+            tags
           )
         end
       end
@@ -376,7 +386,8 @@ module Bosh::AwsCloud
           disk_locality,
           default_options,
           fake_block_device_mappings,
-          user_data
+          user_data,
+          tags
         )
       end
 
@@ -402,7 +413,8 @@ module Bosh::AwsCloud
               disk_locality,
               default_options,
               fake_block_device_mappings,
-              user_data
+              user_data,
+              tags
             )
           }.to raise_error(create_err)
         end
@@ -425,7 +437,8 @@ module Bosh::AwsCloud
               disk_locality,
               default_options,
               fake_block_device_mappings,
-              user_data
+              user_data,
+              tags
             )
           }.to raise_error(Bosh::AwsCloud::AbruptlyTerminated)
         end
@@ -447,7 +460,8 @@ module Bosh::AwsCloud
                 disk_locality,
                 default_options,
                 fake_block_device_mappings,
-                user_data
+                user_data,
+                tags
               )
             }.to raise_error(create_err)
           end

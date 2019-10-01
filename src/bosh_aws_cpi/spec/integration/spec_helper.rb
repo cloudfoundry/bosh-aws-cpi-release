@@ -144,7 +144,7 @@ def vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: @cpi)
     vm_type,
     network_spec,
     vm_disks,
-    nil,
+    nil
     )
   instance_id = create_vm_response
 

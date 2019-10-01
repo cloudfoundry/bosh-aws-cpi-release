@@ -781,6 +781,21 @@ module Bosh::AwsCloud
           end
         end
       end
+
+      describe 'tags' do
+        context 'when tags are supplied' do
+          it 'constructs tag specification' do
+            instance_param_mapper.manifest_params = {
+              vm_type: vm_cloud_props,
+              networks_spec: network_cloud_props,
+              tags: { 'tag' => 'tag_value' }
+            }
+            expect(instance_param_mapper.instance_params[:tag_specifications]).to_not be_nil
+            expect(instance_param_mapper.instance_params[:tag_specifications][:tags]).to eq([{key: 'tag', value: 'tag_value'}])
+            expect(instance_param_mapper.instance_params[:tag_specifications][:resource_type]).to eq('instance')
+          end
+        end
+      end
     end
 
     describe '#validate_required_inputs' do
