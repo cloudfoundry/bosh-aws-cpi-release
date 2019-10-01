@@ -791,8 +791,8 @@ module Bosh::AwsCloud
               tags: { 'tag' => 'tag_value' }
             }
             expect(instance_param_mapper.instance_params[:tag_specifications]).to_not be_nil
-            expect(instance_param_mapper.instance_params[:tag_specifications][:tags]).to eq([{key: 'tag', value: 'tag_value'}])
-            expect(instance_param_mapper.instance_params[:tag_specifications][:resource_type]).to eq('instance')
+            expect(instance_param_mapper.instance_params[:tag_specifications][0][:tags]).to eq([{key: 'tag', value: 'tag_value'}])
+            expect(instance_param_mapper.instance_params[:tag_specifications][0][:resource_type]).to eq('instance')
           end
         end
       end
