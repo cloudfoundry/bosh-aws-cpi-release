@@ -67,7 +67,7 @@ module Bosh::AwsCloud
         block_device_mappings: @manifest_params[:block_device_mappings],
       }
 
-      if @manifest_params[:tags]
+      unless @manifest_params[:tags].nil? || @manifest_params[:tags].empty?
         params.merge!(
           tag_specifications: [
             {
