@@ -29,6 +29,26 @@ describe 'lifecycle test' do
   let(:registry) { instance_double(Bosh::Cpi::RegistryClient).as_null_object }
   let(:mock_cpi_api_version) { 2 }
 
+  let(:cpi_v2_options) {
+    {
+      'aws' => {
+        'region' => @region,
+        'default_key_name' => @default_key_name,
+        'default_security_groups' => get_security_group_ids,
+        'fast_path_delete' => 'yes',
+        'access_key_id' => @access_key_id,
+        'secret_access_key' => @secret_access_key,
+        'session_token' => @session_token,
+        'max_retries' => 8,
+        'vm' => {'stemcell' => {'api_version' => 2}},
+      },
+    }
+  }
+
+  let(:cpi_v2) do
+    Bosh::AwsCloud::CloudV2.new(cpi_v2_options)
+  end
+
   before do
     allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
     allow(registry).to receive(:read_settings).and_return({})
@@ -83,34 +103,16 @@ describe 'lifecycle test' do
     end
 
     context 'stemcell is specified as v2' do
-      let(:cpi_options) {
-        {
-          'aws' => {
-            'region' => @region,
-            'default_key_name' => @default_key_name,
-            'default_security_groups' => get_security_group_ids,
-            'fast_path_delete' => 'yes',
-            'access_key_id' => @access_key_id,
-            'secret_access_key' => @secret_access_key,
-            'session_token' => @session_token,
-            'max_retries' => 8,
-            'vm' => {'stemcell' => {'api_version' => 2}},
-          },
-        }
-      }
-
       it 'does not raise an error when cloudv2 is used' do
-        cpi = Bosh::AwsCloud::CloudV2.new(cpi_options)
-        expect { vm_lifecycle(cpi: cpi) }.to_not raise_error
+        expect { vm_lifecycle(cpi: cpi_v2) }.to_not raise_error
       end
     end
 
-    context 'environment is supplied' do
+    context 'environment contains tags' do
       it 'creates a vm with tags' do
         environment = { 'bosh' => { 'tags' => { 'tag1' => 'value1' } } }
-        cpi = Bosh::AwsCloud::CloudV2.new(cpi_options)
-        instance_id, _ = cpi.create_vm(nil, @stemcell_id, vm_type, network_spec, disks, environment)
-        instance = cpi.ec2_resource.instance(instance_id)
+        instance_id, _ = cpi_v2.create_vm(nil, @stemcell_id, vm_type, network_spec, disks, environment)
+        instance = cpi_v2.ec2_resource.instance(instance_id)
         expect(instance.tags).to_not be_nil
       end
     end
