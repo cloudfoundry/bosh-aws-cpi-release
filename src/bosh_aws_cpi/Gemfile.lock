@@ -47,7 +47,7 @@ GEM
     membrane (1.1.0)
     method_source (0.9.0)
     multi_json (1.12.2)
-    netaddr (1.5.1)
+    netaddr (2.0.4)
     pry (0.11.2)
       coderay (~> 1.1.0)
       method_source (~> 0.9.0)
@@ -87,7 +87,7 @@ DEPENDENCIES
   aws-sdk-iam (~> 1.5)
   bosh_common (= 1.3262.24.0)
   bosh_cpi
-  netaddr
+  netaddr (>= 2.0.4)
   pry-byebug (~> 3.4)
   rake (~> 12.0)
   rspec (~> 3.5)
