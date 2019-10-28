@@ -7,13 +7,13 @@ module Bosh::AwsCloud
     METADATA_TIMEOUT = 5 # in seconds
     DEVICE_POLL_TIMEOUT = 60 # in seconds
 
-    # Current API version supported by this CPI
-    API_VERSION = 3
+    # Current CPI API version supported by this CPI
+    API_VERSION = 2
 
-    # CPI API version that first supports optional-registry operation
+    # Stemcell API version that first supports optional-registry operation
     STEMCELL_NO_REGISTRY = 2
 
-    # CPI API version that first supports signed urls. No CPI changes required.
+    # Stemcell API version that first supports signed urls. No CPI changes required.
     STEMCELL_SUPPORTS_SIGNED_URLS = 3
 
     ##
