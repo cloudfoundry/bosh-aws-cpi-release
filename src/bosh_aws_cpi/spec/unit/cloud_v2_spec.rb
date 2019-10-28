@@ -31,8 +31,25 @@ describe Bosh::AwsCloud::CloudV2 do
       end
       it 'should initialize cloud_core with agent_version 2' do
         allow(Bosh::AwsCloud::CloudCore).to receive(:new).and_return(cloud_core)
-        expect(Bosh::AwsCloud::CloudCore).to receive(:new).with(anything, anything, anything, anything, cloud_api_version).and_return(cloud_core)
+        expect(Bosh::AwsCloud::CloudCore).to receive(:new).with(anything, anything, anything, anything, 2).and_return(cloud_core)
         described_class.new(options)
+      end
+
+      context "no stemcell api version in options" do
+        let(:options) do
+          mock_cloud_properties_merge(
+            {
+              'aws' => {
+                'vm' => {}
+              }
+            }
+          )
+        end
+        it 'should initialize cloud_core with default stemcell api version of 1' do
+          allow(Bosh::AwsCloud::CloudCore).to receive(:new).and_return(cloud_core)
+          expect(Bosh::AwsCloud::CloudCore).to receive(:new).with(anything, anything, anything, anything, 1).and_return(cloud_core)
+          described_class.new(options)
+        end
       end
     end
 

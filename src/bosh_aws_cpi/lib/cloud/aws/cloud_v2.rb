@@ -6,8 +6,15 @@ module Bosh::AwsCloud
   class CloudV2 < Bosh::AwsCloud::CloudV1
     METADATA_TIMEOUT = 5 # in seconds
     DEVICE_POLL_TIMEOUT = 60 # in seconds
-    API_VERSION = 2
+
+    # Current API version supported by this CPI
+    API_VERSION = 3
+
+    # CPI API version that first supports optional-registry operation
     STEMCELL_NO_REGISTRY = 2
+
+    # CPI API version that first supports signed urls. No CPI changes required.
+    STEMCELL_SUPPORTS_SIGNED_URLS = 3
 
     ##
     # Initialize BOSH AWS CPI. The contents of sub-hashes are defined in the {file:README.md}
@@ -18,7 +25,7 @@ module Bosh::AwsCloud
     def initialize(options)
       super(options)
 
-      @stemcell_api_version = [@config.stemcell_api_version, STEMCELL_NO_REGISTRY].min
+      @stemcell_api_version = @config.stemcell_api_version
       @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector, @stemcell_api_version)
     end
 

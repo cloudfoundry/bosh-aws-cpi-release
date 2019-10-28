@@ -73,7 +73,7 @@ module Bosh::AwsCloud
   end
 
   class Config
-    MAX_SUPPORTED_API_VERSION = 2
+    MAX_SUPPORTED_API_VERSION = 3
 
     attr_reader :aws, :registry, :agent, :stemcell_api_version
 
@@ -88,7 +88,6 @@ module Bosh::AwsCloud
     end
 
     def supported_api_version
-      # TODO: Log warning that they are using higher debug version vs max supported version
       expected_version = @debug_api_version || MAX_SUPPORTED_API_VERSION
       [expected_version, MAX_SUPPORTED_API_VERSION].min
     end

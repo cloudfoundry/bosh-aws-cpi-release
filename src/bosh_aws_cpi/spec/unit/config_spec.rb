@@ -99,6 +99,14 @@ describe Bosh::AwsCloud::Config do
         config = Bosh::AwsCloud::Config.build(options)
         expect(config.stemcell_api_version).to eq(stemcell_api_version)
       end
+
+      context 'when stemcell api_version is higher than registry-less operation' do
+        let(:stemcell_api_version) { 3 }
+        it 'should allow usage of this version' do
+          config = Bosh::AwsCloud::Config.build(options)
+          expect(config.stemcell_api_version).to eq(3)
+        end
+      end
     end
 
     context 'when stemcell api_version is not specified' do
