@@ -83,7 +83,7 @@ describe Bosh::AwsCloud::CloudV1 do
     end
 
     @manual_subnet_cidr = @ec2.subnet(@manual_subnet_id).cidr_block
-    manual_ips = IPAddr.new(@manual_subnet_cidr).to_range.to_a
+    manual_ips = IPAddr.new(@manual_subnet_cidr).to_range.to_a.map(&:to_s)
     ip_addresses = manual_ips.first(manual_ips.size - 1).drop(7)
 
     @ip_semaphore.synchronize do
