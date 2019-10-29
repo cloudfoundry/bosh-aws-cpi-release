@@ -58,12 +58,12 @@ module Bosh::AwsCloud
 
     def settings_for_version(version)
       case version
-        when 2
-          agent_settings.merge(user_data)
+        when nil
+          raise Bosh::Clouds::CPIAPIVersionNotSupported, "Stemcell API version '#{version}' is not supported."
         when 1
           user_data
         else
-          raise Bosh::Clouds::CPIAPIVersionNotSupported, "Stemcell API version '#{version}' is not supported."
+          agent_settings.merge(user_data)
       end
     end
 

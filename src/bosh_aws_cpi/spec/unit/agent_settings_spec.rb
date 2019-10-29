@@ -212,10 +212,6 @@ describe Bosh::AwsCloud::AgentSettings do
   end
 
   describe 'cpi api version invalid' do
-    it 'raises an error with an unsupported version' do
-      expect{subject.settings_for_version(1337)}.to raise_error(Bosh::Clouds::CPIAPIVersionNotSupported)
-    end
-
     it 'raises an error with a nil version' do
       expect{subject.settings_for_version(nil)}.to raise_error(Bosh::Clouds::CPIAPIVersionNotSupported)
     end
