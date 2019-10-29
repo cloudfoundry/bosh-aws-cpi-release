@@ -3,7 +3,7 @@ require 'bosh/cpi/compatibility_helpers/delete_vm'
 require 'tempfile'
 require 'bosh/cpi/logger'
 require 'cloud'
-require 'netaddr'
+require 'ipaddr'
 
 describe Bosh::AwsCloud::CloudV1 do
   before(:all) do
@@ -83,7 +83,7 @@ describe Bosh::AwsCloud::CloudV1 do
     end
 
     @manual_subnet_cidr = @ec2.subnet(@manual_subnet_id).cidr_block
-    manual_ips = NetAddr::CIDR.create(@manual_subnet_cidr).enumerate
+    manual_ips = IPAddr.new(@manual_subnet_cidr).to_range.to_a
     ip_addresses = manual_ips.first(manual_ips.size - 1).drop(7)
 
     @ip_semaphore.synchronize do
