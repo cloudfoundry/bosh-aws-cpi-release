@@ -35,7 +35,9 @@ module Bosh::AwsCloud
         }
       }.tap do |settings|
         settings['disks'].merge!(@agent_disk_info)
-        settings['disks']['ephemeral'] = settings['disks']['ephemeral'][0]['path']
+        unless settings['disks']['ephemeral'].nil?
+          settings['disks']['ephemeral'] = settings['disks']['ephemeral'][0]['path']
+        end
 
         settings['env'] = @environment if @environment
 

@@ -87,6 +87,17 @@ describe Bosh::AwsCloud::AgentSettings do
         expect(subject.agent_settings).to eq(expected_agent_settings)
       end
     end
+
+    context 'when no ephemeral disk is specified' do
+      it 'should have empty ephemeral disk info' do
+        subject.agent_disk_info = {}
+
+        expect(subject.agent_settings['disks']).to eq({
+          'system' => root_device_name,
+          'persistent' => {}
+        })
+      end
+    end
   end
 
   context '#user_data' do

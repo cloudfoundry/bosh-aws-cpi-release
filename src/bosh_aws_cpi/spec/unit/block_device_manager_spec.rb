@@ -109,113 +109,53 @@ module Bosh::AwsCloud
         it_behaves_like 'NVMe required instance types'
       end
 
-      context 'when omitting the ephemeral disk' do
-        context 'when instance type has instance storage' do
-          let(:instance_type) { 'm3.xlarge' }
-          let(:vm_type) do
-            {
-              'key_name' => 'bar',
-              'availability_zone' => 'us-east-1a',
-              'instance_type' => instance_type,
-              'raw_instance_storage' => raw_instance_storage
-            }
-          end
-
-          context 'when raw_instance_storage is false' do
-            let(:raw_instance_storage) { false }
-            it 'returns an EBS volume with size determined by the instance_type' do
-              actual_output, agent_info = manager.mappings_and_info
-              expected_output = [
-                {
-                  device_name: '/dev/sdb',
-                  ebs: {
-                    volume_size: 40,
-                    volume_type: 'gp2',
-                    delete_on_termination: true,
-                  }
-                },
-                default_root,
-              ]
-              expect(actual_output).to eq(expected_output)
-              expect(agent_info).to eq('ephemeral' => [{'path' => '/dev/sdb'}])
-            end
-          end
-
-          context 'when raw_instance_storage is true' do
-            let(:raw_instance_storage) { true }
-
-            it 'returns an EBS volume with size 10GB and disks for each instance storage disk' do
-              actual_output, agent_info = manager.mappings_and_info
-              expected_output = [default_root]
-              instance_storage_disks = [
-                {
-                  virtual_name: 'ephemeral0',
-                  device_name: '/dev/xvdba'
-                },
-                {
-                  virtual_name: 'ephemeral1',
-                  device_name: '/dev/xvdbb'
-                }
-              ]
-              expected_output += instance_storage_disks
-
-              ebs_disk = {
-                device_name: '/dev/sdb',
-                ebs: {
-                  volume_size: 10,
-                  volume_type: 'gp2',
-                  delete_on_termination: true,
-                }
+      context 'when omitting the ephemeral disk EBS' do
+        context 'when using instance storage for ephemeral disk' do
+          context 'when instance type has instance storage' do
+            let(:instance_type) { 'm3.xlarge' }
+            let(:vm_type) do
+              {
+                'key_name' => 'bar',
+                'availability_zone' => 'us-east-1a',
+                'instance_type' => instance_type,
+                'raw_instance_storage' => raw_instance_storage
               }
-              expected_output << ebs_disk
-              expect(actual_output).to match_array(expected_output)
-              expect(agent_info).to eq(
-                'ephemeral' => [{'path' => '/dev/sdb'}],
-                'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}]
-              )
             end
 
-            context 'and NVMe storage types' do
-              let(:instance_type) { 'i3.4xlarge' }
-
-              it 'returns an EBS volume with size 10GB and NO disks NVMe instance storage' do
+            context 'when raw_instance_storage is false' do
+              let(:raw_instance_storage) { false }
+              it 'returns an EBS volume with size determined by the instance_type' do
                 actual_output, agent_info = manager.mappings_and_info
-                expected_output = [default_root]
-                instance_storage_disks = []
-                expected_output += instance_storage_disks
-
-                ebs_disk = {
-                  device_name: '/dev/sdb',
-                  ebs: {
-                    volume_size: 10,
-                    volume_type: 'gp2',
-                    delete_on_termination: true,
-                  }
-                }
-                expected_output << ebs_disk
-                expect(actual_output).to match_array(expected_output)
-                expect(agent_info).to eq(
-                  'ephemeral' => [{'path' => '/dev/sdb'}],
-                  'raw_ephemeral' => [{'path' => '/dev/nvme0n1'}, {'path' => '/dev/nvme1n1'}],
-                )
+                expected_output = [
+                  {
+                    device_name: '/dev/sdb',
+                    ebs: {
+                      volume_size: 40,
+                      volume_type: 'gp2',
+                      delete_on_termination: true,
+                    }
+                  },
+                  default_root,
+                ]
+                expect(actual_output).to eq(expected_output)
+                expect(agent_info).to eq('ephemeral' => [{'path' => '/dev/sdb'}])
               end
             end
 
-            context 'when the instance is paravirtual' do
-              let(:default_root_dev) { '/dev/sda' }
-              let(:virtualization_type) { 'paravirtual' }
+            context 'when raw_instance_storage is true' do
+              let(:raw_instance_storage) { true }
 
-              it 'attaches instance disks under /dev/sd[c-z]' do
-                actual_output, _agent_info = manager.mappings_and_info
+              it 'returns an EBS volume with size 10GB and disks for each instance storage disk' do
+                actual_output, agent_info = manager.mappings_and_info
                 expected_output = [default_root]
                 instance_storage_disks = [
                   {
                     virtual_name: 'ephemeral0',
-                    device_name: '/dev/sdc'
+                    device_name: '/dev/xvdba'
                   },
                   {
                     virtual_name: 'ephemeral1',
-                    device_name: '/dev/sdd'
+                    device_name: '/dev/xvdbb'
                   }
                 ]
                 expected_output += instance_storage_disks
@@ -230,50 +170,137 @@ module Bosh::AwsCloud
                 }
                 expected_output << ebs_disk
                 expect(actual_output).to match_array(expected_output)
+                expect(agent_info).to eq(
+                  'ephemeral' => [{'path' => '/dev/sdb'}],
+                  'raw_ephemeral' => [{'path' => '/dev/xvdba'}, {'path' => '/dev/xvdbb'}]
+                )
+              end
+
+              context 'and NVMe storage types' do
+                let(:instance_type) { 'i3.4xlarge' }
+
+                it 'returns an EBS volume with size 10GB and NO disks NVMe instance storage' do
+                  actual_output, agent_info = manager.mappings_and_info
+                  expected_output = [default_root]
+                  instance_storage_disks = []
+                  expected_output += instance_storage_disks
+
+                  ebs_disk = {
+                    device_name: '/dev/sdb',
+                    ebs: {
+                      volume_size: 10,
+                      volume_type: 'gp2',
+                      delete_on_termination: true,
+                    }
+                  }
+                  expected_output << ebs_disk
+                  expect(actual_output).to match_array(expected_output)
+                  expect(agent_info).to eq(
+                    'ephemeral' => [{'path' => '/dev/sdb'}],
+                    'raw_ephemeral' => [{'path' => '/dev/nvme0n1'}, {'path' => '/dev/nvme1n1'}],
+                  )
+                end
+              end
+
+              context 'when the instance is paravirtual' do
+                let(:default_root_dev) { '/dev/sda' }
+                let(:virtualization_type) { 'paravirtual' }
+
+                it 'attaches instance disks under /dev/sd[c-z]' do
+                  actual_output, _agent_info = manager.mappings_and_info
+                  expected_output = [default_root]
+                  instance_storage_disks = [
+                    {
+                      virtual_name: 'ephemeral0',
+                      device_name: '/dev/sdc'
+                    },
+                    {
+                      virtual_name: 'ephemeral1',
+                      device_name: '/dev/sdd'
+                    }
+                  ]
+                  expected_output += instance_storage_disks
+
+                  ebs_disk = {
+                    device_name: '/dev/sdb',
+                    ebs: {
+                      volume_size: 10,
+                      volume_type: 'gp2',
+                      delete_on_termination: true,
+                    }
+                  }
+                  expected_output << ebs_disk
+                  expect(actual_output).to match_array(expected_output)
+                end
+              end
+            end
+          end
+
+          context 'when instance type does not have instance storage' do
+            let(:vm_type) do
+              {
+                'key_name' => 'bar',
+                'availability_zone' => 'us-east-1a',
+                'instance_type' => 't2.small'
+              }
+            end
+
+            it 'uses a default 10GB EBS storage for ephemeral disk' do
+              mappings, agent_info = manager.mappings_and_info
+              ebs_disk = {
+                device_name: '/dev/sdb',
+                ebs: {
+                  volume_size: 10,
+                  volume_type: 'gp2',
+                  delete_on_termination: true,
+                }
+              }
+              expect(mappings).to contain_exactly(ebs_disk, default_root)
+              expect(agent_info).to eq('ephemeral' => [{'path' => '/dev/sdb'}])
+            end
+
+            context 'when asked for raw instance storage' do
+              let(:vm_type) do
+                {
+                  'key_name' => 'bar',
+                  'availability_zone' => 'us-east-1a',
+                  'instance_type' => 't2.small',
+                  'raw_instance_storage' => true
+                }
+              end
+
+              it 'raises an error when asked for raw instance storage' do
+                expect { manager.mappings_and_info }.to raise_error(
+                  Bosh::Clouds::CloudError,
+                  "raw_instance_storage requested for instance type 't2.small' that does not have instance storage"
+                )
               end
             end
           end
         end
 
-        context 'when instance type does not have instance storage' do
+        context 'when using root device for ephemeral disk' do
           let(:vm_type) do
             {
               'key_name' => 'bar',
               'availability_zone' => 'us-east-1a',
-              'instance_type' => 't2.small'
+              'instance_type' => instance_type,
+              'ephemeral_disk' => {
+                'use_root_disk' => true,
+              }
             }
           end
 
-          it 'uses a default 10GB EBS storage for ephemeral disk' do
+          it 'does not configure a block device for ephemeral disk' do
+            manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props)
+
+            expected_output = [
+              default_root
+            ]
+
             mappings, agent_info = manager.mappings_and_info
-            ebs_disk = {
-              device_name: '/dev/sdb',
-              ebs: {
-                volume_size: 10,
-                volume_type: 'gp2',
-                delete_on_termination: true,
-              }
-            }
-            expect(mappings).to contain_exactly(ebs_disk, default_root)
-            expect(agent_info).to eq('ephemeral' => [{'path' => '/dev/sdb'}])
-          end
-
-          context 'when asked for raw instance storage' do
-            let(:vm_type) do
-              {
-                'key_name' => 'bar',
-                'availability_zone' => 'us-east-1a',
-                'instance_type' => 't2.small',
-                'raw_instance_storage' => true
-              }
-            end
-
-            it 'raises an error when asked for raw instance storage' do
-              expect { manager.mappings_and_info }.to raise_error(
-                Bosh::Clouds::CloudError,
-                "raw_instance_storage requested for instance type 't2.small' that does not have instance storage"
-              )
-            end
+            expect(mappings).to match_array(expected_output)
+            expect(agent_info).to eq({})
           end
         end
       end

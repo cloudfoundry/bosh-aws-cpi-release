@@ -92,10 +92,13 @@ module Bosh::AwsCloud
       end
 
       block_devices = []
-      block_devices << ephemeral_disk_mapping(instance_type, disk_info)
+      ephemeral_disk = @vm_cloud_props.ephemeral_disk
+      unless ephemeral_disk.use_root_disk
+        block_devices << ephemeral_disk_mapping(instance_type, disk_info)
 
-      if @vm_cloud_props.raw_instance_storage?
-        block_devices += raw_instance_mappings(disk_info.count)
+        if @vm_cloud_props.raw_instance_storage?
+          block_devices += raw_instance_mappings(disk_info.count)
+        end
       end
 
       if @vm_cloud_props.root_disk.specified?
