@@ -1,8 +1,10 @@
-#!/bin/sh
+#!/bin/bash
 #
 # This script runs as root through sudo without the need for a password,
 # so it needs to make sure it can't be abused.
 #
+
+set -euo pipefail
 
 # make sure we have a secure PATH
 PATH=/bin:/usr/bin
@@ -14,12 +16,6 @@ fi
 
 IMAGE="$1"
 OUTPUT_PATH="$2"
-
-echo ${OUTPUT_PATH} | egrep '^/dev/[svx]+d[a-z0-9]+$' > /dev/null 2>&1
-if [[ $? -ne 0 ]]; then
-  echo "ERROR: illegal device: ${OUTPUT_PATH}"
-  exit 1
-fi
 
 if [[ ! -b ${OUTPUT_PATH} ]]; then
   echo "ERROR: not a device: ${OUTPUT_PATH}"

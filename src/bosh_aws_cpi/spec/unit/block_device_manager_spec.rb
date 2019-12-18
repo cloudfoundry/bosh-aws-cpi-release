@@ -715,5 +715,51 @@ module Bosh::AwsCloud
         end
       end
     end
+
+    describe '#block_device_ready' do
+      before do
+        allow(BlockDeviceManager).to receive(:sleep).with(1)
+      end
+
+      context 'nvme device path' do
+        it 'checks for nvme block device' do
+          allow(File).to receive(:blockdev?).and_return(false, true)
+          actual = BlockDeviceManager.block_device_ready?(BlockDeviceManager::NVME_EBS_BY_ID_DEVICE_PATH_PREFIX + "volid")
+          expect(actual).to match(BlockDeviceManager::NVME_EBS_BY_ID_DEVICE_PATH_PREFIX + "volid")
+          expect(File).to have_received(:blockdev?).exactly(2).times
+        end
+      end
+
+      context 'not an nvme device path' do
+        context 'device mounted at /dev/sda' do
+          it 'checks for sd* or xvd* block device' do
+            allow(File).to receive(:blockdev?).with('/dev/sda').and_return(false, true)
+            allow(File).to receive(:blockdev?).with('/dev/xvda').and_return(false)
+            actual = BlockDeviceManager.block_device_ready?('/dev/sda')
+            expect(actual).to match('/dev/sda')
+            expect(File).to have_received(:blockdev?).exactly(3).times
+          end
+        end
+        context 'device mounted at /dev/xvda' do
+          it 'checks for sd* or xvd* block device' do
+            allow(File).to receive(:blockdev?).with('/dev/sda').and_return(false)
+            allow(File).to receive(:blockdev?).with('/dev/xvda').and_return(false, true)
+            actual = BlockDeviceManager.block_device_ready?('/dev/sda')
+            expect(actual).to match('/dev/xvda')
+            expect(File).to have_received(:blockdev?).exactly(4).times
+          end
+        end
+      end
+
+      context 'block device never mounted' do
+        it 'raises cloud error' do
+          allow(File).to receive(:blockdev?).and_return(false)
+          expect {
+            BlockDeviceManager.block_device_ready?(BlockDeviceManager::NVME_EBS_BY_ID_DEVICE_PATH_PREFIX + "volid")
+          }.to raise_error(Bosh::Clouds::CloudError, /Cannot find EBS volume on current instance/)
+          expect(File).to have_received(:blockdev?).exactly(60).times
+        end
+      end
+    end
   end
 end

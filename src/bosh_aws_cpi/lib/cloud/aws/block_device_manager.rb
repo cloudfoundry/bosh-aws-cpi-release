@@ -30,6 +30,26 @@ module Bosh::AwsCloud
       end
     end
 
+    def self.block_device_ready?(device_path)
+      candidatePaths = [device_path]
+      unless device_path.start_with?(NVME_EBS_BY_ID_DEVICE_PATH_PREFIX)
+        xvd_name = device_path.gsub(/^\/dev\/sd/, '/dev/xvd')
+        candidatePaths << xvd_name
+      end
+
+      Bosh::AwsCloud::CloudCore::DEVICE_POLL_TIMEOUT.times do
+        candidatePaths.each do |path|
+          if File.blockdev?(path)
+            return path
+          end
+        end
+
+        sleep(1)
+      end
+
+      cloud_error('Cannot find EBS volume on current instance')
+    end
+
     def self.requires_nvme_device(instance_type)
       instance_type = instance_type.nil? ? 'unspecified' : instance_type
       instance_family = instance_type.split(".")[0]

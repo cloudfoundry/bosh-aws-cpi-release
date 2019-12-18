@@ -461,16 +461,21 @@ module Bosh::AwsCloud
           kms_key_arn: stemcell_cloud_props.kms_key_arn
         ).persistent_disk_config
         volume = @volume_manager.create_ebs_volume(disk_config)
-        sd_name = @volume_manager.attach_ebs_volume(instance, volume)
+        requested_path = @volume_manager.attach_ebs_volume(instance, volume)
 
-        device_path = BlockDeviceManager.device_path(
-          sd_name,
+        logger.debug("Requested block device: #{requested_path}")
+        expected_path = BlockDeviceManager.device_path(
+          requested_path,
           instance.instance_type,
           volume.id
         )
 
+        logger.debug("Expected block device: #{expected_path}")
+        actual_path = BlockDeviceManager.block_device_ready?(expected_path)
+
+        logger.debug("Actual block device: #{actual_path}")
         logger.info("Creating stemcell with: '#{volume.id}' and '#{stemcell_cloud_props.inspect}'")
-        creator.create(volume, device_path, image_path).id
+        creator.create(volume, actual_path, image_path).id
       rescue => e
         logger.error(e)
         raise e
