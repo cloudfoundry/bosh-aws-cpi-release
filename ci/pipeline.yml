@@ -13,6 +13,7 @@ shared:
 - &prepare-director
   task: prepare-director
   file: pipelines/shared/tasks/prepare-director.yml
+  image: aws-cpi-image
   params: &prepare-director-params
     INFRASTRUCTURE:     aws
     DIRECTOR_VARS_FILE: {{aws_director_vars_file}}
@@ -20,10 +21,12 @@ shared:
 - &deploy-director
   task: deploy-director
   file: pipelines/shared/tasks/deploy-director.yml
+  image: aws-cpi-image
 
 - &run-bats
   task: run-bats
   file: pipelines/shared/tasks/run-bats.yml
+  image: aws-cpi-image
   params:
     INFRASTRUCTURE:     aws
     STEMCELL_NAME:      bosh-aws-xen-hvm-ubuntu-xenial-go_agent
@@ -34,12 +37,14 @@ shared:
 - &run-end-2-end
   task: run-e2e
   file: bosh-cpi-src/ci/tasks/run-e2e.yml
+  image: aws-cpi-image
   params:
     BOSH_AWS_KMS_KEY_ARN: {{aws_kms_key_arn}}
 
 - &ensure-terminated
   task: ensure-terminated
   file: bosh-cpi-src/ci/tasks/ensure-terminated.yml
+  image: aws-cpi-image
   params:
     AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
     AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
@@ -48,6 +53,7 @@ shared:
 - &teardown
   task: teardown
   file: pipelines/shared/tasks/teardown.yml
+  image: aws-cpi-image
 
 jobs:
 - name: build-candidate
@@ -57,10 +63,12 @@ jobs:
     - {trigger: true, get: bosh-cpi-src, resource: bosh-cpi-src-in}
     - {trigger: false, get: version-semver, params: {bump: patch}}
     - {trigger: false, get: bosh-cli}
+    - {get: aws-cpi-image }
   - put: version-semver
     params: {file: version-semver/number}
   - task: build
     file: bosh-cpi-src/ci/tasks/build-candidate.yml
+    image: aws-cpi-image
   - put: bosh-cpi-dev-artifacts
     params: {file: candidate/*.tgz}
 
@@ -70,6 +78,7 @@ jobs:
   - in_parallel:
     - {trigger: true,  passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
     - {trigger: false, passed: [build-candidate], get: bosh-cpi-src, resource: bosh-cpi-src-in}
+    - {get: aws-cpi-image }
   - put: environment
     params:
       env_name: bosh-aws-cpi-integration
@@ -78,6 +87,7 @@ jobs:
       terraform_source: bosh-cpi-src/ci/assets/terraform
   - task: test
     file: bosh-cpi-src/ci/tasks/run-integration.yml
+    image: aws-cpi-image
     params:
       AWS_ACCESS_KEY_ID:                       {{aws_access_key__cpi}}
       AWS_SECRET_ACCESS_KEY:                   {{aws_secret_key__cpi}}
@@ -110,6 +120,7 @@ jobs:
     - {get: pipelines,       trigger: false}
     - {get: bosh-cli,        trigger: false}
     - {get: bats,            trigger: false}
+    - {get: aws-cpi-image }
   - put: environment
     params:
       env_name: bosh-aws-cpi-bats
@@ -154,6 +165,7 @@ jobs:
     - {get: bosh-deployment, trigger: false}
     - {get: pipelines,       trigger: false}
     - {get: bosh-cli,        trigger: false}
+    - {get: aws-cpi-image }
   - put: environment
     params:
       env_name: bosh-aws-cpi-end-2-end
@@ -194,8 +206,10 @@ jobs:
     - {get: bosh-cpi-src, trigger: false, resource: bosh-cpi-src-in, passed: [end-2-end, bats, integration]}
     - {trigger: false, get: release-version-semver, params: {bump: major}}
     - {trigger: false, get: bosh-cli}
+    - {get: aws-cpi-image }
   - task: promote
     file: bosh-cpi-src/ci/tasks/promote-candidate.yml
+    image: aws-cpi-image
     params:
       AWS_ACCESS_KEY_ID:     {{aws_access_key__primary}}
       AWS_SECRET_ACCESS_KEY: {{aws_secret_key__primary}}
