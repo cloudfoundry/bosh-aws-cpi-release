@@ -6,8 +6,6 @@ set -e
 : ${AWS_SECRET_ACCESS_KEY:?}
 
 source bosh-cpi-src/ci/utils.sh
-source /etc/profile.d/chruby.sh
-chruby 2.4.4
 
 # Creates an integer version number from the semantic version format
 # May be changed when we decide to fully use semantic versions for releases
