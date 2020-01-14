@@ -6,16 +6,26 @@ ENV LANG en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 RUN locale-gen en_US.UTF-8
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    build-essential \
-    git curl wget tar make unzip \
-    sqlite3 libsqlite3-dev \
-    mysql-client libmysqlclient-dev \
-    libpq-dev \
-    jq \
-    python python-pip realpath && \
-    apt-get clean
+RUN apt-get -y upgrade
+RUN apt-get install -y \
+	build-essential \
+	git \
+	curl \
+	wget \
+	tar \
+	libssl-dev \
+	libreadline-dev \
+	sqlite3 \
+	libsqlite3-dev \
+	dnsutils \
+	xvfb \
+	jq \
+	realpath \
+	libpq-dev \
+	rsyslog \
+	libcurl4-openssl-dev \
+	python python-pip \
+	&& apt-get clean
 
 RUN pip install awscli
 
