@@ -17,8 +17,6 @@ RUN apt-get update && \
     python python-pip realpath && \
     apt-get clean
 
-RUN pip install --upgrade pip
-RUN pip install -U setuptools
 RUN pip install awscli
 
 ENV RUBY_INSTALL_VERSION=0.7.0 RUBY_VERSION=2.6.5

@@ -208,12 +208,11 @@ jobs:
   public: true
   serial: true
   plan:
-    - get: bosh-cpi-src-in
     - get: bosh-cpi-src-dockerfiles
       trigger: true
     - put: aws-cpi-image
       params:
-        build: "bosh-cpi-src-in/ci/docker/aws-cpi"
+        build: "bosh-cpi-src-dockerfiles/ci/docker/aws-cpi"
       get_params:
         skip_download: true
 
@@ -253,7 +252,7 @@ resources:
     uri: https://github.com/cloudfoundry-incubator/bosh-aws-cpi-release.git
     branch: master
     paths:
-      - "ci/dockerfiles"
+      - "ci/docker"
 - name: version-semver
   type: semver
   source:
