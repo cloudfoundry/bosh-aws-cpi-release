@@ -15,11 +15,6 @@ set -e
 
 release_dir="$( cd $(dirname $0) && cd ../.. && pwd )"
 
-if [[ -f "/etc/profile.d/chruby.sh" ]] ; then
-  source /etc/profile.d/chruby.sh
-  chruby 2.4.4
-fi
-
 metadata=$(cat ${METADATA_FILE})
 
 export BOSH_AWS_CPI_API_VERSION=${BOSH_AWS_CPI_API_VERSION}
