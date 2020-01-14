@@ -7,6 +7,7 @@ groups:
   - bats
   - end-2-end
   - promote-candidate
+  - build-dockerfile
 
 shared:
 - &prepare-director
@@ -203,6 +204,20 @@ jobs:
   - put: release-version-semver
     params: {file: release-version-semver/number}
 
+- name: build-dockerfile
+  public: true
+  serial: true
+  plan:
+    - get: bosh-cpi-src-in
+    - get: bosh-cpi-src-dockerfiles
+      trigger: true
+    - put: aws-cpi-image
+      params:
+        build: "bosh-cpi-src-in/ci/docker/aws-cpi"
+      get_params:
+        skip_download: true
+
+
 resource_types:
 - name: terraform_type
   type: docker-image
@@ -232,6 +247,13 @@ resources:
     uri: git@github.com:cloudfoundry-incubator/bosh-aws-cpi-release.git
     branch: master
     private_key: {{github_deployment_key__bosh-aws-cpi-release}}
+- name: bosh-cpi-src-dockerfiles
+  type: git
+  source:
+    uri: https://github.com/cloudfoundry-incubator/bosh-aws-cpi-release.git
+    branch: master
+    paths:
+      - "ci/dockerfiles"
 - name: version-semver
   type: semver
   source:
@@ -293,3 +315,10 @@ resources:
   type: bosh-io-stemcell
   source:
     name: bosh-aws-xen-hvm-ubuntu-xenial-go_agent
+- name: aws-cpi-image
+  type: docker-image
+  source:
+    repository: bosh/aws-cpi
+    email: ((dockerhub_email))
+    username: ((dockerhub_username))
+    password: ((dockerhub_password))
