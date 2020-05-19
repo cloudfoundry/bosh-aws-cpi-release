@@ -12,6 +12,10 @@ module Bosh::AwsCloud
     end
 
     def create(launch_specification, spot_bid_price)
+      # Spot instances can't send tag_specifications with the launch specification. Otherwise this
+      # call bombs
+      launch_specification.delete(:tag_specifications)
+
       spot_request_spec = {
         spot_price: "#{spot_bid_price}",
         instance_count: 1,
