@@ -162,5 +162,30 @@ describe Bosh::AwsCloud::SpotManager do
         expect(error.ok_to_retry).to eq false
       }
     end
+
+    context 'and tag_specifications are present' do
+      let(:fake_instance_params_with_tags) do
+        {
+          tag_specifications: [{ tags: { key: 'tag', value: 'tag_value'} }]
+        }.merge(fake_instance_params)
+      end
+
+      let(:expected_tags) do
+        { 'tag' => 'tag_value' }
+      end
+
+      before do
+        expect(aws_client).to receive(:describe_spot_instance_requests).and_return(describe_spot_instance_requests_result)
+
+        expect(spot_instance_requests[0]).to receive(:state).and_return('active')
+        expect(spot_instance_requests[0]).to receive(:instance_id).and_return('i-12345678')
+
+        expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(instance, expected_tags)
+      end
+
+      it 'should not pass tag specifications to the ec2 client' do
+        expect(spot_manager.create(fake_instance_params_with_tags, 0.24)).to be(instance)
+      end
+    end
   end
 end
