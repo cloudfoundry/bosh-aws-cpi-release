@@ -12,10 +12,12 @@ module Bosh::AwsCloud
     end
 
     def create(launch_specification, spot_bid_price)
+      launch_spec_without_tag_specs = launch_specification.reject { |k,_| k == :tag_specifications }.to_h
+
       spot_request_spec = {
         spot_price: "#{spot_bid_price}",
         instance_count: 1,
-        launch_specification: launch_specification
+        launch_specification: launch_spec_without_tag_specs
       }
       unless launch_specification[:security_groups].nil?
         message = 'Cannot use security group names when creating spot instances'
@@ -36,7 +38,22 @@ module Bosh::AwsCloud
         raise Bosh::Clouds::VMCreationFailed.new(false), message
       end
 
-      wait_for_spot_instance
+      instance = wait_for_spot_instance
+
+      if launch_specification.key? :tag_specifications
+        tags = launch_specification[:tag_specifications]
+          .flat_map { |ts| ts[:tags] }
+          .map { |t| [t[:key], t[:value]] }
+          .to_h
+
+        begin
+          TagManager.create_tags(instance, tags)
+        rescue Aws::EC2::Errors::TagLimitExceeded => e
+          logger.error("could not tag #{instance.id}: #{e.message}")
+        end
+      end
+
+      instance
     end
 
     private
