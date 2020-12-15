@@ -474,7 +474,7 @@ module Bosh::AwsCloud
         actual_path = BlockDeviceManager.block_device_ready?(expected_path)
 
         logger.debug("Actual block device: #{actual_path}")
-        logger.info("Creating stemcell with: '#{volume.id}' and '#{stemcell_cloud_props.inspect}'")
+        logger.info("Creating stemcell with: '#{volume.id}'")
         creator.create(volume, actual_path, image_path).id
       rescue => e
         logger.error(e)
