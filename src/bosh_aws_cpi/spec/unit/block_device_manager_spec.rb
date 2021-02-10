@@ -91,22 +91,12 @@ module Bosh::AwsCloud
         end
       end
 
-      context 'when creating c5 instances' do
-        let(:instance_type) { 'c5.large' }
+      BlockDeviceManager::NVME_INSTANCE_FAMILIES.each do |nvme_instance_family|
+        context "when creating #{nvme_instance_family} instances" do
+          let(:instance_type) { "#{nvme_instance_family}.large" }
 
-        it_behaves_like 'NVMe required instance types'
-      end
-
-      context 'when creating m5 instances' do
-        let(:instance_type) { 'm5.xlarge' }
-
-        it_behaves_like 'NVMe required instance types'
-      end
-
-      context 'when creating p3dn.24xlarge instances' do
-        let(:instance_type) { 'p3dn.24xlarge' }
-
-        it_behaves_like 'NVMe required instance types'
+          it_behaves_like 'NVMe required instance types'
+        end
       end
 
       context 'when omitting the ephemeral disk EBS' do
