@@ -2,7 +2,7 @@
 
 ### Creating a Release
 
-The release requires Ruby version 2.6.5 and the Ruby gem Bundler (used by the vendoring script):
+The release requires Ruby version 2.7.3 and the Ruby gem Bundler (used by the vendoring script):
 
 ```
 gem install bundler
