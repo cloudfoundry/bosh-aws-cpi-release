@@ -1,7 +1,8 @@
 #!/bin/bash
 #
-# The user running this script requires password-less sudo privileges
-# to copy the disk image to the raw disk device
+# This script runs as root through sudo without the need for a password,
+# so it needs to make sure it can't be abused.
+#
 
 set -euo pipefail
 
@@ -22,4 +23,4 @@ if [[ ! -b ${OUTPUT_PATH} ]]; then
 fi
 
 # copy image to block device with 1 MB block size
-tar -xzf ${IMAGE} -O root.img | sudo -n dd bs=1M of=${OUTPUT_PATH}
+tar -xzf ${IMAGE} -O root.img | dd bs=1M of=${OUTPUT_PATH}

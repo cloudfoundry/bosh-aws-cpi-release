@@ -33,11 +33,12 @@ module Bosh::AwsCloud
 
     private
 
-    # This method tries to execute the helper script stemcell-copy.
-    # If stemcell-copy isn't available in the PATH, it falls back to
-    # an internal version that untars the stemcell and pipes it to `dd`.
+    # This method tries to execute the helper script stemcell-copy
+    # as root using sudo, since it needs to write to the device_path.
+    # If stemcell-copy isn't available, it falls back to writing directly
+    # to the device, which is used in the micro bosh deployer.
     # The stemcell-copy script must be in the PATH of the user running
-    # the script, and the user needs sudo privileges to execute without
+    # the director, and needs sudo privileges to execute without
     # password.
     #
     def copy_root_image
@@ -47,11 +48,11 @@ module Bosh::AwsCloud
         logger.debug('copying stemcell using stemcell-copy script')
         # note that is is a potentially dangerous operation, but as the
         # stemcell-copy script sets PATH to a sane value this is safe
-        command = "#{stemcell_copy} #{image_path} #{device_path} 2>&1"
+        command = "sudo -n #{stemcell_copy} #{image_path} #{device_path} 2>&1"
       else
         logger.info('falling back to using included copy stemcell')
         included_stemcell_copy = File.expand_path('../../../../bin/stemcell-copy', __FILE__)
-        command = "#{included_stemcell_copy} #{image_path} #{device_path} 2>&1"
+        command = "sudo -n #{included_stemcell_copy} #{image_path} #{device_path} 2>&1"
       end
 
       result = sh(command)

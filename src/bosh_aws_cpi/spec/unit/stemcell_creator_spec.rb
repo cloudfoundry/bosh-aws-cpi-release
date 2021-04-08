@@ -146,7 +146,7 @@ module Bosh::AwsCloud
         allow(creator).to receive(:find_in_path).and_return('/path/to/stemcell-copy')
         result = double('result', :output => 'output')
 
-        cmd = '/path/to/stemcell-copy /path/to/image /dev/volume 2>&1'
+        cmd = 'sudo -n /path/to/stemcell-copy /path/to/image /dev/volume 2>&1'
         expect(creator).to receive(:sh).with(cmd).and_return(result)
 
         creator.send(:copy_root_image)
@@ -157,7 +157,7 @@ module Bosh::AwsCloud
         result = double('result', :output => 'output')
 
         stemcell_copy = File.expand_path('../../../../bosh_aws_cpi/bin/stemcell-copy', __FILE__)
-        cmd = "#{stemcell_copy} /path/to/image /dev/volume 2>&1"
+        cmd = "sudo -n #{stemcell_copy} /path/to/image /dev/volume 2>&1"
         expect(creator).to receive(:sh).with(cmd).and_return(result)
 
         creator.send(:copy_root_image)
