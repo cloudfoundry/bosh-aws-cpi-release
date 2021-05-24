@@ -1,0 +1,28 @@
+name: bosh-aws-cpi
+version: "87"
+commit_hash: 236b167
+uncommitted_changes: false
+jobs:
+- name: aws_cpi
+  version: 350c512266d8ff855ec69e5813cba4b7eeb82f39ec37b8dd903c24b55eebd2ed
+  fingerprint: 350c512266d8ff855ec69e5813cba4b7eeb82f39ec37b8dd903c24b55eebd2ed
+  sha1: sha256:141a37358aaf62378b73f6aa40b44d65c71e52f5703fa84caae1c43d694bced4
+  packages:
+  - ruby-2.7.3-r0.43.0
+  - bosh_aws_cpi
+packages:
+- name: bosh_aws_cpi
+  version: d03a818f9b99be1903601b822f51c04257e48352eabf22d960b9bb22ac31ff8a
+  fingerprint: d03a818f9b99be1903601b822f51c04257e48352eabf22d960b9bb22ac31ff8a
+  sha1: sha256:ca056cf9267cd2bce314b2a692b9b3a2b7473cd949b652d151e79430b314dd99
+  dependencies:
+  - ruby-2.7.3-r0.43.0
+- name: ruby-2.7.3-r0.43.0
+  version: 99c4d7fe18ef5287f062b73101b2b697fca340e7eac03b3ee87284b71e1c18d8
+  fingerprint: 99c4d7fe18ef5287f062b73101b2b697fca340e7eac03b3ee87284b71e1c18d8
+  sha1: sha256:2507840353929a72a2378481168e6d4ae1f2faa47939dfabb358a4724c1b634e
+  dependencies: []
+license:
+  version: 6904efc3d7f9a0daee5862166c3e7a4481a96c351e1615ccbcc79ff4b7e8826e
+  fingerprint: 6904efc3d7f9a0daee5862166c3e7a4481a96c351e1615ccbcc79ff4b7e8826e
+  sha1: sha256:0c7d15923caf9f418bf56cbbc26892984ccfb619444de68dd56b767726255f1b
