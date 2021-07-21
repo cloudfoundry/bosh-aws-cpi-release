@@ -110,14 +110,14 @@ describe Bosh::AwsCloud::CloudV1 do
         context 'when disk size is between 1 GiB and 16 TiB' do
           let(:disk_size) { 10240000 }
 
-          context 'when disk type is gp2' do
-            let(:disk_type) { 'gp2' }
+          context 'when disk type is gp3' do
+            let(:disk_type) { 'gp3' }
 
-            it 'creates disk with gp2 type' do
+            it 'creates disk with gp3 type' do
               expect(ec2_client).to receive(:create_volume).with(
                 size: 10000,
                 availability_zone: 'fake-availability-zone',
-                volume_type: 'gp2',
+                volume_type: 'gp3',
                 encrypted: false
               ).and_return(volume_resp)
 
@@ -181,11 +181,11 @@ describe Bosh::AwsCloud::CloudV1 do
         let(:cloud_properties) { {} }
         let(:disk_size) { 1025 }
 
-        it 'creates disk with gp2 disk type' do
+        it 'creates disk with gp3 disk type' do
           expect(ec2_client).to receive(:create_volume).with(
             size: 2,
             availability_zone: 'fake-availability-zone',
-            volume_type: 'gp2',
+            volume_type: 'gp3',
             encrypted: false
           ).and_return(volume_resp)
 

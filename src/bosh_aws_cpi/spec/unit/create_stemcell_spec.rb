@@ -14,7 +14,7 @@ describe Bosh::AwsCloud::CloudV1 do
       {
         size: 2,
         availability_zone: 'us-east-1a',
-        volume_type: 'gp2',
+        volume_type: 'gp3',
         encrypted: false
       }
     end
@@ -281,7 +281,7 @@ describe Bosh::AwsCloud::CloudV1 do
             {
               size: 2,
               availability_zone: 'us-east-1a',
-              volume_type: 'gp2',
+              volume_type: 'gp3',
               encrypted: true,
               kms_key_id: 'arn:aws:kms:us-east-1:ID:key/GUID'
             }
@@ -332,7 +332,7 @@ describe Bosh::AwsCloud::CloudV1 do
             {
               size: 2,
               availability_zone: 'us-east-1a',
-              volume_type: 'gp2',
+              volume_type: 'gp3',
               encrypted: true
             }
           end
@@ -401,7 +401,7 @@ describe Bosh::AwsCloud::CloudV1 do
           {
             size: 2,
             availability_zone: 'us-east-1a',
-            volume_type: 'gp2',
+            volume_type: 'gp3',
             encrypted: false,
             kms_key_id: 'arn:aws:kms:us-east-1:ID:key/GUID'
           }

@@ -373,7 +373,7 @@ describe Bosh::AwsCloud::CloudV1 do
     context 'when disk_pool.cloud_properties are empty' do
       let(:cloud_properties) { {} }
 
-      it 'creates an unencrypted gp2 disk of the specified size' do
+      it 'creates an unencrypted gp3 disk of the specified size' do
         begin
           volume_id = @cpi.create_disk(2048, cloud_properties)
           expect(volume_id).not_to be_nil
@@ -381,7 +381,7 @@ describe Bosh::AwsCloud::CloudV1 do
 
           volume = @cpi.ec2_resource.volume(volume_id)
           expect(volume.encrypted).to be(false)
-          expect(volume.volume_type).to eq('gp2')
+          expect(volume.volume_type).to eq('gp3')
           expect(volume.size).to eq(2)
         ensure
           @cpi.delete_disk(volume_id) if volume_id
@@ -538,7 +538,7 @@ describe Bosh::AwsCloud::CloudV1 do
 
           ephemeral_volume = @cpi.ec2_resource.volume(instance_disks[1])
           expect(ephemeral_volume.size).to eq(4)
-          expect(ephemeral_volume.volume_type).to eq('gp2')
+          expect(ephemeral_volume.volume_type).to eq('gp3')
           expect(ephemeral_volume.encrypted).to eq(false)
         end
       end
@@ -819,7 +819,7 @@ describe Bosh::AwsCloud::CloudV1 do
               { ami_id: ami }
             end
 
-            it 'requests root disk with the specified size and type gp2' do
+            it 'requests root disk with the specified size and type gp3' do
               verify_root_disk_properties
             end
           end
@@ -829,7 +829,7 @@ describe Bosh::AwsCloud::CloudV1 do
               { ami_id: pv_ami }
             end
 
-            it 'requests root disk with the specified size and type gp2' do
+            it 'requests root disk with the specified size and type gp3' do
               verify_root_disk_properties
             end
           end
@@ -839,7 +839,7 @@ describe Bosh::AwsCloud::CloudV1 do
               { ami_id: windows_ami }
             end
 
-            it 'requests root disk with the specified size and type gp2' do
+            it 'requests root disk with the specified size and type gp3' do
               verify_root_disk_properties
             end
           end
@@ -862,7 +862,7 @@ describe Bosh::AwsCloud::CloudV1 do
                 { ami_id: ami }
               end
 
-              it 'requests root disk with the specified size and type gp2' do
+              it 'requests root disk with the specified size and type gp3' do
                 verify_root_disk_properties
               end
             end
@@ -872,7 +872,7 @@ describe Bosh::AwsCloud::CloudV1 do
                 { ami_id: pv_ami }
               end
 
-              it 'requests root disk with the specified size and type gp2' do
+              it 'requests root disk with the specified size and type gp3' do
                 verify_root_disk_properties
               end
             end
@@ -882,7 +882,7 @@ describe Bosh::AwsCloud::CloudV1 do
                 { ami_id: windows_ami }
               end
 
-              it 'requests root disk with the specified size and type gp2' do
+              it 'requests root disk with the specified size and type gp3' do
                 verify_root_disk_properties
               end
             end
@@ -910,7 +910,7 @@ describe Bosh::AwsCloud::CloudV1 do
             if root_disk_type
               expect(root_volume.volume_type).to eq(root_disk_type)
             else
-              expect(root_volume.volume_type).to eq('gp2')
+              expect(root_volume.volume_type).to eq('gp3')
             end
           end
         end

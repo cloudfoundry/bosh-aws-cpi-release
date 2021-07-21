@@ -25,7 +25,7 @@ module Bosh::AwsCloud
             device_name: '/dev/sdb',
             ebs: {
               volume_size: 0,
-              volume_type: 'gp2',
+              volume_type: 'gp3',
               delete_on_termination: true
             }
           )
@@ -59,7 +59,7 @@ module Bosh::AwsCloud
           expect(vp).to eq(
             size: 0,
             availability_zone: nil,
-            volume_type: 'gp2',
+            volume_type: 'gp3',
             encrypted: false,
           )
         end
@@ -93,7 +93,7 @@ module Bosh::AwsCloud
           expect(vp).to eq(
             device_name: '/dev/xvda',
             ebs: {
-              volume_type: 'gp2',
+              volume_type: 'gp3',
               delete_on_termination: true,
             }
           )

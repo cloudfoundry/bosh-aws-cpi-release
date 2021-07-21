@@ -7,7 +7,7 @@ module Bosh::AwsCloud
       {
         device_name: default_root_dev,
         ebs: {
-          volume_type: 'gp2',
+          volume_type: 'gp3',
           delete_on_termination: true,
         },
       }
@@ -58,7 +58,7 @@ module Bosh::AwsCloud
               device_name: '/dev/sdb',
               ebs: {
                 volume_size: 10,
-                volume_type: 'gp2',
+                volume_type: 'gp3',
                 delete_on_termination: true,
               }
             },
@@ -121,7 +121,7 @@ module Bosh::AwsCloud
                     device_name: '/dev/sdb',
                     ebs: {
                       volume_size: 40,
-                      volume_type: 'gp2',
+                      volume_type: 'gp3',
                       delete_on_termination: true,
                     }
                   },
@@ -154,7 +154,7 @@ module Bosh::AwsCloud
                   device_name: '/dev/sdb',
                   ebs: {
                     volume_size: 10,
-                    volume_type: 'gp2',
+                    volume_type: 'gp3',
                     delete_on_termination: true,
                   }
                 }
@@ -179,7 +179,7 @@ module Bosh::AwsCloud
                     device_name: '/dev/sdb',
                     ebs: {
                       volume_size: 10,
-                      volume_type: 'gp2',
+                      volume_type: 'gp3',
                       delete_on_termination: true,
                     }
                   }
@@ -215,7 +215,7 @@ module Bosh::AwsCloud
                     device_name: '/dev/sdb',
                     ebs: {
                       volume_size: 10,
-                      volume_type: 'gp2',
+                      volume_type: 'gp3',
                       delete_on_termination: true,
                     }
                   }
@@ -241,7 +241,7 @@ module Bosh::AwsCloud
                 device_name: '/dev/sdb',
                 ebs: {
                   volume_size: 10,
-                  volume_type: 'gp2',
+                  volume_type: 'gp3',
                   delete_on_termination: true,
                 }
               }
@@ -316,7 +316,7 @@ module Bosh::AwsCloud
               device_name: '/dev/sdb',
               ebs: {
                 volume_size: 4,
-                volume_type: 'gp2',
+                volume_type: 'gp3',
                 delete_on_termination: true,
               },
             },
@@ -356,7 +356,7 @@ module Bosh::AwsCloud
                 device_name: '/dev/sdb',
                 ebs: {
                   volume_size: 4,
-                  volume_type: 'gp2',
+                  volume_type: 'gp3',
                   delete_on_termination: true,
                 }
               }
@@ -396,7 +396,7 @@ module Bosh::AwsCloud
                   device_name: '/dev/sdb',
                   ebs: {
                     volume_size: 4,
-                    volume_type: 'gp2',
+                    volume_type: 'gp3',
                     delete_on_termination: true,
                   }
                 }
@@ -420,7 +420,7 @@ module Bosh::AwsCloud
         end
         let(:ephemeral_disk) do
           {
-            'type' => 'gp2'
+            'type' => 'gp3'
           }
         end
 
@@ -429,7 +429,7 @@ module Bosh::AwsCloud
             device_name: '/dev/sdb',
             ebs: {
               volume_size: 10,
-              volume_type: 'gp2',
+              volume_type: 'gp3',
               delete_on_termination: true
             }
           }
@@ -480,7 +480,7 @@ module Bosh::AwsCloud
               device_name: '/dev/sdb',
               ebs: {
                 volume_size: 4,
-                volume_type: 'gp2',
+                volume_type: 'gp3',
                 delete_on_termination: true,
                 encrypted: true
               }
@@ -513,7 +513,7 @@ module Bosh::AwsCloud
                 device_name: '/dev/sdb',
                 ebs: {
                   volume_size: 4,
-                  volume_type: 'gp2',
+                  volume_type: 'gp3',
                   delete_on_termination: true,
                   encrypted: true,
                   kms_key_id: 'arn:aws:kms:us-east-1:XXXXXX:key/e1c1f008-779b-4ebe-8116-0a34b77747dd'
@@ -630,7 +630,7 @@ module Bosh::AwsCloud
           }
         end
 
-        it 'should default root disk type to gp2 if type is not specified' do
+        it 'should default root disk type to gp3 if type is not specified' do
           mappings, agent_info = manager.mappings_and_info
 
           expected_disks = [
@@ -638,7 +638,7 @@ module Bosh::AwsCloud
               device_name: '/dev/xvda',
               ebs: {
                 volume_size: 42,
-                volume_type: 'gp2',
+                volume_type: 'gp3',
                 delete_on_termination: true
               }
             },
@@ -646,7 +646,7 @@ module Bosh::AwsCloud
               device_name: '/dev/sdb',
               ebs: {
                 volume_size: 4,
-                volume_type: 'gp2',
+                volume_type: 'gp3',
                 delete_on_termination: true
               }
             }
@@ -679,7 +679,7 @@ module Bosh::AwsCloud
                                  device_name: '/dev/sdb',
                                  ebs: {
                                    volume_size: 4,
-                                   volume_type: 'gp2',
+                                   volume_type: 'gp3',
                                    delete_on_termination: true,
                                  }
                                }]
@@ -710,7 +710,7 @@ module Bosh::AwsCloud
               device_name: '/dev/sdb',
               ebs: {
                 volume_size: 4,
-                volume_type: 'gp2',
+                volume_type: 'gp3',
                 delete_on_termination: true,
               }
             }]
@@ -720,7 +720,7 @@ module Bosh::AwsCloud
               device_name: '/dev/sda',
               ebs: {
                 volume_size: 42,
-                volume_type: 'gp2',
+                volume_type: 'gp3',
                 delete_on_termination: true,
               }
             }
