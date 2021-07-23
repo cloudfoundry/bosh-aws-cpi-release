@@ -24,10 +24,10 @@ RUN apt-get install -y \
 	libpq-dev \
 	rsyslog \
 	libcurl4-openssl-dev \
-	python python-pip \
+	python3-pip \
 	&& apt-get clean
 
-RUN pip install awscli
+RUN pip3 install awscli
 
 ENV RUBY_INSTALL_VERSION=0.7.0 RUBY_VERSION=2.7.3
 
