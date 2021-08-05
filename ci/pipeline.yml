@@ -1,14 +1,4 @@
 ---
-groups:
-- name: bosh-aws-cpi
-  jobs:
-  - build-candidate
-  - integration
-  - bats
-  - end-2-end
-  - promote-candidate
-  - build-dockerfile
-
 shared:
 - &prepare-director
   task: prepare-director
