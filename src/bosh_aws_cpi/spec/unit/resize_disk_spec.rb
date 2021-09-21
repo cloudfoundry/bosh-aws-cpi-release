@@ -41,7 +41,7 @@ describe Bosh::AwsCloud::CloudV1, "resize_disk" do
   end
 
   context 'when trying to resize disk to a new size with an not even size in MiB' do
-    it 'does not call extend on disk and writes to the log' do
+    it 'does call extend on disk with rounding up to the next higher number and writes to the log' do
       allow(volume).to receive(:extend)
       allow(Bosh::Clouds::Config.logger).to receive(:info)
 
