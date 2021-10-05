@@ -126,6 +126,14 @@
                 "iam:PassRole"
             ],
             "Resource": "arn:aws:iam::*:*"
+        },
+        {
+            "Sid": "RequiredIfCPIResizeDiskEnabled",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:ModifyVolume"
+            ],
+            "Resource": "*"
         }
     ]
 }
