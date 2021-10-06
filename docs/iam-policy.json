@@ -131,6 +131,7 @@
             "Sid": "RequiredIfCPIResizeDiskEnabled",
             "Effect": "Allow",
             "Action": [
+                "ec2:DescribeVolumesModifications",
                 "ec2:ModifyVolume"
             ],
             "Resource": "*"
