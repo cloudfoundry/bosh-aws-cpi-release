@@ -85,7 +85,7 @@ module Bosh::AwsCloud
       end
       description = "volume modification of %s current state %s" % [volume_modification.volume.id, volume_modification.state]
 
-      new.for_resource(resource: volume_modification, errors: ignored_errors, target_state: target_state, description: description) do |current_state|
+      new.for_resource(resource: volume_modification, errors: ignored_errors, target_state: target_state, description: description, tries: DEFAULT_TRIES * 4) do |current_state|
         current_state == target_state
       end
 
