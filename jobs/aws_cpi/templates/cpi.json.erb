@@ -55,7 +55,7 @@ params["cloud"]["properties"]["aws"]["region"] = p('aws.region')
 
 agent_params = params["cloud"]["properties"]["agent"]
 
-blobstore_defined = p('blobstore.provider') != 'dav' || !p(['blobstore.agent.user', 'blobstore.agent.password', 'agent.blobstore.address', 'blobstore.address'], nil).nil?
+blobstore_defined = p('blobstore.provider') != 'dav' || !p(['blobstore.agent.user', 'agent.blobstore.address', 'blobstore.address'], nil).nil?
 if blobstore_defined
   agent_params["blobstore"] = {
        "provider" => p('blobstore.provider'),
@@ -92,10 +92,13 @@ if blobstore_defined
     }
   else
     blobstore["options"] = {
-      "endpoint" => "http://#{p(['agent.blobstore.address', 'blobstore.address'])}:#{p('blobstore.port')}",
-      "user" => p('blobstore.agent.user'),
-      "password" => p('blobstore.agent.password')
+      "endpoint" => "http://#{p(['agent.blobstore.address', 'blobstore.address'])}:#{p('blobstore.port')}"
     }
+
+    if_p('blobstore.agent.user') do
+      blobstore["options"]["user"] = p('blobstore.agent.user')
+      blobstore["options"]["password"] = p('blobstore.agent.password')
+    end
   end
 end
 
