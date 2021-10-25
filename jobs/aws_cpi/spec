@@ -145,9 +145,9 @@ properties:
     description: Port of blobstore server used by dav blobstore plugin
     default: 25250
   blobstore.agent.user:
-    description: Username agent uses to connect to blobstore used by dav blobstore plugin
+    description: Username agent uses to connect to blobstore used by dav blobstore plugin (Optional)
   blobstore.agent.password:
-    description: Password agent uses to connect to blobstore used by dav blobstore plugin
+    description: Password agent uses to connect to blobstore used by dav blobstore plugin (Required only when user is provided)
 
   agent.mbus:
     description: Agent mbus

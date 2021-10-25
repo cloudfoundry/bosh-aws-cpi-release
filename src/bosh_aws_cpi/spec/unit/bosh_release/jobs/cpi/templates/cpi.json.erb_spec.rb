@@ -1,5 +1,6 @@
 require 'spec_helper'
 require 'json'
+require 'yaml'
 
 describe 'cpi.json.erb' do
   let(:cpi_specification_file) { File.absolute_path(File.join(jobs_root, 'aws_cpi/spec')) }
@@ -187,6 +188,27 @@ describe 'cpi.json.erb' do
     it 'uses the value set' do
       manifest['properties']['aws']['default_iam_instance_profile'] = 'some_default_instance_profile'
       expect(subject['cloud']['properties']['aws']['default_iam_instance_profile']).to eq('some_default_instance_profile')
+    end
+  end
+
+  context 'when using a dav blobstore' do
+    let(:rendered_blobstore) { subject['cloud']['properties']['agent']['blobstore'] }
+
+    it 'renders agent user/password for accessing blobstore' do
+        expect(rendered_blobstore['options']['user']).to eq('agent')
+        expect(rendered_blobstore['options']['password']).to eq('agent-password')
+    end
+
+    context 'when enabling signed URLs' do
+      before do
+        manifest['properties']['blobstore']['agent'].delete('user')
+        manifest['properties']['blobstore']['agent'].delete('password')
+      end
+
+      it 'does not render agent user/password for accessing blobstore' do
+        expect(rendered_blobstore['options']['user']).to be_nil
+        expect(rendered_blobstore['options']['password']).to be_nil
+      end
     end
   end
 
