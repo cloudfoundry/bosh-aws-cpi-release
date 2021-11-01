@@ -58,6 +58,7 @@ module Bosh::AwsCloud
     end
 
     def instance_params
+
       params = {
         image_id: @manifest_params[:stemcell_id],
         instance_type: vm_type.instance_type,
@@ -65,8 +66,8 @@ module Bosh::AwsCloud
         iam_instance_profile: iam_instance_profile,
         user_data: @manifest_params[:user_data],
         block_device_mappings: @manifest_params[:block_device_mappings],
+        metadata_options: @manifest_params[:metadata_options]
       }
-
       unless @manifest_params[:tags].nil? || @manifest_params[:tags].empty?
         params.merge!(
           tag_specifications: [
@@ -113,7 +114,6 @@ module Bosh::AwsCloud
     def vm_type
       @manifest_params[:vm_type]
     end
-
     def networks_cloud_props
       @manifest_params[:networks_spec]
     end

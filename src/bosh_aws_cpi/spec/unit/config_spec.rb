@@ -43,7 +43,6 @@ describe Bosh::AwsCloud::Config do
       },
     }
   end
-
   describe 'registry validation' do
     context 'when `debug.cpi.api_version` is specified in options' do
       let(:debug_api_version) { 1 }

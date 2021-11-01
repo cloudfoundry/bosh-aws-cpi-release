@@ -22,7 +22,7 @@ describe Bosh::AwsCloud::CloudV1 do
     end
 
     let(:fake_instance_id) { 'i-xxxxxxxx' }
-
+    # TODO IMDS_V2
     it 'should make a call to AWS and return the correct vm id' do
       stub_request(:get, 'http://169.254.169.254/latest/meta-data/instance-id/')
         .to_return(:body => fake_instance_id)

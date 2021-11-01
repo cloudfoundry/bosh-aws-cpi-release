@@ -132,7 +132,8 @@ module Bosh::AwsCloud
             default_options,
             fake_block_device_mappings,
             user_data,
-            tags
+            tags,
+            nil
           )
         end
       end
@@ -149,7 +150,8 @@ module Bosh::AwsCloud
           default_options,
           fake_block_device_mappings,
           user_data,
-          tags
+          tags,
+          nil
         )
       end
 
@@ -167,7 +169,8 @@ module Bosh::AwsCloud
             default_options,
             fake_block_device_mappings,
             user_data,
-            tags
+            tags,
+            nil
           )
         end
 
@@ -240,7 +243,8 @@ module Bosh::AwsCloud
             default_options,
             fake_block_device_mappings,
             user_data,
-            tags
+            tags,
+            nil
           )
         end
 
@@ -258,7 +262,8 @@ module Bosh::AwsCloud
                 default_options,
                 fake_block_device_mappings,
                 user_data,
-                tags
+                tags,
+                nil
               )
             }.to raise_error(Bosh::Clouds::VMCreationFailed, /Spot instance creation failed/)
 
@@ -294,7 +299,8 @@ module Bosh::AwsCloud
                 default_options,
                 fake_block_device_mappings,
                 user_data,
-                tags
+                tags,
+                nil
               )
             end
 
@@ -312,7 +318,8 @@ module Bosh::AwsCloud
                 default_options,
                 fake_block_device_mappings,
                 user_data,
-                tags
+                tags,
+                nil
               )
             end
           end
@@ -336,7 +343,8 @@ module Bosh::AwsCloud
             default_options,
             fake_block_device_mappings,
             user_data,
-            tags
+            tags,
+            nil
           )
         end
       end
@@ -361,7 +369,8 @@ module Bosh::AwsCloud
             default_options,
             fake_block_device_mappings,
             user_data,
-            tags
+            tags,
+            nil
           )
         end
       end
@@ -387,7 +396,8 @@ module Bosh::AwsCloud
           default_options,
           fake_block_device_mappings,
           user_data,
-          tags
+          tags,
+          nil
         )
       end
 
@@ -414,7 +424,8 @@ module Bosh::AwsCloud
               default_options,
               fake_block_device_mappings,
               user_data,
-              tags
+              tags,
+              nil
             )
           }.to raise_error(create_err)
         end
@@ -438,7 +449,8 @@ module Bosh::AwsCloud
               default_options,
               fake_block_device_mappings,
               user_data,
-              tags
+              tags,
+              nil
             )
           }.to raise_error(Bosh::AwsCloud::AbruptlyTerminated)
         end
@@ -461,7 +473,8 @@ module Bosh::AwsCloud
                 default_options,
                 fake_block_device_mappings,
                 user_data,
-                tags
+                tags,
+                nil
               )
             }.to raise_error(create_err)
           end

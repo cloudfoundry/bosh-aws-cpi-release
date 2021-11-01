@@ -107,4 +107,47 @@ describe Bosh::AwsCloud::CloudCore do
       cloud.delete_vm(instance_id)
     end
   end
+
+  describe '#create_vm' do
+    let(:metadata_options) { {
+      :http_tokens=> 'required',
+      :http_put_response_hop_limit=> 1,
+      :http_endpoint=> 'enabled'
+    }}
+    let(:instance_manager) {instance_double(Bosh::AwsCloud::InstanceManager)}
+    let(:instance_id) {'fake-id'}
+    let(:ec2) {instance_double(Aws::EC2::Resource)}
+    let(:instance) {instance_double(Bosh::AwsCloud::Instance, {id: 'id'})}
+    let(:settings) {instance_double(Bosh::AwsCloud::AgentSettings, {'agent_disk_info=': {}, 'agent_config=': {}, 'root_device_name=': '', encode: '{"json":"something"}'})}
+
+    before do
+      allow(Bosh::AwsCloud::BlockDeviceManager).to receive(:new).and_return(double(Bosh::AwsCloud::BlockDeviceManager, {mappings_and_info: ['block_device_mappings', 'agent_disk_info']}))
+      allow(Bosh::AwsCloud::StemcellFinder).to receive(:find_by_id).and_return(double("stemcell", {root_device_name: "root_device_name", ami: 'ami', image_id: 'image_id'}))
+      allow(Bosh::AwsCloud::NetworkConfigurator).to receive(:new).and_return(double("NetworkConfigurator", {configure: {}}))
+      allow(Bosh::AwsCloud::InstanceManager).to receive(:new).and_return(instance_manager)
+    end
+
+    context 'when instance metadata is set in cpi config' do
+      let(:options) {
+        tmp = mock_cloud_options['properties']
+        tmp['aws']['metadata_options']= metadata_options
+        tmp
+      }
+
+      it 'passes instance metadata to AWS' do
+        expect(instance_manager).to receive(:create).with(anything,anything,anything,anything,anything,anything,anything,anything,metadata_options).and_return(instance)
+
+        cloud.create_vm('foo', 'stemcell_id', 'vm_type', double('network_props', {filter: []}), settings)
+      end
+    end
+    context 'when instance metadata is not set in cpi config' do
+
+      it 'passes instance metadata to AWS' do
+        expect(instance_manager).to receive(:create).with(anything,anything,anything,anything,anything,anything,anything,anything,nil).and_return(instance)
+        expect(options['aws']).to_not have_key('metadata_options')
+
+        cloud.create_vm('foo', 'stemcell_id', 'vm_type', double('network_props', {filter: []}), settings)
+      end
+    end
+  end
 end

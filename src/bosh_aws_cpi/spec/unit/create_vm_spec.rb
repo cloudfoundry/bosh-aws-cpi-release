@@ -101,6 +101,7 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
       anything,
       anything,
       anything,
+      anything,
       anything
     ).and_return(instance)
     expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)).to eq(['fake-id', networks_cloud_props])
@@ -122,6 +123,7 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
       anything,
       'my encoded settings',
       anything,
+      anything
     ).and_return(instance)
     expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)).to eq(['fake-id', networks_cloud_props])
   end
@@ -144,7 +146,8 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
       anything,
       anything,
       anything,
-      { 'tag' => 'tag_value' }
+      { 'tag' => 'tag_value' },
+      anything
     )
     cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)
   end

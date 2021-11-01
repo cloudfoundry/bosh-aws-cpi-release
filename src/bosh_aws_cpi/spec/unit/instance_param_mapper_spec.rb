@@ -65,6 +65,32 @@ module Bosh::AwsCloud
         end
       end
 
+      context 'when instance metadata is provided' do
+        let(:input) do
+          {
+            #stemcell_id: 'fake-stemcell',
+            vm_type: vm_cloud_props,
+            networks_spec: network_cloud_props,
+            metadata_options: {foo: 'bar'},
+          }
+        end
+        it 'passes metadata in output' do
+          expect(mapping(input)).to eq({ metadata_options: {foo: 'bar'} })
+        end
+      end
+      context 'when instance metadata is nil' do
+        let(:input) do
+          {
+            vm_type: vm_cloud_props,
+            networks_spec: network_cloud_props,
+            metadata_options: nil
+          }
+        end
+        it 'it omits metadata in output' do
+          expect(mapping(input)).to eq({})
+        end
+      end
+
       context 'when instance_type is provided by vm_type' do
         let(:vm_type) { { 'instance_type' => 'fake-instance' } }
         let(:input) do

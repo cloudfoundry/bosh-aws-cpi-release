@@ -2,7 +2,7 @@ module Bosh::AwsCloud
   class AwsConfig
     attr_reader :max_retries, :credentials, :region, :ec2_endpoint, :elb_endpoint, :stemcell
     attr_reader :access_key_id, :secret_access_key, :default_key_name, :encrypted, :kms_key_arn
-    attr_reader :default_iam_instance_profile, :default_security_groups
+    attr_reader :default_iam_instance_profile, :default_security_groups, :metadata_options
 
     CREDENTIALS_SOURCE_STATIC = 'static'.freeze
     CREDENTIALS_SOURCE_ENV_OR_PROFILE = 'env_or_profile'.freeze
@@ -28,7 +28,7 @@ module Bosh::AwsCloud
 
       @encrypted = @config['encrypted']
       @kms_key_arn = @config['kms_key_arn']
-
+      @metadata_options = @config['metadata_options']
       # credentials_source could be static (default) or env_or_profile
       # - if "static", credentials must be provided
       # - if "env_or_profile", credentials are read from instance metadata

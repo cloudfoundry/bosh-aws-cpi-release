@@ -9,12 +9,13 @@ module Bosh::AwsCloud
     def initialize(ec2, logger)
       @ec2 = ec2
       @logger = logger
+      @imds_v2_enable = {}
 
       security_group_mapper = SecurityGroupMapper.new(@ec2)
       @param_mapper = InstanceParamMapper.new(security_group_mapper)
     end
 
-    def create(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, default_security_groups, block_device_mappings, user_data, tags)
+    def create(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, default_security_groups, block_device_mappings, user_data, tags, metadata_options)
       abruptly_terminated_retries = 2
       begin
         instance_params = build_instance_params(
@@ -25,7 +26,8 @@ module Bosh::AwsCloud
           user_data,
           disk_locality,
           default_security_groups,
-          tags
+          tags,
+          metadata_options
         )
 
         redacted_instance_params = Bosh::Cpi::Redactor.clone_and_redact(
@@ -84,9 +86,8 @@ module Bosh::AwsCloud
       end
     end
 
-    def build_instance_params(stemcell_id, vm_cloud_props, networks_cloud_props, block_device_mappings, user_data, disk_locality = [], default_security_groups = [], tags)
+    def build_instance_params(stemcell_id, vm_cloud_props, networks_cloud_props, block_device_mappings, user_data, disk_locality = [], default_security_groups = [], tags, metadata_options)
       volume_zones = (disk_locality || []).map { |volume_id| @ec2.volume(volume_id).availability_zone }
-
       @param_mapper.manifest_params = {
         stemcell_id: stemcell_id,
         vm_type: vm_cloud_props,
@@ -97,6 +98,7 @@ module Bosh::AwsCloud
         subnet_az_mapping: subnet_az_mapping(networks_cloud_props),
         block_device_mappings: block_device_mappings,
         tags: tags,
+        metadata_options: metadata_options,
       }
       @param_mapper.validate
       @param_mapper.instance_params

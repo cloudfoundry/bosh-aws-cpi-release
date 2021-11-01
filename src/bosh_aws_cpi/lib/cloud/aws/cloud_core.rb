@@ -85,7 +85,7 @@ module Bosh::AwsCloud
         if environment && environment['bosh'] && environment['bosh']['tags']
           tags = environment['bosh']['tags']
         end
-
+        # TODO IMDS_V2
         instance = @instance_manager.create(
           stemcell.image_id,
           vm_props,
@@ -94,7 +94,8 @@ module Bosh::AwsCloud
           @config.aws.default_security_groups,
           block_device_mappings,
           settings.encode(@stemcell_api_version),
-          tags
+          tags,
+          @config.aws.metadata_options
         )
 
         target_groups.each do |target_group_name|
