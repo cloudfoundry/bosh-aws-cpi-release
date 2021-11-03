@@ -195,8 +195,8 @@ describe 'cpi.json.erb' do
     let(:rendered_blobstore) { subject['cloud']['properties']['agent']['blobstore'] }
 
     it 'renders agent user/password for accessing blobstore' do
-        expect(rendered_blobstore['options']['user']).to eq('agent')
-        expect(rendered_blobstore['options']['password']).to eq('agent-password')
+      expect(rendered_blobstore['options']['user']).to eq('agent')
+      expect(rendered_blobstore['options']['password']).to eq('agent-password')
     end
 
     context 'when enabling signed URLs' do

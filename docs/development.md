@@ -1,5 +1,23 @@
 ## Development
 
+### Unit tests
+
+The CPI Ruby code has unit tests that can be run as follows.
+
+```bash
+./src/bosh_aws_cpi/bin/test-unit
+```
+
+### Running ERB job templates unit tests
+
+The ERB templates rendered by the jobs of this Bosh Release have specific unit
+tests that are run along with the other unit tests as instructed above. When
+required, you can run them separately though, with this command:
+
+```bash
+./src/bosh_aws_cpi/bin/test-unit spec/unit/bosh_release
+```
+
 ### Creating a Release
 
 The release requires Ruby version 2.7.3 and the Ruby gem Bundler (used by the vendoring script):
