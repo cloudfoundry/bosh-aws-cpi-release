@@ -24,9 +24,22 @@ describe Bosh::AwsCloud::CloudV1 do
     let(:fake_instance_id) { 'i-xxxxxxxx' }
     # TODO IMDS_V2
     it 'should make a call to AWS and return the correct vm id' do
+      stub_request(:put, 'http://169.254.169.254/latest/api/token')
+        .with(headers: { 'X-aws-ec2-metadata-token-ttl-seconds' => '300' })
+        .to_return(:body => "token")
       stub_request(:get, 'http://169.254.169.254/latest/meta-data/instance-id/')
+        .with(headers: { 'X-aws-ec2-metadata-token' => "token" })
         .to_return(:body => fake_instance_id)
       expect(cloud.current_vm_id).to eq(fake_instance_id)
+    end
+
+    it 'should make a call to AWS and return the correct vm id' do
+      stub_request(:put, 'http://169.254.169.254/latest/api/token')
+        .with(headers: { 'X-aws-ec2-metadata-token-ttl-seconds' => '300' })
+        .to_return(status: [500, "Internal Server Error"])
+      expect{
+        cloud.current_vm_id
+      }.to raise_error Bosh::Clouds::CloudError
     end
   end
 end
