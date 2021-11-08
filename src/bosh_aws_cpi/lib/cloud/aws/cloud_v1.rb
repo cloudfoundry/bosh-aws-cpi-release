@@ -65,20 +65,16 @@ module Bosh::AwsCloud
 
       http_client = HTTPClient.new
       http_client.connect_timeout = METADATA_TIMEOUT
-      uri = 'http://169.254.169.254/latest/api/token'
+      headers = {}
 
-      response = http_client.put(uri, nil, { 'X-aws-ec2-metadata-token-ttl-seconds' => '300' })
-      unless response.status == 200
-        cloud_error('Instance metadata endpoint returned ' \
-                    "HTTP #{response.status}")
-      end
-
-      token = response.body
       # Using 169.254.169.254 is an EC2 convention for getting
       # instance metadata
-      uri = 'http://169.254.169.254/latest/meta-data/instance-id/'
+      response = http_client.put('http://169.254.169.254/latest/api/token', nil, { 'X-aws-ec2-metadata-token-ttl-seconds' => '300' })
+      if response.status == 200
+        headers['X-aws-ec2-metadata-token'] = response.body #body consists of the token
+      end
 
-      response = http_client.get(uri, nil, { 'X-aws-ec2-metadata-token' => token })
+      response = http_client.get('http://169.254.169.254/latest/meta-data/instance-id/', nil, headers)
       unless response.status == 200
         cloud_error('Instance metadata endpoint returned ' \
                     "HTTP #{response.status}")
