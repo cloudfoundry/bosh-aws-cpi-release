@@ -168,7 +168,7 @@ module Bosh::AwsCloud
       end
 
       def specified?
-        disk && disk.key?('size')
+        disk && !disk.empty?
       end
     end
 
