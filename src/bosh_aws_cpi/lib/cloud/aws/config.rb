@@ -1,6 +1,7 @@
 module Bosh::AwsCloud
   class AwsConfig
-    attr_reader :max_retries, :credentials, :region, :ec2_endpoint, :elb_endpoint, :stemcell
+    attr_reader :max_retries, :extend_ebs_volume_wait_time_factor, :credentials
+    attr_reader :region, :ec2_endpoint, :elb_endpoint, :stemcell
     attr_reader :access_key_id, :secret_access_key, :default_key_name, :encrypted, :kms_key_arn
     attr_reader :default_iam_instance_profile, :default_security_groups, :metadata_options
 
@@ -11,6 +12,7 @@ module Bosh::AwsCloud
       @config = aws_config_hash
 
       @max_retries = @config['max_retries']
+      @extend_ebs_volume_wait_time_factor = @config['extend_ebs_volume_wait_time_factor']
 
       @region = @config['region']
       @ec2_endpoint = @config['ec2_endpoint']

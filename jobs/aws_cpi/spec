@@ -45,7 +45,11 @@ properties:
     description: "AWS ELB service endpoint, without protocol/scheme (Optional: default endpoint will be constructed from region if not specified)"
     example: elasticloadbalancing.us-east-1.amazonaws.com
   aws.max_retries:
-    description: The maximum number of times AWS service errors and throttling errors should be retried. There is an exponential backoff in between retries, so the more retries the longer it can take to fail.
+    description: |
+      The maximum number of times AWS service errors and throttling errors
+      should be retried. There is an exponential backoff in between retries,
+      so the more retries the longer it can take to fail. This only applies
+      to the AWS client passing calls to the AWS API.
     default: 8
   aws.connection_options.ca_cert:
     description: All required custom CA certificates
@@ -60,6 +64,14 @@ properties:
     description: Encrypts all instances' volumes with the given KMS key. (aws.encrypted) should be true
     example: arn:aws:kms:us-east-1:XXXXXX:key/e1c1f008-779b-4ebe-8116-0a34b77747dd
     default: null
+  aws.extend_ebs_volume.wait_time_factor:
+    description: |
+      Default wait time for AWS operations is ≈25 minutes. When growing
+      persistent disk size above 4TB, this maximum wait time may need to be
+      increased. The value here is a factor of the base ≈25 minutes wait
+      time. For example a factor of 3 would lead to a wait time of ≈75
+      minutes.
+    default: 4
 
   registry.username:
     description: User to access the Registry
