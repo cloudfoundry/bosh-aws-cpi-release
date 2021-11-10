@@ -16,7 +16,8 @@ describe Bosh::AwsCloud::CloudV1, "resize_disk" do
     allow(@ec2.client).to receive(:modify_volume).and_return(volume_resp)
     modification = instance_double(Bosh::AwsCloud::SdkHelpers::VolumeModification, :state => 'completed')
     allow(Bosh::AwsCloud::SdkHelpers::VolumeModification).to receive(:new).with(volume, volume_resp.volume_modification, @ec2.client).and_return(modification)
-    allow(Bosh::AwsCloud::ResourceWait).to receive(:for_volume_modification).with(volume_modification: modification, state: 'completed')
+    allow(Bosh::AwsCloud::ResourceWait).to receive(:for_volume_modification)
+      .with(volume_modification: modification, state: 'completed')
   end
 
 
