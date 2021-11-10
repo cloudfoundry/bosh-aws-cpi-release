@@ -23,8 +23,15 @@ module Bosh::AwsCloud
 
       volume_modification = SdkHelpers::VolumeModification.new(volume, resp.volume_modification, @ec2_client)
       @logger.info("Extending volume `#{volume.id}'")
-      ResourceWait.for_volume_modification(volume_modification: volume_modification, state: 'completed',
-                                           wait_time_factor: @aws_config.extend_ebs_volume_wait_time_factor)
+
+      args = {
+        volume_modification: volume_modification,
+        state: 'completed'
+      }
+      unless @aws_config.extend_ebs_volume_wait_time_factor.nil?
+        args[:wait_time_factor] = @aws_config.extend_ebs_volume_wait_time_factor
+      end
+      ResourceWait.for_volume_modification(args)
     end
 
     def delete_ebs_volume(volume, fast_path_delete = false)

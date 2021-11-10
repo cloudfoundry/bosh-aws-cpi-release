@@ -87,6 +87,39 @@ module Bosh::AwsCloud
       end
     end
 
+    describe '.for_volume_modification' do
+      let(:volume_modification) { double(SdkHelpers::VolumeModification, volume: volume, data: volume.data) }
+
+      let(:volume) { double(Aws::EC2::Volume, id: 'v-123', data: 'some-data', exists?: true) }
+
+      before do
+        allow(volume_modification).to receive(:reload)
+      end
+
+      context 'modification' do
+        it 'should wait until the state is completed' do
+          expect(volume_modification).to receive(:state).and_return('modifying')
+          expect(volume_modification).to receive(:state).and_return('optimizing')
+          expect(volume_modification).to receive(:state).and_return('completed')
+
+          described_class.for_volume_modification(
+            volume_modification: volume_modification,
+            state: 'completed')
+        end
+
+        it 'should raise an error on failed state' do
+          expect(volume_modification).to receive(:state).and_return('modifying')
+          expect(volume_modification).to receive(:state).and_return('failed')
+
+          expect {
+            described_class.for_volume_modification(
+              volume_modification: volume_modification,
+              state: 'completed')
+          }.to raise_error Bosh::Clouds::CloudError, /state is failed, expected completed/
+        end
+      end
+    end
+
     describe '.for_snapshot' do
       let(:snapshot) { double(Aws::EC2::Snapshot, id: 'snap-123', data: 'some-data', exists?: true) }
       before do

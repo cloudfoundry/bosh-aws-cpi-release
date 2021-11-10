@@ -47,7 +47,7 @@ module Bosh::AwsCloud
 
           expect(ResourceWait)
             .to have_received(:for_volume_modification)
-            .with(hash_including(wait_time_factor: nil))
+            .with(hash_excluding(:wait_time_factor))
         end
       end
 
