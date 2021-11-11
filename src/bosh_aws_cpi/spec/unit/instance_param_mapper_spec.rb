@@ -65,10 +65,9 @@ module Bosh::AwsCloud
         end
       end
 
-      context 'when instance metadata is provided' do
+      context 'when instance metadata is provided by the CPI config' do
         let(:input) do
           {
-            #stemcell_id: 'fake-stemcell',
             vm_type: vm_cloud_props,
             networks_spec: network_cloud_props,
             metadata_options: {foo: 'bar'},
@@ -76,6 +75,21 @@ module Bosh::AwsCloud
         end
         it 'passes metadata in output' do
           expect(mapping(input)).to eq({ metadata_options: {foo: 'bar'} })
+        end
+      end
+      context 'when instance metadata is provided the CPI config AND cloud properties' do
+        let(:vm_cloud_props) do
+          Bosh::AwsCloud::VMCloudProps.new({ 'metadata_options' => { bar: 'baz' } }, global_config)
+        end
+        let(:input) do
+          {
+            vm_type: vm_cloud_props,
+            networks_spec: network_cloud_props,
+            metadata_options: {foo: 'bar', bar: 'quux'},
+          }
+        end
+        it 'passes merged metadata in output with the cloud properties taking precedence' do
+          expect(mapping(input)).to eq({ metadata_options: {foo: 'bar', bar: 'baz'} })
         end
       end
       context 'when instance metadata is nil' do
@@ -87,7 +101,7 @@ module Bosh::AwsCloud
           }
         end
         it 'it omits metadata in output' do
-          expect(mapping(input)).to eq({})
+          expect(mapping(input)).to_not have_key(:metadata_options)
         end
       end
 

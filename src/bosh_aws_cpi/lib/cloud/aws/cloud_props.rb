@@ -95,6 +95,8 @@ module Bosh::AwsCloud
     attr_reader :advertised_routes
     # AWS Permissions: ec2:ModifyInstanceAttribute
     attr_reader :source_dest_check
+    # AWS Permissions: ec2:ModifyInstanceMetadataOptions
+    attr_reader :metadata_options
 
     # @param [Hash] cloud_properties
     # @param [Bosh::AwsCloud::Config] global_config
@@ -109,6 +111,7 @@ module Bosh::AwsCloud
       @spot_ondemand_fallback = !!cloud_properties['spot_ondemand_fallback']
       @elbs = cloud_properties['elbs'] || []
       @lb_target_groups = cloud_properties['lb_target_groups'] || []
+      @metadata_options = cloud_properties['metadata_options'] || {}
       @iam_instance_profile = cloud_properties['iam_instance_profile'] || global_config.aws.default_iam_instance_profile
       @placement_group = cloud_properties['placement_group']
       @tenancy = Tenancy.new(cloud_properties['tenancy'])
