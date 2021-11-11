@@ -61,7 +61,8 @@ describe 'cpi.json.erb' do
             'max_retries' => 8,
             'extend_ebs_volume_wait_time_factor' => 4,
             'encrypted' => false,
-            'kms_key_arn' => nil
+            'kms_key_arn' => nil,
+            'metadata_options' => nil
           },
           'registry' => {
             'endpoint' => 'http://admin:admin@registry-host.example.com:25777',
