@@ -15,7 +15,8 @@ params = {
         "max_retries" => p('aws.max_retries'),
         "extend_ebs_volume_wait_time_factor" => p('aws.extend_ebs_volume.wait_time_factor'),
         "encrypted" => p('aws.encrypted'),
-        "kms_key_arn" => p('aws.kms_key_arn', nil)
+        "kms_key_arn" => p('aws.kms_key_arn', nil),
+        "metadata_options" => p('aws.metadata_options', nil)
       },
       "agent" => {
         "ntp" => p('ntp')

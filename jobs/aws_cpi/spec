@@ -72,6 +72,13 @@ properties:
       time. For example a factor of 3 would lead to a wait time of ≈75
       minutes.
     default: 4
+  aws.metadata_options:
+    description: |
+      Metadata configuration options that are set on a VM during creation. These options should be snake-cased
+      properties accepted by the ModifyInstanceMetadataOptions endpoint
+      (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_ModifyInstanceMetadataOptions.html).
+      e.g. `http_put_response_hop_limit`.
+    default: null
 
   registry.username:
     description: User to access the Registry
