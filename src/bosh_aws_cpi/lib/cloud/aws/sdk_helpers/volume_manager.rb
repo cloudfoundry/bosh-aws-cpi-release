@@ -26,7 +26,7 @@ module Bosh::AwsCloud
 
       args = {
         volume_modification: volume_modification,
-        state: 'completed'
+        states: [ 'optimizing', 'completed' ]
       }
       unless @aws_config.extend_ebs_volume_wait_time_factor.nil?
         args[:wait_time_factor] = @aws_config.extend_ebs_volume_wait_time_factor

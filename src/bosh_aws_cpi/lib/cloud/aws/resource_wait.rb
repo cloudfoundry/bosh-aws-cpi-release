@@ -74,17 +74,18 @@ module Bosh::AwsCloud
 
     def self.for_volume_modification(args)
       volume_modification = args.fetch(:volume_modification) { raise ArgumentError, 'volume_modification object required' }
-      target_state = args.fetch(:state) { raise ArgumentError, 'state symbol required' }
+      target_states = args.fetch(:states) { raise ArgumentError, 'states array required' }
       valid_states = ['modifying', 'optimizing', 'completed', 'failed']
-      validate_states(valid_states, target_state)
+      target_states.each { |target_state| validate_states(valid_states, target_state) }
+      target_state_desc = target_states.join(' or ')
       wait_time_factor = args.fetch(:wait_time_factor, 1).to_i
 
       description = "volume modification of %s current state %s" % [volume_modification.volume.id, volume_modification.state]
       max_tries = DEFAULT_TRIES * wait_time_factor
 
-      new.for_resource(resource: volume_modification,
-                       target_state_desc: target_state, description: description, tries: max_tries) do |current_state|
-        current_state == target_state
+      new.for_resource(resource: volume_modification, target_state_desc: target_state_desc,
+                       description: description, tries: max_tries) do |current_state|
+        target_states.include?(current_state)
       end
 
     rescue Aws::EC2::Errors::InvalidVolumeNotFound, Aws::EC2::Errors::ResourceNotFound

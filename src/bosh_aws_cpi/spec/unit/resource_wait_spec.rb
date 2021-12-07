@@ -100,11 +100,11 @@ module Bosh::AwsCloud
         it 'should wait until the state is completed' do
           expect(volume_modification).to receive(:state).and_return('modifying')
           expect(volume_modification).to receive(:state).and_return('optimizing')
-          expect(volume_modification).to receive(:state).and_return('completed')
+          allow(volume_modification).to receive(:state).and_return('completed')
 
           described_class.for_volume_modification(
             volume_modification: volume_modification,
-            state: 'completed')
+            states: [ 'optimizing', 'completed' ])
         end
 
         it 'should raise an error on failed state' do
@@ -114,8 +114,8 @@ module Bosh::AwsCloud
           expect {
             described_class.for_volume_modification(
               volume_modification: volume_modification,
-              state: 'completed')
-          }.to raise_error Bosh::Clouds::CloudError, /state is failed, expected completed/
+              states: [ 'optimizing', 'completed' ])
+          }.to raise_error Bosh::Clouds::CloudError, /state is failed, expected optimizing or completed/
         end
       end
     end
