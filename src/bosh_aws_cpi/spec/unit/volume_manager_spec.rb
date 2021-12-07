@@ -3,11 +3,12 @@ require 'spec_helper'
 module Bosh::AwsCloud
 
   describe :VolumeManager do
-    let(:volume_manager) { VolumeManager.new(config.aws, logger, aws_provider) }
+    let(:volume_manager) { VolumeManager.new(logger, aws_provider) }
 
-    let(:config) { Bosh::AwsCloud::Config.build(cloud_options.dup.freeze) }
     let(:logger) { double }
     let(:aws_provider) { Bosh::AwsCloud::AwsProvider.new(config.aws, logger) }
+
+    let(:config) { Bosh::AwsCloud::Config.build(cloud_options.dup.freeze) }
 
     let(:cloud_options) { mock_cloud_options['properties'] }
 
@@ -36,40 +37,14 @@ module Bosh::AwsCloud
         allow(ResourceWait).to receive(:for_volume_modification)
       end
 
-      context 'when wait_time_factor is not configured' do
-        it 'should apply a default wait_time_factor' do
-          expect(volume_manager).not_to be_nil
-          ret = volume_manager.extend_ebs_volume(mock_volume, new_size)
+      it 'should modify the volume with new size' do
+        ret = volume_manager.extend_ebs_volume(mock_volume, new_size)
 
-          expect(ec2_client).to have_received(:modify_volume).with(volume_id: 1234, size: new_size)
-          expect(SdkHelpers::VolumeModification).to have_received(:new)
-          expect(logger).to have_received(:info)
+        expect(ec2_client).to have_received(:modify_volume).with(volume_id: 1234, size: new_size)
+        expect(SdkHelpers::VolumeModification).to have_received(:new)
+        expect(logger).to have_received(:info)
 
-          expect(ResourceWait)
-            .to have_received(:for_volume_modification)
-            .with(hash_excluding(:wait_time_factor))
-        end
-      end
-
-      context 'when wait_time_factor is configured' do
-        let(:cloud_options) {
-          props = mock_cloud_options['properties']
-          props['aws']['extend_ebs_volume_wait_time_factor'] = wait_time_factor
-          props
-        }
-        let(:wait_time_factor) { 7 }
-
-        it 'should apply the configured wait_time_factor' do
-          volume_manager.extend_ebs_volume(mock_volume, new_size)
-
-          expect(ec2_client).to have_received(:modify_volume).with(volume_id: 1234, size: new_size)
-          expect(SdkHelpers::VolumeModification).to have_received(:new)
-          expect(logger).to have_received(:info)
-
-          expect(ResourceWait)
-            .to have_received(:for_volume_modification)
-            .with(hash_including(wait_time_factor: wait_time_factor))
-        end
+        expect(ResourceWait).to have_received(:for_volume_modification)
       end
     end
   end

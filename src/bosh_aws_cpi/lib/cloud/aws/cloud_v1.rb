@@ -42,7 +42,7 @@ module Bosh::AwsCloud
       @ec2_client = @aws_provider.ec2_client
       @ec2_resource = @aws_provider.ec2_resource
       @az_selector = AvailabilityZoneSelector.new(@ec2_resource)
-      @volume_manager = Bosh::AwsCloud::VolumeManager.new(@config.aws, @logger, @aws_provider)
+      @volume_manager = Bosh::AwsCloud::VolumeManager.new(@logger, @aws_provider)
 
       @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector, API_VERSION)
 

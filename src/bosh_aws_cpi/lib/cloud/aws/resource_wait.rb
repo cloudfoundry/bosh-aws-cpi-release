@@ -78,13 +78,11 @@ module Bosh::AwsCloud
       valid_states = ['modifying', 'optimizing', 'completed', 'failed']
       target_states.each { |target_state| validate_states(valid_states, target_state) }
       target_state_desc = target_states.join(' or ')
-      wait_time_factor = args.fetch(:wait_time_factor, 1).to_i
 
       description = "volume modification of %s current state %s" % [volume_modification.volume.id, volume_modification.state]
-      max_tries = DEFAULT_TRIES * wait_time_factor
 
       new.for_resource(resource: volume_modification, target_state_desc: target_state_desc,
-                       description: description, tries: max_tries) do |current_state|
+                       description: description) do |current_state|
         target_states.include?(current_state)
       end
 
