@@ -195,7 +195,7 @@ module Bosh::AwsCloud
           resource: resource,
           tries: 1,
           description: 'description',
-          target_state: 'foo'
+          target_state_desc: 'foo'
         }
 
         expect {
@@ -235,7 +235,7 @@ module Bosh::AwsCloud
         {
           resource: fake_resource,
           description: 'description',
-          target_state: 'fake-target-state',
+          target_state_desc: 'fake-target-state',
         }
       end
 
