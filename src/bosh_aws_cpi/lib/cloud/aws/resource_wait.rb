@@ -79,15 +79,10 @@ module Bosh::AwsCloud
       validate_states(valid_states, target_state)
       wait_time_factor = args.fetch(:wait_time_factor, 1).to_i
 
-      ignored_errors = []
-      if target_state == 'completed'
-        ignored_errors << Aws::EC2::Errors::InvalidVolumeNotFound
-        ignored_errors << Aws::EC2::Errors::ResourceNotFound
-      end
       description = "volume modification of %s current state %s" % [volume_modification.volume.id, volume_modification.state]
       max_tries = DEFAULT_TRIES * wait_time_factor
 
-      new.for_resource(resource: volume_modification, errors: ignored_errors,
+      new.for_resource(resource: volume_modification,
                        target_state_desc: target_state, description: description, tries: max_tries) do |current_state|
         current_state == target_state
       end
