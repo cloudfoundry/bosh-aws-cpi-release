@@ -64,14 +64,6 @@ properties:
     description: Encrypts all instances' volumes with the given KMS key. (aws.encrypted) should be true
     example: arn:aws:kms:us-east-1:XXXXXX:key/e1c1f008-779b-4ebe-8116-0a34b77747dd
     default: null
-  aws.extend_ebs_volume.wait_time_factor:
-    description: |
-      Default wait time for AWS operations is ≈25 minutes. When growing
-      persistent disk size above 4TB, this maximum wait time may need to be
-      increased. The value here is a factor of the base ≈25 minutes wait
-      time. For example a factor of 3 would lead to a wait time of ≈75
-      minutes.
-    default: 4
   aws.metadata_options:
     description: |
       Metadata configuration options that are set on a VM during creation. These options should be snake-cased

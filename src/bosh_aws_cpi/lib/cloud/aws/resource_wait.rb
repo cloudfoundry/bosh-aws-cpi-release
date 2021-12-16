@@ -23,7 +23,7 @@ module Bosh::AwsCloud
       end
       description = "volume %s to be %s to instance %s as device %s" % [attachment.volume.id, target_state, attachment.instance.id, attachment.device]
 
-      new.for_resource(resource: attachment, errors: ignored_errors, target_state: target_state, description: description) do |current_state|
+      new.for_resource(resource: attachment, errors: ignored_errors, target_state_desc: target_state, description: description) do |current_state|
         current_state == target_state
       end
     rescue Aws::EC2::Errors::InvalidVolumeNotFound, Aws::EC2::Errors::ResourceNotFound
@@ -44,7 +44,7 @@ module Bosh::AwsCloud
         ignored_errors << Aws::EC2::Errors::ResourceNotFound
       end
 
-      new.for_resource(resource: image, errors: ignored_errors, target_state: target_state) do |current_state|
+      new.for_resource(resource: image, errors: ignored_errors, target_state_desc: target_state) do |current_state|
         current_state == target_state
       end
     rescue Aws::EC2::Errors::InvalidAMIIDNotFound, Aws::EC2::Errors::ResourceNotFound
@@ -63,7 +63,7 @@ module Bosh::AwsCloud
         ignored_errors << Aws::EC2::Errors::ResourceNotFound
       end
 
-      new.for_resource(resource: volume, target_state: target_state) do |current_state|
+      new.for_resource(resource: volume, target_state_desc: target_state) do |current_state|
         current_state == target_state
       end
     rescue Aws::EC2::Errors::InvalidVolumeNotFound, Aws::EC2::Errors::ResourceNotFound
@@ -74,22 +74,16 @@ module Bosh::AwsCloud
 
     def self.for_volume_modification(args)
       volume_modification = args.fetch(:volume_modification) { raise ArgumentError, 'volume_modification object required' }
-      target_state = args.fetch(:state) { raise ArgumentError, 'state symbol required' }
+      target_states = args.fetch(:states) { raise ArgumentError, 'states array required' }
       valid_states = ['modifying', 'optimizing', 'completed', 'failed']
-      validate_states(valid_states, target_state)
-      wait_time_factor = args.fetch(:wait_time_factor, 1).to_i
+      target_states.each { |target_state| validate_states(valid_states, target_state) }
+      target_state_desc = target_states.join(' or ')
 
-      ignored_errors = []
-      if target_state == 'completed'
-        ignored_errors << Aws::EC2::Errors::InvalidVolumeNotFound
-        ignored_errors << Aws::EC2::Errors::ResourceNotFound
-      end
       description = "volume modification of %s current state %s" % [volume_modification.volume.id, volume_modification.state]
-      max_tries = DEFAULT_TRIES * wait_time_factor
 
-      new.for_resource(resource: volume_modification, errors: ignored_errors,
-                       target_state: target_state, description: description, tries: max_tries) do |current_state|
-        current_state == target_state
+      new.for_resource(resource: volume_modification, target_state_desc: target_state_desc,
+                       description: description) do |current_state|
+        target_states.include?(current_state)
       end
 
     rescue Aws::EC2::Errors::InvalidVolumeNotFound, Aws::EC2::Errors::ResourceNotFound
@@ -102,7 +96,7 @@ module Bosh::AwsCloud
       valid_states = ['completed']
       validate_states(valid_states, target_state)
 
-      new.for_resource(resource: snapshot, target_state: target_state) do |current_state|
+      new.for_resource(resource: snapshot, target_state_desc: target_state) do |current_state|
         current_state == target_state
       end
     end
@@ -144,14 +138,14 @@ module Bosh::AwsCloud
       errors = args.fetch(:errors, [])
       desc = args.fetch(:description) { resource.id }
       tries = args.fetch(:tries, DEFAULT_TRIES).to_i
-      target_state = args.fetch(:target_state)
+      target_state_desc = args.fetch(:target_state_desc)
 
       sleep_cb = self.class.sleep_callback(
-        "Waiting for #{desc} to be #{target_state}",
+        "Waiting for #{desc} to be #{target_state_desc}",
         { interval: 2, total: tries, max: 32, exponential: true }
       )
       ensure_cb = Proc.new do |retries|
-        cloud_error("Timed out waiting for #{desc} to be #{target_state}, took #{time_passed}s") if retries == tries
+        cloud_error("Timed out waiting for #{desc} to be #{target_state_desc}, took #{time_passed}s") if retries == tries
       end
 
       errors << Aws::EC2::Errors::RequestLimitExceeded
@@ -161,7 +155,7 @@ module Bosh::AwsCloud
         resource.reload
 
         if resource.data.nil?
-          raise Aws::EC2::Errors::ResourceNotFound.new(nil, "Waiting for #{desc} to be #{target_state}") unless resource.exists?
+          raise Aws::EC2::Errors::ResourceNotFound.new(nil, "Waiting for #{desc} to be #{target_state_desc}") unless resource.exists?
         end
 
         s = resource.state
@@ -169,7 +163,7 @@ module Bosh::AwsCloud
 
         # check all cases where state can be error or failed
         if state == 'error' || state == 'failed'
-          raise Bosh::Clouds::CloudError, "#{desc} state is #{state}, expected #{target_state}, took #{time_passed}s"
+          raise Bosh::Clouds::CloudError, "#{desc} state is #{state}, expected #{target_state_desc}, took #{time_passed}s"
         end
 
         # the yielded block should return true if we have reached the target state
@@ -179,7 +173,7 @@ module Bosh::AwsCloud
       Bosh::AwsCloud::ResourceWait.logger.info("#{desc} is now #{state}, took #{time_passed}s")
     rescue Bosh::Common::RetryCountExceeded => e
       Bosh::AwsCloud::ResourceWait.logger.error(
-        "Timed out waiting for #{desc} state is #{state}, expected to be #{target_state}, took #{time_passed}s")
+        "Timed out waiting for #{desc} state is #{state}, expected to be #{target_state_desc}, took #{time_passed}s")
       raise e
     end
 

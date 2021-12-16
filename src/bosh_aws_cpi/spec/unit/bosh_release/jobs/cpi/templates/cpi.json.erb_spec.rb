@@ -59,7 +59,6 @@ describe 'cpi.json.erb' do
             'default_security_groups'=>['security_group_1'],
             'region' => 'moon',
             'max_retries' => 8,
-            'extend_ebs_volume_wait_time_factor' => 4,
             'encrypted' => false,
             'kms_key_arn' => nil,
             'metadata_options' => nil
@@ -190,17 +189,6 @@ describe 'cpi.json.erb' do
     it 'uses the value set' do
       manifest['properties']['aws']['default_iam_instance_profile'] = 'some_default_instance_profile'
       expect(subject['cloud']['properties']['aws']['default_iam_instance_profile']).to eq('some_default_instance_profile')
-    end
-  end
-
-  context 'given a customized extend_ebs_volume_wait_time_factor' do
-    before do
-      manifest['properties']['aws']['extend_ebs_volume'] ||= {}
-      manifest['properties']['aws']['extend_ebs_volume']['wait_time_factor'] = 77
-    end
-
-    it 'uses the value set' do
-      expect(subject['cloud']['properties']['aws']['extend_ebs_volume_wait_time_factor']).to eq(77)
     end
   end
 
