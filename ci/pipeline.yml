@@ -274,7 +274,13 @@ resources:
 - name: environment
   type: terraform_type
   source:
-    storage:
+    backend_type: s3
+    backend_config:
+      access_key:  {{aws_access_key__primary}}
+      secret_key:  {{aws_secret_key__primary}}
+      bucket:      {{terraform_bucket}}
+      key:         terraform.tfstate
+    migrate_from_storage:
       access_key_id:     {{aws_access_key__primary}}
       secret_access_key: {{aws_secret_key__primary}}
       bucket:            {{terraform_bucket}}
