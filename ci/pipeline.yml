@@ -278,6 +278,7 @@ resources:
     backend_config:
       access_key:  {{aws_access_key__primary}}
       secret_key:  {{aws_secret_key__primary}}
+      region: us-east-1
       bucket:      {{terraform_bucket}}
       key:         terraform.tfstate
     migrate_from_storage:
