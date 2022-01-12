@@ -1,10 +1,12 @@
-FROM ubuntu:xenial
+FROM ubuntu:focal
 
 RUN apt-get clean && apt-get update && apt-get install -y locales
 
 ENV LANG en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 RUN locale-gen en_US.UTF-8
+
+ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get -y upgrade
 RUN apt-get install -y \
@@ -20,7 +22,8 @@ RUN apt-get install -y \
 	dnsutils \
 	xvfb \
 	jq \
-	realpath \
+	# Needed for `realpath`
+	coreutils \
 	libpq-dev \
 	rsyslog \
 	libcurl4-openssl-dev \
