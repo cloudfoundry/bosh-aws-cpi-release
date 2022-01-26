@@ -20,7 +20,7 @@ required, you can run them separately though, with this command:
 
 ### Creating a Release
 
-The release requires Ruby version 2.7.5 and the Ruby gem Bundler (used by the vendoring script):
+The release requires Ruby version 3.1.0 and the Ruby gem Bundler (used by the vendoring script):
 
 ```
 gem install bundler
@@ -54,14 +54,14 @@ of it on your local system.
   ```bash
   export AWS_ACCESS_KEY_ID="AKIAINSxxxxxxxxxxxxx"
   export AWS_SECRET_ACCESS_KEY="LvgQOmCtjL1yhcxxxxxxxxxxxxxxxxxxxxxxxxxx"
-  
+
   # KMS keys used for encrypted disk tests
   export BOSH_AWS_KMS_KEY_ARN="arn:aws:kms:us-east-1:..."
   export BOSH_AWS_KMS_KEY_ARN_OVERRIDE="arn:aws:kms:us-east-1:..."
 
   # Optionally use alternate region
   # export AWS_DEFAULT_REGION="us-west-1"
-  
+
   # Optionally use STS Tokens
   # export AWS_SESSION_TOKEN="xxxxxxxx"
   ```
