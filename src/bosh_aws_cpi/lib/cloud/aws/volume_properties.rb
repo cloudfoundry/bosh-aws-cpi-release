@@ -3,12 +3,13 @@ module Bosh
     class VolumeProperties
       include Helpers
 
-      attr_reader :size, :az, :iops, :type, :encrypted
+      attr_reader :size, :az, :iops, :throughput, :type, :encrypted
 
       def initialize(options)
         @size = options[:size] || 0
         @type = options[:type] || 'gp3'
         @iops = options[:iops]
+        @throughput = options[:throughput]
         @az = options[:az]
         @kms_key_arn = options[:kms_key_arn]
         @encrypted = options[:encrypted] || false
@@ -24,6 +25,7 @@ module Bosh
         }
 
         mapping[:iops] = @iops if @iops
+        mapping[:throughput] = @throughput if @throughput
         mapping[:encrypted] = @encrypted if @encrypted
         mapping[:kms_key_id] = @kms_key_arn if @kms_key_arn
 
@@ -39,6 +41,7 @@ module Bosh
         }
 
         output[:iops] = @iops if @iops
+        output[:throughput] = @throughput if @throughput
         output[:kms_key_id] = @kms_key_arn if @kms_key_arn
         unless @tags.empty?
           output[:tag_specifications] = [
@@ -59,6 +62,14 @@ module Bosh
 
         if @type == 'io1' && @iops > 0
           root_device[:iops] = @iops
+        end
+        #On GP3 you can leave those values empty and get 3000 iops/125mb/s throughput
+        if @type == 'gp3' && @iops != nil && @iops > 0
+          root_device[:iops] = @iops
+        end
+
+        if @type == 'gp3' && @throughput != nil && @throughput > 0
+          root_device[:throughput] = @throughput
         end
 
         {

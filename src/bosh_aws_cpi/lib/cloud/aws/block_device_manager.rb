@@ -140,6 +140,7 @@ module Bosh::AwsCloud
           size: disk_size,
           type: ephemeral_disk.type,
           iops: ephemeral_disk.iops,
+          throughput: ephemeral_disk.throughput,
           encrypted: ephemeral_disk.encrypted,
           kms_key_arn: ephemeral_disk.kms_key_arn,
         ).ephemeral_disk_config
@@ -185,6 +186,7 @@ module Bosh::AwsCloud
         size: @vm_cloud_props.root_disk.size,
         type: @vm_cloud_props.root_disk.type,
         iops: @vm_cloud_props.root_disk.iops,
+        throughput: @vm_cloud_props.root_disk.throughput,
         virtualization_type: @virtualization_type,
         root_device_name: root_device_name,
       )
