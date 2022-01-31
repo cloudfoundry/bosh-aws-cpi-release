@@ -33,7 +33,7 @@ def validate_minimum_permissions(logger)
     policy_documents += user_details.user_policy_list.map(&:policy_document)
 
     actions = policy_documents.map do |document|
-      JSON.parse(URI.unescape(document))['Statement'].map do |s|
+      JSON.parse(URI.decode_www_form_component(document))['Statement'].map do |s|
         s['Action']
       end.flatten
     end.flatten.uniq
