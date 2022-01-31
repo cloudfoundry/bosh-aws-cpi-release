@@ -910,7 +910,7 @@ describe Bosh::AwsCloud::CloudV1 do
           ami_root_volume_size = ami_root_device.ebs.volume_size
           expect(ami_root_volume_size).to be > 0
 
-          vm_lifecycle(root_disk_vm_props) do |instance_id|
+          vm_lifecycle(**root_disk_vm_props) do |instance_id|
             instance = @cpi.ec2_resource.instance(instance_id)
             instance_root_device = get_root_block_device(instance.root_device_name, instance.block_device_mappings)
 
