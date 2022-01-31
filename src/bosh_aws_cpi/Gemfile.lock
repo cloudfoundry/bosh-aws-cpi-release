@@ -89,6 +89,7 @@ DEPENDENCIES
   bosh_cpi
   pry-byebug (~> 3.4)
   rake (~> 12.3)
+  rexml (~> 3.2.5)
   rspec (~> 3.5)
   webmock
 

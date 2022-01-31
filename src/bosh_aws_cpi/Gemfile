@@ -5,6 +5,7 @@ gem 'aws-sdk-autoscaling',            '~> 1.59'
 gem 'aws-sdk-elasticloadbalancing',   '~> 1.31'
 gem 'aws-sdk-elasticloadbalancingv2', '~> 1.61'
 
+gem 'rexml',                          '~> 3.2.5'
 gem 'bosh_common', '1.3262.24.0'
 gem 'bosh_cpi'
 
