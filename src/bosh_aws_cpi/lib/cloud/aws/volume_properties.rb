@@ -60,15 +60,11 @@ module Bosh
           root_device[:volume_size] = size_in_gb
         end
 
-        if @type == 'io1' && @iops > 0
-          root_device[:iops] = @iops
-        end
-        #On GP3 you can leave those values empty and get 3000 iops/125mb/s throughput
-        if @type == 'gp3' && @iops != nil && @iops > 0
+        if %w(io1 gp3).include?(@type) && @iops.to_i.positive?
           root_device[:iops] = @iops
         end
 
-        if @type == 'gp3' && @throughput != nil && @throughput > 0
+        if @type == 'gp3' && @throughput.to_i.positive?
           root_device[:throughput] = @throughput
         end
 
