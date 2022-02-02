@@ -35,7 +35,7 @@ With bundler installed, run the vendoring script from `src/bosh_aws_cpi`:
 Then create the BOSH release from the root directory:
 
 ```
-bosh create release --force
+bosh create-release --force
 ```
 
 The release is now ready for use. If everything works, commit the changes including the updated gems.

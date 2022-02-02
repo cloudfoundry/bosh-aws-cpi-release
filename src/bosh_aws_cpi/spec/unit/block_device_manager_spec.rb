@@ -459,7 +459,51 @@ module Bosh::AwsCloud
             expect(mappings).to  contain_exactly(ebs_disk, default_root)
           end
         end
+        context 'when type is gp3 and throughput is set' do
+        let(:ephemeral_disk) do
+          {
+            'type' => 'gp3',
+            'throughput' => 300
+          }
+        end
+
+        it 'configures the gp3 disk (throughput)' do
+          ebs_disk = {
+            device_name: '/dev/sdb',
+            ebs: {
+              volume_size: 10,
+              volume_type: 'gp3',
+              throughput: 300,
+              delete_on_termination: true
+            }
+          }
+          mappings, _agent_info = manager.mappings_and_info
+          expect(mappings).to  contain_exactly(ebs_disk, default_root)
+        end
       end
+      context 'when type is gp3 and iops is set' do
+        let(:ephemeral_disk) do
+          {
+            'type' => 'gp3',
+            'iops' => 123
+          }
+        end
+        it 'configures the gp3 disk (iops)' do
+          ebs_disk = {
+            device_name: '/dev/sdb',
+            ebs: {
+              volume_size: 10,
+              volume_type: 'gp3',
+              iops: 123,
+              delete_on_termination: true
+            }
+          }
+          mappings, _agent_info = manager.mappings_and_info
+          expect(mappings).to  contain_exactly(ebs_disk, default_root)
+        end
+      end
+      end
+      
 
       context 'when specifying encrypted' do
         let(:vm_type) do
@@ -691,6 +735,82 @@ module Bosh::AwsCloud
                 volume_size: 42,
                 volume_type: 'io1',
                 iops: 1000,
+                delete_on_termination: true,
+              }
+            }
+            expected_disks << root_disk
+
+            actual_disks, _agent_info = manager.mappings_and_info
+            expect(actual_disks).to match_array(expected_disks)
+          end
+        end
+
+        context 'when root disk type is gp3 with config' do
+          let(:vm_type) do
+            {
+              'key_name' => 'bar',
+              'availability_zone' => 'us-east-1a',
+              'instance_type' => 'm3.medium',
+              'root_disk' => {
+                'size' => 42 * 1024.0
+              }
+            }
+          end
+
+          it 'should create disk type of gp3 with throughput' do
+            vm_type['root_disk']['type'] = 'gp3'
+            vm_type['root_disk']['throughput'] = 200
+
+            manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props)
+            expected_disks = []
+
+            ephemeral_disks = [{
+                                 device_name: '/dev/sdb',
+                                 ebs: {
+                                   volume_size: 4,
+                                   volume_type: 'gp3',
+                                   delete_on_termination: true,
+                                 }
+                               }]
+            expected_disks += ephemeral_disks
+
+            root_disk = {
+              device_name: '/dev/xvda',
+              ebs: {
+                volume_size: 42,
+                volume_type: 'gp3',
+                throughput: 200,
+                delete_on_termination: true,
+              }
+            }
+            expected_disks << root_disk
+
+            actual_disks, _agent_info = manager.mappings_and_info
+            expect(actual_disks).to match_array(expected_disks)
+          end
+          it 'should create disk type of gp3 with iops' do
+            vm_type['root_disk']['type'] = 'gp3'
+            vm_type['root_disk']['iops'] = 4000
+
+            manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props)
+            expected_disks = []
+
+            ephemeral_disks = [{
+                                 device_name: '/dev/sdb',
+                                 ebs: {
+                                   volume_size: 4,
+                                   volume_type: 'gp3',
+                                   delete_on_termination: true,
+                                 }
+                               }]
+            expected_disks += ephemeral_disks
+
+            root_disk = {
+              device_name: '/dev/xvda',
+              ebs: {
+                volume_size: 42,
+                volume_type: 'gp3',
+                iops: 4000,
                 delete_on_termination: true,
               }
             }
