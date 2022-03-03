@@ -20,7 +20,6 @@ describe 'cpi.json.erb' do
     {
       'properties' => {
         'aws' => {
-          'default_key_name' => 'the_default_key_name',
           'default_security_groups' => ['security_group_1'],
           'region' => 'moon'
         },
@@ -55,7 +54,7 @@ describe 'cpi.json.erb' do
             'secret_access_key' => nil,
             'session_token' => nil,
             'default_iam_instance_profile' => nil,
-            'default_key_name'=>'the_default_key_name',
+            'default_key_name'=>nil,
             'default_security_groups'=>['security_group_1'],
             'region' => 'moon',
             'max_retries' => 8,
