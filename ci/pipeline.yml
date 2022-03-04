@@ -329,6 +329,5 @@ resources:
   type: docker-image
   source:
     repository: bosh/aws-cpi
-    email: ((dockerhub_email))
-    username: ((dockerhub_username))
-    password: ((dockerhub_password))
+    username: ((docker.username))
+    password: ((docker.password))
