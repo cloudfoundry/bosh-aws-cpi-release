@@ -159,7 +159,7 @@ module Bosh::AwsCloud
     end
 
     def self.required_keys
-      required_keys = {'aws' => ['default_key_name', 'max_retries']}
+      required_keys = {'aws' => ['max_retries']}
       required_keys
     end
   end

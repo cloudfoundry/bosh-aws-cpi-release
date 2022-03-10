@@ -852,7 +852,6 @@ module Bosh::AwsCloud
           'user_data',
           'cloud_properties.instance_type',
           'cloud_properties.availability_zone',
-          '\(cloud_properties.key_name or global default_key_name\)',
           '\(cloud_properties.security_groups or global default_security_groups\)',
           'cloud_properties.subnet_id'
         ]

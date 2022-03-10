@@ -23,7 +23,7 @@ describe Bosh::AwsCloud::CloudV1 do
         it 'raises an error' do
           expect { cloud }.to raise_error(
               ArgumentError,
-              'missing configuration parameters > aws:default_key_name, aws:max_retries'
+              'missing configuration parameters > aws:max_retries'
             )
         end
       end

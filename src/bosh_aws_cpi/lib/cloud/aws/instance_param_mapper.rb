@@ -34,10 +34,6 @@ module Bosh::AwsCloud
         end
       end
 
-      unless vm_type.key_name
-        missing_inputs << '(cloud_properties.key_name or global default_key_name)'
-      end
-
       sg = security_groups
       if ( sg.nil? || sg.empty? )
         missing_inputs << '(cloud_properties.security_groups or global default_security_groups)'

@@ -30,8 +30,9 @@ properties:
     description: Default AWS iam_instance_profile for the aws cpi
     default: null
   aws.default_key_name:
-    description: Default SSH keypair used for new VMs (required)
+    description: Default SSH keypair used for new VMs
     example: [bosh]
+    default: null
   aws.default_security_groups:
     description: Default security groups for new VMs (required)
     example: [bosh-grp]
