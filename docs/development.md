@@ -4,8 +4,18 @@
 
 The CPI Ruby code has unit tests that can be run as follows.
 
+From the project's root dir:
+
 ```bash
+source .envrc
 ./src/bosh_aws_cpi/bin/test-unit
+```
+
+or alternatively:
+
+```bash
+cd src/bosh_aws_cpi
+./bin/test-unit
 ```
 
 ### Running ERB job templates unit tests
@@ -14,8 +24,18 @@ The ERB templates rendered by the jobs of this Bosh Release have specific unit
 tests that are run along with the other unit tests as instructed above. When
 required, you can run them separately though, with this command:
 
+From the project's root dir:
+
 ```bash
+source .envrc
 ./src/bosh_aws_cpi/bin/test-unit spec/unit/bosh_release
+```
+
+or alternatively:
+
+```bash
+cd src/bosh_aws_cpi
+./bin/test-unit spec/unit/bosh_release
 ```
 
 ### Creating a Release
