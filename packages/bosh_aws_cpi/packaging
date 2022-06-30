@@ -9,11 +9,11 @@ source ${BOSH_PACKAGES_DIR}/ruby-3.1/bosh/compile.env
 cp -a bosh_aws_cpi/* ${BOSH_INSTALL_TARGET}
 
 export BUNDLE_CACHE_PATH="vendor/package"
-export BUNDLE_WITHOUT="development:test"
 
 cd ${BOSH_INSTALL_TARGET}
 
 bundle install \
+  --without development test \
   --local           \
   --no-prune        \
   --deployment
