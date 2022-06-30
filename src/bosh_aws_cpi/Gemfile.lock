@@ -1,7 +1,7 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    addressable (2.7.0)
+    addressable (2.8.0)
       public_suffix (>= 2.0.2, < 5.0)
     aws-eventstream (1.1.1)
     aws-partitions (1.442.0)
@@ -54,7 +54,7 @@ GEM
     pry-byebug (3.9.0)
       byebug (~> 11.0)
       pry (~> 0.13.0)
-    public_suffix (4.0.6)
+    public_suffix (4.0.7)
     rake (12.3.3)
     rexml (3.2.5)
     rspec (3.10.0)
@@ -94,4 +94,4 @@ DEPENDENCIES
   webmock
 
 BUNDLED WITH
-   2.3.5
+   2.3.7
