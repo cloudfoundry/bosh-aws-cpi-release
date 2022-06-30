@@ -40,7 +40,7 @@ cd src/bosh_aws_cpi
 
 ### Creating a Release
 
-The release requires Ruby version 3.1.0 and the Ruby gem Bundler (used by the vendoring script):
+The release requires Ruby version 3.1.2 and the Ruby gem Bundler (used by the vendoring script):
 
 ```
 gem install bundler
