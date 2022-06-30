@@ -23,4 +23,5 @@ tmp
 .starscope.db
 cscope.out
 tags
-
+*.nix
+.envrc
