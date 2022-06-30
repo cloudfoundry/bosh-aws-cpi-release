@@ -1,4 +1,4 @@
-FROM ubuntu:focal
+FROM ubuntu:jammy
 
 RUN apt-get clean && apt-get update && apt-get install -y locales
 
@@ -32,7 +32,7 @@ RUN apt-get install -y \
 
 RUN pip3 install awscli
 
-ENV RUBY_INSTALL_VERSION=0.8.3 RUBY_VERSION=3.1.0
+ENV RUBY_INSTALL_VERSION=0.8.3 RUBY_VERSION=3.1.2
 
 # Install ruby-install
 RUN cd /tmp && \
