@@ -4,13 +4,14 @@ gem 'aws-sdk-ec2',                    '~> 1.230'
 gem 'aws-sdk-autoscaling',            '~> 1.59'
 gem 'aws-sdk-elasticloadbalancing',   '~> 1.31'
 gem 'aws-sdk-elasticloadbalancingv2', '~> 1.61'
+gem 'aws-sdk-iam', '~>1.5'
 
 gem 'rexml',                          '~> 3.2.5'
 gem 'bosh_common', '1.3262.24.0'
 gem 'bosh_cpi'
 
 group :development, :test do
-  gem 'aws-sdk-iam', '~>1.5'
+
   gem 'pry-byebug',  '~>3.4'
   gem 'rspec',       '~>3.5'
   gem 'rake',        '~>12.3'
