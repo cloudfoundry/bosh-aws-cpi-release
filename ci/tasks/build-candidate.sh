@@ -11,6 +11,7 @@ pushd bosh-cpi-src
   pushd src/bosh_aws_cpi
     bundle install
     bundle exec rspec spec/unit/*
+    ./vendor_gems
   popd
 
   cpi_release_name="bosh-aws-cpi"
