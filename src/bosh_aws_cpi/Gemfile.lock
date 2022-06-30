@@ -40,7 +40,7 @@ GEM
     diff-lcs (1.4.4)
     hashdiff (1.0.1)
     httpclient (2.8.3)
-    jmespath (1.4.0)
+    jmespath (1.6.1)
     little-plugger (1.1.4)
     logging (1.8.2)
       little-plugger (>= 1.1.3)
