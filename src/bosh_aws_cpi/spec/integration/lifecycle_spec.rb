@@ -17,7 +17,7 @@ describe 'lifecycle test' do
   let(:instance_type_ipv6)                { 't2.small' } # "IPv6 is not supported for the instance type 'm3.medium'"
   let(:ami)                               { hvm_ami }
   let(:hvm_ami)                           { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-9c91b7fc') }
-  let(:pv_ami)                            { ENV.fetch('BOSH_AWS_PV_IMAGE_ID', 'ami-3f71225f') }
+# let(:pv_ami)                            { ENV.fetch('BOSH_AWS_PV_IMAGE_ID', 'ami-3f71225f') }
   let(:windows_ami)                       { ENV.fetch('BOSH_AWS_WINDOWS_IMAGE_ID', 'ami-9be0a8fb') }
   let(:eip)                               { ENV.fetch('BOSH_AWS_ELASTIC_IP') }
   let(:instance_type) { instance_type_with_ephemeral }

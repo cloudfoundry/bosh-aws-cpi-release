@@ -8,6 +8,9 @@ set -e
 : ${BOSH_AWS_KMS_KEY_ARN:?}
 : ${BOSH_AWS_KMS_KEY_ARN_OVERRIDE:?}
 
+tar -xzf stemcell/light-*.tgz stemcell.MF
+export BOSH_AWS_IMAGE_ID=$(cat stemcell.MF | grep $AWS_DEFAULT_REGION | tr -d ' ' | cut -f2 -d:)
+
 # NOTE: To run with specific line numbers, set:
 # RSPEC_ARGUMENTS="spec/integration/lifecycle_spec.rb:mm:nn"
 : ${RSPEC_ARGUMENTS:=spec/integration}
