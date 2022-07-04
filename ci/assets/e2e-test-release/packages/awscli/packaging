@@ -2,4 +2,4 @@ set -e
 
 unzip awscli/awscli-bundle.zip
 
-./awscli-bundle/install -i ${BOSH_INSTALL_TARGET}
+./aws/install -i ${BOSH_INSTALL_TARGET}
