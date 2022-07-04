@@ -68,7 +68,9 @@ jobs:
   - in_parallel:
     - {trigger: true,  passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
     - {trigger: false, passed: [build-candidate], get: bosh-cpi-src, resource: bosh-cpi-src-in}
+    - {get: stemcell,        trigger: true, resource: light-stemcell}
     - {get: aws-cpi-image }
+
   - put: environment
     params:
       env_name: bosh-aws-cpi-integration
@@ -324,7 +326,7 @@ resources:
 - name: light-stemcell
   type: bosh-io-stemcell
   source:
-    name: bosh-aws-xen-hvm-ubuntu-xenial-go_agent
+    name: bosh-aws-xen-hvm-ubuntu-jammy-go_agent
 - name: aws-cpi-image
   type: docker-image
   source:

@@ -21,7 +21,7 @@ describe Bosh::AwsCloud::CloudV1 do
   let(:instance_type_ipv6)                { 't2.small' } # "IPv6 is not supported for the instance type 'm3.medium'"
   let(:ami)                               { hvm_ami }
   let(:hvm_ami)                           { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-9c91b7fc') }
-  let(:pv_ami)                            { ENV.fetch('BOSH_AWS_PV_IMAGE_ID', 'ami-3f71225f') }
+# let(:pv_ami)                            { ENV.fetch('BOSH_AWS_PV_IMAGE_ID', 'ami-3f71225f') }
   let(:windows_ami)                       { ENV.fetch('BOSH_AWS_WINDOWS_IMAGE_ID', 'ami-f8dfd698') }
   let(:eip)                               { ENV.fetch('BOSH_AWS_ELASTIC_IP') }
   let(:ipv6_ip)                           { ENV.fetch('BOSH_AWS_MANUAL_IPV6_IP') }
@@ -795,15 +795,15 @@ describe Bosh::AwsCloud::CloudV1 do
             end
           end
 
-          context 'and AMI is paravirtual' do
-            let(:root_disk_vm_props) do
-              { ami_id: pv_ami }
-            end
+#         context 'and AMI is paravirtual' do
+#           let(:root_disk_vm_props) do
+#             { ami_id: pv_ami }
+#           end
 
-            it 'requests root disk with the default type and size' do
-              verify_root_disk_properties
-            end
-          end
+#           it 'requests root disk with the default type and size' do
+#             verify_root_disk_properties
+#           end
+#         end
 
           context 'and AMI is Windows' do
             let(:root_disk_vm_props) do
@@ -838,15 +838,15 @@ describe Bosh::AwsCloud::CloudV1 do
             end
           end
 
-          context 'and AMI is pv' do
-            let(:root_disk_vm_props) do
-              { ami_id: pv_ami }
-            end
+#         context 'and AMI is pv' do
+#           let(:root_disk_vm_props) do
+#             { ami_id: pv_ami }
+#           end
 
-            it 'requests root disk with the specified size and type gp3' do
-              verify_root_disk_properties
-            end
-          end
+#           it 'requests root disk with the specified size and type gp3' do
+#             verify_root_disk_properties
+#           end
+#         end
 
           context 'and AMI is Windows' do
             let(:root_disk_vm_props) do
@@ -881,15 +881,15 @@ describe Bosh::AwsCloud::CloudV1 do
               end
             end
 
-            context 'and AMI is pv' do
-              let(:root_disk_vm_props) do
-                { ami_id: pv_ami }
-              end
+#           context 'and AMI is pv' do
+#             let(:root_disk_vm_props) do
+#               { ami_id: pv_ami }
+#             end
 
-              it 'requests root disk with the specified size and type gp3' do
-                verify_root_disk_properties
-              end
-            end
+#             it 'requests root disk with the specified size and type gp3' do
+#               verify_root_disk_properties
+#             end
+#           end
 
             context 'and AMI is Windows' do
               let(:root_disk_vm_props) do
