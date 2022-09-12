@@ -5,7 +5,7 @@ module Bosh::AwsCloud
 
     # Newer, nitro-based instances use NVMe storage volumes.
     # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#ec2-nitro-instances
-    NVME_INSTANCE_FAMILIES = %w[a1 c5 c5a c5ad c5d c5n c6g c6gd c6gn d3 d3en g4 i3en inf1 m5 m5a m5ad m5d m5dn m5n m5zn m6g m6gd m6i p3dn p4 r5 r5a r5ad r5b r5d r5dn r5n r6g r6gd r6i t3 t3a t4g z1d].freeze
+    NVME_INSTANCE_FAMILIES = %w[a1 c5 c5a c5ad c5d c5n c6g c6gd c6gn c6i d3 d3en g4 i3en inf1 m5 m5a m5ad m5d m5dn m5n m5zn m6g m6gd m6i p3dn p4 r5 r5a r5ad r5b r5d r5dn r5n r6g r6gd r6i t3 t3a t4g z1d].freeze
 
     def initialize(logger, stemcell, vm_cloud_props)
       @logger = logger
