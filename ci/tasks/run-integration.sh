@@ -7,6 +7,7 @@ set -e
 : ${AWS_DEFAULT_REGION:?}
 : ${BOSH_AWS_KMS_KEY_ARN:?}
 : ${BOSH_AWS_KMS_KEY_ARN_OVERRIDE:?}
+: ${BOSH_AWS_WINDOWS_IMAGE_ID:?}
 
 tar -xzf stemcell/stemcell.tgz stemcell.MF
 export BOSH_AWS_IMAGE_ID=$(cat stemcell.MF | grep $AWS_DEFAULT_REGION | tr -d ' ' | cut -f2 -d:)
