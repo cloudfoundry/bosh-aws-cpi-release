@@ -59,7 +59,7 @@ module Bosh::AwsCloud
 
     def mappings(info)
       instance_type = @vm_cloud_props.instance_type.nil? ? 'unspecified' : @vm_cloud_props.instance_type
-      if instance_type =~ /^i3\./
+      if instance_type =~ /^i3\./ || instance_type =~ /^i3en\./
         info = info.reject { |device| device[:bosh_type] == 'raw_ephemeral' }
       end
 
@@ -155,7 +155,7 @@ module Bosh::AwsCloud
       case @virtualization_type
 
         when 'hvm'
-          if instance_type =~ /^i3\./
+          if instance_type =~ /^i3\./ || instance_type =~ /^i3en\./
             '/dev/nvme0n1'
           else
             '/dev/xvdba'
@@ -291,6 +291,14 @@ module Bosh::AwsCloud
         'i3.4xlarge' => [1900, 2],
         'i3.8xlarge' => [1900, 4],
         'i3.16xlarge' => [1900, 8],
+
+        'i3en.large' => [1250, 1],
+        'i3en.xlarge' => [2500, 1],
+        'i3en.2xlarge' => [2500, 2],
+        'i3en.3xlarge' => [7500, 1],
+        'i3en.6xlarge' => [7500, 2],
+        'i3en.12xlarge' => [7500, 4],
+        'i3en.24xlarge' => [7500, 8],
 
         'd2.xlarge' => [2000, 3],
         'd2.2xlarge' => [2000, 6],
