@@ -57,7 +57,7 @@ module Bosh::AwsCloud
             {
               device_name: '/dev/sdb',
               ebs: {
-                volume_size: 10,
+                volume_size: expected_volume_size,
                 volume_type: 'gp3',
                 delete_on_termination: true,
               }
@@ -94,6 +94,8 @@ module Bosh::AwsCloud
       BlockDeviceManager::NVME_INSTANCE_FAMILIES.each do |nvme_instance_family|
         context "when creating #{nvme_instance_family} instances" do
           let(:instance_type) { "#{nvme_instance_family}.large" }
+          let(:instance_type_disk_mapping) { BlockDeviceManager::DiskInfo::INSTANCE_TYPE_DISK_MAPPING[instance_type] }
+          let(:expected_volume_size) { instance_type_disk_mapping && instance_type_disk_mapping[0] || 10 }
 
           it_behaves_like 'NVMe required instance types'
         end
