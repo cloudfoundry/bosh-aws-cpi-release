@@ -287,15 +287,15 @@ module Bosh::AwsCloud
         'i2.4xlarge' => [800, 4],
         'i2.8xlarge' => [800, 8],
 
+         #current gen
+         #https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html
         'i3.large' => [475, 1],
         'i3.xlarge' => [950, 1],
         'i3.2xlarge' => [1900, 1],
         'i3.4xlarge' => [1900, 2],
         'i3.8xlarge' => [1900, 4],
         'i3.16xlarge' => [1900, 8],
-
-         #current gen, nvme ssd
-         #https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html
+        
         'i3en.large' => [1250, 1],
         'i3en.xlarge' => [2500, 1],
         'i3en.2xlarge' => [2500, 2],
