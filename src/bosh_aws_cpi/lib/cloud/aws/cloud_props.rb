@@ -197,7 +197,7 @@ module Bosh::AwsCloud
 
       def invalid_instance_storage_config?
         if use_instance_storage
-          size || type || iops
+          size || type || iops || encrypted
         end
       end
     end

@@ -601,6 +601,33 @@ module Bosh::AwsCloud
           end
         end
 
+        context 'when the instance_type has instance storage and encrypted set to false' do
+          let(:vm_type) do
+            {
+              'key_name' => 'bar',
+              'availability_zone' => 'us-east-1a',
+              'instance_type' => 'i3en.2xlarge',
+              'ephemeral_disk' => {
+                'use_instance_storage' => true,
+                'encrypted' => false #turn off global setting for nvme
+              }
+            }
+          end
+
+          it 'returns instance storage disks as ephemeral disk' do
+            expected_disks = [
+              {
+                virtual_name: 'ephemeral0',
+                device_name: '/dev/sdb',
+              },
+              default_root
+            ]
+
+            mappings, _agent_info = manager.mappings_and_info
+            expect(mappings).to  match_array(expected_disks)
+          end
+        end
+
         context 'when the instance_type has NO instance storage' do
           let(:vm_type) do
             {

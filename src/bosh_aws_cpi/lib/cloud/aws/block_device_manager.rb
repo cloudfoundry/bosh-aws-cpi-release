@@ -155,8 +155,10 @@ module Bosh::AwsCloud
       case @virtualization_type
 
         when 'hvm'
-          if instance_type =~ /^i3\./ || instance_type =~ /^i3en\./
+          if instance_type =~ /^i3\./
             '/dev/nvme0n1'
+          elsif instance_type =~ /^i3en\./
+            '/dev/nvme1n1'
           else
             '/dev/xvdba'
           end
@@ -292,6 +294,8 @@ module Bosh::AwsCloud
         'i3.8xlarge' => [1900, 4],
         'i3.16xlarge' => [1900, 8],
 
+         #current gen, nvme ssd
+         #https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html
         'i3en.large' => [1250, 1],
         'i3en.xlarge' => [2500, 1],
         'i3en.2xlarge' => [2500, 2],
