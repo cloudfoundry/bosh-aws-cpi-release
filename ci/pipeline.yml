@@ -254,6 +254,7 @@ resources:
   type: git
   source:
     uri: git@github.com:cloudfoundry-incubator/bosh-aws-cpi-release.git
+    branch: master
     private_key: ((github_deploy_key_bosh-aws-cpi-release.private_key))
 - name: bosh-cpi-src-dockerfiles
   type: git
