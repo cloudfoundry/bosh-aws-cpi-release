@@ -5,7 +5,7 @@ module Bosh::AwsCloud
 
     # Newer, nitro-based instances use NVMe storage volumes.
     # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#ec2-nitro-instances
-    NVME_INSTANCE_FAMILIES = %w[a1 c5 c5a c5ad c5d c5n c6a c6g c6gd c6gn c6i c6id c6in d3 d3en g4 i3en inf1 m5 m5a m5ad m5d m5dn m5n m5zn m6a m6g m6gd m6i m6id m6idn m6in p3dn p4 r5 r5a r5ad r5b r5d r5dn r5n r6a r6g r6gd r6i r6in r6id r6idn t3 t3a t4g z1d].freeze
+    NVME_INSTANCE_FAMILIES = %w[a1 c5 c5a c5ad c5d c5n c6a c6g c6gd c6gn c6i c6id c6in d3 d3en g4 i3en i4i inf1 m5 m5a m5ad m5d m5dn m5n m5zn m6a m6g m6gd m6i m6id m6idn m6in p3dn p4 r5 r5a r5ad r5b r5d r5dn r5n r6a r6g r6gd r6i r6in r6id r6idn t3 t3a t4g z1d].freeze
 
     def initialize(logger, stemcell, vm_cloud_props)
       @logger = logger
@@ -292,6 +292,7 @@ module Bosh::AwsCloud
         'i3.8xlarge' => [1900, 4],
         'i3.16xlarge' => [1900, 8],
 
+        # NVME instance - storage optimized.
         'i3en.large' => [1250, 1],
         'i3en.xlarge' => [2500, 1],
         'i3en.2xlarge' => [2500, 2],
@@ -299,6 +300,14 @@ module Bosh::AwsCloud
         'i3en.6xlarge' => [7500, 2],
         'i3en.12xlarge' => [7500, 4],
         'i3en.24xlarge' => [7500, 8],
+
+        'i4i.large' => [468, 1],
+        'i4i.xlarge' => [937, 1],
+        'i4i.2xlarge' => [1875, 1],
+        'i4i.4xlarge' => [3750, 1],
+        'i4i.8xlarge' => [3750, 2],
+        'i4i.16xlarge' => [3750, 4],
+        'i4i.32xlarge' => [3750, 8],
 
         'd2.xlarge' => [2000, 3],
         'd2.2xlarge' => [2000, 6],
