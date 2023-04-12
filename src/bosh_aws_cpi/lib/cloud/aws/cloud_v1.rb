@@ -245,6 +245,12 @@ module Bosh::AwsCloud
       end
     end
 
+    def migrate_disk_gp3(disk_id)
+      with_thread_name("migrate_disk(#{disk_id}, gp3)") do
+        @cloud_core.migrate_disk_gp3(disk_id)
+      end
+    end
+
     # Attach an EBS volume to an EC2 instance
     # @param [String] instance_id EC2 instance id of the virtual machine to attach the disk to
     # @param [String] disk_id EBS volume id of the disk to attach

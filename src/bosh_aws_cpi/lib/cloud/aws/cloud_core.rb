@@ -161,7 +161,6 @@ module Bosh::AwsCloud
       logger.info("Detached `#{disk_id}' from `#{instance_id}'")
     end
 
-
     def resize_disk(disk_id, new_size)
       new_size_gib = mib_to_gib(new_size)
       @logger.info("Resizing volume `#{disk_id}'...")
@@ -183,6 +182,18 @@ module Bosh::AwsCloud
       end
     end
 
+    def migrate_disk_gp3(disk_id)
+      @logger.info("Migrating volume `#{disk_id}'...")
+      volume = @ec2_resource.volume(disk_id)
+      cloud_error("Cannot migrate volume because volume with #{disk_id} not found") unless volume
+
+      if volume.volume_type == 'gp3'
+        @logger.info("Skipping migration of disk #{disk_id} because volume type is already gp3")
+      else
+        @volume_manager.migrate_ebs_volume_gp3(volume)
+        @logger.info("Disk #{disk_id} migrated from #{volume.volume_type} to gp3")
+      end
+    end
 
     def has_disk?(disk_id)
       with_thread_name("has_disk?(#{disk_id})") do

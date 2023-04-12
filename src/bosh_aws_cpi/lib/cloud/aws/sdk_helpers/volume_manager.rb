@@ -27,6 +27,16 @@ module Bosh::AwsCloud
                                            states: [ 'optimizing', 'completed' ])
     end
 
+    def migrate_ebs_volume_gp3(volume)
+      resp = @ec2_client.modify_volume(volume_id: volume.id, volume_type: 'gp3')
+
+      volume_modification = SdkHelpers::VolumeModification.new(volume, resp.volume_modification, @ec2_client)
+      @logger.info("Migrating volume `#{volume.id}' to gp3")
+
+      ResourceWait.for_volume_modification(volume_modification: volume_modification,
+                                           states: [ 'optimizing', 'completed' ])
+    end
+
     def delete_ebs_volume(volume, fast_path_delete = false)
       @logger.info("Deleting volume `#{volume.id}'")
 
