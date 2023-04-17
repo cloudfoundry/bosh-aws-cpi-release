@@ -12,6 +12,7 @@ run:
 params:
   AWS_ACCESS_KEY_ID:                       ""
   AWS_SECRET_ACCESS_KEY:                   ""
+  AWS_ROLE_ARN:                            ""
   AWS_DEFAULT_REGION:                      ""
   BOSH_AWS_KMS_KEY_ARN:                    ""
   BOSH_AWS_KMS_KEY_ARN_OVERRIDE:           ""

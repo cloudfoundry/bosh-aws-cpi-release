@@ -93,6 +93,7 @@ RSpec.configure do |rspec_config|
         'fast_path_delete' => 'yes',
         'access_key_id' => @access_key_id,
         'secret_access_key' => @secret_access_key,
+        'role_arn' => @role_arn,
         'session_token' => @session_token,
         'max_retries' => 8
       },

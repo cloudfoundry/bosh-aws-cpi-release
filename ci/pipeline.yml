@@ -86,6 +86,7 @@ jobs:
     params:
       AWS_ACCESS_KEY_ID:                       ((aws-cpi-integration-tests_aws_access_key.username))
       AWS_SECRET_ACCESS_KEY:                   ((aws-cpi-integration-tests_aws_access_key.password))
+      AWS_ROLE_ARN:                            arn:aws:iam::768764561134:role/aws-cpi-concourse
       BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID:     ((iam-permission-auditor_aws_access_key.username))
       BOSH_AWS_PERMISSIONS_AUDITOR_SECRET_KEY: ((iam-permission-auditor_aws_access_key.password))
       AWS_DEFAULT_REGION:                      us-west-1
@@ -246,6 +247,7 @@ resources:
   type: git
   source:
     uri: https://github.com/cloudfoundry-incubator/bosh-aws-cpi-release.git
+    branch: assume-role-support
     private_key: ((github_deploy_key_bosh-aws-cpi-release.private_key))
     ignore_paths:
       - .final_builds/**/*.yml
@@ -254,13 +256,13 @@ resources:
   type: git
   source:
     uri: git@github.com:cloudfoundry-incubator/bosh-aws-cpi-release.git
-    branch: master
+    branch: assume-role-support
     private_key: ((github_deploy_key_bosh-aws-cpi-release.private_key))
 - name: bosh-cpi-src-dockerfiles
   type: git
   source:
     uri: https://github.com/cloudfoundry-incubator/bosh-aws-cpi-release.git
-    branch: master
+    branch: assume-role-support
     paths:
       - "ci/docker"
 - name: version-semver
@@ -297,6 +299,7 @@ resources:
       secret_key: ((bosh_cpis_aws_access_key.password))
       region:     us-west-1
       public_key: ((integration_vm_keypair.public_key))
+      role_arn:   arn:aws:iam::768764561134:role/aws-cpi-integration-tests
 - name: bosh-cli
   type: s3
   source:
