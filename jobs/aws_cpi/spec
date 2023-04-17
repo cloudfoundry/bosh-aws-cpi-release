@@ -26,6 +26,9 @@ properties:
   aws.session_token:
     description: AWS session_token when using STS credentials for the aws cpi (Optional, used when aws.credentials_source is set to `static`)
     default: null
+  aws.role_arn:
+    description: AWS role_arn to be assumed by the CPI when authenticating (Optional, used when aws.credentials_source is set to `static`)
+    default: null
   aws.default_iam_instance_profile:
     description: Default AWS iam_instance_profile for the aws cpi
     default: null

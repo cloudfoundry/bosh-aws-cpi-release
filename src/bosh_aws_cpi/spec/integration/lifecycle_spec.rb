@@ -218,6 +218,48 @@ describe 'lifecycle test' do
     end
   end
 
+  context 'using AssumeRole credentials' do
+    let(:sts_cpi) do
+      region = ENV.fetch('BOSH_AWS_REGION', 'us-west-1')
+      access_key_id =  ENV.fetch('BOSH_AWS_ACCESS_KEY_ID')
+      secret_access_key = ENV.fetch('BOSH_AWS_SECRET_ACCESS_KEY')
+      session_token = ENV.fetch('BOSH_AWS_SESSION_TOKEN', nil)
+      role_arn = ENV.fetch('BOSH_AWS_ROLE_ARN')
+
+      @cpi.class.new(
+        'aws' => {
+          'region' => region,
+          'default_key_name' => @default_key_name,
+          'fast_path_delete' => 'yes',
+          'access_key_id' => access_key_id,
+          'secret_access_key' => secret_access_key,
+          'role_arn' => role_arn,
+          'session_token' => session_token,
+          'max_retries' => 8
+        },
+        'registry' => {
+          'endpoint' => 'fake',
+          'user' => 'fake',
+          'password' => 'fake'
+        },
+        'debug'=> {
+          'cpi'=> {
+            'api_version'=> mock_cpi_api_version
+          },
+        },
+      )
+    end
+    it 'it can perform an AWS API call', :focus => true do
+      skip("'BOSH_AWS_ROLE_ARN' Role ARN not provided, skipping assume role test") if ENV.fetch('BOSH_AWS_ROLE_ARN', nil).nil? || ENV.fetch('BOSH_AWS_ROLE_ARN') == ""
+
+      expect {
+        sts_cpi.delete_disk('vol-4c68780b')
+      }.to raise_error Bosh::Clouds::DiskNotFound
+
+      expect(sts_cpi.ec2_resource.client.config.credentials).to be_a(Aws::AssumeRoleCredentials)
+    end
+  end
+
   describe 'deleting things that no longer exist' do
     it 'raises the appropriate Clouds::Error' do
       # pass in *real* previously deleted ids instead of made up ones

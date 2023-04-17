@@ -43,6 +43,10 @@ describe Bosh::AwsCloud::Config do
       },
     }
   end
+  let(:sts_client) { instance_double(Aws::STS::Client) }
+  let(:assume_role_creds) { instance_double(Aws::AssumeRoleCredentials) }
+  let(:env_prof_creds) { instance_double(Aws::InstanceProfileCredentials) }
+
   describe 'registry validation' do
     context 'when `debug.cpi.api_version` is specified in options' do
       let(:debug_api_version) { 1 }
@@ -115,4 +119,41 @@ describe Bosh::AwsCloud::Config do
       end
     end
   end
+
+  context 'when the credentials source is static' do
+    it 'should use the static Credentials' do
+      config = Bosh::AwsCloud::Config.build(options)
+      expect(config.aws.credentials).to be_a(Aws::Credentials)
+    end
+
+    context 'when role_arn is sent' do
+      before do
+        options['aws']['role_arn'] = 'arn:aws:iam::123456789012:role/role_name'
+        options['aws']['session_token'] = 'session_token'
+      end
+
+      it 'should use the static AssumeRoleCredentials' do
+        allow(Aws::STS::Client).to receive(:new).and_return(sts_client)
+        allow(Aws::AssumeRoleCredentials).to receive(:new).and_return(assume_role_creds)
+        config = Bosh::AwsCloud::Config.build(options)
+
+        expect(config.aws.credentials).to be_a(assume_role_creds.class)
+      end
+    end
+  end
+
+  context 'when the credentials source is env_or_profile' do
+    before do
+      options['aws']['credentials_source'] = 'env_or_profile'
+      options['aws']['access_key_id'] = nil
+      options['aws']['secret_access_key'] = nil
+    end
+
+    it 'should use the EnvOrProfileCredentials' do
+      allow(Aws::InstanceProfileCredentials).to receive(:new).and_return(env_prof_creds)
+      config = Bosh::AwsCloud::Config.build(options)
+      expect(config.aws.credentials).to be_a(env_prof_creds.class)
+    end
+  end
+
 end

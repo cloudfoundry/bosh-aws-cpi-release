@@ -1,5 +1,6 @@
 variable "access_key" {}
 variable "secret_key" {}
+variable "role_arn" {}
 variable "session_token" {
   default = ""
 }
@@ -12,6 +13,9 @@ provider "aws" {
   secret_key = var.secret_key
   token = var.session_token
   region = var.region
+  assume_role {
+    role_arn = var.role_arn
+  }
 }
 
 data "aws_availability_zones" "available" {}
