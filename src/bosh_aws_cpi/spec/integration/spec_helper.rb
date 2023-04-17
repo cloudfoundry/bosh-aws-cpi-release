@@ -53,6 +53,7 @@ RSpec.configure do |rspec_config|
     @access_key_id                  = ENV.fetch('BOSH_AWS_ACCESS_KEY_ID')
     @secret_access_key              = ENV.fetch('BOSH_AWS_SECRET_ACCESS_KEY')
     @session_token                  = ENV.fetch('BOSH_AWS_SESSION_TOKEN', nil)
+    @role_arn                       = ENV.fetch('BOSH_AWS_ROLE_ARN', nil)
     @subnet_id                      = ENV.fetch('BOSH_AWS_SUBNET_ID')
     @subnet_zone                    = ENV.fetch('BOSH_AWS_SUBNET_ZONE')
     @kms_key_arn                    = ENV.fetch('BOSH_AWS_KMS_KEY_ARN')

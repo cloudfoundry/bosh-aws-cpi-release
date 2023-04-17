@@ -57,6 +57,7 @@ describe 'cpi.json.erb' do
             'default_key_name'=>nil,
             'default_security_groups'=>['security_group_1'],
             'region' => 'moon',
+            'role_arn' => nil,
             'max_retries' => 8,
             'encrypted' => false,
             'kms_key_arn' => nil,
