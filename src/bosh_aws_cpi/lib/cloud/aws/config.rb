@@ -126,6 +126,8 @@ module Bosh::AwsCloud
     private
 
     def initialize(config_hash)
+      Bosh::Clouds::Config.logger.info('Config Hash: ')
+      Bosh::Clouds::Config.logger.info(config_hash.to_s)
       @config = config_hash
       @aws = AwsConfig.new(config_hash['aws'] || {})
       @registry = RegistryConfig.new(config_hash['registry'] || {})

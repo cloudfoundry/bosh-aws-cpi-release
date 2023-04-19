@@ -1,5 +1,7 @@
 module Bosh
-  module AwsCloud; end
+  module AwsCloud
+    ;
+  end
 end
 
 require 'aws-sdk-core'
@@ -57,6 +59,8 @@ module Bosh
   module Clouds
     class Aws
       def create_cloud(cpi_api_version, cloud_properties)
+        Bosh::Clouds::Config.logger.info('Cloud Properties Hash: ')
+        Bosh::Clouds::Config.logger.info(cloud_properties.to_s)
         if cpi_api_version && cpi_api_version > 1
           Bosh::AwsCloud::CloudV2.new(cloud_properties)
         else
