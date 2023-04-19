@@ -9,7 +9,6 @@ def validate_minimum_permissions(logger)
       region: @region,
       access_key_id: @access_key_id,
       secret_access_key: @secret_access_key,
-      session_token: @session_token
     )
     integration_test_user_arn = sts_client.get_caller_identity.arn
     raise 'Cannot get user ARN' if integration_test_user_arn.nil?
@@ -18,7 +17,6 @@ def validate_minimum_permissions(logger)
       region: @region,
       access_key_id: @permissions_auditor_key_id,
       secret_access_key: @permissions_auditor_secret_key,
-      session_token: @session_token,
       logger: logger
     )
 
@@ -46,22 +44,37 @@ def validate_minimum_permissions(logger)
   end
 end
 
+def set_assume_role_permissions
+  sts_client = Aws::STS::Client.new(
+      region: ENV.fetch('BOSH_AWS_REGION', 'us-west-1'),
+      access_key_id: ENV.fetch('BOSH_AWS_ACCESS_KEY_ID'),
+      secret_access_key: ENV.fetch('BOSH_AWS_SECRET_ACCESS_KEY'),
+      session_token: ENV.fetch('BOSH_AWS_SESSION_TOKEN', nil)
+    )
+    sts_client.assume_role(
+      {
+        role_arn: ENV.fetch('BOSH_AWS_ROLE_ARN', nil),
+        role_session_name: 'rsn' + '-' + SecureRandom.uuid
+      }
+    ).credentials
+end
+
 RSpec.configure do |rspec_config|
   include IntegrationHelpers
-
   rspec_config.before(:all) do
-    @access_key_id                  = ENV.fetch('BOSH_AWS_ACCESS_KEY_ID')
-    @secret_access_key              = ENV.fetch('BOSH_AWS_SECRET_ACCESS_KEY')
-    @session_token                  = ENV.fetch('BOSH_AWS_SESSION_TOKEN', nil)
-    @role_arn                       = ENV.fetch('BOSH_AWS_ROLE_ARN', nil)
-    @subnet_id                      = ENV.fetch('BOSH_AWS_SUBNET_ID')
-    @subnet_zone                    = ENV.fetch('BOSH_AWS_SUBNET_ZONE')
-    @kms_key_arn                    = ENV.fetch('BOSH_AWS_KMS_KEY_ARN')
-    @kms_key_arn_override           = ENV.fetch('BOSH_AWS_KMS_KEY_ARN_OVERRIDE')
-    @region                         = ENV.fetch('BOSH_AWS_REGION', 'us-west-1')
-    @default_key_name               = ENV.fetch('BOSH_AWS_DEFAULT_KEY_NAME', 'bosh')
-    @ami                            = ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-866d3ee6')
-    @permissions_auditor_key_id     = ENV.fetch('BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID', nil)
+    assumed_creds = set_assume_role_permissions
+    @access_key_id = assumed_creds.access_key_id
+    @secret_access_key = assumed_creds.secret_access_key
+    @session_token = assumed_creds.session_token
+
+    @subnet_id = ENV.fetch('BOSH_AWS_SUBNET_ID')
+    @subnet_zone = ENV.fetch('BOSH_AWS_SUBNET_ZONE')
+    @kms_key_arn = ENV.fetch('BOSH_AWS_KMS_KEY_ARN')
+    @kms_key_arn_override = ENV.fetch('BOSH_AWS_KMS_KEY_ARN_OVERRIDE')
+    @region = ENV.fetch('BOSH_AWS_REGION', 'us-west-1')
+    @default_key_name = ENV.fetch('BOSH_AWS_DEFAULT_KEY_NAME', 'bosh')
+    @ami = ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-866d3ee6')
+    @permissions_auditor_key_id = ENV.fetch('BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID', nil)
     @permissions_auditor_secret_key = ENV.fetch('BOSH_AWS_PERMISSIONS_AUDITOR_SECRET_KEY', nil)
 
     @cpi_api_version                = ENV.fetch('BOSH_AWS_CPI_API_VERSION', 1).to_i
@@ -81,6 +94,10 @@ RSpec.configure do |rspec_config|
   end
 
   rspec_config.before(:each) do
+    assumed_creds = set_assume_role_permissions
+    @access_key_id = assumed_creds.access_key_id
+    @secret_access_key = assumed_creds.secret_access_key
+    @session_token = assumed_creds.session_token
     @registry = instance_double(Bosh::Cpi::RegistryClient).as_null_object
     allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(@registry)
     allow(@registry).to receive(:read_settings).and_return({})
@@ -102,9 +119,9 @@ RSpec.configure do |rspec_config|
         'user' => 'fake',
         'password' => 'fake'
       },
-      'debug'=> {
-        'cpi'=> {
-          'api_version'=> MOCK_CPI_API_VERSION
+      'debug' => {
+        'cpi' => {
+          'api_version' => MOCK_CPI_API_VERSION
         },
       },
     }
@@ -159,7 +176,6 @@ def vm_lifecycle(vm_disks: disks, ami_id: ami, cpi: @cpi)
 
   cpi.set_vm_metadata(instance_id, vm_metadata)
 
-
   yield(instance_id) if block_given?
 ensure
   cpi.delete_vm(instance_id) if instance_id
@@ -177,7 +193,6 @@ def get_root_block_device(root_device_name, block_devices)
     root_device_name.start_with?(device.device_name)
   end
 end
-
 
 def get_target_group_arn(name)
   elb_v2_client.describe_target_groups(names: [name]).target_groups[0].target_group_arn
@@ -207,7 +222,7 @@ class RegisteredInstances < StandardError; end
 
 def ensure_no_instances_registered_with_elb(elb_client, elb_id)
   instances = elb_client.describe_load_balancers(load_balancer_names: [elb_id])[:load_balancer_descriptions]
-    .first[:instances]
+                .first[:instances]
 
   raise RegisteredInstances unless instances.empty?
   true
