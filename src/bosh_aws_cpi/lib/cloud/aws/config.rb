@@ -11,6 +11,8 @@ module Bosh::AwsCloud
     def initialize(aws_config_hash)
       @logger = Bosh::Clouds::Config.logger
       @config = aws_config_hash
+      @logger.info('Initializing AWS CPI Config. Config: ')
+      @logger.info(@config.to_s)
 
       @max_retries = @config['max_retries']
 
@@ -46,7 +48,10 @@ module Bosh::AwsCloud
     end
 
     def static_credentials
-      if !@role_arn.nil?
+      if @role_arn.nil? || @role_arn.empty?
+        @logger.info("Using static Credentials")
+        Aws::Credentials.new(@access_key_id, @secret_access_key, @session_token)
+      else
         @logger.info("Using AssumeRoleCredentials. Role: #{@role_arn}")
 
         sts_client = Aws::STS::Client.new(
@@ -60,9 +65,6 @@ module Bosh::AwsCloud
           role_arn: @role_arn,
           role_session_name: 'rsn' + '-' + SecureRandom.uuid
         )
-      else
-        @logger.info("Using static Credentials")
-        Aws::Credentials.new(@access_key_id, @secret_access_key, @session_token)
       end
     end
 
