@@ -56,53 +56,6 @@ params["cloud"]["properties"]["aws"]["region"] = p('aws.region')
 
 agent_params = params["cloud"]["properties"]["agent"]
 
-blobstore_defined = p('blobstore.provider') != 'dav' || !p(['blobstore.agent.user', 'agent.blobstore.address', 'blobstore.address'], nil).nil?
-if blobstore_defined
-  agent_params["blobstore"] = {
-       "provider" => p('blobstore.provider'),
-       "options" => {}
-  }
-
-  blobstore = agent_params["blobstore"]
-
-  if p('blobstore.provider') == "s3"
-    blobstore["options"] = {
-      "bucket_name" => p('blobstore.bucket_name'),
-      "credentials_source" => p(['agent.blobstore.credentials_source', 'blobstore.credentials_source']),
-      "access_key_id" => p(['agent.blobstore.access_key_id', 'blobstore.access_key_id'], nil),
-      "secret_access_key" => p(['agent.blobstore.secret_access_key', 'blobstore.secret_access_key'], nil),
-      "session_token" => p(['agent.blobstore.session_token', 'blobstore.session_token'], nil),
-    }
-
-    def update_blobstore_options(blobstore, manifest_key, rendered_key=manifest_key)
-      value = p(["agent.blobstore.#{manifest_key}", "blobstore.#{manifest_key}"], nil)
-      blobstore["options"][rendered_key] = value unless value.nil?
-    end
-
-    update_blobstore_options(blobstore, 'use_ssl')
-    update_blobstore_options(blobstore, 's3_port', 'port')
-    update_blobstore_options(blobstore, 'host')
-    update_blobstore_options(blobstore, 'ssl_verify_peer')
-    update_blobstore_options(blobstore, 's3_signature_version', 'signature_version')
-    update_blobstore_options(blobstore, 's3_region', 'region')
-    update_blobstore_options(blobstore, 'server_side_encryption')
-    update_blobstore_options(blobstore, 'sse_kms_key_id')
-  elsif p('blobstore.provider') == 'local'
-    blobstore["options"] = {
-      "blobstore_path" => p('blobstore.path')
-    }
-  else
-    blobstore["options"] = {
-      "endpoint" => "http://#{p(['agent.blobstore.address', 'blobstore.address'])}:#{p('blobstore.port')}"
-    }
-
-    if_p('blobstore.agent.user') do
-      blobstore["options"]["user"] = p('blobstore.agent.user')
-      blobstore["options"]["password"] = p('blobstore.agent.password')
-    end
-  end
-end
-
 if_p('agent.mbus') do |mbus|
   agent_params["mbus"] = mbus
 end.else do
