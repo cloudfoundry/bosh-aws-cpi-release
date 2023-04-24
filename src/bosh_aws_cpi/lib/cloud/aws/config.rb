@@ -11,8 +11,6 @@ module Bosh::AwsCloud
     def initialize(aws_config_hash)
       @logger = Bosh::Clouds::Config.logger
       @config = aws_config_hash
-      @logger.info('Initializing AWS CPI Config. Config: ')
-      @logger.info(@config.to_s)
 
       @max_retries = @config['max_retries']
 
@@ -126,8 +124,6 @@ module Bosh::AwsCloud
     private
 
     def initialize(config_hash)
-      Bosh::Clouds::Config.logger.info('Config Hash: ')
-      Bosh::Clouds::Config.logger.info(config_hash.to_s)
       @config = config_hash
       @aws = AwsConfig.new(config_hash['aws'] || {})
       @registry = RegistryConfig.new(config_hash['registry'] || {})

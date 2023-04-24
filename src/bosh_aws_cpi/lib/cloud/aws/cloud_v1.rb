@@ -23,8 +23,6 @@ module Bosh::AwsCloud
     def initialize(options)
       @config = Bosh::AwsCloud::Config.build(options.dup.freeze)
       @logger = Bosh::Clouds::Config.logger
-      @logger.info('Options Hash initialize v1: ')
-      @logger.info(options.to_s)
       request_id = options['aws']['request_id']
       if request_id
         @logger.set_request_id(request_id)
