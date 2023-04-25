@@ -23,7 +23,15 @@ def validate_minimum_permissions(logger)
       logger: logger
     )
 
-    account_details = iam_client.get_account_authorization_details(filter: ['Role']).role_detail_list.find { |role|
+
+    ##
+    # The following lines are a workaround for the fact that the AWS SDK does not return all the results at once.
+    role_list = []
+    iam_client.get_account_authorization_details(filter: ['Role']).each{ | response |
+      role_list += response.role_detail_list
+    }
+
+    account_details = role_list.find { |role|
       role.arn == 'arn:aws:iam::' + integration_test_user.account + ':role/' + integration_test_user.arn.split('/')[1]
     }
 
@@ -46,7 +54,7 @@ def validate_minimum_permissions(logger)
       s['Action']
     end.flatten.uniq
 
-    expect(actions).to include(*minimum_action)
+    expect(actions).to match_array(minimum_action)
   end
 end
 
