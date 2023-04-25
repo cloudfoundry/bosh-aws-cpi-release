@@ -7,8 +7,9 @@ shared:
   params: &prepare-director-params
     INFRASTRUCTURE:     aws
     DIRECTOR_VARS_FILE: |
-      access_key_id: ((aws-cpi-integration-tests_aws_access_key.username))
-      secret_access_key: ((aws-cpi-integration-tests_aws_access_key.password))
+      access_key_id: ((aws-cpi-integration-tests_assume_aws_access_key.username))
+      secret_access_key: ((aws-cpi-integration-tests_assume_aws_access_key.password))
+      role_arn: ((aws-cpi-integration-tests_assume_aws_access_key.role_arn))
       region: us-west-1
 
 - &deploy-director
@@ -84,10 +85,12 @@ jobs:
     file: bosh-cpi-src/ci/tasks/run-integration.yml
     image: aws-cpi-image
     params:
-      AWS_ACCESS_KEY_ID:                       ((aws-cpi-integration-tests_aws_access_key.username))
-      AWS_SECRET_ACCESS_KEY:                   ((aws-cpi-integration-tests_aws_access_key.password))
-      BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID:     ((iam-permission-auditor_aws_access_key.username))
-      BOSH_AWS_PERMISSIONS_AUDITOR_SECRET_KEY: ((iam-permission-auditor_aws_access_key.password))
+      AWS_ACCESS_KEY_ID:                       ((aws-cpi-integration-tests_assume_aws_access_key.username))
+      AWS_SECRET_ACCESS_KEY:                   ((aws-cpi-integration-tests_assume_aws_access_key.password))
+      AWS_ROLE_ARN:                            ((aws-cpi-integration-tests_assume_aws_access_key.role_arn))
+      BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID:     ((iam-permission-auditor_assume_aws_access_key.username))
+      BOSH_AWS_PERMISSIONS_AUDITOR_SECRET_KEY: ((iam-permission-auditor_assume_aws_access_key.password))
+      BOSH_AWS_PERMISSIONS_AUDITOR_ROLE_ARN:   ((iam-permission-auditor_assume_aws_access_key.role_arn))
       AWS_DEFAULT_REGION:                      us-west-1
       BOSH_AWS_KMS_KEY_ARN:                    ((arn_keys.aws_kms_key_arn))
       BOSH_AWS_KMS_KEY_ARN_OVERRIDE:           ((arn_keys.aws_kms_key_arn_override))
@@ -131,6 +134,7 @@ jobs:
           -o pipelines/shared/assets/ops/remove-hm.yml
           -o bosh-deployment/external-ip-with-registry-not-recommended.yml
           -o pipelines/shared/assets/ops/remove-provider-cert.yml
+          -o bosh-deployment/aws/cpi-assume-role-credentials.yml
     - do:
         - <<: *deploy-director
         - <<: *run-bats
@@ -177,6 +181,7 @@ jobs:
           -o bosh-deployment/external-ip-with-registry-not-recommended.yml
           -o pipelines/shared/assets/ops/remove-provider-cert.yml
           -o pipelines/aws/assets/ops/iam-instance-profile-ops-file.yml
+          -o bosh-deployment/aws/cpi-assume-role-credentials.yml
     - do:
         - <<: *deploy-director
         - <<: *run-end-2-end
@@ -293,8 +298,9 @@ resources:
       bucket:            bosh-aws-cpi-terraform
       bucket_path:       terraform-state
     vars:
-      access_key: ((bosh_cpis_aws_access_key.username))
-      secret_key: ((bosh_cpis_aws_access_key.password))
+      access_key: ((bosh_cpis_assume_aws_access_key.username))
+      secret_key: ((bosh_cpis_assume_aws_access_key.password))
+      role_arn:   ((bosh_cpis_assume_aws_access_key.role_arn))
       region:     us-west-1
       public_key: ((integration_vm_keypair.public_key))
 - name: bosh-cli

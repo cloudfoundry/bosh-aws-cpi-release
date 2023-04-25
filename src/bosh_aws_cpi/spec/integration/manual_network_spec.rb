@@ -679,6 +679,7 @@ describe Bosh::AwsCloud::CloudV1 do
               'fast_path_delete' => 'yes',
               'access_key_id' => @access_key_id,
               'secret_access_key' => @secret_access_key,
+              'session_token' => @session_token,
               'max_retries' => 8,
               'encrypted' => true,
               'kms_key_arn' => @kms_key_arn

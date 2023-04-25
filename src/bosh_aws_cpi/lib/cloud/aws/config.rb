@@ -9,6 +9,7 @@ module Bosh::AwsCloud
     CREDENTIALS_SOURCE_ENV_OR_PROFILE = 'env_or_profile'.freeze
 
     def initialize(aws_config_hash)
+      @logger = Bosh::Clouds::Config.logger
       @config = aws_config_hash
 
       @max_retries = @config['max_retries']
@@ -19,6 +20,7 @@ module Bosh::AwsCloud
 
       @access_key_id = @config['access_key_id']
       @secret_access_key = @config['secret_access_key']
+      @role_arn = @config['role_arn']
       @session_token = @config['session_token']
       @default_iam_instance_profile = @config['default_iam_instance_profile']
       @default_key_name = @config['default_key_name']
@@ -36,10 +38,32 @@ module Bosh::AwsCloud
       @credentials_source = @config['credentials_source'] || CREDENTIALS_SOURCE_STATIC
       @credentials =
         if @credentials_source == CREDENTIALS_SOURCE_STATIC
-          Aws::Credentials.new(@access_key_id, @secret_access_key, @session_token)
+          static_credentials
         else
+          @logger.info("Using InstanceProfileCredentials.")
           Aws::InstanceProfileCredentials.new(retries: 10)
         end
+    end
+
+    def static_credentials
+      if @role_arn.nil? || @role_arn.empty?
+        @logger.info("Using static Credentials")
+        Aws::Credentials.new(@access_key_id, @secret_access_key, @session_token)
+      else
+        @logger.info("Using AssumeRoleCredentials. Role: #{@role_arn}")
+
+        sts_client = Aws::STS::Client.new(
+          region: @region,
+          access_key_id: @access_key_id,
+          secret_access_key: @secret_access_key,
+          session_token: @session_token
+        )
+        Aws::AssumeRoleCredentials.new(
+          client: sts_client,
+          role_arn: @role_arn,
+          role_session_name: 'rsn' + '-' + SecureRandom.uuid
+        )
+      end
     end
 
     def to_h
