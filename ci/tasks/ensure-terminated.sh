@@ -7,11 +7,11 @@ set -e
 : ${AWS_DEFAULT_REGION:?}
 
 
-if [ -n "${AWS_ROLE_ARN}" ]; then
+if [ -n "${AWS_ASSUME_ROLE_ARN}" ]; then
   aws configure --profile creds_account set aws_access_key_id "${AWS_ACCESS_KEY_ID}"
   aws configure --profile creds_account set aws_secret_access_key "${AWS_SECRET_ACCESS_KEY}"
   aws configure --profile resource_account set source_profile "creds_account"
-  aws configure --profile resource_account set role_arn "${AWS_ROLE_ARN}"
+  aws configure --profile resource_account set role_arn "${AWS_ASSUME_ROLE_ARN}"
   aws configure --profile resource_account set region "${AWS_DEFAULT_REGION}"
   unset AWS_ACCESS_KEY_ID
   unset AWS_SECRET_ACCESS_KEY

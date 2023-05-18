@@ -40,8 +40,9 @@ shared:
   file: bosh-cpi-src/ci/tasks/ensure-terminated.yml
   image: aws-cpi-image
   params:
-    AWS_ACCESS_KEY_ID:     ((bosh_cpis_aws_access_key.username))
-    AWS_SECRET_ACCESS_KEY: ((bosh_cpis_aws_access_key.password))
+    AWS_ACCESS_KEY_ID:     ((bosh_cpis_assume_aws_access_key.username))
+    AWS_SECRET_ACCESS_KEY: ((bosh_cpis_assume_aws_access_key.password))
+    AWS_ASSUME_ROLE_ARN:   ((bosh_cpis_assume_aws_access_key.role_arn))
     AWS_DEFAULT_REGION:    us-west-1
 
 - &teardown
@@ -212,8 +213,9 @@ jobs:
     file: bosh-cpi-src/ci/tasks/promote-candidate.yml
     image: aws-cpi-image
     params:
-      AWS_ACCESS_KEY_ID:     ((bosh_cpis_aws_access_key.username))
-      AWS_SECRET_ACCESS_KEY: ((bosh_cpis_aws_access_key.password))
+      AWS_ACCESS_KEY_ID:     ((bosh_cpis_assume_aws_access_key.username))
+      AWS_SECRET_ACCESS_KEY: ((bosh_cpis_assume_aws_access_key.password))
+      AWS_ASSUME_ROLE_ARN:   ((bosh_cpis_assume_aws_access_key.role_arn))
   - put: bosh-cpi-src-out
     params: {repository: promoted/repo, rebase: true, tag_prefix: "v", tag: promoted/integer_version}
   - put: release-version-semver
@@ -237,6 +239,11 @@ resource_types:
   type: docker-image
   source:
     repository: ljfranklin/terraform-resource
+- name: semver
+  type: docker-image
+  source:
+    repository: concourse/semver-resource
+    tag: 1.6
 
 resources:
 - name: bosh-cpi-dev-artifacts
@@ -245,8 +252,9 @@ resources:
     regexp: bosh-aws-cpi-(\d+\.\d+\.\d+)\.tgz
     bucket: bosh-aws-cpi-pipeline
     region_name: us-east-1
-    access_key_id: ((bosh_cpis_aws_access_key.username))
-    secret_access_key: ((bosh_cpis_aws_access_key.password))
+    access_key_id: ((bosh_cpis_assume_aws_access_key.username))
+    secret_access_key: ((bosh_cpis_assume_aws_access_key.password))
+    aws_role_arn: ((bosh_cpis_assume_aws_access_key.role_arn))
 - name: bosh-cpi-src-in
   type: git
   source:
@@ -273,30 +281,28 @@ resources:
   source:
     key:               current-version # dev-release version
     bucket:            bosh-aws-cpi-pipeline
-    access_key_id:     ((bosh_cpis_aws_access_key.username))
-    secret_access_key: ((bosh_cpis_aws_access_key.password))
+    access_key_id:     ((bosh_cpis_assume_aws_access_key.username))
+    secret_access_key: ((bosh_cpis_assume_aws_access_key.password))
+    assume_role_arn:   ((bosh_cpis_assume_aws_access_key.role_arn))
 - name: release-version-semver
   type: semver
   source:
     key:               release-current-version
     bucket:            bosh-aws-cpi-pipeline
-    access_key_id:     ((bosh_cpis_aws_access_key.username))
-    secret_access_key: ((bosh_cpis_aws_access_key.password))
+    access_key_id:     ((bosh_cpis_assume_aws_access_key.username))
+    secret_access_key: ((bosh_cpis_assume_aws_access_key.password))
+    assume_role_arn:   ((bosh_cpis_assume_aws_access_key.role_arn))
 - name: environment
   type: terraform_type
   source:
     backend_type: s3
     backend_config:
-      access_key:  ((bosh_cpis_aws_access_key.username))
-      secret_key:  ((bosh_cpis_aws_access_key.password))
+      access_key:  ((bosh_cpis_assume_aws_access_key.username))
+      secret_key:  ((bosh_cpis_assume_aws_access_key.password))
+      aws_role_arn: ((bosh_cpis_assume_aws_access_key.role_arn))
       region: us-east-1
       bucket:      bosh-aws-cpi-terraform
       key:         terraform.tfstate
-    migrate_from_storage:
-      access_key_id:     ((bosh_cpis_aws_access_key.username))
-      secret_access_key: ((bosh_cpis_aws_access_key.password))
-      bucket:            bosh-aws-cpi-terraform
-      bucket_path:       terraform-state
     vars:
       access_key: ((bosh_cpis_assume_aws_access_key.username))
       secret_key: ((bosh_cpis_assume_aws_access_key.password))
