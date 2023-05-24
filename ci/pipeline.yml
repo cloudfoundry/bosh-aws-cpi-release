@@ -299,7 +299,7 @@ resources:
     backend_config:
       access_key:  ((bosh_cpis_assume_aws_access_key.username))
       secret_key:  ((bosh_cpis_assume_aws_access_key.password))
-      aws_role_arn: ((bosh_cpis_assume_aws_access_key.role_arn))
+      role_arn:    ((bosh_cpis_assume_aws_access_key.role_arn))
       region: us-east-1
       bucket:      bosh-aws-cpi-terraform
       key:         terraform.tfstate
