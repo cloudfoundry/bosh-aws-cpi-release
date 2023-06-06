@@ -87,7 +87,8 @@ def set_assume_role_permissions
   assumed_creds = sts_client.assume_role(
     {
       role_arn: ENV.fetch('BOSH_AWS_ROLE_ARN', nil),
-      role_session_name: 'rsn' + '-' + SecureRandom.uuid
+      role_session_name: 'rsn' + '-' + SecureRandom.uuid,
+      duration_seconds: 21600
     }
   ).credentials
 
