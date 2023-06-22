@@ -213,7 +213,7 @@ module Bosh::AwsCloud
           encrypted: props.encrypted,
           kms_key_arn: props.kms_key_arn
         )
-        volume = @volume_manager.create_ebs_volume(volume_properties.persistent_disk_config)
+        volume = @volume_manager.create_ebs_volume(**volume_properties.persistent_disk_config)
 
         volume.id
       end
@@ -322,7 +322,7 @@ module Bosh::AwsCloud
           metadata.delete(tag)
         end
 
-        TagManager.create_tags(snapshot, metadata)
+        TagManager.create_tags(snapshot, **metadata)
         ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
         snapshot.id
       end

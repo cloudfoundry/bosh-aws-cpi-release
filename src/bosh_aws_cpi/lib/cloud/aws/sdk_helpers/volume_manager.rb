@@ -8,7 +8,7 @@ module Bosh::AwsCloud
     end
 
     def create_ebs_volume(disk_config)
-      volume_resp = @ec2_client.create_volume(disk_config)
+      volume_resp = @ec2_client.create_volume(**disk_config)
       volume = Aws::EC2::Volume.new(id: volume_resp.volume_id, client: @ec2_client)
 
       @logger.info("Creating volume '#{volume.id}'")
