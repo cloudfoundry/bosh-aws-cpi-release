@@ -227,9 +227,26 @@ jobs:
   plan:
     - get: bosh-cpi-src-dockerfiles
       trigger: true
+    - task: extract-ruby-version-from-release
+      config:
+        platform: linux
+        image_resource:
+          type: registry-image
+          source: { repository: busybox }
+        run:
+          path: sh
+          args:
+            - -exc
+            - |
+                echo "{\"RUBY_VERSION\": \"$(cat bosh-cpi-src-dockerfiles/src/bosh_aws_cpi/.ruby-version)\"}" > build-args/args.json
+        inputs:
+          - name: bosh-cpi-src-dockerfiles
+        outputs:
+          - name: build-args
     - put: aws-cpi-image
       params:
         build: "bosh-cpi-src-dockerfiles/ci/docker/aws-cpi"
+        build_args_file: build-args/args.json
       get_params:
         skip_download: true
 
@@ -336,6 +353,7 @@ resources:
     branch: master
     paths:
       - "ci/docker"
+      - src/bosh_aws_cpi/.ruby-version
 - name: version-semver
   type: semver
   source:

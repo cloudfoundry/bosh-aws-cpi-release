@@ -32,7 +32,10 @@ RUN apt-get install -y \
 
 RUN pip3 install awscli
 
-ENV RUBY_INSTALL_VERSION=0.8.3 RUBY_VERSION=3.1.2
+ARG RUBY_VERSION
+
+ENV RUBY_INSTALL_VERSION=0.8.3
+ENV RUBY_VERSION=$RUBY_VERSION
 
 # Install ruby-install
 RUN cd /tmp && \
