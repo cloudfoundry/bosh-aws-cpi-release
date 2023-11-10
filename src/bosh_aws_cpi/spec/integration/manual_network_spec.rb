@@ -550,7 +550,10 @@ describe Bosh::AwsCloud::CloudV1 do
           instance_disks = @cpi.get_disks(instance_id)
           expect(instance_disks.size).to eq(2)
 
-          ephemeral_volume = @cpi.ec2_resource.volume(instance_disks[1])
+          volumes = instance_disks.map do { |instance_disk_id| @cpi.ec2_resource.volume(instance_disk_id) }
+          # The ephemeral volume should not be associated with a snapshot, while the root disk will be
+          ephemeral_volume = volumes.find { |volume| volume.snapshot_id.empty? }
+
           expect(ephemeral_volume.size).to eq(4)
           expect(ephemeral_volume.volume_type).to eq('gp3')
           expect(ephemeral_volume.encrypted).to eq(false)
@@ -575,7 +578,10 @@ describe Bosh::AwsCloud::CloudV1 do
             instance_disks = @cpi.get_disks(instance_id)
             expect(instance_disks.size).to eq(2)
 
-            ephemeral_volume = @cpi.ec2_resource.volume(instance_disks[1])
+            volumes = instance_disks.map do { |instance_disk_id| @cpi.ec2_resource.volume(instance_disk_id) }
+            # The ephemeral volume should not be associated with a snapshot, while the root disk will be
+            ephemeral_volume = volumes.find { |volume| volume.snapshot_id.empty? }
+
             expect(ephemeral_volume.size).to eq(4)
             expect(ephemeral_volume.volume_type).to eq('io1')
             expect(ephemeral_volume.iops).to eq(100)
