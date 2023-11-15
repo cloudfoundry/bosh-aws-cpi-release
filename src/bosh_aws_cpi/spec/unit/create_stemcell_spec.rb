@@ -41,6 +41,7 @@ describe Bosh::AwsCloud::CloudV1 do
               name: 'image-id',
               values: [ami_id],
             }],
+            include_deprecated: true,
           ).and_return([double('image', id: ami_id)])
         end
         expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq("#{ami_id} light")
@@ -64,6 +65,7 @@ describe Bosh::AwsCloud::CloudV1 do
                 name: 'image-id',
                 values: [ami_id],
               }],
+              include_deprecated: true,
             ).and_return([double('image', id: ami_id)])
 
             expect(ec2.client).to receive(:copy_image).with(
@@ -92,6 +94,7 @@ describe Bosh::AwsCloud::CloudV1 do
                 name: 'image-id',
                 values: [ami_id],
               }],
+              include_deprecated: true,
             ).and_return([double('image', id: ami_id)])
 
             expect(ec2.client).to receive(:copy_image).with(
@@ -133,6 +136,7 @@ describe Bosh::AwsCloud::CloudV1 do
                 name: 'image-id',
                 values: [ami_id],
               }],
+              include_deprecated: true,
             ).and_return([double('image', id: ami_id)])
 
             expect(ec2.client).to receive(:copy_image).with(
@@ -162,7 +166,8 @@ describe Bosh::AwsCloud::CloudV1 do
               filters: [{
                 name: 'image-id',
                 values: ['ami-xxxxxxxx']
-              }]
+              }],
+              include_deprecated: true,
             ).and_return([])
           end
           expect{
