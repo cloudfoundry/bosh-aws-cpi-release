@@ -376,7 +376,8 @@ module Bosh::AwsCloud
             filters: [{
               name: 'image-id',
               values: props.ami_ids
-            }]
+            }],
+            include_deprecated: true,
           ).first
           raise Bosh::Clouds::CloudError, "Stemcell does not contain an AMI in region #{@config.aws.region}" unless available_image
 
