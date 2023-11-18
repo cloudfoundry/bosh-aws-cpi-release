@@ -4,16 +4,16 @@ GEM
     addressable (2.8.5)
       public_suffix (>= 2.0.2, < 6.0)
     aws-eventstream (1.2.0)
-    aws-partitions (1.848.0)
-    aws-sdk-autoscaling (1.99.0)
+    aws-partitions (1.853.0)
+    aws-sdk-autoscaling (1.100.0)
       aws-sdk-core (~> 3, >= 3.184.0)
       aws-sigv4 (~> 1.1)
-    aws-sdk-core (3.186.0)
+    aws-sdk-core (3.187.0)
       aws-eventstream (~> 1, >= 1.0.2)
       aws-partitions (~> 1, >= 1.651.0)
       aws-sigv4 (~> 1.5)
       jmespath (~> 1, >= 1.6.1)
-    aws-sdk-ec2 (1.419.0)
+    aws-sdk-ec2 (1.423.0)
       aws-sdk-core (~> 3, >= 3.184.0)
       aws-sigv4 (~> 1.1)
     aws-sdk-elasticloadbalancing (1.49.0)
@@ -54,7 +54,7 @@ GEM
     pry-byebug (3.10.1)
       byebug (~> 11.0)
       pry (>= 0.13, < 0.15)
-    public_suffix (5.0.3)
+    public_suffix (5.0.4)
     rake (12.3.3)
     rexml (3.2.6)
     rspec (3.12.0)
@@ -94,4 +94,4 @@ DEPENDENCIES
   webmock
 
 BUNDLED WITH
-   2.3.26
+   2.3.27
