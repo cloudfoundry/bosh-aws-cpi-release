@@ -147,7 +147,6 @@ combos.each do |combo|
                 INFRASTRUCTURE:     aws
                 STEMCELL_NAME: <%= combo[:stemcell][:stemcell_name] %>
                 BAT_INFRASTRUCTURE: aws
-                BAT_NETWORKING:     dynamic
                 BAT_RSPEC_FLAGS:    "--tag ~multiple_manual_networks --tag ~root_partition"
           ensure:
             do:
