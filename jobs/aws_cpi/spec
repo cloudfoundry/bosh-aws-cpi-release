@@ -74,11 +74,11 @@ properties:
       properties accepted by the ModifyInstanceMetadataOptions endpoint
       (https://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_ModifyInstanceMetadataOptions.html).
       e.g. `http_put_response_hop_limit`.
-      example:
-        aws:
-          metadata_options:
-            http_endpoint: enabled
-            http_tokens: required
+    example:
+      aws:
+        metadata_options:
+          http_endpoint: enabled
+          http_tokens: required
     default: null
 
   registry.username:
