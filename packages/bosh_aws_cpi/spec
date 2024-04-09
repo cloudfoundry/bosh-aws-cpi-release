@@ -1,7 +1,7 @@
 ---
 name: bosh_aws_cpi
 dependencies:
-- aws-cpi-ruby-3.1
+- aws-cpi-ruby-3.2
 files:
 - bosh_aws_cpi/Gemfile
 - bosh_aws_cpi/Gemfile.lock

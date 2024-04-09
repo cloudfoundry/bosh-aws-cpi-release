@@ -269,7 +269,7 @@ jobs:
       GEM_DIRS: src/bosh_aws_cpi
       GIT_USER_NAME: CI Bot
       GIT_USER_EMAIL: bots@cloudfoundry.org
-      PACKAGE: ruby-3.1
+      PACKAGE: ruby-3.2
       VENDOR: true
   - put: bosh-cpi-src-out
     params:
@@ -294,7 +294,7 @@ jobs:
     params:
       GIT_USER_NAME: CI Bot
       GIT_USER_EMAIL: cf-bosh-eng@pivotal.io
-      PACKAGE: ruby-3.1
+      PACKAGE: ruby-3.2
       PACKAGE_PREFIX: aws-cpi
       PRIVATE_YML: |
         blobstore:
