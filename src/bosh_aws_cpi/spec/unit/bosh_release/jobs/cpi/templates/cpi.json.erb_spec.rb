@@ -240,7 +240,7 @@ class TemplateEvaluationContext
   end
 
   def get_binding
-    binding.taint
+    binding
   end
 
   def p(*args)
