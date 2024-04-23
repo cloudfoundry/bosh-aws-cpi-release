@@ -94,6 +94,7 @@ module Bosh::AwsCloud
             :root_device_name => '/dev/xvda',
             :sriov_net_support => 'simple',
             :ena_support => true,
+            :boot_mode => @stemcell_props.boot_mode,
             :block_device_mappings => [
               {
                 :device_name => '/dev/xvda',

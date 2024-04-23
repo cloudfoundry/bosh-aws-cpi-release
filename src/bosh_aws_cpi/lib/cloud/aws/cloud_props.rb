@@ -3,7 +3,7 @@ include Bosh::AwsCloud::Helpers
 module Bosh::AwsCloud
   class StemcellCloudProps
     attr_reader :ami
-    attr_reader :disk, :architecture, :virtualization_type, :root_device_name, :kernel_id
+    attr_reader :disk, :architecture, :virtualization_type, :root_device_name, :kernel_id, :boot_mode
     # AWS Permissions: ec2:CopyImage
     attr_reader :encrypted, :kms_key_arn
 
@@ -29,6 +29,7 @@ module Bosh::AwsCloud
       @virtualization_type = @cloud_properties['virtualization_type'] || 'hvm'
       @root_device_name = @cloud_properties['root_device_name']
       @kernel_id = @cloud_properties['kernel_id']
+      @boot_mode = @cloud_properties['boot_mode'] || 'legacy-bios'
     end
 
     # old stemcells doesn't have name & version

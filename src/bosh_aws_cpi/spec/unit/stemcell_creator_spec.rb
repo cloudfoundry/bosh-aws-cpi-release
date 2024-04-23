@@ -98,6 +98,7 @@ module Bosh::AwsCloud
           expect(params).not_to have_key(:kernel_id)
           expect(params[:root_device_name]).to eq('/dev/xvda')
           expect(params[:sriov_net_support]).to eq('simple')
+          expect(params[:boot_mode]).to eq('legacy-bios')
           expect(params[:block_device_mappings]).to eq([
             {
               :device_name => '/dev/xvda',
