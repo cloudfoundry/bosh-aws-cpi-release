@@ -58,7 +58,7 @@ GEM
       pry (>= 0.13, < 0.15)
     public_suffix (6.0.1)
     rake (12.3.3)
-    rexml (3.2.9)
+    rexml (3.3.2)
       strscan
     rspec (3.13.0)
       rspec-core (~> 3.13.0)
@@ -93,7 +93,7 @@ DEPENDENCIES
   bosh_cpi
   pry-byebug (~> 3.4)
   rake (~> 12.3)
-  rexml (~> 3.2.5)
+  rexml (~> 3.3.2)
   rspec (~> 3.5)
   webmock
 
