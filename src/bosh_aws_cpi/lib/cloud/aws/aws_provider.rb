@@ -26,7 +26,8 @@ module Bosh::AwsCloud
         credentials: @aws_config.credentials,
         retry_limit: @aws_config.max_retries,
         logger: @logger,
-        log_level: :debug
+        log_level: :debug,
+        use_dualstack_endpoint: true,
       }
       if @aws_config.region
         params[:region] = @aws_config.region

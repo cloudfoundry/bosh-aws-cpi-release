@@ -13,7 +13,8 @@ describe Bosh::AwsCloud::AwsProvider do
       retry_limit: 8,
       logger: logger,
       log_level: :debug,
-      region: 'us-east-1'
+      region: 'us-east-1',
+      use_dualstack_endpoint: true
     }
   end
   let(:ec2_client) { instance_double(Aws::EC2::Client) }
