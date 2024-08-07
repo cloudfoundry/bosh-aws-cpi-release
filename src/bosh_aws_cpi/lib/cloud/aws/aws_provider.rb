@@ -27,7 +27,7 @@ module Bosh::AwsCloud
         retry_limit: @aws_config.max_retries,
         logger: @logger,
         log_level: :debug,
-        use_dualstack_endpoint: true,
+        use_dualstack_endpoint: @aws_config.dualstack,
       }
       if @aws_config.region
         params[:region] = @aws_config.region

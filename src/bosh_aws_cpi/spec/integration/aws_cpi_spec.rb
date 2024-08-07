@@ -24,7 +24,8 @@ describe 'the aws_cpi executable' do
             'region' => @region,
             'default_key_name' => 'default_key_name',
             'fast_path_delete' => 'yes',
-            'max_retries' => 0
+            'max_retries' => 0,
+            'dualstack' => false
           },
           'registry' => {
             'endpoint' => 'fake',
