@@ -54,7 +54,8 @@ describe 'cpi.json.erb' do
             'max_retries' => 8,
             'encrypted' => false,
             'kms_key_arn' => nil,
-            'metadata_options' => nil
+            'metadata_options' => nil,
+            'dualstack' => false
           },
           'registry' => {
             'endpoint' => 'http://admin:admin@registry-host.example.com:25777',
@@ -167,6 +168,16 @@ describe 'cpi.json.erb' do
 
     it 'overrides the default value' do
       expect(subject['cloud']['properties']['aws']['credentials_source']).to eq('custom')
+    end
+  end
+
+  context 'enable dualstack to use different api endpoints' do
+    before do
+      manifest['properties']['aws']['dualstack'] = true
+    end
+
+    it 'overrides the default value' do
+      expect(subject['cloud']['properties']['aws']['dualstack']).to eq(true)
     end
   end
 

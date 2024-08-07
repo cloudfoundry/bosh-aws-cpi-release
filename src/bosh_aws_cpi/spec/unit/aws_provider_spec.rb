@@ -14,7 +14,7 @@ describe Bosh::AwsCloud::AwsProvider do
       logger: logger,
       log_level: :debug,
       region: 'us-east-1',
-      use_dualstack_endpoint: true
+      use_dualstack_endpoint: false
     }
   end
   let(:ec2_client) { instance_double(Aws::EC2::Client) }

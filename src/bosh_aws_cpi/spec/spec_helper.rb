@@ -19,7 +19,8 @@ def mock_cloud_options
         'default_key_name' => 'sesame',
         'default_security_groups' => [],
         'max_retries' => 8,
-        'source_dest_check' => false
+        'source_dest_check' => false,
+        'dualstack' => false
       },
       'registry' => {
         'endpoint' => 'localhost:42288',

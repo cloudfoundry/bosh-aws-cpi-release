@@ -4,6 +4,7 @@ module Bosh::AwsCloud
     attr_reader :region, :ec2_endpoint, :elb_endpoint, :stemcell
     attr_reader :access_key_id, :secret_access_key, :default_key_name, :encrypted, :kms_key_arn
     attr_reader :default_iam_instance_profile, :default_security_groups, :metadata_options
+    attr_reader :dualstack
 
     CREDENTIALS_SOURCE_STATIC = 'static'.freeze
     CREDENTIALS_SOURCE_ENV_OR_PROFILE = 'env_or_profile'.freeze
@@ -13,6 +14,7 @@ module Bosh::AwsCloud
       @config = aws_config_hash
 
       @max_retries = @config['max_retries']
+      @dualstack = @config['dualstack']
 
       @region = @config['region']
       @ec2_endpoint = @config['ec2_endpoint']
