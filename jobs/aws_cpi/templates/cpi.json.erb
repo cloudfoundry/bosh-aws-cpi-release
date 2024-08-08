@@ -16,7 +16,8 @@ params = {
         "max_retries" => p('aws.max_retries'),
         "encrypted" => p('aws.encrypted'),
         "kms_key_arn" => p('aws.kms_key_arn', nil),
-        "metadata_options" => p('aws.metadata_options', nil)
+        "metadata_options" => p('aws.metadata_options', nil),
+        "dualstack" => p('aws.dualstack')
       },
       "agent" => {
         "ntp" => p('ntp')

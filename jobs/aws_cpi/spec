@@ -55,6 +55,10 @@ properties:
       so the more retries the longer it can take to fail. This only applies
       to the AWS client passing calls to the AWS API.
     default: 8
+  aws.dualstack:
+    description: |
+      AWS provide new APIs to support IPv6. If you want to use IPv6 only, you must enable dualstack.
+    default: false
   aws.connection_options.ca_cert:
     description: All required custom CA certificates
     example:
