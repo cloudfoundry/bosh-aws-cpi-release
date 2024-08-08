@@ -395,7 +395,7 @@ resources:
 - name: pipelines
   type: git
   source:
-    uri: https://github.com/cloudfoundry-incubator/bosh-cpi-certification
+    uri: https://github.com/cloudfoundry/bosh-cpi-certification
     branch: master
 - name: heavy-stemcell
   type: bosh-io-stemcell
