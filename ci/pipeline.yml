@@ -233,8 +233,10 @@ jobs:
                 bump: patch
 
     - task: ensure-cve-checker-succeeded
-      file: bosh-shared-ci/tasks/release/ensure-cve-checker-succeeded.yml
+      file: bosh-shared-ci/tasks/release/ensure-task-succeeded.yml
       image: bosh-security-scanner-registry-image
+      input_mapping:
+        task-output-folder: patched_cves
 
 - name: bump-major
   serial_groups: [version]
