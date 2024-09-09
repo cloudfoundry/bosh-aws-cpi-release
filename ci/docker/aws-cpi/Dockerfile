@@ -12,6 +12,7 @@ RUN apt-get -y upgrade
 RUN apt-get install -y \
 	build-essential \
 	git \
+	git-lfs \
 	curl \
 	wget \
 	tar \
