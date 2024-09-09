@@ -8,10 +8,7 @@ set -e
 
 source bosh-cpi-src/ci/utils.sh
 
-# Creates an integer version number from the semantic version format
-# May be changed when we decide to fully use semantic versions for releases
-integer_version=`cut -d "." -f1 release-version-semver/number`
-echo $integer_version > promoted/integer_version
+version_to_cut=$(cat release-version-semver/version)
 
 cp -r bosh-cpi-src promoted/repo
 
@@ -30,7 +27,7 @@ blobstore:
 EOF
 
   echo "finalizing CPI release..."
-  bosh finalize-release ${dev_release} --version $integer_version
+  bosh finalize-release "${dev_release}" --version "${version_to_cut}"
 
   rm config/private.yml
 
@@ -39,5 +36,10 @@ EOF
 
   git config --global user.email cf-bosh-eng@pivotal.io
   git config --global user.name CI
-  git commit -m "New final release v $integer_version"
+  git commit -m "New final release v${version_to_cut}"
 popd
+
+echo "" > release-metadata/empty-file-to-clear-release-notes
+cat <<EOF > release-metadata/release-name
+v${version_to_cut}
+EOF

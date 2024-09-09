@@ -10,6 +10,7 @@ inputs:
   - name: bosh-cli
 outputs:
   - name: promoted
+  - name: release-metadata
 run:
   path: bosh-cpi-src/ci/tasks/promote-candidate.sh
 params:
