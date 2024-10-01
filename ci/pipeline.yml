@@ -56,7 +56,10 @@ jobs:
   - in_parallel:
     - {trigger: true, get: bosh-cpi-src, resource: bosh-cpi-src-in}
     - {trigger: false, get: version-semver, params: {bump: patch}}
-    - {trigger: false, get: bosh-cli}
+    - get: bosh-cli
+      params:
+        globs:
+        - 'bosh-cli-*-linux-amd64'
     - {get: aws-cpi-image }
   - put: version-semver
     params: {file: version-semver/number}
@@ -117,7 +120,10 @@ jobs:
     - {get: stemcell,        trigger: true, resource: light-stemcell}
     - {get: bosh-deployment, trigger: false}
     - {get: pipelines,       trigger: false}
-    - {get: bosh-cli,        trigger: false}
+    - get: bosh-cli
+      params:
+        globs:
+        - 'bosh-cli-*-linux-amd64'
     - {get: bats,            trigger: false}
     - {get: aws-cpi-image }
   - put: environment
@@ -164,7 +170,10 @@ jobs:
     - {get: heavy-stemcell,  trigger: false}
     - {get: bosh-deployment, trigger: false}
     - {get: pipelines,       trigger: false}
-    - {get: bosh-cli,        trigger: false}
+    - get: bosh-cli
+      params:
+        globs:
+        - 'bosh-cli-*-linux-amd64'
     - {get: aws-cpi-image }
   - put: environment
     params:
@@ -273,6 +282,9 @@ jobs:
     - get: release-version-semver
       trigger: true
     - get: bosh-cli
+      params:
+        globs:
+        - 'bosh-cli-*-linux-amd64'
     - get: aws-cpi-image
     - get: bosh-cpi-release-notes
   - task: promote
@@ -485,11 +497,11 @@ resources:
       region:     us-west-1
       public_key: ((integration_vm_keypair.public_key))
 - name: bosh-cli
-  type: s3
   source:
-    regexp: bosh-cli-([0-9.]+)-linux-amd64
-    bucket: bosh-cli-artifacts
-    region_name: us-east-1
+    access_token: ((github_public_repo_token))
+    owner: cloudfoundry
+    repository: bosh-cli
+  type: github-release
 - name: pipelines
   type: git
   source:
