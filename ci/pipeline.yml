@@ -5,7 +5,7 @@ shared:
   file: pipelines/shared/tasks/prepare-director.yml
   image: aws-cpi-image
   params: &prepare-director-params
-    INFRASTRUCTURE:     aws
+    INFRASTRUCTURE: aws
     DIRECTOR_VARS_FILE: |
       access_key_id: ((aws-cpi-integration-tests_assume_aws_access_key.username))
       secret_access_key: ((aws-cpi-integration-tests_assume_aws_access_key.password))
@@ -22,10 +22,10 @@ shared:
   file: pipelines/shared/tasks/run-bats.yml
   image: aws-cpi-image
   params:
-    INFRASTRUCTURE:     aws
-    STEMCELL_NAME:      bosh-aws-xen-hvm-ubuntu-jammy-go_agent
+    INFRASTRUCTURE: aws
+    STEMCELL_NAME: bosh-aws-xen-hvm-ubuntu-jammy-go_agent
     BAT_INFRASTRUCTURE: aws
-    BAT_RSPEC_FLAGS:    "--tag ~multiple_manual_networks --tag ~root_partition"
+    BAT_RSPEC_FLAGS: "--tag ~multiple_manual_networks --tag ~root_partition"
 
 - &run-end-2-end
   task: run-e2e
@@ -39,10 +39,10 @@ shared:
   file: bosh-cpi-src/ci/tasks/ensure-terminated.yml
   image: aws-cpi-image
   params:
-    AWS_ACCESS_KEY_ID:     ((bosh_cpis_assume_aws_access_key.username))
+    AWS_ACCESS_KEY_ID: ((bosh_cpis_assume_aws_access_key.username))
     AWS_SECRET_ACCESS_KEY: ((bosh_cpis_assume_aws_access_key.password))
-    AWS_ASSUME_ROLE_ARN:   ((bosh_cpis_assume_aws_access_key.role_arn))
-    AWS_DEFAULT_REGION:    us-west-1
+    AWS_ASSUME_ROLE_ARN: ((bosh_cpis_assume_aws_access_key.role_arn))
+    AWS_DEFAULT_REGION: us-west-1
 
 - &teardown
   task: teardown
@@ -54,30 +54,45 @@ jobs:
   serial: true
   plan:
   - in_parallel:
-    - {trigger: true, get: bosh-cpi-src, resource: bosh-cpi-src-in}
-    - {trigger: false, get: version-semver, params: {bump: patch}}
+    - get: bosh-cpi-src
+      resource: bosh-cpi-src-in
+      trigger: true
+    - get: version-semver
+      params:
+        bump: patch
     - get: bosh-cli
       params:
         globs:
         - 'bosh-cli-*-linux-amd64'
-    - {get: aws-cpi-image }
+    - get: aws-cpi-image
   - put: version-semver
-    params: {file: version-semver/number}
+    params:
+      file: version-semver/number
+  - task: run-unit-specs
+    file: bosh-cpi-src/ci/tasks/run-unit-specs.yml
+    image: aws-cpi-image
   - task: build
     file: bosh-cpi-src/ci/tasks/build-candidate.yml
     image: aws-cpi-image
   - put: bosh-cpi-dev-artifacts
-    params: {file: candidate/*.tgz}
+    params:
+      file: candidate/*.tgz
 
 - name: integration
   serial: true
   plan:
   - in_parallel:
-    - {trigger: true,  passed: [build-candidate], get: bosh-cpi-release, resource: bosh-cpi-dev-artifacts}
-    - {trigger: false, passed: [build-candidate], get: bosh-cpi-src, resource: bosh-cpi-src-in}
-    - {get: stemcell,        trigger: true, resource: light-stemcell}
-    - {get: aws-cpi-image }
-
+    - get: bosh-cpi-release
+      resource: bosh-cpi-dev-artifacts
+      passed: [ build-candidate ]
+      trigger: true
+    - get: bosh-cpi-src
+      resource: bosh-cpi-src-in
+      passed: [ build-candidate ]
+    - get: stemcell
+      resource: light-stemcell
+      trigger: true
+    - get: aws-cpi-image
   - put: environment
     params:
       env_name: bosh-aws-cpi-integration
@@ -88,44 +103,51 @@ jobs:
     file: bosh-cpi-src/ci/tasks/run-integration.yml
     image: aws-cpi-image
     params:
-      AWS_ACCESS_KEY_ID:                       ((aws-cpi-integration-tests_assume_aws_access_key.username))
-      AWS_SECRET_ACCESS_KEY:                   ((aws-cpi-integration-tests_assume_aws_access_key.password))
-      AWS_ROLE_ARN:                            ((aws-cpi-integration-tests_assume_aws_access_key.role_arn))
-      BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID:     ((iam-permission-auditor_assume_aws_access_key.username))
+      AWS_ACCESS_KEY_ID: ((aws-cpi-integration-tests_assume_aws_access_key.username))
+      AWS_SECRET_ACCESS_KEY: ((aws-cpi-integration-tests_assume_aws_access_key.password))
+      AWS_ROLE_ARN: ((aws-cpi-integration-tests_assume_aws_access_key.role_arn))
+      BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID: ((iam-permission-auditor_assume_aws_access_key.username))
       BOSH_AWS_PERMISSIONS_AUDITOR_SECRET_KEY: ((iam-permission-auditor_assume_aws_access_key.password))
-      BOSH_AWS_PERMISSIONS_AUDITOR_ROLE_ARN:   ((iam-permission-auditor_assume_aws_access_key.role_arn))
-      AWS_DEFAULT_REGION:                      us-west-1
-      BOSH_AWS_KMS_KEY_ARN:                    ((arn_keys.aws_kms_key_arn))
-      BOSH_AWS_KMS_KEY_ARN_OVERRIDE:           ((arn_keys.aws_kms_key_arn_override))
-      BOSH_AWS_WINDOWS_IMAGE_ID:               ami-01073c012a14da808 # This is the us-west-1 AMI inside the Windows 2019.53 stemcell
+      BOSH_AWS_PERMISSIONS_AUDITOR_ROLE_ARN: ((iam-permission-auditor_assume_aws_access_key.role_arn))
+      AWS_DEFAULT_REGION: us-west-1
+      BOSH_AWS_KMS_KEY_ARN: ((arn_keys.aws_kms_key_arn))
+      BOSH_AWS_KMS_KEY_ARN_OVERRIDE: ((arn_keys.aws_kms_key_arn_override))
+      BOSH_AWS_WINDOWS_IMAGE_ID: ami-01073c012a14da808 # This is the us-west-1 AMI inside the Windows 2019.53 stemcell
     ensure:
       do:
-        - <<: *ensure-terminated
-        - put: environment
-          params:
-            env_name: bosh-aws-cpi-integration
-            action: destroy
-            env_name_file: environment/name
-            terraform_source: bosh-cpi-src/ci/assets/terraform
-          get_params:
-            action: destroy
+      - <<: *ensure-terminated
+      - put: environment
+        params:
+          env_name: bosh-aws-cpi-integration
+          action: destroy
+          env_name_file: environment/name
+          terraform_source: bosh-cpi-src/ci/assets/terraform
+        get_params:
+          action: destroy
 
 - name: bats
   serial: true
   plan:
   - in_parallel:
-    - {get: cpi-release,     trigger: true,  resource: bosh-cpi-dev-artifacts, passed: [build-candidate]}
-    - {get: bosh-release,    trigger: false}
-    - {get: bosh-cpi-src,    trigger: false, resource: bosh-cpi-src-in, passed: [build-candidate]}
-    - {get: stemcell,        trigger: true, resource: light-stemcell}
-    - {get: bosh-deployment, trigger: false}
-    - {get: pipelines,       trigger: false}
+    - get: cpi-release
+      resource: bosh-cpi-dev-artifacts
+      passed: [ build-candidate ]
+      trigger: true
+    - get: bosh-release
+    - get: bosh-cpi-src
+      resource: bosh-cpi-src-in
+      passed: [ build-candidate ]
+    - get: stemcell
+      resource: light-stemcell
+      trigger: true
+    - get: bosh-deployment
+    - get: pipelines
     - get: bosh-cli
       params:
         globs:
         - 'bosh-cli-*-linux-amd64'
-    - {get: bats,            trigger: false}
-    - {get: aws-cpi-image }
+    - get: bats
+    - get: aws-cpi-image
   - put: environment
     params:
       env_name: bosh-aws-cpi-bats
@@ -136,149 +158,155 @@ jobs:
     - <<: *prepare-director
       params:
         <<: *prepare-director-params
-        OPTIONAL_OPS_FILE:  |
+        OPTIONAL_OPS_FILE: |
           -o pipelines/shared/assets/ops/remove-hm.yml
           -o bosh-deployment/external-ip-with-registry-not-recommended.yml
           -o pipelines/shared/assets/ops/remove-provider-cert.yml
           -o bosh-deployment/aws/cpi-assume-role-credentials.yml
     - do:
-        - <<: *deploy-director
-        - <<: *run-bats
+      - <<: *deploy-director
+      - <<: *run-bats
       ensure:
         do:
-          - <<: *teardown
-          - <<: *ensure-terminated
+        - <<: *teardown
+        - <<: *ensure-terminated
     ensure:
       do:
-        - put: environment
-          params:
-            env_name: bosh-aws-cpi-bats
-            action: destroy
-            env_name_file: environment/name
-            terraform_source: bosh-cpi-src/ci/assets/terraform
-          get_params:
-            action: destroy
+      - put: environment
+        params:
+          env_name: bosh-aws-cpi-bats
+          action: destroy
+          env_name_file: environment/name
+          terraform_source: bosh-cpi-src/ci/assets/terraform
+        get_params:
+          action: destroy
 
 - name: end-2-end
   serial: true
   plan:
   - in_parallel:
-    - {get: cpi-release,     trigger: true,  resource: bosh-cpi-dev-artifacts, passed: [build-candidate]}
-    - {get: bosh-release,    trigger: false}
-    - {get: bosh-cpi-src,    trigger: false, resource: bosh-cpi-src-in, passed: [build-candidate]}
-    - {get: stemcell,        trigger: false, resource: light-stemcell}
-    - {get: heavy-stemcell,  trigger: false}
-    - {get: bosh-deployment, trigger: false}
-    - {get: pipelines,       trigger: false}
+    - get: cpi-release
+      resource: bosh-cpi-dev-artifacts
+      passed: [ build-candidate ]
+      trigger: true
+    - get: bosh-release
+    - get: bosh-cpi-src
+      resource: bosh-cpi-src-in
+      passed: [ build-candidate ]
+    - get: stemcell
+      resource: light-stemcell
+    - get: heavy-stemcell
+    - get: bosh-deployment
+    - get: pipelines
     - get: bosh-cli
       params:
         globs:
         - 'bosh-cli-*-linux-amd64'
-    - {get: aws-cpi-image }
+    - get: aws-cpi-image
   - put: environment
     params:
       env_name: bosh-aws-cpi-end-2-end
       delete_on_failure: true
       generate_random_name: true
       terraform_source: bosh-cpi-src/ci/assets/terraform
-      override_files: [bosh-cpi-src/ci/assets/terraform/e2e/e2e.tf]
+      override_files: [ bosh-cpi-src/ci/assets/terraform/e2e/e2e.tf ]
   - do:
     - <<: *prepare-director
       params:
         <<: *prepare-director-params
-        OPTIONAL_OPS_FILE:  |
+        OPTIONAL_OPS_FILE: |
           -o bosh-deployment/external-ip-with-registry-not-recommended.yml
           -o pipelines/shared/assets/ops/remove-provider-cert.yml
           -o pipelines/aws/assets/ops/iam-instance-profile-ops-file.yml
           -o bosh-deployment/aws/cpi-assume-role-credentials.yml
     - do:
-        - <<: *deploy-director
-        - <<: *run-end-2-end
+      - <<: *deploy-director
+      - <<: *run-end-2-end
       ensure:
         do:
-          - <<: *teardown
-          - <<: *ensure-terminated
+        - <<: *teardown
+        - <<: *ensure-terminated
     ensure:
       do:
-        - put: environment
-          params:
-            env_name: bosh-aws-cpi-end-2-end
-            action: destroy
-            env_name_file: environment/name
-            terraform_source: bosh-cpi-src/ci/assets/terraform
-          get_params:
-            action: destroy
+      - put: environment
+        params:
+          env_name: bosh-aws-cpi-end-2-end
+          action: destroy
+          env_name_file: environment/name
+          terraform_source: bosh-cpi-src/ci/assets/terraform
+        get_params:
+          action: destroy
 
 - name: automatically-release-new-patch
-  serial_groups: [version]
+  serial_groups: [ version ]
   plan:
-    - in_parallel:
-      - get: bosh-cpi-release
-        trigger: true
-        resource: bosh-cpi-dev-artifacts
-        passed: [end-2-end, bats, integration]
-      - get: bosh-cpi-src
-        resource: bosh-cpi-src-in
-        passed: [end-2-end, bats, integration]
-      - get: bosh-shared-ci
-      - get: version
-        resource: release-version-semver
-      - get: bosh-security-scanner-registry-image
-    - try:
-        task: check-for-patched-cves
-        file: bosh-shared-ci/tasks/release/check-for-patched-cves.yml
-        image: bosh-security-scanner-registry-image
-        input_mapping:
-          input_repo: bosh-cpi-src
-        params:
-          SEVERITY: CRITICAL,HIGH
-        on_success:
-          do:
-            - put: bosh-cpi-release-notes
-              params:
-                file: release-notes/release-notes.md
-            - put: release-version-semver
-              params:
-                bump: patch
-
-    - task: ensure-cve-checker-succeeded
-      file: bosh-shared-ci/tasks/release/ensure-task-succeeded.yml
+  - in_parallel:
+    - get: bosh-cpi-release
+      resource: bosh-cpi-dev-artifacts
+      passed: [ end-2-end, bats, integration ]
+      trigger: true
+    - get: bosh-cpi-src
+      resource: bosh-cpi-src-in
+      passed: [ end-2-end, bats, integration ]
+    - get: bosh-shared-ci
+    - get: version
+      resource: release-version-semver
+    - get: bosh-security-scanner-registry-image
+  - try:
+      task: check-for-patched-cves
+      file: bosh-shared-ci/tasks/release/check-for-patched-cves.yml
       image: bosh-security-scanner-registry-image
       input_mapping:
-        task-output-folder: patched_cves
+        input_repo: bosh-cpi-src
+      params:
+        SEVERITY: CRITICAL,HIGH
+      on_success:
+        do:
+        - put: bosh-cpi-release-notes
+          params:
+            file: release-notes/release-notes.md
+        - put: release-version-semver
+          params:
+            bump: patch
+
+  - task: ensure-cve-checker-succeeded
+    file: bosh-shared-ci/tasks/release/ensure-task-succeeded.yml
+    image: bosh-security-scanner-registry-image
+    input_mapping:
+      task-output-folder: patched_cves
 
 - name: bump-major
-  serial_groups: [version]
+  serial_groups: [ version ]
   plan:
-    - put: release-version-semver
-      params:
-        bump: major
+  - put: release-version-semver
+    params:
+      bump: major
 
 - name: bump-minor
-  serial_groups: [version]
+  serial_groups: [ version ]
   plan:
-    - put: release-version-semver
-      params:
-        bump: minor
+  - put: release-version-semver
+    params:
+      bump: minor
 
 - name: bump-patch
-  serial_groups: [version]
+  serial_groups: [ version ]
   plan:
-    - put: release-version-semver
-      params:
-        bump: patch
+  - put: release-version-semver
+    params:
+      bump: patch
 
 - name: promote-candidate
-  serial_groups: [version]
+  serial_groups: [ version ]
   disable_manual_trigger: true
   plan:
   - in_parallel:
     - get: bosh-cpi-release
       resource: bosh-cpi-dev-artifacts
-      passed: [end-2-end, bats, integration]
+      passed: [ end-2-end, bats, integration ]
     - get: bosh-cpi-src
       resource: bosh-cpi-src-in
-      passed: [end-2-end, bats, integration]
+      passed: [ end-2-end, bats, integration ]
     - get: release-version-semver
       trigger: true
     - get: bosh-cli
@@ -291,9 +319,9 @@ jobs:
     file: bosh-cpi-src/ci/tasks/promote-candidate.yml
     image: aws-cpi-image
     params:
-      AWS_ACCESS_KEY_ID:     ((bosh_cpis_assume_aws_access_key.username))
+      AWS_ACCESS_KEY_ID: ((bosh_cpis_assume_aws_access_key.username))
       AWS_SECRET_ACCESS_KEY: ((bosh_cpis_assume_aws_access_key.password))
-      AWS_ASSUME_ROLE_ARN:   ((bosh_cpis_assume_aws_access_key.role_arn))
+      AWS_ASSUME_ROLE_ARN: ((bosh_cpis_assume_aws_access_key.role_arn))
   - put: bosh-cpi-src-out
     params:
       repository: promoted/repo
@@ -316,30 +344,31 @@ jobs:
   public: true
   serial: true
   plan:
-    - get: bosh-cpi-src-dockerfiles
-      trigger: true
-    - task: extract-ruby-version-from-release
-      config:
-        platform: linux
-        image_resource:
-          type: registry-image
-          source: { repository: busybox }
-        run:
-          path: sh
-          args:
-            - -exc
-            - |
-                echo "{\"RUBY_VERSION\": \"$(cat bosh-cpi-src-dockerfiles/src/bosh_aws_cpi/.ruby-version)\"}" > build-args/args.json
-        inputs:
-          - name: bosh-cpi-src-dockerfiles
-        outputs:
-          - name: build-args
-    - put: aws-cpi-image
-      params:
-        build: "bosh-cpi-src-dockerfiles/ci/docker/aws-cpi"
-        build_args_file: build-args/args.json
-      get_params:
-        skip_download: true
+  - get: bosh-cpi-src-dockerfiles
+    trigger: true
+  - task: extract-ruby-version-from-release
+    config:
+      platform: linux
+      image_resource:
+        type: registry-image
+        source:
+          repository: busybox
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          echo "{\"RUBY_VERSION\": \"$(cat bosh-cpi-src-dockerfiles/src/bosh_aws_cpi/.ruby-version)\"}" > build-args/args.json
+      inputs:
+      - name: bosh-cpi-src-dockerfiles
+      outputs:
+      - name: build-args
+  - put: aws-cpi-image
+    params:
+      build: "bosh-cpi-src-dockerfiles/ci/docker/aws-cpi"
+      build_args_file: build-args/args.json
+    get_params:
+      skip_download: true
 
 - name: bump-deps
   plan:
@@ -350,6 +379,7 @@ jobs:
     - get: bosh-ruby-release-registry-image
     - get: weekly
       trigger: true
+    - get: aws-cpi-image
   - task: bump-gems
     image: bosh-ruby-release-registry-image
     file: ruby-release/ci/tasks/shared/bump-gems.yml
@@ -363,6 +393,9 @@ jobs:
       GIT_USER_EMAIL: bots@cloudfoundry.org
       PACKAGE: ruby-3.2
       VENDOR: true
+  - task: run-unit-specs
+    file: bosh-cpi-src/ci/tasks/run-unit-specs.yml
+    image: aws-cpi-image
   - put: bosh-cpi-src-out
     params:
       repository: bosh-cpi-src
@@ -375,6 +408,7 @@ jobs:
       resource: bosh-cpi-src-in
     - get: ruby-release
       trigger: true
+    - get: aws-cpi-image
     - get: bosh-ecosystem-concourse-image
   - task: bump-ruby-package
     image: bosh-ecosystem-concourse-image
@@ -396,6 +430,9 @@ jobs:
             secret_access_key: ((bosh_cpis_assume_aws_access_key.password))
             assume_role_arn: ((bosh_cpis_assume_aws_access_key.role_arn))
       RUBY_VERSION_PATH: src/bosh_aws_cpi/.ruby-version
+  - task: run-unit-specs
+    file: bosh-cpi-src/ci/tasks/run-unit-specs.yml
+    image: aws-cpi-image
   - put: bosh-cpi-src-out
     params:
       repository: bosh-cpi-src
@@ -436,8 +473,8 @@ resources:
     uri: https://github.com/cloudfoundry/bosh-aws-cpi-release.git
     private_key: ((github_deploy_key_bosh-aws-cpi-release.private_key))
     ignore_paths:
-      - .final_builds/**/*.yml
-      - releases/**/*.yml
+    - .final_builds/**/*.yml
+    - releases/**/*.yml
 - name: bosh-cpi-src-out
   type: git
   source:
@@ -455,8 +492,8 @@ resources:
     uri: https://github.com/cloudfoundry/bosh-aws-cpi-release.git
     branch: master
     paths:
-      - "ci/docker"
-      - src/bosh_aws_cpi/.ruby-version
+    - "ci/docker"
+    - src/bosh_aws_cpi/.ruby-version
 - name: bosh-aws-cpi-release-github-release
   type: github-release
   source:
@@ -466,35 +503,35 @@ resources:
 - name: version-semver
   type: semver
   source:
-    key:               current-version # dev-release version
-    bucket:            bosh-aws-cpi-pipeline
-    access_key_id:     ((bosh_cpis_assume_aws_access_key.username))
+    key: current-version # dev-release version
+    bucket: bosh-aws-cpi-pipeline
+    access_key_id: ((bosh_cpis_assume_aws_access_key.username))
     secret_access_key: ((bosh_cpis_assume_aws_access_key.password))
-    assume_role_arn:   ((bosh_cpis_assume_aws_access_key.role_arn))
+    assume_role_arn: ((bosh_cpis_assume_aws_access_key.role_arn))
 - name: release-version-semver
   type: semver
   source:
-    key:               release-current-version
-    bucket:            bosh-aws-cpi-pipeline
-    access_key_id:     ((bosh_cpis_assume_aws_access_key.username))
+    key: release-current-version
+    bucket: bosh-aws-cpi-pipeline
+    access_key_id: ((bosh_cpis_assume_aws_access_key.username))
     secret_access_key: ((bosh_cpis_assume_aws_access_key.password))
-    assume_role_arn:   ((bosh_cpis_assume_aws_access_key.role_arn))
+    assume_role_arn: ((bosh_cpis_assume_aws_access_key.role_arn))
 - name: environment
   type: terraform_type
   source:
     backend_type: s3
     backend_config:
-      access_key:  ((bosh_cpis_assume_aws_access_key.username))
-      secret_key:  ((bosh_cpis_assume_aws_access_key.password))
-      role_arn:    ((bosh_cpis_assume_aws_access_key.role_arn))
+      access_key: ((bosh_cpis_assume_aws_access_key.username))
+      secret_key: ((bosh_cpis_assume_aws_access_key.password))
+      role_arn: ((bosh_cpis_assume_aws_access_key.role_arn))
       region: us-east-1
-      bucket:      bosh-aws-cpi-terraform
-      key:         terraform.tfstate
+      bucket: bosh-aws-cpi-terraform
+      key: terraform.tfstate
     vars:
       access_key: ((bosh_cpis_assume_aws_access_key.username))
       secret_key: ((bosh_cpis_assume_aws_access_key.password))
-      role_arn:   ((bosh_cpis_assume_aws_access_key.role_arn))
-      region:     us-west-1
+      role_arn: ((bosh_cpis_assume_aws_access_key.role_arn))
+      region: us-west-1
       public_key: ((integration_vm_keypair.public_key))
 - name: bosh-cli
   source:
