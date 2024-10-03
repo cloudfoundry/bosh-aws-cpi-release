@@ -1,6 +1,7 @@
 require 'spec_helper'
 require 'json'
 require 'yaml'
+require 'ostruct'
 
 describe 'cpi.json.erb' do
   let(:cpi_specification_file) { File.absolute_path(File.join(jobs_root, 'aws_cpi/spec')) }
