@@ -4,7 +4,7 @@ gem 'aws-sdk-ec2'
 gem 'aws-sdk-autoscaling'
 gem 'aws-sdk-elasticloadbalancing'
 gem 'aws-sdk-elasticloadbalancingv2'
-gem 'aws-sdk-iam', '~>1.5'
+gem 'aws-sdk-iam'
 
 gem 'rexml'
 gem 'bosh_common'

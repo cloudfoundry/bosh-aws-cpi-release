@@ -113,7 +113,7 @@ DEPENDENCIES
   aws-sdk-ec2
   aws-sdk-elasticloadbalancing
   aws-sdk-elasticloadbalancingv2
-  aws-sdk-iam (~> 1.5)
+  aws-sdk-iam
   bosh_common
   bosh_cpi
   pry-byebug
