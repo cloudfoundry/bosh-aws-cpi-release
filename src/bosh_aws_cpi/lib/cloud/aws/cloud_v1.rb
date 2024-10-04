@@ -130,8 +130,8 @@ module Bosh::AwsCloud
       with_thread_name("delete_vm(#{instance_id})") do
         logger.info("Deleting instance '#{instance_id}'")
 
-        @cloud_core.delete_vm(instance_id) do |instance_id|
-          @registry.delete_settings(instance_id)
+        @cloud_core.delete_vm(instance_id) do |delete_vm_instance_id|
+          @registry.delete_settings(delete_vm_instance_id)
         end
       end
     end
@@ -265,11 +265,11 @@ module Bosh::AwsCloud
     # @param [String] disk_id EBS volume id of the disk to detach
     def detach_disk(instance_id, disk_id)
       with_thread_name("detach_disk(#{instance_id}, #{disk_id})") do
-        @cloud_core.detach_disk(instance_id, disk_id) do |disk_id|
+        @cloud_core.detach_disk(instance_id, disk_id) do |detach_disk_disk_id|
           update_agent_settings(instance_id) do |settings|
             settings['disks'] ||= {}
             settings['disks']['persistent'] ||= {}
-            settings['disks']['persistent'].delete(disk_id)
+            settings['disks']['persistent'].delete(detach_disk_disk_id)
           end
         end
       end
@@ -335,7 +335,7 @@ module Bosh::AwsCloud
         snapshot = @ec2_resource.snapshot(snapshot_id)
         begin
           snapshot.delete
-        rescue Aws::EC2::Errors::InvalidSnapshotNotFound => e
+        rescue Aws::EC2::Errors::InvalidSnapshotNotFound
           logger.info("snapshot '#{snapshot_id}' not found")
         end
         logger.info("snapshot '#{snapshot_id}' deleted")
@@ -346,7 +346,7 @@ module Bosh::AwsCloud
     # @param [String] instance_id EC2 instance id
     # @param [Hash] network_spec network properties
     # @raise [Bosh::Clouds:NotSupported] configure_networks is no longer supported
-    def configure_networks(instance_id, network_spec)
+    def configure_networks(_instance_id, _network_spec)
       raise Bosh::Clouds::NotSupported, 'configure_networks is no longer supported'
     end
 

@@ -8,8 +8,6 @@ require 'aws-sdk-elasticloadbalancing'
 require 'aws-sdk-elasticloadbalancingv2'
 
 require 'httpclient'
-require 'pp'
-require 'set'
 require 'tmpdir'
 require 'securerandom'
 require 'json'

@@ -106,7 +106,7 @@ module Bosh::AwsCloud
       nic[:device_index] = 0 unless nic.empty?
       params[:network_interfaces] = [nic] unless nic.empty?
 
-      params.delete_if { |k, v| v.nil? }
+      params.delete_if { |_k, v| v.nil? }
     end
 
     private
