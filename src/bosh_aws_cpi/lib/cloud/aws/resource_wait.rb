@@ -116,7 +116,7 @@ module Bosh::AwsCloud
           if options[:exponential]
             time = [options[:interval] ** num_tries, max_sleep_time].min
           else
-            time = [1 + options[:interval] * num_tries, max_sleep_time].min
+            time = [1 + (options[:interval] * num_tries), max_sleep_time].min
           end
         end
         Bosh::AwsCloud::ResourceWait.logger.debug("#{error.class}: `#{error.message}'") if error

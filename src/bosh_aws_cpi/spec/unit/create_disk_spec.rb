@@ -16,8 +16,8 @@ describe Bosh::AwsCloud::CloudV1 do
   let(:volume_resp) { instance_double(Aws::EC2::Types::Volume, volume_id: 'v-foobar') }
 
   before do
-    @cloud = mock_cloud do |_ec2|
-      @ec2 = _ec2
+    @cloud = mock_cloud do |mock_ec2|
+      @ec2 = mock_ec2
       allow(@ec2).to receive(:instance).with('i-test').and_return(instance)
       allow(@ec2).to receive(:config).and_return('fake-config')
     end

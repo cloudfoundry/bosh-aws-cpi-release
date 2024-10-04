@@ -61,7 +61,7 @@ module Bosh::AwsCloud
         agent_settings.agent_id = agent_id
 
         #TODO : should use networks from core create_vm in future
-        instance_id, networks = @cloud_core.create_vm(agent_id, stemcell_id, vm_type, network_props, agent_settings, disk_locality, environment) do
+        instance_id, _ = @cloud_core.create_vm(agent_id, stemcell_id, vm_type, network_props, agent_settings, disk_locality, environment) do
         |instance_id, settings|
           @registry.update_settings(instance_id, settings.agent_settings) if @stemcell_api_version < 2
         end
@@ -96,12 +96,12 @@ module Bosh::AwsCloud
     # @param [String] disk_id EBS volume id of the disk to detach
     def detach_disk(instance_id, disk_id)
       with_thread_name("detach_disk(#{instance_id}, #{disk_id}):v2") do
-        @cloud_core.detach_disk(instance_id, disk_id) do |disk_id|
+        @cloud_core.detach_disk(instance_id, disk_id) do |detach_disk_disk_id|
           if @stemcell_api_version < 2
             update_agent_settings(instance_id) do |settings|
               settings['disks'] ||= {}
               settings['disks']['persistent'] ||= {}
-              settings['disks']['persistent'].delete(disk_id)
+              settings['disks']['persistent'].delete(detach_disk_disk_id)
             end
           end
         end
@@ -115,8 +115,8 @@ module Bosh::AwsCloud
     def delete_vm(instance_id)
       with_thread_name("delete_vm(#{instance_id}):v2") do
         logger.info("Deleting instance '#{instance_id}'")
-        @cloud_core.delete_vm(instance_id) do |instance_id|
-          @registry.delete_settings(instance_id) if @stemcell_api_version < 2
+        @cloud_core.delete_vm(instance_id) do |delete_vm_instance_id|
+          @registry.delete_settings(delete_vm_instance_id) if @stemcell_api_version < 2
         end
       end
     end
