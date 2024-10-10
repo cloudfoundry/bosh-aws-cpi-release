@@ -38,7 +38,7 @@ module Bosh::AwsCloud
       end
 
       it 'should modify the volume with new size' do
-        ret = volume_manager.extend_ebs_volume(mock_volume, new_size)
+        volume_manager.extend_ebs_volume(mock_volume, new_size)
 
         expect(ec2_client).to have_received(:modify_volume).with(volume_id: 1234, size: new_size)
         expect(SdkHelpers::VolumeModification).to have_received(:new)

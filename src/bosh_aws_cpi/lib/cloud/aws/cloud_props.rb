@@ -57,7 +57,6 @@ module Bosh::AwsCloud
       ami[@global_config.aws.region]
     end
 
-    private
 
     DEFAULT_DISK_SIZE = 2048
     PARAVIRTUAL = 'paravirtual'.freeze
@@ -212,7 +211,7 @@ module Bosh::AwsCloud
 
     # @param [Hash] network_spec
     # @param [Bosh::AwsCloud::Config] global_config
-    def initialize(network_spec, global_config)
+    def initialize(network_spec, _global_config)
       @network_spec = (network_spec || {}).dup
 
       @networks = []
@@ -310,9 +309,6 @@ module Bosh::AwsCloud
     end
 
     class DynamicNetwork < Network
-      def initialize(name, settings)
-        super(name, settings)
-      end
     end
 
     class PublicNetwork < Network

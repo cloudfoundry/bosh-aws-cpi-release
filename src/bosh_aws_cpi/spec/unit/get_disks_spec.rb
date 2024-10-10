@@ -7,7 +7,7 @@ describe Bosh::AwsCloud::CloudV1 do
   it "gets volume ids" do
     fake_instance_id = "fakeinstance"
 
-    cloud = mock_cloud do |ec2, region|
+    cloud = mock_cloud do |ec2, _region|
       mock_instance = double("AWS Instance")
       expect(ec2).to receive(:instance).with(fake_instance_id).and_return(mock_instance)
       expect(mock_instance).to receive(:block_device_mappings).and_return([

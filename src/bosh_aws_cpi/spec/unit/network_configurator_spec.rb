@@ -95,7 +95,7 @@ describe Bosh::AwsCloud::NetworkConfigurator do
           it 'should raise error' do
             expect {
               Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
-            }.to raise_error /No IP provided for vip network 'network1'/
+            }.to raise_error(/No IP provided for vip network 'network1'/)
           end
         end
 
@@ -159,7 +159,7 @@ describe Bosh::AwsCloud::NetworkConfigurator do
 
               expect {
                 Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
-              }.to raise_error /Elastic IP with VPC scope not found with address '#{vip_public_ip}'/
+              }.to raise_error(/Elastic IP with VPC scope not found with address '#{vip_public_ip}'/)
             end
           end
         end

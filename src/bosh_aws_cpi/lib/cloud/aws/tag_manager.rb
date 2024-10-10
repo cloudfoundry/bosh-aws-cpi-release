@@ -34,7 +34,6 @@ module Bosh::AwsCloud
       Bosh::Clouds::Config.logger
     end
 
-    private
 
     def self.format_tags(tags)
       formatted_tags = tags.map do |k, v|

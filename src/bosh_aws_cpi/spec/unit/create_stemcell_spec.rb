@@ -88,7 +88,7 @@ describe Bosh::AwsCloud::CloudV1 do
         end
 
         it 'should return stemcell id (not light stemcell id)' do
-          cloud = mock_cloud do |ec2, client|
+          cloud = mock_cloud do |ec2, _client|
             expect(ec2).to receive(:images).with(
               filters: [{
                 name: 'image-id',
@@ -130,7 +130,7 @@ describe Bosh::AwsCloud::CloudV1 do
         end
 
         it 'should encrypt ami with given kms_key_arn' do
-          cloud = mock_cloud do |ec2, client|
+          cloud = mock_cloud do |ec2, _client|
             expect(ec2).to receive(:images).with(
               filters: [{
                 name: 'image-id',

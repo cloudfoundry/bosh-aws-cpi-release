@@ -123,21 +123,6 @@ module Bosh::AwsCloud
       !registry.endpoint.nil?
     end
 
-    private
-
-    def initialize(config_hash)
-      @config = config_hash
-      @aws = AwsConfig.new(config_hash['aws'] || {})
-      @registry = RegistryConfig.new(config_hash['registry'] || {})
-      @agent = AgentConfig.new(config_hash['agent'] || {})
-      @debug_api_version = config_hash.fetch('debug',{}).fetch('cpi', {}).fetch('api_version', MAX_SUPPORTED_API_VERSION)
-      @stemcell_api_version = parse_stemcell_api_version(config_hash['aws'])
-    end
-
-    def parse_stemcell_api_version(aws_config_hash)
-      aws_config_hash.fetch('vm', {}).fetch('stemcell', {}).fetch('api_version', 1)
-    end
-
     ##
     # Checks if options passed to CPI are valid and can actually
     # be used to create all required data structures etc.
@@ -187,6 +172,22 @@ module Bosh::AwsCloud
     def self.required_keys
       required_keys = {'aws' => ['max_retries']}
       required_keys
+    end
+    private_class_method :required_keys
+
+    private
+
+    def initialize(config_hash)
+      @config = config_hash
+      @aws = AwsConfig.new(config_hash['aws'] || {})
+      @registry = RegistryConfig.new(config_hash['registry'] || {})
+      @agent = AgentConfig.new(config_hash['agent'] || {})
+      @debug_api_version = config_hash.fetch('debug',{}).fetch('cpi', {}).fetch('api_version', MAX_SUPPORTED_API_VERSION)
+      @stemcell_api_version = parse_stemcell_api_version(config_hash['aws'])
+    end
+
+    def parse_stemcell_api_version(aws_config_hash)
+      aws_config_hash.fetch('vm', {}).fetch('stemcell', {}).fetch('api_version', 1)
     end
   end
 end
