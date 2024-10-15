@@ -4,7 +4,6 @@ set -e
 
 : ${BOSH_AWS_KMS_KEY_ARN:?}
 
-source bosh-cpi-src/ci/utils.sh
 source director-state/director.env
 
 # CREATE TEST RELEASE

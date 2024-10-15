@@ -6,8 +6,6 @@ set -e
 : ${AWS_SECRET_ACCESS_KEY:?}
 : ${AWS_ASSUME_ROLE_ARN:?}
 
-source bosh-cpi-src/ci/utils.sh
-
 version_to_cut=$(cat release-version-semver/version)
 
 cp -r bosh-cpi-src promoted/repo

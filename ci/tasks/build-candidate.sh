@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -eu -o pipefail
 
-source bosh-cpi-src/ci/utils.sh
-
 semver=$(cat version-semver/number)
 cpi_release_name="bosh-aws-cpi"
 
