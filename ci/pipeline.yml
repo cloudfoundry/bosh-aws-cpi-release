@@ -374,7 +374,7 @@ jobs:
     params:
       GIT_USER_NAME: CI Bot
       GIT_USER_EMAIL: cf-bosh-eng@pivotal.io
-      PACKAGE: ruby-3.2
+      PACKAGE: ruby-3.3
       PACKAGE_PREFIX: aws-cpi
       PRIVATE_YML: |
         blobstore:
