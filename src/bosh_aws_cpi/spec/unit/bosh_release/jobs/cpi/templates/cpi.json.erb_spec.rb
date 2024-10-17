@@ -271,7 +271,7 @@ class TemplateEvaluationContext
       return ActiveElseBlock.new(self) if value.nil?
       value
     end
-    yield *values
+    yield(*values)
     InactiveElseBlock.new
   end
 

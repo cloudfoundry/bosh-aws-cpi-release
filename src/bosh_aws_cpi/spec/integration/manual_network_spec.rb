@@ -238,7 +238,7 @@ describe Bosh::AwsCloud::CloudV1 do
         end
 
         retry_options = { sleep: 10, tries: 60, on: RegisteredInstances }
-        Bosh::Common.retryable(retry_options) do |tries, error|
+        Bosh::Common.retryable(retry_options) do |_tries, _error|
           ensure_no_instances_registered_with_elb(elb_client, @elb_id)
         end
 

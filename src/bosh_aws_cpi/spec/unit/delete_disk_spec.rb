@@ -60,10 +60,10 @@ describe Bosh::AwsCloud::CloudV1 do
 
     expect do
       cloud.delete_disk('v-foo')
-    end.to raise_error { |error|
+    end.to(raise_error { |error|
       expect(error).to be_a(Bosh::Clouds::DiskNotFound)
       expect(error.ok_to_retry).to eq(false)
       expect(error.message).to match(/Disk 'v-foo' not found/)
-    }
+    })
   end
 end

@@ -15,9 +15,9 @@ module Bosh::AwsCloud
     # Initialize BOSH AWS CPI. The contents of sub-hashes are defined in the {file:README.md}
     # @param [Bosh::AwsCloud::Config] config CPI Config options
     # @param [Bosh::Cpi::Logger] logger AWS specific options
-    # @param [Bosh::AwsCloud::VolumeManager] volume manager
-    # @param [Bosh::AwsCloud::AvailabilityZoneSelector] az selector
-    # @param [Integer] Stemcell api version
+    # @param [Bosh::AwsCloud::VolumeManager] volume_manager
+    # @param [Bosh::AwsCloud::AvailabilityZoneSelector] az_selector
+    # @param [Integer] stemcell_api_version
     def initialize(config, logger, volume_manager, az_selector, stemcell_api_version)
       @config = config
       @supported_api_version = @config.supported_api_version
@@ -48,7 +48,7 @@ module Bosh::AwsCloud
 
     ##
     # Create an EC2 instance and wait until it's in running state
-    # @param [String] agent_id agent id associated with new VM
+    # @param [String] _agent_id agent id associated with new VM
     # @param [String] stemcell_id AMI id of the stemcell used to
     #  create the new instance
     # @param [Hash] vm_type resource pool specification
@@ -62,7 +62,7 @@ module Bosh::AwsCloud
     # @param [optional, Hash] environment data to be merged into
     #   agent settings
     # @return String, Hash - EC2 instance id of the new virtual machine, Network info
-    def create_vm(agent_id, stemcell_id, vm_type, network_props, settings, disk_locality = [], environment = nil)
+    def create_vm(_agent_id, stemcell_id, vm_type, network_props, settings, disk_locality = [], environment = nil)
       vm_props = @props_factory.vm_props(vm_type)
 
       target_groups = vm_props.lb_target_groups

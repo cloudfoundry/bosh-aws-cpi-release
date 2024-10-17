@@ -95,7 +95,7 @@ module Bosh::AwsCloud
         context "when creating #{nvme_instance_family} instances" do
           let(:instance_type) { "#{nvme_instance_family}.large" }
           let(:instance_type_disk_mapping) { BlockDeviceManager::DiskInfo::INSTANCE_TYPE_DISK_MAPPING[instance_type] }
-          let(:expected_volume_size) { instance_type_disk_mapping && instance_type_disk_mapping[0] || 10 }
+          let(:expected_volume_size) { (instance_type_disk_mapping && instance_type_disk_mapping[0]) || 10 }
 
           it_behaves_like 'NVMe required instance types'
         end

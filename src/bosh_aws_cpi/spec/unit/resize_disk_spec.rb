@@ -6,8 +6,8 @@ describe Bosh::AwsCloud::CloudV1, "resize_disk" do
   let(:volume_resp) { instance_double(Aws::EC2::Types::ModifyVolumeResult, :volume_modification => {modification_state: 'completed'}) }
 
   before do
-    @cloud = mock_cloud do |_ec2|
-      @ec2 = _ec2
+    @cloud = mock_cloud do |mock_ec2|
+      @ec2 = mock_ec2
       allow(@ec2).to receive(:config).and_return('fake-config')
       allow(@ec2).to receive(:volume).with("disk-id").and_return(volume)
     end
