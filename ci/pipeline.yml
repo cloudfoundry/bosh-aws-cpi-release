@@ -456,17 +456,15 @@ resources:
   source:
     key: current-version # dev-release version
     bucket: bosh-aws-cpi-pipeline
-    access_key_id: ((bosh_cpis_assume_aws_access_key.username))
-    secret_access_key: ((bosh_cpis_assume_aws_access_key.password))
-    assume_role_arn: ((bosh_cpis_assume_aws_access_key.role_arn))
+    driver: gcs
+    json_key: ((cloud-foundry-gcp-credentials))
 - name: release-version-semver
   type: semver
   source:
     key: release-current-version
     bucket: bosh-aws-cpi-pipeline
-    access_key_id: ((bosh_cpis_assume_aws_access_key.username))
-    secret_access_key: ((bosh_cpis_assume_aws_access_key.password))
-    assume_role_arn: ((bosh_cpis_assume_aws_access_key.role_arn))
+    driver: gcs
+    json_key: ((cloud-foundry-gcp-credentials))
 - name: environment
   type: terraform_type
   source:
