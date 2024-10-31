@@ -400,32 +400,31 @@ jobs:
 
 resource_types:
 - name: terraform_type
-  type: docker-image
+  type: registry-image
   source:
     repository: ljfranklin/terraform-resource
-- name: semver
-  type: docker-image
+    username: ((docker.username))
+    password: ((docker.password))
+- name: gcs
+  type: registry-image
   source:
-    repository: concourse/semver-resource
-    tag: 1.6
+    repository: frodenas/gcs-resource
+    username: ((docker.username))
+    password: ((docker.password))
 
 resources:
 - name: bosh-cpi-dev-artifacts
-  type: s3
+  type: gcs
   source:
-    regexp: bosh-aws-cpi-(\d+\.\d+\.\d+)\.tgz
+    versioned_file: bosh-aws-cpi-dev-release.tgz
     bucket: bosh-aws-cpi-pipeline
-    access_key_id: ((bosh_cpis_assume_aws_access_key.username))
-    secret_access_key: ((bosh_cpis_assume_aws_access_key.password))
-    aws_role_arn: ((bosh_cpis_assume_aws_access_key.role_arn))
+    json_key: ((cloud-foundry-gcp-credentials))
 - name: bosh-cpi-release-notes
-  type: s3
+  type: gcs
   source:
     versioned_file: release-notes
     bucket: bosh-aws-cpi-pipeline
-    access_key_id: ((bosh_cpis_assume_aws_access_key.username))
-    secret_access_key: ((bosh_cpis_assume_aws_access_key.password))
-    aws_role_arn: ((bosh_cpis_assume_aws_access_key.role_arn))
+    json_key: ((cloud-foundry-gcp-credentials))
 - name: bosh-cpi-src-in
   type: git
   source:
