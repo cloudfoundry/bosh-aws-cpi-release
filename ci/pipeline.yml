@@ -300,29 +300,35 @@ jobs:
     - get: bosh-integration-image
     - get: bosh-cpi-release-notes
   - task: promote
-    file: bosh-cpi-src/ci/tasks/promote-candidate.yml
+    file: bosh-shared-ci/tasks/release/create-final-release.yml
     image: bosh-integration-image
+    input_mapping:
+      release_repo: bosh-cpi-release
+      version: release-version-semver
     params:
-      AWS_ACCESS_KEY_ID: ((bosh_cpis_assume_aws_access_key.username))
-      AWS_SECRET_ACCESS_KEY: ((bosh_cpis_assume_aws_access_key.password))
-      AWS_ASSUME_ROLE_ARN: ((bosh_cpis_assume_aws_access_key.role_arn))
+      GIT_USER_NAME: CI Bot
+      GIT_USER_EMAIL: bots@cloudfoundry.org
+      PRIVATE_YML: |
+        blobstore:
+          provider: gcs
+          options:
+            credentials_source: static
+            json_key: '((cloud-foundry-gcp-credentials))'
   - put: bosh-cpi-src-out
     params:
-      repository: promoted/repo
+      repository: release_repo
       rebase: true
-      tag_prefix: v
-      tag: release-version-semver/version
+      tag: release_metadata/tag-name
   - put: bosh-aws-cpi-release-github-release
     params:
-      name: release-metadata/release-name
-      tag: release-version-semver/version
-      tag_prefix: v
+      name: release_metadata/tag-name
+      tag: release_metadata/tag-name
       body: bosh-cpi-release-notes/release-notes
       commitish: bosh-cpi-src-out/.git/ref
       generate_release_notes: true
   - put: bosh-cpi-release-notes
     params:
-      file: release-metadata/empty-file-to-clear-release-notes
+      file: release_metadata/empty-file
 
 - name: bump-deps
   plan:
@@ -378,11 +384,10 @@ jobs:
       PACKAGE_PREFIX: aws-cpi
       PRIVATE_YML: |
         blobstore:
-          provider: s3
+          provider: gcs
           options:
-            access_key_id:     ((bosh_cpis_assume_aws_access_key.username))
-            secret_access_key: ((bosh_cpis_assume_aws_access_key.password))
-            assume_role_arn: ((bosh_cpis_assume_aws_access_key.role_arn))
+            credentials_source: static
+            json_key: '((cloud-foundry-gcp-credentials))'
       RUBY_VERSION_PATH: src/bosh_aws_cpi/.ruby-version
   - task: run-unit-specs
     file: bosh-cpi-src/ci/tasks/run-unit-specs.yml

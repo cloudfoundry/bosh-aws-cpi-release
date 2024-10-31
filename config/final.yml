@@ -1,6 +1,6 @@
 ---
 final_name: bosh-aws-cpi
 blobstore:
-  provider: s3
+  provider: gcs
   options:
     bucket_name: bosh-aws-cpi-blobs
