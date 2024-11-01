@@ -289,9 +289,6 @@ jobs:
   disable_manual_trigger: true
   plan:
   - in_parallel:
-    - get: bosh-cpi-release
-      resource: bosh-cpi-dev-artifacts
-      passed: [ end-2-end, bats, integration ]
     - get: bosh-cpi-src
       resource: bosh-cpi-src-in
       passed: [ end-2-end, bats, integration ]
@@ -299,11 +296,12 @@ jobs:
       trigger: true
     - get: bosh-integration-image
     - get: bosh-cpi-release-notes
+    - get: bosh-shared-ci
   - task: promote
     file: bosh-shared-ci/tasks/release/create-final-release.yml
     image: bosh-integration-image
     input_mapping:
-      release_repo: bosh-cpi-release
+      release_repo: bosh-cpi-src
       version: release-version-semver
     params:
       GIT_USER_NAME: CI Bot
