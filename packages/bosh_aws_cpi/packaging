@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
 set -e
 
@@ -11,6 +11,7 @@ cp -a bosh_aws_cpi/* ${BOSH_INSTALL_TARGET}
 
 cd ${BOSH_INSTALL_TARGET}
 
+export BUNDLER_VERSION="$(bundle -v | grep -o -e '[0-9.]*')"
 bundle config set --local cache_path 'vendor/package'
 
 bosh_bundle_local
