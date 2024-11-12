@@ -369,9 +369,8 @@ jobs:
     - get: ruby-release
       trigger: true
     - get: bosh-integration-image
-    - get: bosh-ecosystem-concourse-image
   - task: bump-ruby-package
-    image: bosh-ecosystem-concourse-image
+    image: bosh-integration-image
     file: ruby-release/ci/tasks/shared/bump-ruby-package.yml
     input_mapping:
       bosh-release: bosh-cpi-src
@@ -403,14 +402,14 @@ resource_types:
   type: registry-image
   source:
     repository: ljfranklin/terraform-resource
-    username: ((docker.username))
-    password: ((docker.password))
+    username: ((dockerhub_username))
+    password: ((dockerhub_password))
 - name: gcs
   type: registry-image
   source:
     repository: frodenas/gcs-resource
-    username: ((docker.username))
-    password: ((docker.password))
+    username: ((dockerhub_username))
+    password: ((dockerhub_password))
 
 resources:
 - name: bosh-cpi-dev-artifacts
@@ -510,30 +509,24 @@ resources:
   type: registry-image
   source:
     repository: bosh/integration
-    username: ((docker.username))
-    password: ((docker.password))
+    username: ((dockerhub_username))
+    password: ((dockerhub_password))
 - name: bosh-ruby-release-registry-image
   type: registry-image
   source:
     repository: bosh/ruby-release
-    username: ((docker.username))
-    password: ((docker.password))
+    username: ((dockerhub_username))
+    password: ((dockerhub_password))
 - name: ruby-release
   type: git
   source:
     uri: https://github.com/cloudfoundry/bosh-package-ruby-release.git
-- name: bosh-ecosystem-concourse-image
-  type: registry-image
-  source:
-    repository: bosh/bosh-ecosystem-concourse
-    username: ((docker.username))
-    password: ((docker.password))
 - name: bosh-security-scanner-registry-image
   type: registry-image
   source:
     repository: bosh/security-scanner
-    username: ((docker.username))
-    password: ((docker.password))
+    username: ((dockerhub_username))
+    password: ((dockerhub_password))
 - name: weekly
   type: time
   source:
