@@ -7,9 +7,8 @@ shared:
   params: &prepare-director-params
     INFRASTRUCTURE: aws
     DIRECTOR_VARS_FILE: |
-      access_key_id: ((aws-cpi-integration-tests_assume_aws_access_key.username))
-      secret_access_key: ((aws-cpi-integration-tests_assume_aws_access_key.password))
-      role_arn: ((aws-cpi-integration-tests_assume_aws_access_key.role_arn))
+      access_key_id: ((aws-admin.username))
+      secret_access_key: ((aws-admin.password))
       region: us-west-1
 
 - &deploy-director
@@ -39,9 +38,8 @@ shared:
   file: bosh-cpi-src/ci/tasks/ensure-terminated.yml
   image: bosh-integration-image
   params:
-    AWS_ACCESS_KEY_ID: ((bosh_cpis_assume_aws_access_key.username))
-    AWS_SECRET_ACCESS_KEY: ((bosh_cpis_assume_aws_access_key.password))
-    AWS_ASSUME_ROLE_ARN: ((bosh_cpis_assume_aws_access_key.role_arn))
+    AWS_ACCESS_KEY_ID: ((aws-admin.username))
+    AWS_SECRET_ACCESS_KEY: ((aws-admin.password))
     AWS_DEFAULT_REGION: us-west-1
 
 - &teardown
@@ -99,12 +97,10 @@ jobs:
     file: bosh-cpi-src/ci/tasks/run-integration.yml
     image: bosh-integration-image
     params:
-      AWS_ACCESS_KEY_ID: ((aws-cpi-integration-tests_assume_aws_access_key.username))
-      AWS_SECRET_ACCESS_KEY: ((aws-cpi-integration-tests_assume_aws_access_key.password))
-      AWS_ROLE_ARN: ((aws-cpi-integration-tests_assume_aws_access_key.role_arn))
-      BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID: ((iam-permission-auditor_assume_aws_access_key.username))
-      BOSH_AWS_PERMISSIONS_AUDITOR_SECRET_KEY: ((iam-permission-auditor_assume_aws_access_key.password))
-      BOSH_AWS_PERMISSIONS_AUDITOR_ROLE_ARN: ((iam-permission-auditor_assume_aws_access_key.role_arn))
+      AWS_ACCESS_KEY_ID: ((aws-test-user.username))
+      AWS_SECRET_ACCESS_KEY: ((aws-test-user.password))
+      BOSH_AWS_PERMISSIONS_AUDITOR_KEY_ID: ((aws-permission-auditor.username))
+      BOSH_AWS_PERMISSIONS_AUDITOR_SECRET_KEY: ((aws-permission-auditor.password))
       AWS_DEFAULT_REGION: us-west-1
       BOSH_AWS_KMS_KEY_ARN: ((arn_keys.aws_kms_key_arn))
       BOSH_AWS_KMS_KEY_ARN_OVERRIDE: ((arn_keys.aws_kms_key_arn_override))
@@ -154,7 +150,6 @@ jobs:
           -o pipelines/shared/assets/ops/remove-hm.yml
           -o bosh-deployment/external-ip-with-registry-not-recommended.yml
           -o pipelines/shared/assets/ops/remove-provider-cert.yml
-          -o bosh-deployment/aws/cpi-assume-role-credentials.yml
     - do:
       - <<: *deploy-director
       - <<: *run-bats
@@ -206,7 +201,6 @@ jobs:
           -o bosh-deployment/external-ip-with-registry-not-recommended.yml
           -o pipelines/shared/assets/ops/remove-provider-cert.yml
           -o pipelines/aws/assets/ops/iam-instance-profile-ops-file.yml
-          -o bosh-deployment/aws/cpi-assume-role-credentials.yml
     - do:
       - <<: *deploy-director
       - <<: *run-end-2-end
@@ -311,7 +305,7 @@ jobs:
           provider: gcs
           options:
             credentials_source: static
-            json_key: '((cloud-foundry-gcp-credentials))'
+            json_key: '((gcp_json_key))'
   - put: bosh-cpi-src-out
     params:
       repository: release_repo
@@ -367,9 +361,8 @@ jobs:
     - get: ruby-release
       trigger: true
     - get: bosh-integration-image
-    - get: bosh-ecosystem-concourse-image
   - task: bump-ruby-package
-    image: bosh-ecosystem-concourse-image
+    image: bosh-integration-image
     file: ruby-release/ci/tasks/shared/bump-ruby-package.yml
     input_mapping:
       bosh-release: bosh-cpi-src
@@ -385,7 +378,7 @@ jobs:
           provider: gcs
           options:
             credentials_source: static
-            json_key: '((cloud-foundry-gcp-credentials))'
+            json_key: '((gcp_json_key))'
       RUBY_VERSION_PATH: src/bosh_aws_cpi/.ruby-version
   - task: run-unit-specs
     file: bosh-cpi-src/ci/tasks/run-unit-specs.yml
@@ -401,14 +394,14 @@ resource_types:
   type: registry-image
   source:
     repository: ljfranklin/terraform-resource
-    username: ((docker.username))
-    password: ((docker.password))
+    username: ((dockerhub_username))
+    password: ((dockerhub_password))
 - name: gcs
   type: registry-image
   source:
     repository: frodenas/gcs-resource
-    username: ((docker.username))
-    password: ((docker.password))
+    username: ((dockerhub_username))
+    password: ((dockerhub_password))
 
 resources:
 - name: bosh-cpi-dev-artifacts
@@ -416,13 +409,13 @@ resources:
   source:
     versioned_file: bosh-aws-cpi-dev-release.tgz
     bucket: bosh-aws-cpi-pipeline
-    json_key: ((cloud-foundry-gcp-credentials))
+    json_key: ((gcp_json_key))
 - name: bosh-cpi-release-notes
   type: gcs
   source:
     versioned_file: release-notes
     bucket: bosh-aws-cpi-pipeline
-    json_key: ((cloud-foundry-gcp-credentials))
+    json_key: ((gcp_json_key))
 - name: bosh-cpi-src-in
   type: git
   source:
@@ -454,14 +447,14 @@ resources:
     key: current-version # dev-release version
     bucket: bosh-aws-cpi-pipeline
     driver: gcs
-    json_key: ((cloud-foundry-gcp-credentials))
+    json_key: ((gcp_json_key))
 - name: release-version-semver
   type: semver
   source:
     key: release-current-version
     bucket: bosh-aws-cpi-pipeline
     driver: gcs
-    json_key: ((cloud-foundry-gcp-credentials))
+    json_key: ((gcp_json_key))
 - name: environment
   type: terraform_type
   source:
@@ -469,11 +462,10 @@ resources:
     backend_config:
       bucket: bosh-aws-cpi-pipeline
       prefix: terraform
-      credentials: ((cloud-foundry-gcp-credentials))
+      credentials: ((gcp_json_key))
     vars:
-      access_key: ((bosh_cpis_assume_aws_access_key.username))
-      secret_key: ((bosh_cpis_assume_aws_access_key.password))
-      role_arn: ((bosh_cpis_assume_aws_access_key.role_arn))
+      access_key: ((aws-admin.username))
+      secret_key: ((aws-admin.password))
       region: us-west-1
       public_key: ((integration_vm_keypair.public_key))
 - name: pipelines
@@ -508,33 +500,28 @@ resources:
   type: registry-image
   source:
     repository: bosh/integration
-    username: ((docker.username))
-    password: ((docker.password))
+    username: ((dockerhub_username))
+    password: ((dockerhub_password))
 - name: bosh-ruby-release-registry-image
   type: registry-image
   source:
     repository: bosh/ruby-release
-    username: ((docker.username))
-    password: ((docker.password))
+    username: ((dockerhub_username))
+    password: ((dockerhub_password))
 - name: ruby-release
   type: git
   source:
     uri: https://github.com/cloudfoundry/bosh-package-ruby-release.git
-- name: bosh-ecosystem-concourse-image
-  type: registry-image
-  source:
-    repository: bosh/bosh-ecosystem-concourse
-    username: ((docker.username))
-    password: ((docker.password))
 - name: bosh-security-scanner-registry-image
   type: registry-image
   source:
     repository: bosh/security-scanner
-    username: ((docker.username))
-    password: ((docker.password))
+    username: ((dockerhub_username))
+    password: ((dockerhub_password))
 - name: weekly
   type: time
   source:
     start: 3:00 -0700
     stop: 4:30 -0700
     days: [ Saturday ]
+    initial_version: true
