@@ -5,10 +5,11 @@ image_resource:
   source: {repository: bosh/integration}
 inputs:
   - name: bosh-cpi-src
+  - name: bosh-cpi-src-test
   - name: environment
   - name: stemcell
 run:
-  path: bosh-cpi-src/ci/tasks/run-integration.sh
+  path: bosh-cpi-src-test/ci/tasks/run-integration.sh
 params:
   AWS_ACCESS_KEY_ID:                       ""
   AWS_SECRET_ACCESS_KEY:                   ""
