@@ -4,7 +4,6 @@ set -e
 
 : ${AWS_ACCESS_KEY_ID:?}
 : ${AWS_SECRET_ACCESS_KEY:?}
-: ${AWS_ROLE_ARN:?}
 : ${AWS_DEFAULT_REGION:=us-west-1}
 : ${PROJECT_RUBY_VERSION:?}
 : ${BOSH_AWS_KMS_KEY_ARN:?}
@@ -16,7 +15,6 @@ function destroy_env() {
     terraform destroy -force -state="${STATE_FILE}" \
       -var "access_key=${AWS_ACCESS_KEY_ID}" \
       -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
-      -var "role_arn=${AWS_ROLE_ARN}" \
       ${AWS_SESSION_TOKEN:+-var "session_token=${AWS_SESSION_TOKEN}"} \
       -var "region=${AWS_DEFAULT_REGION}" \
       -var "env_name=$(hostname -s|tr '[:upper:]' '[:lower:]')-local-int" \
@@ -31,7 +29,6 @@ function create_env() {
       -auto-approve \
       -var "access_key=${AWS_ACCESS_KEY_ID}" \
       -var "secret_key=${AWS_SECRET_ACCESS_KEY}" \
-      -var "role_arn=${AWS_ROLE_ARN}" \
       ${AWS_SESSION_TOKEN:+-var "session_token=${AWS_SESSION_TOKEN}"} \
       -var "region=${AWS_DEFAULT_REGION}" \
       -var "env_name=$(hostname -s|tr '[:upper:]' '[:lower:]')-local-int" \
