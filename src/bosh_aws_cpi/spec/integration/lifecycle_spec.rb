@@ -114,6 +114,9 @@ describe 'lifecycle test' do
         instance_id, _ = cpi_v2.create_vm(nil, @stemcell_id, vm_type, network_spec, disks, environment)
         instance = cpi_v2.ec2_resource.instance(instance_id)
         expect(instance.tags).to_not be_nil
+
+        # cleanup
+        cpi_v2.delete_vm(instance_id)
       end
     end
 
