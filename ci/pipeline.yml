@@ -322,6 +322,21 @@ jobs:
     params:
       file: release_metadata/empty-file
 
+- name: cleanup-leftover-environments
+  plan:
+    - in_parallel:
+        - get: bosh-integration-image
+        - get: bosh-cpi-src-in
+        - get: daily
+          trigger: true
+    - task: cleanup-leftover-environments
+      file: bosh-cpi-src-in/ci/tasks/cleanup-leftover-environments.yml
+      image: bosh-integration-image
+      params:
+        BBL_AWS_ACCESS_KEY_ID: ((aws-admin.username))
+        BBL_AWS_SECRET_ACCESS_KEY: ((aws-admin.password))
+        BBL_AWS_REGION: us-west-1
+
 - name: bump-deps
   plan:
   - in_parallel:
@@ -468,6 +483,7 @@ resources:
       secret_key: ((aws-admin.password))
       region: us-west-1
       public_key: ((integration_vm_keypair.public_key))
+      resource_prefix: awscpi
 - name: pipelines
   type: git
   source:
@@ -525,3 +541,7 @@ resources:
     stop: 4:30 -0700
     days: [ Saturday ]
     initial_version: true
+- name: daily
+  type: time
+  source:
+    interval: 24

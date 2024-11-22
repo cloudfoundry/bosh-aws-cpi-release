@@ -14,6 +14,11 @@ provider "aws" {
   region = var.region
 }
 
+variable "resource_prefix" {
+  type    = string
+  default = "awscpi"
+}
+
 data "aws_availability_zones" "available" {}
 
 # Create a VPC to launch our instances into
@@ -21,7 +26,7 @@ resource "aws_vpc" "default" {
   assign_generated_ipv6_cidr_block = true
   cidr_block = "10.0.0.0/16"
   tags = {
-    Name = var.env_name
+    Name = "${var.resource_prefix}-${var.env_name}"
   }
 }
 
@@ -29,7 +34,7 @@ resource "aws_vpc" "default" {
 resource "aws_internet_gateway" "default" {
   vpc_id = aws_vpc.default.id
   tags = {
-    Name = var.env_name
+    Name = "${var.resource_prefix}-${var.env_name}"
   }
 }
 
@@ -41,7 +46,7 @@ resource "aws_route_table" "default" {
   }
 
   tags = {
-    Name = var.env_name
+    Name = "${var.resource_prefix}-${var.env_name}"
   }
 }
 
@@ -68,7 +73,7 @@ resource "aws_subnet" "default" {
   availability_zone = data.aws_availability_zones.available.names[0]
 
   tags = {
-    Name = var.env_name
+    Name = "${var.resource_prefix}-${var.env_name}"
   }
 
   map_public_ip_on_launch = true
@@ -82,7 +87,7 @@ resource "aws_subnet" "backup" {
   availability_zone = data.aws_availability_zones.available.names[1]
 
   tags = {
-    Name = var.env_name
+    Name = "${var.resource_prefix}-${var.env_name}"
   }
 }
 
@@ -94,7 +99,7 @@ resource "aws_subnet" "manual" {
   availability_zone = data.aws_availability_zones.available.names[0]
 
   tags = {
-    Name = var.env_name
+    Name = "${var.resource_prefix}-${var.env_name}"
   }
 
   map_public_ip_on_launch = true
@@ -127,13 +132,13 @@ resource "aws_network_acl" "allow_all" {
   }
 
   tags = {
-    Name = var.env_name
+    Name = "${var.resource_prefix}-${var.env_name}"
   }
 }
 
 resource "aws_security_group" "allow_all" {
   vpc_id = aws_vpc.default.id
-  name = "allow_all-${var.env_name}"
+  name = "allow_all-${var.resource_prefix}-${var.env_name}"
   description = "Allow all inbound and outgoing traffic"
 
   ingress {
@@ -153,7 +158,7 @@ resource "aws_security_group" "allow_all" {
   }
 
   tags = {
-    Name = var.env_name
+    Name = "${var.resource_prefix}-${var.env_name}"
   }
 }
 
@@ -177,7 +182,7 @@ resource "aws_elb" "default" {
   subnets = [aws_subnet.default.id]
 
   tags = {
-    Name = var.env_name
+    Name = "${var.resource_prefix}-${var.env_name}"
   }
 }
 
@@ -189,12 +194,12 @@ resource "aws_alb" "default" {
   ]
 
   tags = {
-    Name = var.env_name
+    Name = "${var.resource_prefix}-${var.env_name}"
   }
 }
 
 resource "aws_alb_target_group" "default" {
-  name = var.env_name
+  name = "${var.resource_prefix}-${var.env_name}"
   port = "80"
   protocol = "HTTP"
   vpc_id = aws_vpc.default.id
@@ -206,7 +211,7 @@ resource "aws_alb_target_group" "default" {
   }
 
   tags = {
-    Name = var.env_name
+    Name = "${var.resource_prefix}-${var.env_name}"
   }
 }
 
@@ -229,7 +234,7 @@ resource "aws_vpc_endpoint" "private-s3" {
 }
 
 resource "aws_s3_bucket" "blobstore" {
-  bucket = "cpi-pipeline-blobstore-${var.env_name}-${var.region}"
+  bucket = "cpi-pipeline-blobstore-${var.resource_prefix}-${var.env_name}-${var.region}"
   force_destroy = true
 }
 
