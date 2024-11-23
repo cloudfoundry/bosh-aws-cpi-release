@@ -544,4 +544,4 @@ resources:
 - name: daily
   type: time
   source:
-    interval: 24
+    interval: 24h
