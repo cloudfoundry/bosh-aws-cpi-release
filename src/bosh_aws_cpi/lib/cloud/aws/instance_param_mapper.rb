@@ -93,13 +93,8 @@ module Bosh::AwsCloud
       nic[:subnet_id] = subnet_id if subnet_id
 
       # only supporting one ip address for now (either ipv4 or ipv6)
-      if private_ip_address
-        if ipv6_address?(private_ip_address)
-          nic[:ipv_6_addresses] = [{ipv_6_address: private_ip_address}]
-        else
-          nic[:private_ip_address] = private_ip_address
-        end
-      end
+      nic[:ipv_6_addresses] = [{ipv_6_address: private_ipv6_address}] if !private_ipv6_address.nil?
+      nic[:private_ip_address] = private_ip_address if !private_ip_address.nil?
 
       nic[:associate_public_ip_address] = vm_type.auto_assign_public_ip unless vm_type.auto_assign_public_ip.nil?
 
@@ -149,7 +144,16 @@ module Bosh::AwsCloud
 
     def private_ip_address
       first_manual_network = networks_cloud_props.filter('manual').first
-      first_manual_network.ip unless first_manual_network.nil?
+      return first_manual_network.ip if !first_manual_network.nil? && !ipv6_address?(first_manual_network.ip)
+      second_manual_network = networks_cloud_props.filter('manual')[1]
+      second_manual_network.ip if !second_manual_network.nil? && !ipv6_address?(second_manual_network.ip)
+    end
+
+    def private_ipv6_address
+      first_manual_network = networks_cloud_props.filter('manual').first
+      return first_manual_network.ip if !first_manual_network.nil? && ipv6_address?(first_manual_network.ip)
+      second_manual_network = networks_cloud_props.filter('manual')[1]
+      second_manual_network.ip if !second_manual_network.nil? && ipv6_address?(second_manual_network.ip)
     end
 
     # NOTE: do NOT lookup the subnet (from EC2 client) anymore. We just need to
