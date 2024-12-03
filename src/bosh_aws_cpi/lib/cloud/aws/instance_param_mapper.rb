@@ -88,29 +88,52 @@ module Bosh::AwsCloud
       params[:placement] = placement unless placement.empty?
 
       subnet_ids = get_all_subnet_ids
-      subnet_id1 = subnet_ids[0].subnet
-      subnet_id2 = subnet_ids[1].subnet
+      if subnet_ids.length == 1
+        subnet_id1 = subnet_ids[0].subnet
+        sg = @security_group_mapper.map_to_ids(security_groups, subnet_id1)
 
-      sg = @security_group_mapper.map_to_ids(security_groups, subnet_id1)
-      sg2 = @security_group_mapper.map_to_ids(security_groups, subnet_id2)
+        nic = {}
+        nic[:groups] = sg unless sg.nil? || sg.empty?
+        nic[:subnet_id] = subnet_id1 if subnet_id1
 
-      nic = {}
-      nic2 = {}
-      nic[:groups] = sg unless sg.nil? || sg.empty?
-      nic2[:groups] = sg2 unless sg2.nil? || sg2.empty?
+        # only supporting one ip address for now (either ipv4 or ipv6)
+        if private_ip_address
+          if ipv6_address?(private_ip_address)
+            nic[:ipv_6_addresses] = [{ipv_6_address: private_ip_address}]
+          else
+            nic[:private_ip_address] = private_ip_address
+          end
+        end
 
-      nic[:subnet_id] = subnet_id1 if subnet_id1
-      nic2[:subnet_id] = subnet_id2 if subnet_id2
+        nic[:associate_public_ip_address] = vm_type.auto_assign_public_ip unless vm_type.auto_assign_public_ip.nil?
 
-      nic[:associate_public_ip_address] = vm_type.auto_assign_public_ip unless vm_type.auto_assign_public_ip.nil?
+        nic[:device_index] = 0 unless nic.empty?
+        params[:network_interfaces] = [nic] unless nic.empty?
+      else
+        subnet_id1 = subnet_ids[0].subnet
+        subnet_id2 = subnet_ids[1].subnet
 
-      nic[:device_index] = 0 unless nic.empty?
-      nic2[:device_index] = 1 unless nic2.empty?
+        sg = @security_group_mapper.map_to_ids(security_groups, subnet_id1)
+        sg2 = @security_group_mapper.map_to_ids(security_groups, subnet_id2)
 
-      nic2[:ipv_6_addresses] = [{ipv_6_address: private_ipv6_address}]
-      nic[:private_ip_address] = private_ip_address
+        nic = {}
+        nic2 = {}
+        nic[:groups] = sg unless sg.nil? || sg.empty?
+        nic2[:groups] = sg2 unless sg2.nil? || sg2.empty?
 
-      params[:network_interfaces] = [nic, nic2]
+        nic[:subnet_id] = subnet_id1 if subnet_id1
+        nic2[:subnet_id] = subnet_id2 if subnet_id2
+
+        nic[:associate_public_ip_address] = vm_type.auto_assign_public_ip unless vm_type.auto_assign_public_ip.nil?
+
+        nic[:device_index] = 0 unless nic.empty?
+        nic2[:device_index] = 1 unless nic2.empty?
+
+        nic2[:ipv_6_addresses] = [{ipv_6_address: private_ipv6_address}]
+        nic[:private_ip_address] = private_ip_address
+
+        params[:network_interfaces] = [nic, nic2]
+      end
  
       params.delete_if { |_k, v| v.nil? }
     end
