@@ -12,7 +12,7 @@ module Bosh::AwsCloud
       @imds_v2_enable = {}
 
       security_group_mapper = SecurityGroupMapper.new(@ec2)
-      @param_mapper = InstanceParamMapper.new(security_group_mapper)
+      @param_mapper = InstanceParamMapper.new(security_group_mapper, logger)
     end
 
     def create(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, default_security_groups, block_device_mappings, user_data, tags, metadata_options)

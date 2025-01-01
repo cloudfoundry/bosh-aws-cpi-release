@@ -4,8 +4,9 @@ module Bosh::AwsCloud
   class InstanceParamMapper
     attr_accessor :manifest_params
 
-    def initialize(security_group_mapper)
+    def initialize(security_group_mapper, logger)
       @manifest_params = {}
+      @logger = logger
       @security_group_mapper = security_group_mapper
     end
 
@@ -86,26 +87,54 @@ module Bosh::AwsCloud
       placement[:tenancy] = vm_type.tenancy.dedicated if vm_type.tenancy.dedicated?
       params[:placement] = placement unless placement.empty?
 
-      sg = @security_group_mapper.map_to_ids(security_groups, subnet_id)
+      subnet_ids = get_all_subnet_ids
+      if subnet_ids.length == 1
+        subnet_id1 = subnet_ids[0].subnet
+        sg = @security_group_mapper.map_to_ids(security_groups, subnet_id1)
 
-      nic = {}
-      nic[:groups] = sg unless sg.nil? || sg.empty?
-      nic[:subnet_id] = subnet_id if subnet_id
+        nic = {}
+        nic[:groups] = sg unless sg.nil? || sg.empty?
+        nic[:subnet_id] = subnet_id1 if subnet_id1
 
-      # only supporting one ip address for now (either ipv4 or ipv6)
-      if private_ip_address
-        if ipv6_address?(private_ip_address)
-          nic[:ipv_6_addresses] = [{ipv_6_address: private_ip_address}]
-        else
-          nic[:private_ip_address] = private_ip_address
+        # only supporting one ip address for now (either ipv4 or ipv6)
+        if private_ip_address
+          if ipv6_address?(private_ip_address)
+            nic[:ipv_6_addresses] = [{ipv_6_address: private_ip_address}]
+          else
+            nic[:private_ip_address] = private_ip_address
+          end
         end
+
+        nic[:associate_public_ip_address] = vm_type.auto_assign_public_ip unless vm_type.auto_assign_public_ip.nil?
+
+        nic[:device_index] = 0 unless nic.empty?
+        params[:network_interfaces] = [nic] unless nic.empty?
+      else
+        subnet_id1 = subnet_ids[0].subnet
+        subnet_id2 = subnet_ids[1].subnet
+
+        sg = @security_group_mapper.map_to_ids(security_groups, subnet_id1)
+        sg2 = @security_group_mapper.map_to_ids(security_groups, subnet_id2)
+
+        nic = {}
+        nic2 = {}
+        nic[:groups] = sg unless sg.nil? || sg.empty?
+        nic2[:groups] = sg2 unless sg2.nil? || sg2.empty?
+
+        nic[:subnet_id] = subnet_id1 if subnet_id1
+        nic2[:subnet_id] = subnet_id2 if subnet_id2
+
+        nic[:associate_public_ip_address] = vm_type.auto_assign_public_ip unless vm_type.auto_assign_public_ip.nil?
+
+        nic[:device_index] = 0 unless nic.empty?
+        nic2[:device_index] = 1 unless nic2.empty?
+
+        nic2[:ipv_6_addresses] = [{ipv_6_address: private_ipv6_address}]
+        nic[:private_ip_address] = private_ip_address
+
+        params[:network_interfaces] = [nic, nic2]
       end
-
-      nic[:associate_public_ip_address] = vm_type.auto_assign_public_ip unless vm_type.auto_assign_public_ip.nil?
-
-      nic[:device_index] = 0 unless nic.empty?
-      params[:network_interfaces] = [nic] unless nic.empty?
-
+ 
       params.delete_if { |_k, v| v.nil? }
     end
 
@@ -149,11 +178,30 @@ module Bosh::AwsCloud
 
     def private_ip_address
       first_manual_network = networks_cloud_props.filter('manual').first
-      first_manual_network.ip unless first_manual_network.nil?
+      return first_manual_network.ip if !first_manual_network.nil? && !ipv6_address?(first_manual_network.ip)
+      second_manual_network = networks_cloud_props.filter('manual')[1]
+      second_manual_network.ip if !second_manual_network.nil? && !ipv6_address?(second_manual_network.ip)
+    end
+
+    def private_ipv6_address
+      first_manual_network = networks_cloud_props.filter('manual').first
+      return first_manual_network.ip if !first_manual_network.nil? && ipv6_address?(first_manual_network.ip)
+      second_manual_network = networks_cloud_props.filter('manual')[1]
+      second_manual_network.ip if !second_manual_network.nil? && ipv6_address?(second_manual_network.ip)
     end
 
     # NOTE: do NOT lookup the subnet (from EC2 client) anymore. We just need to
     # pass along the subnet_id anyway, and we have that.
+    def get_all_subnet_ids
+      subnet_network_spec = networks_cloud_props.filter('manual', 'dynamic').reject do |net|
+        net.subnet.nil?
+      end
+
+      @logger.info(">>>>>subnet_network_spec: '#{subnet_network_spec}'")
+
+      subnet_network_spec unless subnet_network_spec.nil?
+    end
+
     def subnet_id
       subnet_network_spec = networks_cloud_props.filter('manual', 'dynamic').reject do |net|
         net.subnet.nil?
