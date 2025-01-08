@@ -3,7 +3,8 @@ require 'base64'
 
 module Bosh::AwsCloud
   describe InstanceParamMapper do
-    let(:instance_param_mapper) { InstanceParamMapper.new(security_group_mapper) }
+    let(:logger) { Logger.new('/dev/null') }
+    let(:instance_param_mapper) { InstanceParamMapper.new(security_group_mapper, logger) }
     let(:user_data) { {} }
     let(:security_group_mapper) { SecurityGroupMapper.new(ec2_resource) }
     let(:ec2_resource) { instance_double(Aws::EC2::Resource) }
@@ -266,13 +267,15 @@ module Bosh::AwsCloud
                 'cloud_properties' => {
                   'security_groups' => ['sg-11111111', 'sg-2-name'],
                   'subnet' => dynamic_subnet_id
-                }
+                },
+                'type' => 'dynamic'
               },
               'net2' => {
                 'cloud_properties' => {
                   'security_groups' => 'sg-33333333',
                   'subnet' => dynamic_subnet_id
-                }
+                },
+                'type' => 'dynamic'
               }
             }
           end
@@ -306,13 +309,15 @@ module Bosh::AwsCloud
                 'cloud_properties' => {
                   'security_groups' => ['sg-33333333', 'sg-4-name'],
                   'subnet' => dynamic_subnet_id
-                }
+                },
+                'type' => 'dynamic'
               },
               'net2' => {
                 'cloud_properties' => {
                   'security_groups' => 'sg-55555555',
                   'subnet' => dynamic_subnet_id
-                }
+                },
+                'type' => 'dynamic'
               }
             }
           end
@@ -378,7 +383,7 @@ module Bosh::AwsCloud
         end
       end
 
-      context 'when IPv6 network address is present' do
+      context 'when no meaningful network is given' do
         let(:user_data) { Base64.encode64("{'networks' => #{agent_network_spec(network_cloud_props)}}".to_json).strip }
         let(:networks_spec) do
           {
@@ -400,87 +405,12 @@ module Bosh::AwsCloud
           }
         end
 
-        it 'maps to Base64 encoded user_data.networks' do
+        it 'does not attach a network interface' do
           expect(mapping(input)).to eq(output)
         end
       end
 
       describe 'IP address options' do
-        context 'when an IP address is provided for explicitly specified manual networks in networks_spec' do
-          let(:networks_spec) do
-            {
-              'net1' => {
-                'type' => 'dynamic'
-              },
-              'net2' => {
-                'type' => 'manual',
-                'ip' => '1.1.1.1'
-              },
-              'net3' => {
-                'type' => 'manual',
-                'ip' => '2.2.2.2'
-              }
-            }
-          end
-          let(:input) do
-            {
-              vm_type: vm_cloud_props,
-              networks_spec: network_cloud_props
-            }
-          end
-          let(:output) do
-            {
-              network_interfaces: [
-                {
-                  private_ip_address: '1.1.1.1',
-                  device_index: 0
-                }
-              ]
-            }
-          end
-
-          it 'maps the first (explicit) manual network IP address to private_ip_address' do
-            expect(mapping(input)).to eq(output)
-          end
-        end
-
-        context 'when an IP address is provided for implicitly specified manual networks in networks_spec' do
-          let(:networks_spec) do
-            {
-              'net1' => {
-                'type' => 'dynamic'
-              },
-              'net2' => {
-                'ip' => '1.1.1.1'
-              },
-              'net3' => {
-                'type' => 'manual',
-                'ip' => '2.2.2.2'
-              }
-            }
-          end
-          let(:input) do
-            {
-              vm_type: vm_cloud_props,
-              networks_spec: network_cloud_props
-            }
-          end
-          let(:output) do
-            {
-              network_interfaces: [
-                {
-                  private_ip_address: '1.1.1.1',
-                  device_index: 0
-                }
-              ]
-            }
-          end
-
-          it 'maps the first (implicit) manual network IP address to private_ip_address' do
-            expect(mapping(input)).to eq(output)
-          end
-        end
-
         context 'when associate_public_ip_address is true' do
           let(:vm_type) { { 'auto_assign_public_ip' => true } }
           let(:input) do
@@ -525,40 +455,6 @@ module Bosh::AwsCloud
           end
 
           it 'adds the option to the output' do
-            expect(mapping(input)).to eq(output)
-          end
-        end
-
-        context 'when the one manual network address is IPv6' do
-          let(:user_data) { Base64.encode64("{'networks' => #{agent_network_spec(network_cloud_props)}}".to_json).strip }
-          let(:networks_spec) do
-            {
-              'net1' => {
-                'type' => 'dynamic'
-              },
-              'net2' => {
-                'type' => 'manual',
-                'ip' => '2006::1'
-              }
-            }
-          end
-          let(:input) do {
-              vm_type: vm_cloud_props,
-              networks_spec: network_cloud_props,
-              user_data: user_data
-            }
-          end
-          let(:output) do
-            {
-              network_interfaces: [{
-                  ipv_6_addresses: [{ipv_6_address: '2006::1' }],
-                  device_index: 0
-              }],
-              user_data: user_data
-            }
-          end
-
-          it 'maps the first (explicit) manual network IP address to ipv_6_addresses' do
             expect(mapping(input)).to eq(output)
           end
         end
@@ -642,6 +538,145 @@ module Bosh::AwsCloud
 
           it 'maps subnet from the first matching network to subnet_id' do
             expect(mapping(input)).to eq(output)
+          end
+        end
+
+        context 'when two manual subnets with the same subnet_id are provided' do
+          let(:networks_spec) do
+            {
+              'net1' => {
+                'type' => 'manual',
+                'cloud_properties' => { 'subnet' => manual_subnet_id },
+                'ip' => '1.1.1.1'
+              },
+              'net2' => {
+                'type' => 'manual',
+                'cloud_properties' => { 'subnet' => manual_subnet_id },
+                'ip' => '2600::1'
+              }
+            }
+          end
+          let(:input) do
+            {
+              vm_type: vm_cloud_props,
+              networks_spec: network_cloud_props,
+            }
+          end
+          let(:output) do
+            {
+              network_interfaces: [
+                {
+                  subnet_id: manual_subnet_id,
+                  ipv_6_addresses: [{
+                    ipv_6_address: '2600::1',
+                  },
+                ],
+                  private_ip_address: '1.1.1.1',
+                  device_index: 0
+                }
+              ]
+            }
+          end
+
+          it 'attaches an ipv4 and an ipv6 to the nic' do
+            allow(logger).to receive(:info)
+
+            expect(mapping(input)).to eq(output)
+
+            expect(logger).to have_received(:info).with("Running in dual stack mode")          end
+        end
+
+
+        context 'when two manual subnets with different subnet_ids are provided' do
+          let(:networks_spec) do
+            {
+              'net1' => {
+                'type' => 'manual',
+                'cloud_properties' => { 'subnet' => manual_subnet_id },
+                'ip' => '1.1.1.1'
+              },
+              'net2' => {
+                'type' => 'manual',
+                'cloud_properties' => { 'subnet' => 'different-subnet' },
+                'ip' => '2600::1'
+              }
+            }
+          end
+          let(:input) do
+            {
+              vm_type: vm_cloud_props,
+              networks_spec: network_cloud_props,
+            }
+          end
+          let(:output) do
+            {
+              network_interfaces: [
+                {
+                  subnet_id: manual_subnet_id,
+                  private_ip_address: '1.1.1.1',
+                  device_index: 0
+                }
+              ]
+            }
+          end
+
+          it 'attaches an ipv4 and an ipv6 to the nic' do
+            expect(mapping(input)).to eq(output)
+          end
+        end
+
+        context 'when two manual subnets with different subnet_ids are provided' do
+          let(:networks_spec) do
+            {
+              'net1' => {
+                'type' => 'manual',
+                'cloud_properties' => { 'subnet' => manual_subnet_id },
+                'ip' => '1.1.1.1'
+              },
+              'net2' => {
+                'type' => 'manual',
+                'cloud_properties' => { 'subnet' => manual_subnet_id },
+                'ip' => '2.2.2.2'
+              }
+            }
+          end
+          let(:input) do
+            {
+              vm_type: vm_cloud_props,
+              networks_spec: network_cloud_props,
+            }
+          end
+
+          it 'raises an error message if no ipv6 address is provided' do
+            expect{ mapping(input)}.to raise_error Bosh::Clouds::CloudError, /Dual Stack Mode: No ipv6 address assigned/
+          end
+        end
+
+
+        context 'when two manual subnets with different subnet_ids are provided' do
+          let(:networks_spec) do
+            {
+              'net1' => {
+                'type' => 'manual',
+                'cloud_properties' => { 'subnet' => manual_subnet_id },
+                'ip' => '2600::1'
+              },
+              'net2' => {
+                'type' => 'manual',
+                'cloud_properties' => { 'subnet' => manual_subnet_id },
+                'ip' => '2600::2'
+              }
+            }
+          end
+          let(:input) do
+            {
+              vm_type: vm_cloud_props,
+              networks_spec: network_cloud_props,
+            }
+          end
+
+          it 'raises an error message if no ipv6 address is applied' do
+            expect{ mapping(input)}.to raise_error Bosh::Clouds::CloudError, /Dual Stack Mode: No ipv4 address assigned/
           end
         end
       end

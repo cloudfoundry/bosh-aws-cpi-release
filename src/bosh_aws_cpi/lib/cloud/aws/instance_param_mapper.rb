@@ -91,7 +91,7 @@ module Bosh::AwsCloud
 
       nic = {}
       nic[:groups] = sg unless sg.nil? || sg.empty?
-      nic[:subnet_id] = subnet_id
+      nic[:subnet_id] = subnet_id if subnet_id
 
       if dual_stack_mode?
         ipv6_count = ipv4_count = 0
@@ -171,7 +171,8 @@ module Bosh::AwsCloud
     end
 
     def private_ip_addresses
-      ips = subnets.map { |subnet_network| subnet_network.ip }
+      manual_subnets = subnets.select {|subnet| subnet.type == 'manual' }
+      ips = manual_subnets.map { |subnet_network| subnet_network.ip }
 
       ips unless ips.nil?
     end
@@ -196,12 +197,10 @@ module Bosh::AwsCloud
 
     def dual_stack_mode?
       dual_stack_mode = false
-      if subnets.length == 2
-          # if two networks refer to the same subnet we assume dual stack mode
+      if subnets.length == 2 && subnets.find {|subnet| subnet.type == 'dynamic'}.nil?
+          # if two manual networks refer to the same subnet we assume dual stack mode
         if subnet_ids[0] == subnet_ids[1]
           dual_stack_mode = true
-        else
-          raise Bosh::Clouds::CloudError, "Dual Stack Mode: Subnet #{subnet_ids[0]} and subnet #{subnet_ids[1]} are different"
         end
       end
       dual_stack_mode
