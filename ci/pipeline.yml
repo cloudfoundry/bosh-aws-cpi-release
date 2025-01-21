@@ -28,14 +28,14 @@ shared:
 
 - &run-end-2-end
   task: run-e2e
-  file: bosh-cpi-src/ci/tasks/run-e2e.yml
+  file: bosh-aws-cpi-release/ci/tasks/run-e2e.yml
   image: bosh-integration-image
   params:
     BOSH_AWS_KMS_KEY_ARN: ((arn_keys.aws_kms_key_arn))
 
 - &ensure-terminated
   task: ensure-terminated
-  file: bosh-cpi-src/ci/tasks/ensure-terminated.yml
+  file: bosh-aws-cpi-release/ci/tasks/ensure-terminated.yml
   image: bosh-integration-image
   params:
     AWS_ACCESS_KEY_ID: ((aws-admin.username))
@@ -52,25 +52,22 @@ jobs:
   serial: true
   plan:
   - in_parallel:
-    - get: bosh-cpi-src
-      resource: bosh-cpi-src-in
+    - get: bosh-aws-cpi-release
       trigger: true
-    - get: version-semver
-      params:
-        bump: patch
     - get: bosh-integration-image
-  - put: version-semver
-    params:
-      file: version-semver/number
+    - get: bosh-shared-ci
+    - get: bosh-cli-image
   - task: run-unit-specs
-    file: bosh-cpi-src/ci/tasks/run-unit-specs.yml
+    file: bosh-aws-cpi-release/ci/tasks/run-unit-specs.yml
     image: bosh-integration-image
   - task: build
-    file: bosh-cpi-src/ci/tasks/build-candidate.yml
-    image: bosh-integration-image
+    file: bosh-shared-ci/tasks/release/create-dev-release.yml
+    image: bosh-cli-image
+    input_mapping:
+      release_repo: bosh-aws-cpi-release
   - put: bosh-cpi-dev-artifacts
     params:
-      file: candidate/*.tgz
+      file: release_tarball/release.tgz
 
 - name: integration
   serial: true
@@ -80,8 +77,7 @@ jobs:
       resource: bosh-cpi-dev-artifacts
       passed: [ build-candidate ]
       trigger: true
-    - get: bosh-cpi-src
-      resource: bosh-cpi-src-in
+    - get: bosh-aws-cpi-release
       passed: [ build-candidate ]
     - get: stemcell
       resource: light-stemcell
@@ -92,9 +88,9 @@ jobs:
       env_name: bosh-aws-cpi-integration
       delete_on_failure: true
       generate_random_name: true
-      terraform_source: bosh-cpi-src/ci/assets/terraform
+      terraform_source: bosh-aws-cpi-release/ci/assets/terraform
   - task: test
-    file: bosh-cpi-src/ci/tasks/run-integration.yml
+    file: bosh-aws-cpi-release/ci/tasks/run-integration.yml
     image: bosh-integration-image
     params:
       AWS_ACCESS_KEY_ID: ((aws-test-user.username))
@@ -113,7 +109,7 @@ jobs:
           env_name: bosh-aws-cpi-integration
           action: destroy
           env_name_file: environment/name
-          terraform_source: bosh-cpi-src/ci/assets/terraform
+          terraform_source: bosh-aws-cpi-release/ci/assets/terraform
         get_params:
           action: destroy
 
@@ -126,8 +122,7 @@ jobs:
       passed: [ build-candidate ]
       trigger: true
     - get: bosh-release
-    - get: bosh-cpi-src
-      resource: bosh-cpi-src-in
+    - get: bosh-aws-cpi-release
       passed: [ build-candidate ]
     - get: stemcell
       resource: light-stemcell
@@ -141,7 +136,7 @@ jobs:
       env_name: bosh-aws-cpi-bats
       delete_on_failure: true
       generate_random_name: true
-      terraform_source: bosh-cpi-src/ci/assets/terraform
+      terraform_source: bosh-aws-cpi-release/ci/assets/terraform
   - do:
     - <<: *prepare-director
       params:
@@ -164,7 +159,7 @@ jobs:
           env_name: bosh-aws-cpi-bats
           action: destroy
           env_name_file: environment/name
-          terraform_source: bosh-cpi-src/ci/assets/terraform
+          terraform_source: bosh-aws-cpi-release/ci/assets/terraform
         get_params:
           action: destroy
 
@@ -177,8 +172,7 @@ jobs:
       passed: [ build-candidate ]
       trigger: true
     - get: bosh-release
-    - get: bosh-cpi-src
-      resource: bosh-cpi-src-in
+    - get: bosh-aws-cpi-release
       passed: [ build-candidate ]
     - get: stemcell
       resource: light-stemcell
@@ -191,8 +185,8 @@ jobs:
       env_name: bosh-aws-cpi-end-2-end
       delete_on_failure: true
       generate_random_name: true
-      terraform_source: bosh-cpi-src/ci/assets/terraform
-      override_files: [ bosh-cpi-src/ci/assets/terraform/e2e/e2e.tf ]
+      terraform_source: bosh-aws-cpi-release/ci/assets/terraform
+      override_files: [ bosh-aws-cpi-release/ci/assets/terraform/e2e/e2e.tf ]
   - do:
     - <<: *prepare-director
       params:
@@ -215,7 +209,7 @@ jobs:
           env_name: bosh-aws-cpi-end-2-end
           action: destroy
           env_name_file: environment/name
-          terraform_source: bosh-cpi-src/ci/assets/terraform
+          terraform_source: bosh-aws-cpi-release/ci/assets/terraform
         get_params:
           action: destroy
 
@@ -227,19 +221,23 @@ jobs:
       resource: bosh-cpi-dev-artifacts
       passed: [ end-2-end, bats, integration ]
       trigger: true
-    - get: bosh-cpi-src
-      resource: bosh-cpi-src-in
+    - get: bosh-aws-cpi-release
       passed: [ end-2-end, bats, integration ]
     - get: bosh-shared-ci
-    - get: version
+    - get: current-version
       resource: release-version-semver
+    - get: patched-version
+      resource: release-version-semver
+      params:
+        bump: patch
     - get: bosh-security-scanner-registry-image
   - try:
       task: check-for-patched-cves
       file: bosh-shared-ci/tasks/release/check-for-patched-cves.yml
       image: bosh-security-scanner-registry-image
       input_mapping:
-        input_repo: bosh-cpi-src
+        input_repo: bosh-aws-cpi-release
+        version: current-version
       params:
         SEVERITY: CRITICAL,HIGH
       on_success:
@@ -249,13 +247,34 @@ jobs:
             file: release-notes/release-notes.md
         - put: release-version-semver
           params:
-            bump: patch
-
+            file: patched-version/version
   - task: ensure-cve-checker-succeeded
     file: bosh-shared-ci/tasks/release/ensure-task-succeeded.yml
     image: bosh-security-scanner-registry-image
     input_mapping:
       task-output-folder: patched_cves
+  - try:
+      task: check-for-updated-vendored-packages
+      file: bosh-shared-ci/tasks/release/check-for-updated-vendored-packages.yml
+      image: bosh-security-scanner-registry-image
+      input_mapping:
+        input_repo: bosh-aws-cpi-release
+        version: current-version
+      params:
+        PACKAGES: [aws-cpi-ruby-3.3]
+      on_success:
+        do:
+          - put: bosh-cpi-release-notes
+            params:
+              file: release-notes/release-notes.md
+          - put: release-version-semver
+            params:
+              file: patched-version/version
+  - task: ensure-update-package-check-succeeded
+    file: bosh-shared-ci/tasks/release/ensure-task-succeeded.yml
+    image: bosh-security-scanner-registry-image
+    input_mapping:
+      task-output-folder: package-updates
 
 - name: bump-major
   serial_groups: [ version ]
@@ -283,8 +302,7 @@ jobs:
   disable_manual_trigger: true
   plan:
   - in_parallel:
-    - get: bosh-cpi-src
-      resource: bosh-cpi-src-in
+    - get: bosh-aws-cpi-release
       passed: [ end-2-end, bats, integration ]
     - get: release-version-semver
       trigger: true
@@ -295,7 +313,7 @@ jobs:
     file: bosh-shared-ci/tasks/release/create-final-release.yml
     image: bosh-integration-image
     input_mapping:
-      release_repo: bosh-cpi-src
+      release_repo: bosh-aws-cpi-release
       version: release-version-semver
     params:
       GIT_USER_NAME: CI Bot
@@ -306,7 +324,7 @@ jobs:
           options:
             credentials_source: static
             json_key: '((gcp_json_key))'
-  - put: bosh-cpi-src-out
+  - put: bosh-aws-cpi-release
     params:
       repository: release_repo
       rebase: true
@@ -316,7 +334,7 @@ jobs:
       name: release_metadata/tag-name
       tag: release_metadata/tag-name
       body: bosh-cpi-release-notes/release-notes
-      commitish: bosh-cpi-src-out/.git/ref
+      commitish: bosh-aws-cpi-release/.git/ref
       generate_release_notes: true
   - put: bosh-cpi-release-notes
     params:
@@ -326,11 +344,11 @@ jobs:
   plan:
     - in_parallel:
         - get: bosh-integration-image
-        - get: bosh-cpi-src-in
+        - get: bosh-aws-cpi-release
         - get: daily
           trigger: true
     - task: cleanup-leftover-environments
-      file: bosh-cpi-src-in/ci/tasks/cleanup-leftover-environments.yml
+      file: bosh-aws-cpi-release/ci/tasks/cleanup-leftover-environments.yml
       image: bosh-integration-image
       params:
         BBL_AWS_ACCESS_KEY_ID: ((aws-admin.username))
@@ -340,8 +358,7 @@ jobs:
 - name: bump-deps
   plan:
   - in_parallel:
-    - get: bosh-cpi-src
-      resource: bosh-cpi-src-in
+    - get: bosh-aws-cpi-release
     - get: ruby-release
     - get: bosh-ruby-release-registry-image
     - get: weekly
@@ -351,9 +368,9 @@ jobs:
     image: bosh-ruby-release-registry-image
     file: ruby-release/ci/tasks/shared/bump-gems.yml
     input_mapping:
-      input-repo: bosh-cpi-src
+      input-repo: bosh-aws-cpi-release
     output_mapping:
-      output-repo: bosh-cpi-src
+      output-repo: bosh-aws-cpi-release
     params:
       GEM_DIRS: src/bosh_aws_cpi
       GIT_USER_NAME: CI Bot
@@ -361,18 +378,18 @@ jobs:
       PACKAGE: ruby-3.2
       VENDOR: true
   - task: run-unit-specs
-    file: bosh-cpi-src/ci/tasks/run-unit-specs.yml
+    file: bosh-aws-cpi-release/ci/tasks/run-unit-specs.yml
     image: bosh-integration-image
-  - put: bosh-cpi-src-out
+  - put: bosh-aws-cpi-release
     params:
-      repository: bosh-cpi-src
+      repository: bosh-aws-cpi-release
       rebase: true
 
 - name: bump-bosh-packages
   plan:
   - in_parallel:
-    - get: bosh-cpi-src
-      resource: bosh-cpi-src-in
+    - get: bosh-aws-cpi-release
+      resource: bosh-aws-cpi-release
     - get: ruby-release
       trigger: true
     - get: bosh-integration-image
@@ -380,9 +397,9 @@ jobs:
     image: bosh-integration-image
     file: ruby-release/ci/tasks/shared/bump-ruby-package.yml
     input_mapping:
-      bosh-release: bosh-cpi-src
+      bosh-release: bosh-aws-cpi-release
     output_mapping:
-      bosh-release: bosh-cpi-src
+      bosh-release: bosh-aws-cpi-release
     params:
       GIT_USER_NAME: CI Bot
       GIT_USER_EMAIL: cf-bosh-eng@pivotal.io
@@ -396,11 +413,11 @@ jobs:
             json_key: '((gcp_json_key))'
       RUBY_VERSION_PATH: src/bosh_aws_cpi/.ruby-version
   - task: run-unit-specs
-    file: bosh-cpi-src/ci/tasks/run-unit-specs.yml
+    file: bosh-aws-cpi-release/ci/tasks/run-unit-specs.yml
     image: bosh-integration-image
-  - put: bosh-cpi-src-out
+  - put: bosh-aws-cpi-release
     params:
-      repository: bosh-cpi-src
+      repository: bosh-aws-cpi-release
       rebase: true
 
 
@@ -431,15 +448,7 @@ resources:
     versioned_file: release-notes
     bucket: bosh-aws-cpi-pipeline
     json_key: ((gcp_json_key))
-- name: bosh-cpi-src-in
-  type: git
-  source:
-    uri: https://github.com/cloudfoundry/bosh-aws-cpi-release.git
-    private_key: ((github_deploy_key_bosh-aws-cpi-release.private_key))
-    ignore_paths:
-    - .final_builds/**/*.yml
-    - releases/**/*.yml
-- name: bosh-cpi-src-out
+- name: bosh-aws-cpi-release
   type: git
   source:
     uri: git@github.com:cloudfoundry/bosh-aws-cpi-release.git
@@ -456,13 +465,6 @@ resources:
     owner: cloudfoundry
     repository: bosh-aws-cpi-release
     access_token: ((github_public_repo_token))
-- name: version-semver
-  type: semver
-  source:
-    key: current-version # dev-release version
-    bucket: bosh-aws-cpi-pipeline
-    driver: gcs
-    json_key: ((gcp_json_key))
 - name: release-version-semver
   type: semver
   source:
@@ -512,6 +514,12 @@ resources:
   type: bosh-io-stemcell
   source:
     name: bosh-aws-xen-hvm-ubuntu-jammy-go_agent
+- name: bosh-cli-image
+  type: registry-image
+  source:
+    repository: bosh/cli
+    username: ((dockerhub_username))
+    password: ((dockerhub_password))
 - name: bosh-integration-image
   type: registry-image
   source:

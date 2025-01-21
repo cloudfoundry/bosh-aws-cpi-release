@@ -6,14 +6,14 @@ image_resource:
   source: {repository: bosh/integration}
 
 inputs:
-  - name: bosh-cpi-src
+  - name: bosh-aws-cpi-release
   - name: environment
   - name: stemcell
   - name: heavy-stemcell
   - name: director-state
 
 run:
-  path: bosh-cpi-src/ci/tasks/run-e2e.sh
+  path: bosh-aws-cpi-release/ci/tasks/run-e2e.sh
 
 params:
   BOSH_DEBUG_LEVEL:     info

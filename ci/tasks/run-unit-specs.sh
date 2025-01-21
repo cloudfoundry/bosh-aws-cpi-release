@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -eu -o pipefail
 
-pushd bosh-cpi-src/src/bosh_aws_cpi
+pushd bosh-aws-cpi-release/src/bosh_aws_cpi
 
   bundle install
 

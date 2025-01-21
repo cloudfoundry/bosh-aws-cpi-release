@@ -7,7 +7,7 @@ set -e
 source director-state/director.env
 
 # CREATE TEST RELEASE
-pushd bosh-cpi-src/ci/assets/e2e-test-release
+pushd bosh-aws-cpi-release/ci/assets/e2e-test-release
   time bosh -n create-release --force --name e2e-test --version 1.0.0
   time bosh -n upload-release
 popd
@@ -31,7 +31,7 @@ encrypted_heavy_stemcell_ami_id="$( bosh stemcells | grep e2e-encrypted-heavy-st
 # UPDATE CLOUD CONFIG
 time bosh -n ucc \
   -l environment/metadata \
-  bosh-cpi-src/ci/assets/e2e-test-release/cloud-config.yml
+  bosh-aws-cpi-release/ci/assets/e2e-test-release/cloud-config.yml
 
 # BOSH DEPLOY
 time bosh -n deploy -d e2e-test \
@@ -40,7 +40,7 @@ time bosh -n deploy -d e2e-test \
   -v "encrypted_heavy_stemcell_ami_id=${encrypted_heavy_stemcell_ami_id}" \
   -v "aws_kms_key_arn=${BOSH_AWS_KMS_KEY_ARN}" \
   -l environment/metadata \
-  bosh-cpi-src/ci/assets/e2e-test-release/manifest.yml
+  bosh-aws-cpi-release/ci/assets/e2e-test-release/manifest.yml
 
 # RUN ERRANDS
 time bosh -n run-errand -d e2e-test iam-instance-profile-test

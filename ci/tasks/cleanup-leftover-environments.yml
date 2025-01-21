@@ -5,10 +5,10 @@ image_resource:
   source: {repository: bosh/integration}
 
 inputs:
-  - name: bosh-cpi-src-in
+  - name: bosh-aws-cpi-release
 
 run:
-  path: bosh-cpi-src-in/ci/tasks/cleanup-leftover-environments.sh
+  path: bosh-aws-cpi-release/ci/tasks/cleanup-leftover-environments.sh
 
 params:
   BBL_AWS_ACCESS_KEY_ID: ""

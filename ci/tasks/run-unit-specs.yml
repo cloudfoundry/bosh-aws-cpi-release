@@ -5,7 +5,7 @@ image_resource:
   source: {repository: bosh/integration}
 
 inputs:
-  - name: bosh-cpi-src
+  - name: bosh-aws-cpi-release
 
 run:
-  path: bosh-cpi-src/ci/tasks/run-unit-specs.sh
+  path: bosh-aws-cpi-release/ci/tasks/run-unit-specs.sh
