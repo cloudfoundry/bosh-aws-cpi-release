@@ -240,6 +240,7 @@ jobs:
         version: current-version
       params:
         SEVERITY: CRITICAL,HIGH
+        GIT_PRIVATE_KEY: ((github_deploy_key_bosh-aws-cpi-release.private_key))
       on_success:
         do:
         - put: bosh-cpi-release-notes
