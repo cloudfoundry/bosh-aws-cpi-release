@@ -30,6 +30,8 @@ module Bosh::AwsCloud
           metadata_options
         )
 
+        @logger.info("Creating new instance with: #{instance_params.inspect}")
+
         redacted_instance_params = Bosh::Cpi::Redactor.clone_and_redact(
           instance_params,
           'user_data',
@@ -41,7 +43,7 @@ module Bosh::AwsCloud
         aws_instance = create_aws_instance(instance_params, vm_cloud_props)
         instance = Bosh::AwsCloud::Instance.new(aws_instance, @logger)
 
-        babysit_instance_creation(instance, vm_cloud_props)
+        babysit_instance_creation(instance, vm_cloud_props, networks_cloud_props)
       rescue => e
         if e.is_a?(Bosh::AwsCloud::AbruptlyTerminated)
           @logger.warn("Failed to configure instance '#{instance.id}': #{e.inspect}")
@@ -63,7 +65,7 @@ module Bosh::AwsCloud
 
     private
 
-    def babysit_instance_creation(instance, vm_cloud_props)
+    def babysit_instance_creation(instance, vm_cloud_props, networks_cloud_props)
       begin
         # We need to wait here for the instance to be running, as if we are going to
         # attach to a load balancer, the instance must be running.
@@ -71,6 +73,7 @@ module Bosh::AwsCloud
         instance.wait_until_running
         instance.update_routing_tables(vm_cloud_props.advertised_routes)
         instance.disable_dest_check unless vm_cloud_props.source_dest_check
+        attach_ipv6_prefixes(instance, networks_cloud_props.ipv6_prefixes)
       rescue => e
         if e.is_a?(Bosh::AwsCloud::AbruptlyTerminated)
           raise
@@ -83,6 +86,15 @@ module Bosh::AwsCloud
           end
           raise
         end
+      end
+    end
+
+    def attach_ipv6_prefixes(instance, ipv6_prefixes)
+      unless ipv6_prefixes.empty?
+        @ec2.client.assign_ipv_6_addresses(
+          network_interface_id: instance.network_interface_id,
+          ipv_6_prefixes: ipv6_prefixes
+        )
       end
     end
 
