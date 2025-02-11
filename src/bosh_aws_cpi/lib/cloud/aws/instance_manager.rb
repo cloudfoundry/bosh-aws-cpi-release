@@ -73,7 +73,7 @@ module Bosh::AwsCloud
         instance.wait_until_running
         instance.update_routing_tables(vm_cloud_props.advertised_routes)
         instance.disable_dest_check unless vm_cloud_props.source_dest_check
-        attach_ipv6_prefixes(instance, networks_cloud_props.ipv6_prefixes)
+        attach_ipv6_prefixes(instance, networks_cloud_props.ipv6_prefix_delegation_size)
       rescue => e
         if e.is_a?(Bosh::AwsCloud::AbruptlyTerminated)
           raise
@@ -89,11 +89,11 @@ module Bosh::AwsCloud
       end
     end
 
-    def attach_ipv6_prefixes(instance, ipv6_prefixes)
-      unless ipv6_prefixes.empty?
+    def attach_ipv6_prefixes(instance, ipv6_prefix_delegation_size)
+      unless ipv6_prefix_delegation_size.empty?
         @ec2.client.assign_ipv_6_addresses(
           network_interface_id: instance.network_interface_id,
-          ipv_6_prefixes: ipv6_prefixes
+          ipv_6_prefix_count: 1 # aws only supports /80 prefixes
         )
       end
     end

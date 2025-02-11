@@ -245,17 +245,17 @@ module Bosh::AwsCloud
       end
     end
 
-    def ipv6_prefixes
+    def ipv6_prefix_delegation_size
       ipv6_prefix_networks = filter(Network::MANUAL).select do |net|
-        !net.ipv6_prefix.nil?
+        !net.ipv6_prefix_delegation_size.nil?
       end
       ipv6_prefix_networks.map do |net|
-        net.ipv6_prefix
+        net.ipv6_prefix_delegation_size
       end.flatten.sort.uniq
     end
 
     class Network
-      attr_reader :name, :type, :subnet, :security_groups, :ipv6_prefix
+      attr_reader :name, :type, :subnet, :security_groups, :ipv6_prefix_delegation_size
 
       MANUAL = 'manual'.freeze
       DYNAMIC = 'dynamic'.freeze
@@ -273,7 +273,7 @@ module Bosh::AwsCloud
         if cloud_properties?
           @subnet = settings['cloud_properties']['subnet']
           @security_groups = settings['cloud_properties']['security_groups'] || []
-          @ipv6_prefix = settings['cloud_properties']['ipv6_prefix'] || []
+          @ipv6_prefix_delegation_size = settings['cloud_properties']['ipv6_prefix_delegation_size'] || []
         end
       end
 
