@@ -184,8 +184,7 @@ module Bosh::AwsCloud
 
       get_volume_ids_for_vm(instance).each do |volume_id|
         begin
-          vol = @ec2_resource.volume(volume_id)
-          TagManager.create_tags(vol, metadata)
+          TagManager.create_tags(@ec2_resource.volume(volume_id), metadata)
         rescue Aws::EC2::Errors::TagLimitExceeded => e
           logger.error("could not tag volume #{volume_id}: #{e.message}")
         end
