@@ -408,14 +408,14 @@ module Bosh::AwsCloud
             ResourceWait.for_image(image: encrypted_image, state: 'available')
 
             if !tags.nil?
-              TagManager.create_tags(encrypted_image, tags);
+              TagManager.create_tags(encrypted_image, tags)
             end
 
             return encrypted_image_id.to_s
           end
 
           if !tags.nil?
-            TagManager.create_tags(available_image, tags);
+            TagManager.create_tags(available_image, tags)
           end
 
           "#{available_image.id} light"
@@ -424,7 +424,7 @@ module Bosh::AwsCloud
           stemcell = create_ami_for_stemcell(image_path, props)
 
           if !tags.nil?
-            TagManager.create_tags(stemcell.ami, tags);
+            TagManager.create_tags(stemcell.ami, tags)
           end
 
           stemcell.id
