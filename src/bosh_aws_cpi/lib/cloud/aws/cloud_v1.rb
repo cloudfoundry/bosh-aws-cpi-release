@@ -517,7 +517,7 @@ module Bosh::AwsCloud
         logger.debug("Actual block device: #{actual_path}")
         logger.info("Creating stemcell with: '#{volume.id}'")
         
-        stemcell = creator.create(volume, actual_path, image_path)
+        creator.create(volume, actual_path, image_path)
       rescue => e
         logger.error(e)
         raise e
