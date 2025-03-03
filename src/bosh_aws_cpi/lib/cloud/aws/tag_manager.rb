@@ -17,7 +17,8 @@ module Bosh::AwsCloud
 
       errors = [Aws::EC2::Errors::InvalidAMIIDNotFound,
                 Aws::EC2::Errors::InvalidInstanceIDNotFound,
-                Aws::EC2::Errors::InvalidVolumeNotFound]
+                Aws::EC2::Errors::InvalidVolumeNotFound,
+                Aws::EC2::Errors::InvalidSnapshotNotFound]
 
       begin
         Bosh::Common.retryable(tries: 30, on: errors) do

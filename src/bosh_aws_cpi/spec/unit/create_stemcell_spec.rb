@@ -5,6 +5,13 @@ describe Bosh::AwsCloud::CloudV1 do
   after { FileUtils.rm_rf(@tmp_dir) }
 
   describe 'EBS-volume based flow' do
+    let(:ami_id) { 'ami-xxxxxxxx' }
+    let(:ami_image) { instance_double(Aws::EC2::Image, :id => ami_id) }
+    let(:stemcell) { instance_double(Bosh::AwsCloud::Stemcell, :id => ami_id, :ami => ami_image) }
+    let(:tags) {{"any"=> "value"}}
+    let(:env) {{"tags"=> tags}}
+
+
     let(:creator) { double(Bosh::AwsCloud::StemcellCreator) }
     let(:volume_manager) { instance_double(Bosh::AwsCloud::VolumeManager) }
     let(:az_selector) do
@@ -20,7 +27,6 @@ describe Bosh::AwsCloud::CloudV1 do
     end
 
     context 'light stemcell' do
-      let(:ami_id) { 'ami-xxxxxxxx' }
       let(:encrypted_ami) { instance_double(Aws::EC2::Image, state: 'available') }
       let(:stemcell_properties) do
         {
@@ -42,9 +48,12 @@ describe Bosh::AwsCloud::CloudV1 do
               values: [ami_id],
             }],
             include_deprecated: true,
-          ).and_return([double('image', id: ami_id)])
+          ).and_return([ami_image])
         end
-        expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq("#{ami_id} light")
+
+        expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(ami_image, tags)
+
+        expect(cloud.create_stemcell('/tmp/foo', stemcell_properties, env)).to eq("#{ami_id} light")
       end
 
       context 'when encrypted flag is true' do
@@ -82,9 +91,11 @@ describe Bosh::AwsCloud::CloudV1 do
               image: encrypted_ami,
               state: 'available'
             )
+
+            expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(encrypted_ami, tags)
           end
 
-          cloud.create_stemcell('/tmp/foo', stemcell_properties)
+          cloud.create_stemcell('/tmp/foo', stemcell_properties, env)
         end
 
         it 'should return stemcell id (not light stemcell id)' do
@@ -111,9 +122,11 @@ describe Bosh::AwsCloud::CloudV1 do
               image: encrypted_ami,
               state: 'available'
             )
+
+            expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(encrypted_ami, tags)
           end
 
-          expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq('ami-newami')
+          expect(cloud.create_stemcell('/tmp/foo', stemcell_properties, env)).to eq('ami-newami')
         end
       end
 
@@ -153,9 +166,12 @@ describe Bosh::AwsCloud::CloudV1 do
               image: encrypted_ami,
               state: 'available'
             )
+
+            expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(encrypted_ami, tags)
           end
 
-          cloud.create_stemcell('/tmp/foo', stemcell_properties)
+
+          cloud.create_stemcell('/tmp/foo', stemcell_properties, env)
         end
       end
 
@@ -171,7 +187,7 @@ describe Bosh::AwsCloud::CloudV1 do
             ).and_return([])
           end
           expect{
-            cloud.create_stemcell('/tmp/foo', stemcell_properties)
+            cloud.create_stemcell('/tmp/foo', stemcell_properties, env)
           }.to raise_error(/Stemcell does not contain an AMI in region/)
         end
       end
@@ -188,7 +204,6 @@ describe Bosh::AwsCloud::CloudV1 do
         }
       end
       let(:volume) { instance_double(Aws::EC2::Volume, :id => 'vol-xxxxxxxx') }
-      let(:stemcell) { instance_double(Bosh::AwsCloud::Stemcell, :id => 'ami-xxxxxxxx') }
       let(:instance) { instance_double(Aws::EC2::Instance, instance_type: 'instance-type') }
       let(:aws_config) do
         instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}, encrypted: false, kms_key_arn: nil)
@@ -231,7 +246,9 @@ describe Bosh::AwsCloud::CloudV1 do
         expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
         expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
 
-        expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq('ami-xxxxxxxx')
+        expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(stemcell.ami, tags)
+        
+        expect(cloud.create_stemcell('/tmp/foo', stemcell_properties, env)).to eq('ami-xxxxxxxx')
       end
 
       context 'when the CPI configuration includes a kernel_id for stemcell' do
@@ -265,7 +282,9 @@ describe Bosh::AwsCloud::CloudV1 do
           expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
           expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
 
-          expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq('ami-xxxxxxxx')
+          expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(stemcell.ami, tags)
+
+          expect(cloud.create_stemcell('/tmp/foo', stemcell_properties, env)).to eq('ami-xxxxxxxx')
         end
       end
 
@@ -318,7 +337,7 @@ describe Bosh::AwsCloud::CloudV1 do
             expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
             expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
 
-            expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq('ami-xxxxxxxx')
+            expect(cloud.create_stemcell('/tmp/foo', stemcell_properties, nil)).to eq('ami-xxxxxxxx')
           end
         end
 
@@ -368,7 +387,7 @@ describe Bosh::AwsCloud::CloudV1 do
             expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
             expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
 
-            expect(cloud.create_stemcell('/tmp/foo', stemcell_properties)).to eq('ami-xxxxxxxx')
+            expect(cloud.create_stemcell('/tmp/foo', stemcell_properties, 'string')).to eq('ami-xxxxxxxx')
           end
         end
       end
