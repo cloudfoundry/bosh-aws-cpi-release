@@ -118,7 +118,6 @@ module Bosh::AwsCloud
         instance_id, = @cloud_core.create_vm(agent_id, stemcell_id, vm_type, network_props, registry_settings, disk_locality, environment) do |instance_id, settings|
           @registry.update_settings(instance_id, settings.agent_settings)
         end
-
         instance_id
       end
     end
@@ -189,7 +188,6 @@ module Bosh::AwsCloud
           logger.error("could not tag volume #{volume_id}: #{e.message}")
         end
       end
-
     rescue Aws::EC2::Errors::TagLimitExceeded => e
       logger.error("could not tag #{instance.id}: #{e.message}")
     end
@@ -324,9 +322,8 @@ module Bosh::AwsCloud
           metadata.delete(tag)
         end
 
-        ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
-
         TagManager.create_tags(snapshot, **metadata)
+        ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
         snapshot.id
       end
     end
@@ -368,20 +365,10 @@ module Bosh::AwsCloud
     #   unless specified
     # @option cloud_properties [String] disk (2048)
     #   root disk size
-    # @param [Hash] env Environment tags
-    # @option env [Hash] tags
-    #   Key value pairs used for for tagging the resource.
     # @return [String] EC2 AMI name of the stemcell
-    def create_stemcell(image_path, stemcell_properties, env = {})
+    def create_stemcell(image_path, stemcell_properties)
       with_thread_name("create_stemcell(#{image_path}...)") do
-
-        
         props = @props_factory.stemcell_props(stemcell_properties)
-        tags = nil
-
-        if !env.nil?
-          tags = env["tags"] || nil
-        end
 
         if props.is_light?
           # select the correct image for the configured ec2 client
@@ -407,27 +394,12 @@ module Bosh::AwsCloud
             encrypted_image = @ec2_resource.image(encrypted_image_id)
             ResourceWait.for_image(image: encrypted_image, state: 'available')
 
-            if !tags.nil?
-              TagManager.create_tags(encrypted_image, tags)
-            end
-
             return encrypted_image_id.to_s
-          end
-
-          if !tags.nil?
-            TagManager.create_tags(available_image, tags)
           end
 
           "#{available_image.id} light"
         else
-          
-          stemcell = create_ami_for_stemcell(image_path, props)
-
-          if !tags.nil?
-            TagManager.create_tags(stemcell.ami, tags)
-          end
-
-          stemcell.id
+          create_ami_for_stemcell(image_path, props)
         end
       end
     end
@@ -516,8 +488,7 @@ module Bosh::AwsCloud
 
         logger.debug("Actual block device: #{actual_path}")
         logger.info("Creating stemcell with: '#{volume.id}'")
-        
-        creator.create(volume, actual_path, image_path)
+        creator.create(volume, actual_path, image_path).id
       rescue => e
         logger.error(e)
         raise e

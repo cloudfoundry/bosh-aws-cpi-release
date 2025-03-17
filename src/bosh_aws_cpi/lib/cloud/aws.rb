@@ -23,6 +23,7 @@ require 'cloud/aws/helpers'
 require 'cloud/aws/cloud_core'
 require 'cloud/aws/cloud_v1'
 require 'cloud/aws/cloud_v2'
+require 'cloud/aws/cloud_v3'
 require 'cloud/aws/registry_disabled_client'
 require 'cloud/aws/config'
 require 'cloud/aws/aws_provider'
@@ -55,7 +56,9 @@ module Bosh
   module Clouds
     class Aws
       def create_cloud(cpi_api_version, cloud_properties)
-        if cpi_api_version && cpi_api_version > 1
+        if cpi_api_version && cpi_api_version > 2
+          Bosh::AwsCloud::CloudV3.new(cloud_properties)
+        elsif cpi_api_version && cpi_api_version > 1
           Bosh::AwsCloud::CloudV2.new(cloud_properties)
         else
           Bosh::AwsCloud::CloudV1.new(cloud_properties)

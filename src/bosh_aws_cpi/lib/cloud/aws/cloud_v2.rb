@@ -1,6 +1,6 @@
 require 'cloud/aws/stemcell_finder'
 require 'uri'
-require 'cloud_v2'
+require 'cloud_v1'
 
 module Bosh::AwsCloud
   class CloudV2 < Bosh::AwsCloud::CloudV1
@@ -8,7 +8,7 @@ module Bosh::AwsCloud
     DEVICE_POLL_TIMEOUT = 60 # in seconds
 
     # Current CPI API version supported by this CPI
-    API_VERSION = 3
+    API_VERSION = 2
 
     # Stemcell API version that first supports optional-registry operation
     STEMCELL_NO_REGISTRY = 2
