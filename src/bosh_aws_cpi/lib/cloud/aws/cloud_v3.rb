@@ -8,9 +8,6 @@ module Bosh::AwsCloud
     # Current CPI API version supported by this CPI
     API_VERSION = 3
     
-    def initialize(options)
-      super(options)
-    end
 
      ##
     # Creates a new EC2 AMI using stemcell image.
