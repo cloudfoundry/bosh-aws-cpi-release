@@ -83,6 +83,13 @@ module Bosh::AwsCloud
         fake_instance_params.merge(min_count: 1, max_count: 1)
       end
       let(:tags) { {'tag' => 'tag_value'} }
+      let(:ipv6_prefix_delegation_size) { nil }
+      let(:attach_ipv6_prefix_params) do
+        {
+          network_interface_id: '1',
+          ipv_6_prefix_count: 1
+        }
+      end
 
       before do
         allow(param_mapper).to receive(:instance_params).and_return(fake_instance_params)
@@ -133,6 +140,7 @@ module Bosh::AwsCloud
             fake_block_device_mappings,
             user_data,
             tags,
+            ipv6_prefix_delegation_size,
             nil
           )
         end
@@ -151,8 +159,33 @@ module Bosh::AwsCloud
           fake_block_device_mappings,
           user_data,
           tags,
+          ipv6_prefix_delegation_size,
           nil
         )
+      end
+
+      context 'when ipv6_prefix_delegation_size is provided' do
+        let(:ipv6_prefix_delegation_size) { '80' }
+
+        it 'should ask AWS to attach an ipv6 prefix' do
+          allow(instance).to receive(:network_interface_id).and_return('1')
+          allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
+
+          expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
+          expect(aws_client).to receive(:assign_ipv_6_addresses).with(attach_ipv6_prefix_params)
+          instance_manager.create(
+            stemcell_id,
+            vm_cloud_props,
+            networks_cloud_props,
+            disk_locality,
+            default_options,
+            fake_block_device_mappings,
+            user_data,
+            tags,
+            ipv6_prefix_delegation_size,
+            nil
+          )
+        end
       end
 
       context 'redacts' do
@@ -170,6 +203,7 @@ module Bosh::AwsCloud
             fake_block_device_mappings,
             user_data,
             tags,
+            ipv6_prefix_delegation_size,
             nil
           )
         end
@@ -244,6 +278,7 @@ module Bosh::AwsCloud
             fake_block_device_mappings,
             user_data,
             tags,
+            ipv6_prefix_delegation_size,
             nil
           )
         end
@@ -263,6 +298,7 @@ module Bosh::AwsCloud
                 fake_block_device_mappings,
                 user_data,
                 tags,
+                ipv6_prefix_delegation_size,
                 nil
               )
             }.to raise_error(Bosh::Clouds::VMCreationFailed, /Spot instance creation failed/)
@@ -300,6 +336,7 @@ module Bosh::AwsCloud
                 fake_block_device_mappings,
                 user_data,
                 tags,
+                ipv6_prefix_delegation_size,
                 nil
               )
             end
@@ -319,6 +356,7 @@ module Bosh::AwsCloud
                 fake_block_device_mappings,
                 user_data,
                 tags,
+                ipv6_prefix_delegation_size,
                 nil
               )
             end
@@ -344,6 +382,7 @@ module Bosh::AwsCloud
             fake_block_device_mappings,
             user_data,
             tags,
+            ipv6_prefix_delegation_size,
             nil
           )
         end
@@ -370,6 +409,7 @@ module Bosh::AwsCloud
             fake_block_device_mappings,
             user_data,
             tags,
+            ipv6_prefix_delegation_size,
             nil
           )
         end
@@ -397,6 +437,7 @@ module Bosh::AwsCloud
           fake_block_device_mappings,
           user_data,
           tags,
+          ipv6_prefix_delegation_size,
           nil
         )
       end
@@ -425,6 +466,7 @@ module Bosh::AwsCloud
               fake_block_device_mappings,
               user_data,
               tags,
+              ipv6_prefix_delegation_size,
               nil
             )
           }.to raise_error(create_err)
@@ -450,6 +492,7 @@ module Bosh::AwsCloud
               fake_block_device_mappings,
               user_data,
               tags,
+              ipv6_prefix_delegation_size,
               nil
             )
           }.to raise_error(Bosh::AwsCloud::AbruptlyTerminated)
@@ -474,6 +517,7 @@ module Bosh::AwsCloud
                 fake_block_device_mappings,
                 user_data,
                 tags,
+                ipv6_prefix_delegation_size,
                 nil
               )
             }.to raise_error(create_err)
