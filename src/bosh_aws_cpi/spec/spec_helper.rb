@@ -78,6 +78,15 @@ def mock_cloud(options = nil)
   Bosh::AwsCloud::CloudV1.new(options || mock_cloud_options['properties'])
 end
 
+def mock_cloud_v3(options = nil)
+  ec2 = mock_ec2
+  allow(Aws::EC2::Resource).to receive(:new).and_return(ec2)
+
+  yield ec2 if block_given?
+
+  Bosh::AwsCloud::CloudV3.new(options || mock_cloud_options['properties'])
+end
+
 def mock_ec2
   client = instance_double(Aws::EC2::Client)
   allow(Aws::EC2::Client).to receive(:new).and_return(client)

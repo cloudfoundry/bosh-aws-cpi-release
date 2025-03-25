@@ -56,13 +56,15 @@ module Bosh::AwsCloud
               name: "Copied from SourceAMI #{props.region_ami}",
               encrypted: props.encrypted,
               kms_key_id: props.kms_key_arn
-            )
-
-            encrypted_image_id = copy_image_result.image_id
-            encrypted_image = @ec2_resource.image(encrypted_image_id)
-            ResourceWait.for_image(image: encrypted_image, state: 'available')
-
-            if !tags.nil?
+              )
+              
+              encrypted_image_id = copy_image_result.image_id
+              encrypted_image = @ec2_resource.image(encrypted_image_id)
+              ResourceWait.for_image(image: encrypted_image, state: 'available')
+              
+              puts "encrypted image"
+              if !tags.nil?
+                puts encrypted_image
               TagManager.create_tags(encrypted_image, tags)
             end
 
@@ -70,6 +72,9 @@ module Bosh::AwsCloud
           end
 
           if !tags.nil?
+            puts  "available_image"
+            puts  available_image
+            puts tags
             TagManager.create_tags(available_image, tags)
           end
 
