@@ -52,43 +52,13 @@ describe Bosh::AwsCloud::CloudV3 do
     end
   end
 
-  # expected_image = nil
-
-  # shared_examples "handle tags" do |expected_image, stemcell_properties|
-  #   let(:provider) { instance_double(Bosh::AwsCloud::AwsProvider) }
-  #   let(:props_factory) { instance_double(Bosh::AwsCloud::StemcellCloudProps) }
-
-  #   it "if provided" do
-  #     env = { "tags" => { "any" => "value" } }
-  #     expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(expected_image, env["tags"])
-  #     cloud.create_stemcell(anything, stemcell_properties, env)
-  #   end
-
-  #   it "if tags are not provided" do
-  #     env = {}
-  #     expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
-  #     cloud.create_stemcell(anything, stemcell_properties, env)
-  #   end
-
-  #   it "if tags are nil" do
-  #     env = { "tags" => nil }
-  #     expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
-  #     cloud.create_stemcell(anything, stemcell_properties, env)
-  #   end
-
-  #   it "if no env is provided" do
-  #     expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
-  #     cloud.create_stemcell(anything, stemcell_properties)
-  #   end
-  # end
-
   describe "#create_stemcell" do
     let(:ami_id) { "ami-image-id" }
     let(:image) { instance_double(Aws::EC2::Image, id: ami_id) }
     let(:encrypted_image) { instance_double(Aws::EC2::Image, state: "available", id: "#{ami_id}-copy") }
     let(:image_copy) { instance_double(Aws::EC2::Image, image_id: "#{ami_id}-copy", id: "#{ami_id}-copy") }
 
-    context "light stemcell" do
+    context "for light stemcell" do
       let(:stemcell_properties) do
         {
           "root_device_name" => "/dev/sda1",
@@ -113,7 +83,7 @@ describe Bosh::AwsCloud::CloudV3 do
         end
       }
 
-      it "if provided" do
+      it "if tags are provided" do
         env = { "tags" => { "any" => "value" } }
         expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(image, env["tags"])
         cloud.create_stemcell(image, stemcell_properties, env)
@@ -137,7 +107,7 @@ describe Bosh::AwsCloud::CloudV3 do
       end
     end
 
-    context "encrypted flag is true" do
+    context "with encrypted flag is true" do
       let(:kms_key_arn) { nil }
       let(:stemcell_properties) do
         {
@@ -174,9 +144,121 @@ describe Bosh::AwsCloud::CloudV3 do
         end
       }
 
-      it "if provided" do
+      it "if tags are provided" do
         env = { "tags" => { "any" => "value" } }
         expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(encrypted_image, env["tags"])
+        cloud.create_stemcell(image, stemcell_properties, env)
+      end
+
+      it "if tags are not provided" do
+        env = {}
+        expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
+        cloud.create_stemcell(image, stemcell_properties, env)
+      end
+
+      it "if tags are nil" do
+        env = { "tags" => nil }
+        expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
+        cloud.create_stemcell(image, stemcell_properties, env)
+      end
+
+      it "if no env is provided" do
+        expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
+        cloud.create_stemcell(image, stemcell_properties)
+      end
+    end
+
+    context "with kms_key_arn is provided and" do
+      let(:kms_key_arn) { "arn:aws:kms:us-east-1:12345678:key/guid" }
+      let(:stemcell_properties) do
+        {
+          "encrypted" => true,
+          "kms_key_arn" => kms_key_arn,
+          "ami" => {
+            "us-east-1" => ami_id,
+          },
+        }
+      end
+      let(:cloud) {
+        cloud = mock_cloud_v3 do |ec2|
+          expect(ec2).to receive(:images).with(
+            filters: [{
+              name: "image-id",
+              values: [ami_id],
+            }],
+            include_deprecated: true,
+          ).and_return([image])
+
+          expect(ec2.client).to receive(:copy_image).with(
+            source_region: "us-east-1",
+            source_image_id: ami_id,
+            name: "Copied from SourceAMI #{ami_id}",
+            encrypted: true,
+            kms_key_id: kms_key_arn,
+          ).and_return(image_copy)
+
+          expect(ec2).to receive(:image).with("ami-image-id-copy").and_return(encrypted_image)
+
+          expect(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(
+            image: encrypted_image,
+            state: "available",
+          )
+        end
+      }
+
+      it "if tags are provided" do
+        env = { "tags" => { "any" => "value" } }
+        expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(encrypted_image, env["tags"])
+        cloud.create_stemcell(image, stemcell_properties, env)
+      end
+
+      it "if tags are not provided" do
+        env = {}
+        expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
+        cloud.create_stemcell(image, stemcell_properties, env)
+      end
+
+      it "if tags are nil" do
+        env = { "tags" => nil }
+        expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
+        cloud.create_stemcell(image, stemcell_properties, env)
+      end
+
+      it "if no env is provided" do
+        expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
+        cloud.create_stemcell(image, stemcell_properties)
+      end
+    end
+
+    context "for heavy stemcell" do
+      let(:stemcell_properties) do
+        {
+          "root_device_name" => "/dev/sda1",
+          "architecture" => "x86_64",
+          "name" => "stemcell-name",
+          "version" => "1.2.3",
+          "virtualization_type" => "paravirtual",
+        }
+      end
+      let(:cloud) {
+        cloud = mock_cloud_v3 do |ec2|
+        end
+      }
+      let(:aws_config) do
+        instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}, encrypted: false, kms_key_arn: nil)
+      end
+      let(:global_config) { instance_double(Bosh::AwsCloud::Config, aws: aws_config) }
+      let(:stemcell_cloud_props) { Bosh::AwsCloud::StemcellCloudProps.new(stemcell_properties, global_config) }
+      let(:props_factory) { instance_double(Bosh::AwsCloud::PropsFactory) }
+
+      before do
+        stemcell = Bosh::AwsCloud::Stemcell.new(nil, image)
+        allow(cloud).to receive(:create_ami_for_stemcell).and_return(stemcell)
+      end
+
+      it "if tags are provided" do
+        env = { "tags" => { "any" => "value" } }
+        expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(image, env["tags"])
         cloud.create_stemcell(image, stemcell_properties, env)
       end
 

@@ -68,9 +68,6 @@ module Bosh::AwsCloud
           end
 
           if !tags.nil?
-            puts "available_image"
-            puts available_image
-            puts tags
             TagManager.create_tags(available_image, tags)
           end
 
