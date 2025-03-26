@@ -1,15 +1,14 @@
-require 'cloud/aws/stemcell_finder'
-require 'uri'
-require 'cloud_v2'
+require "cloud/aws/stemcell_finder"
+require "uri"
+require "cloud_v2"
 
 module Bosh::AwsCloud
   class CloudV3 < Bosh::AwsCloud::CloudV2
 
     # Current CPI API version supported by this CPI
     API_VERSION = 3
-    
 
-     ##
+    ##
     # Creates a new EC2 AMI using stemcell image.
     # This method can only be run on an EC2 instance, as image creation
     # involves creating and mounting new EBS volume as local block device.
@@ -30,7 +29,6 @@ module Bosh::AwsCloud
     # @return [String] EC2 AMI name of the stemcell
     def create_stemcell(image_path, stemcell_properties, env = {})
       with_thread_name("create_stemcell(#{image_path}...)") do
-        
         props = @props_factory.stemcell_props(stemcell_properties)
         tags = nil
 
@@ -42,8 +40,8 @@ module Bosh::AwsCloud
           # select the correct image for the configured ec2 client
           available_image = @ec2_resource.images(
             filters: [{
-              name: 'image-id',
-              values: props.ami_ids
+              name: "image-id",
+              values: props.ami_ids,
             }],
             include_deprecated: true,
           ).first
@@ -55,16 +53,14 @@ module Bosh::AwsCloud
               source_image_id: props.region_ami,
               name: "Copied from SourceAMI #{props.region_ami}",
               encrypted: props.encrypted,
-              kms_key_id: props.kms_key_arn
-              )
-              
-              encrypted_image_id = copy_image_result.image_id
-              encrypted_image = @ec2_resource.image(encrypted_image_id)
-              ResourceWait.for_image(image: encrypted_image, state: 'available')
-              
-              puts "encrypted image"
-              if !tags.nil?
-                puts encrypted_image
+              kms_key_id: props.kms_key_arn,
+            )
+
+            encrypted_image_id = copy_image_result.image_id
+            encrypted_image = @ec2_resource.image(encrypted_image_id)
+            ResourceWait.for_image(image: encrypted_image, state: "available")
+
+            if !tags.nil?
               TagManager.create_tags(encrypted_image, tags)
             end
 
@@ -72,15 +68,14 @@ module Bosh::AwsCloud
           end
 
           if !tags.nil?
-            puts  "available_image"
-            puts  available_image
+            puts "available_image"
+            puts available_image
             puts tags
             TagManager.create_tags(available_image, tags)
           end
 
           "#{available_image.id} light"
         else
-          
           stemcell = create_ami_for_stemcell(image_path, props)
 
           if !tags.nil?
@@ -91,6 +86,5 @@ module Bosh::AwsCloud
         end
       end
     end
-
   end
 end
