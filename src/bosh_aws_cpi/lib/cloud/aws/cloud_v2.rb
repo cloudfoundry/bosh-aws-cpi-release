@@ -1,6 +1,6 @@
 require 'cloud/aws/stemcell_finder'
 require 'uri'
-require 'cloud_v2'
+require 'cloud_v1'
 
 module Bosh::AwsCloud
   class CloudV2 < Bosh::AwsCloud::CloudV1
