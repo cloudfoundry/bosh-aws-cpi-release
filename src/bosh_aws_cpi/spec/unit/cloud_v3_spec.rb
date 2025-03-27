@@ -72,7 +72,7 @@ describe Bosh::AwsCloud::CloudV3 do
       end
 
       let(:cloud) {
-        cloud = mock_cloud_v3 do |ec2|
+        mock_cloud_v3 do |ec2|
           expect(ec2).to receive(:images).with(
             filters: [{
               name: "image-id",
@@ -118,7 +118,7 @@ describe Bosh::AwsCloud::CloudV3 do
         }
       end
       let(:cloud) {
-        cloud = mock_cloud_v3 do |ec2|
+        mock_cloud_v3 do |ec2|
           expect(ec2).to receive(:images).with(
             filters: [{
               name: "image-id",
@@ -180,7 +180,7 @@ describe Bosh::AwsCloud::CloudV3 do
         }
       end
       let(:cloud) {
-        cloud = mock_cloud_v3 do |ec2|
+        mock_cloud_v3 do |ec2|
           expect(ec2).to receive(:images).with(
             filters: [{
               name: "image-id",
