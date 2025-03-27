@@ -114,6 +114,10 @@ module Bosh::AwsCloud
       @aws_instance.exists? && @aws_instance.state.name != 'terminated'
     end
 
+    def network_interface_id
+      @aws_instance.network_interfaces[0].network_interface_id
+    end
+
     def update_routing_tables(route_definitions)
       if route_definitions.length > 0
         @logger.debug('Associating instance with destinations in the routing tables')

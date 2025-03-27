@@ -85,6 +85,11 @@ module Bosh::AwsCloud
         if environment && environment['bosh'] && environment['bosh']['tags']
           tags = environment['bosh']['tags']
         end
+
+        if environment && environment['ipv6_prefix_delegation_size']
+          ipv6_prefix_delegation_size = environment['ipv6_prefix_delegation_size']
+        end
+
         # TODO IMDS_V2
         instance = @instance_manager.create(
           stemcell.image_id,
@@ -95,6 +100,7 @@ module Bosh::AwsCloud
           block_device_mappings,
           settings.encode(@stemcell_api_version),
           tags,
+          ipv6_prefix_delegation_size, 
           @config.aws.metadata_options
         )
 
