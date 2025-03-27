@@ -241,8 +241,7 @@ describe Bosh::AwsCloud::CloudV3 do
         }
       end
       let(:cloud) {
-        cloud = mock_cloud_v3 do |ec2|
-        end
+        cloud = mock_cloud_v3
       }
       let(:aws_config) do
         instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}, encrypted: false, kms_key_arn: nil)
