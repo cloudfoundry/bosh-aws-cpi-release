@@ -154,6 +154,23 @@ describe Bosh::AwsCloud::Config do
       config = Bosh::AwsCloud::Config.build(options)
       expect(config.aws.credentials).to be_a(env_prof_creds.class)
     end
+
+    context 'when role_arn is sent' do
+      before do
+        options['aws']['role_arn'] = 'arn:aws:iam::123456789012:role/role_name'
+        options['aws']['session_token'] = nil
+      end
+
+      it 'should use the AssumeRoleCredentials' do
+        allow(Aws::InstanceProfileCredentials).to receive(:new).and_return(env_prof_creds)
+        allow(Aws::STS::Client).to receive(:new).and_return(sts_client)
+        allow(Aws::AssumeRoleCredentials).to receive(:new).and_return(assume_role_creds)
+
+        config = Bosh::AwsCloud::Config.build(options)
+
+        expect(config.aws.credentials).to be_a(assume_role_creds.class)
+      end
+    end
   end
 
 end

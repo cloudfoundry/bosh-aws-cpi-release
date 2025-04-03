@@ -43,7 +43,7 @@ module Bosh::AwsCloud
           static_credentials
         else
           @logger.info("Using InstanceProfileCredentials.")
-          Aws::InstanceProfileCredentials.new(retries: 10)
+          instance_profile_credentials
         end
     end
 
@@ -66,6 +66,23 @@ module Bosh::AwsCloud
           role_session_name: 'rsn' + '-' + SecureRandom.uuid
         )
       end
+    end
+
+    def instance_profile_credentials
+      base_credentials = Aws::InstanceProfileCredentials.new(retries: 10)
+
+      if @role_arn.nil? || @role_arn.empty?
+        return base_credentials
+      end
+
+      @logger.info("Using AssumeRoleCredentials. Role: #{@role_arn}")
+
+      sts_client = Aws::STS::Client.new(credentials: base_credentials, region: @region)
+      Aws::AssumeRoleCredentials.new(
+        client: sts_client,
+        role_arn: @role_arn,
+        role_session_name: 'rsn' + '-' + SecureRandom.uuid
+      )
     end
 
     def to_h
