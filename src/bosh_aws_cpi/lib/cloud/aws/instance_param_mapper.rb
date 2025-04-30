@@ -93,33 +93,19 @@ module Bosh::AwsCloud
       nic[:groups] = sg unless sg.nil? || sg.empty?
       nic[:subnet_id] = subnet_id if subnet_id
 
-      if dual_stack_mode?
-        ipv6_count = ipv4_count = 0
-        private_ip_addresses.each do |private_ip|
-          if ipv6_address?(private_ip)
-            nic[:ipv_6_addresses] = [{ipv_6_address: private_ip}]
-            ipv6_count += 1
-          else
-            nic[:private_ip_address] = private_ip
-            ipv4_count += 1
+      check_network_validity
+
+      private_ip_addresses.each do |address|
+        private_ip = address[:ip]
+        prefix = address[:prefix].to_s
+      
+        if ipv6_address?(private_ip)
+          if prefix.empty? || prefix.to_i == 128
+            nic[:ipv_6_addresses] = [{ ipv_6_address: private_ip }]
           end
-        end
-        if ipv4_count == 1 && ipv6_count == 1
-          @logger.info("Running in dual stack mode")
         else
-          if ipv4_count == 0
-            raise Bosh::Clouds::CloudError, "Dual Stack Mode: No ipv4 address assigned"
-          elsif ipv6_count == 0
-            raise Bosh::Clouds::CloudError, "Dual Stack Mode: No ipv6 address assigned"
-          end
-        end
-      else
-        private_ip_address = private_ip_addresses.first
-        if private_ip_address
-          if ipv6_address?(private_ip_address)
-            nic[:ipv_6_addresses] = [{ipv_6_address: private_ip_address}]
-          else
-            nic[:private_ip_address] = private_ip_address
+          if prefix.empty? || prefix.to_i == 32
+            nic[:private_ip_address] = private_ip
           end
         end
       end
@@ -130,6 +116,23 @@ module Bosh::AwsCloud
       params[:network_interfaces] = [nic] unless nic.empty?
 
       params.delete_if { |_k, v| v.nil? }
+    end
+    
+    def private_ip_addresses
+      manual_subnets = subnets.select { |subnet| subnet.type == 'manual' }
+      ips_with_optional_prefixes = manual_subnets.map do |subnet_network|
+        if subnet_network.prefix
+          { ip: subnet_network.ip, prefix: subnet_network.prefix }
+        else
+          { ip: subnet_network.ip }
+        end
+      end
+    
+      ips_with_optional_prefixes unless ips_with_optional_prefixes.nil?
+    end
+
+    def ipv6_address?(addr)
+      addr.to_s.include?(':')
     end
 
     private
@@ -166,17 +169,6 @@ module Bosh::AwsCloud
       groups
     end
 
-    def ipv6_address?(addr)
-      addr.to_s.include?(':')
-    end
-
-    def private_ip_addresses
-      manual_subnets = subnets.select {|subnet| subnet.type == 'manual' }
-      ips = manual_subnets.map { |subnet_network| subnet_network.ip }
-
-      ips unless ips.nil?
-    end
-
     # NOTE: do NOT lookup the subnet (from EC2 client) anymore. We just need to
     # pass along the subnet_id anyway, and we have that.
     def subnets
@@ -195,15 +187,12 @@ module Bosh::AwsCloud
       subnets.map { |subnet_network| subnet_network.subnet }
     end
 
-    def dual_stack_mode?
-      dual_stack_mode = false
-      if subnets.length == 2 && subnets.find {|subnet| subnet.type == 'dynamic'}.nil?
-          # if two manual networks refer to the same subnet we assume dual stack mode
-        if subnet_ids[0] == subnet_ids[1]
-          dual_stack_mode = true
+    def check_network_validity
+      subnet_ids.each do |id|
+        if id != subnet_id
+          raise Bosh::Clouds::CloudError, "Subnet ID mismatch in the given list of networks. Please make sure all networks have the same subnet ID"
         end
       end
-      dual_stack_mode
     end
 
     def availability_zone
