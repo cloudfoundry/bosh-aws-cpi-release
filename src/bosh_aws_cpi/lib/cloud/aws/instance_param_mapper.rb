@@ -188,10 +188,10 @@ module Bosh::AwsCloud
     end
 
     def check_network_validity
-      subnet_ids.each do |id|
-        if id != subnet_id
-          raise Bosh::Clouds::CloudError, "Subnet ID mismatch in the given list of networks. Please make sure all networks have the same subnet ID"
-        end
+      first_id = subnet_id
+      mismatched_ids = subnet_ids.reject { |id| id == first_id }
+      unless mismatched_ids.empty?
+        @logger.warn("Subnet ID mismatch detected. Proceeding with the first subnet ID: #{first_id}.")
       end
     end
 
