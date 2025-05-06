@@ -34,7 +34,8 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
         'group' => '',
         'groups' => [],
         'tags' => {'tag' => 'tag_value'},
-      }
+      },
+      'ipv6_prefix_delegation_size' => '80',
     }
   end
   let(:stemcell) {instance_double(Bosh::AwsCloud::Stemcell, root_device_name: 'root name', image_id: stemcell_id)}
@@ -102,6 +103,7 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
       anything,
       anything,
       anything,
+      anything,
       anything
     ).and_return(instance)
     expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)).to eq(['fake-id', networks_cloud_props])
@@ -122,6 +124,7 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
       anything,
       anything,
       'my encoded settings',
+      anything,
       anything,
       anything
     ).and_return(instance)
@@ -147,6 +150,23 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
       anything,
       anything,
       { 'tag' => 'tag_value' },
+      anything,
+      anything
+    )
+    cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)
+  end
+
+  it 'should include the ipv6_prefix_delegation_size from the environment' do
+    expect(instance_manager).to receive(:create).with(
+      anything,
+      anything,
+      anything,
+      anything,
+      anything,
+      anything,
+      anything,
+      anything,
+      '80',
       anything
     )
     cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)
