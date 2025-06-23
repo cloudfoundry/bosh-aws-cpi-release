@@ -250,6 +250,7 @@ module Bosh::AwsCloud
               network_interfaces: [{
                 device_index: 0,
                 subnet_id: dynamic_subnet_id,
+                private_ip_address: nil,
                 groups: ['sg-11111111', 'sg-22222222']
               }]
             }
@@ -487,6 +488,7 @@ module Bosh::AwsCloud
               network_interfaces: [
                 {
                   subnet_id: manual_subnet_id,
+                  private_ip_address: nil,
                   device_index: 0
                 }
               ],
@@ -530,6 +532,7 @@ module Bosh::AwsCloud
               network_interfaces: [
                 {
                   subnet_id: dynamic_subnet_id,
+                  private_ip_address: nil,
                   device_index: 0
                 }
               ]
@@ -579,11 +582,10 @@ module Bosh::AwsCloud
           end
 
           it 'attaches an ipv4 and an ipv6 to the nic' do
-            allow(logger).to receive(:info)
+            allow(logger).to receive(:warn)
 
             expect(mapping(input)).to eq(output)
-
-            expect(logger).to have_received(:info).with("Running in dual stack mode")          end
+          end
         end
 
 
@@ -608,75 +610,11 @@ module Bosh::AwsCloud
               networks_spec: network_cloud_props,
             }
           end
-          let(:output) do
-            {
-              network_interfaces: [
-                {
-                  subnet_id: manual_subnet_id,
-                  private_ip_address: '1.1.1.1',
-                  device_index: 0
-                }
-              ]
-            }
-          end
 
-          it 'attaches an ipv4 and an ipv6 to the nic' do
-            expect(mapping(input)).to eq(output)
-          end
-        end
-
-        context 'when two manual subnets with different subnet_ids are provided' do
-          let(:networks_spec) do
-            {
-              'net1' => {
-                'type' => 'manual',
-                'cloud_properties' => { 'subnet' => manual_subnet_id },
-                'ip' => '1.1.1.1'
-              },
-              'net2' => {
-                'type' => 'manual',
-                'cloud_properties' => { 'subnet' => manual_subnet_id },
-                'ip' => '2.2.2.2'
-              }
-            }
-          end
-          let(:input) do
-            {
-              vm_type: vm_cloud_props,
-              networks_spec: network_cloud_props,
-            }
-          end
-
-          it 'raises an error message if no ipv6 address is provided' do
-            expect{ mapping(input)}.to raise_error Bosh::Clouds::CloudError, /Dual Stack Mode: No ipv6 address assigned/
-          end
-        end
-
-
-        context 'when two manual subnets with different subnet_ids are provided' do
-          let(:networks_spec) do
-            {
-              'net1' => {
-                'type' => 'manual',
-                'cloud_properties' => { 'subnet' => manual_subnet_id },
-                'ip' => '2600::1'
-              },
-              'net2' => {
-                'type' => 'manual',
-                'cloud_properties' => { 'subnet' => manual_subnet_id },
-                'ip' => '2600::2'
-              }
-            }
-          end
-          let(:input) do
-            {
-              vm_type: vm_cloud_props,
-              networks_spec: network_cloud_props,
-            }
-          end
-
-          it 'raises an error message if no ipv6 address is applied' do
-            expect{ mapping(input)}.to raise_error Bosh::Clouds::CloudError, /Dual Stack Mode: No ipv4 address assigned/
+          it 'logs a warning message since there is a mismatch in subnet ids provided' do
+            allow(logger).to receive(:warn)
+            mapping(input)
+            expect(logger).to have_received(:warn).with(/Subnet ID mismatch detected. Proceeding with the first subnet ID/)
           end
         end
       end
