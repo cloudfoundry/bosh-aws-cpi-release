@@ -73,13 +73,20 @@ module Bosh::AwsCloud
 
           "#{available_image.id} light"
         else
-          stemcell = create_ami_for_stemcell(image_path, props)
+          stemcell_id = create_ami_for_stemcell(image_path, props)
 
           if !tags.nil?
-            TagManager.create_tags(stemcell.ami, tags)
-          end
+            created_ami = @ec2_resource.images(
+              filters: [{
+                          name: "image-id",
+                          values: [stemcell_id],
+                        }]
+              ).first
 
-          stemcell.id
+            TagManager.create_tags(created_ami, tags)
+          end
+          logger.info("Tagged #{stemcell_id} with #{tags}.")
+          stemcell_id
         end
       end
     end
