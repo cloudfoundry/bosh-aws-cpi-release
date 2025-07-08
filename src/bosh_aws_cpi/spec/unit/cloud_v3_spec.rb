@@ -242,7 +242,12 @@ describe Bosh::AwsCloud::CloudV3 do
       end
       let(:cloud) {
         mock_cloud_v3 do |ec2|
-          allow(ec2).to receive(:images).and_return([image])
+          allow(ec2).to receive(:images).with(
+            filters: [{
+                        name: "image-id",
+                        values: [ami_id],
+                      }]
+          ).and_return([image])
         end
       }
       let(:aws_config) do
@@ -253,8 +258,7 @@ describe Bosh::AwsCloud::CloudV3 do
       let(:props_factory) { instance_double(Bosh::AwsCloud::PropsFactory) }
 
       before do
-        stemcell = Bosh::AwsCloud::Stemcell.new(nil, image)
-        allow(cloud).to receive(:create_ami_for_stemcell).and_return(stemcell)
+        allow(cloud).to receive(:create_ami_for_stemcell).and_return(ami_id)
       end
 
       it "if tags are provided" do
