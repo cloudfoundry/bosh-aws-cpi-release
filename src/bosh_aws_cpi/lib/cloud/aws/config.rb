@@ -117,7 +117,7 @@ module Bosh::AwsCloud
   end
 
   class Config
-    MAX_SUPPORTED_API_VERSION = 2
+    MAX_SUPPORTED_API_VERSION = 3
 
     attr_reader :aws, :registry, :agent, :stemcell_api_version
 

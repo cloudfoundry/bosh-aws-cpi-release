@@ -5,7 +5,7 @@ require 'ostruct'
 
 describe 'cpi.json.erb' do
   let(:cpi_specification_file) { File.absolute_path(File.join(jobs_root, 'aws_cpi/spec')) }
-  let(:cpi_api_version) { 2 }
+  let(:cpi_api_version) { 3 }
 
   subject(:parsed_json) do
     context_hash = YAML.load_file(cpi_specification_file)
