@@ -115,7 +115,11 @@ module Bosh::AwsCloud
     end
 
     def network_interface_id
-      @aws_instance.network_interfaces[0].network_interface_id
+      if @aws_instance&.network_interfaces
+        nil
+      else
+        @aws_instance.network_interfaces[0].network_interface_id
+      end
     end
 
     def update_routing_tables(route_definitions)
