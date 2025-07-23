@@ -93,9 +93,10 @@ module Bosh::AwsCloud
           (disk_locality || []),
           @config.aws.default_security_groups,
           block_device_mappings,
-          settings.encode(@stemcell_api_version),
+          settings,
           tags,
-          @config.aws.metadata_options
+          @config.aws.metadata_options,
+          @stemcell_api_version
         )
 
         target_groups.each do |target_group_name|
@@ -141,7 +142,20 @@ module Bosh::AwsCloud
     end
 
     def delete_vm(instance_id)
-      @instance_manager.find(instance_id).terminate(@config.aws.fast_path_delete?)
+      aws_instance = @instance_manager.find(instance_id)
+      network_interface_id = aws_instance.network_interface_id
+      aws_instance.terminate(@config.aws.fast_path_delete?)
+      begin
+        if network_interface_id
+          @instance_manager.find_network_interface(network_interface_id).delete
+        end
+      rescue => e
+        if e.is_a?(Aws::EC2::Errors::InvalidNetworkInterfaceIDNotFound)
+          @logger.warn("Network interface `#{network_interface_id}' not found while trying to delete it")
+        else
+          raise e
+        end
+      end
 
       yield instance_id if block_given?
     end

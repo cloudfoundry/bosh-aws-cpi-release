@@ -123,6 +123,28 @@ describe Bosh::AwsCloud::AgentSettings do
     end
   end
 
+  context '#update_agent_networks_settings' do
+    let(:mac_address) {'fake-mac-address'}
+    let(:networks) do
+      {
+        'fake-network-name-1' => {
+          'type' => 'dynamic',
+          'use_dhcp' => true
+        },
+        'fake-network-name-2' => {
+          'type' => 'manual',
+          'use_dhcp' => true
+        }
+      }
+    end
+    it 'should update the networks with the mac address' do
+      subject.update_agent_networks_settings(mac_address)
+
+      expect(subject.networks['fake-network-name-1'][:mac]).to eq(mac_address)
+      expect(subject.networks['fake-network-name-2'][:mac]).to eq(mac_address)
+    end
+  end
+
   describe 'cpi api version 1' do
     let(:version) {1}
 

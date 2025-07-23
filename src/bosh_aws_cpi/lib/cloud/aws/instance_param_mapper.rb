@@ -15,6 +15,10 @@ module Bosh::AwsCloud
       validate_availability_zone
     end
 
+    def update_user_data(user_data)
+      @manifest_params[:user_data] = user_data
+    end
+
     def validate_required_inputs
       required_top_level = [
         'stemcell_id',
@@ -54,7 +58,36 @@ module Bosh::AwsCloud
       availability_zone
     end
 
-    def instance_params
+    def network_interface_params
+      sg = @security_group_mapper.map_to_ids(security_groups, subnet_id)
+
+      nic = {}
+      nic[:groups] = sg unless sg.nil? || sg.empty?
+      nic[:subnet_id] = subnet_id if subnet_id
+
+      log_network_id_mismatch
+
+      private_ip_addresses.each do |address|
+        private_ip = address[:ip]
+        prefix = address[:prefix].to_s
+
+        if ipv6_address?(private_ip)
+          if prefix.empty? || prefix.to_i == 128
+            nic[:ipv_6_addresses] = [{ ipv_6_address: private_ip }]
+          end
+        else
+          if prefix.empty? || prefix.to_i == 32
+            nic[:private_ip_address] = private_ip
+          end
+        end
+      end
+
+      nic[:associate_public_ip_address] = vm_type.auto_assign_public_ip unless vm_type.auto_assign_public_ip.nil?
+
+      nic
+    end
+
+    def instance_params(nic_configuration)
       if @manifest_params[:metadata_options].nil? && vm_type.metadata_options.empty?
         metadata_options = nil
       else
@@ -67,7 +100,8 @@ module Bosh::AwsCloud
         iam_instance_profile: iam_instance_profile,
         user_data: @manifest_params[:user_data],
         block_device_mappings: @manifest_params[:block_device_mappings],
-        metadata_options: metadata_options
+        metadata_options: metadata_options,
+        network_interfaces: [nic_configuration],
       }
       unless @manifest_params[:tags].nil? || @manifest_params[:tags].empty?
         params.merge!(
@@ -86,40 +120,11 @@ module Bosh::AwsCloud
       placement[:availability_zone] = az if az
       placement[:tenancy] = vm_type.tenancy.dedicated if vm_type.tenancy.dedicated?
       params[:placement] = placement unless placement.empty?
-
-      sg = @security_group_mapper.map_to_ids(security_groups, subnet_id)
-
-      nic = {}
-      nic[:groups] = sg unless sg.nil? || sg.empty?
-      nic[:subnet_id] = subnet_id if subnet_id
-
-      log_network_id_mismatch
-
-      private_ip_addresses.each do |address|
-        private_ip = address[:ip]
-        prefix = address[:prefix].to_s
-      
-        if ipv6_address?(private_ip)
-          if prefix.empty? || prefix.to_i == 128
-            nic[:ipv_6_addresses] = [{ ipv_6_address: private_ip }]
-          end
-        else
-          if prefix.empty? || prefix.to_i == 32
-            nic[:private_ip_address] = private_ip
-          end
-        end
-      end
-
-      nic[:associate_public_ip_address] = vm_type.auto_assign_public_ip unless vm_type.auto_assign_public_ip.nil?
-
-      nic[:device_index] = 0 unless nic.empty?
-      params[:network_interfaces] = [nic] unless nic.empty?
-
       params.delete_if { |_k, v| v.nil? }
     end
 
     def private_ip_addresses
-      manual_subnets = subnets.select { |subnet| subnet.type == 'manual' }    
+      manual_subnets = subnets.select { |subnet| subnet.type == 'manual' }
 
       return manual_subnets.map { |subnet| { ip: subnet.ip, prefix: subnet.prefix }.compact }
     end
