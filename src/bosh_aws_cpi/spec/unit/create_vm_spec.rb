@@ -102,18 +102,13 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
       anything,
       anything,
       anything,
+      anything,
       anything
     ).and_return(instance)
     expect(cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)).to eq(['fake-id', networks_cloud_props])
   end
 
-  it 'uses the requested api version to encode agent settings' do
-    expect(agent_settings).to receive(:encode).with(api_version)
-    cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)
-  end
-
   it 'passes the encoded agent settings to the InstanceManager' do
-    allow(agent_settings).to receive(:encode).and_return('my encoded settings')
     expect(instance_manager).to receive(:create).with(
       anything,
       anything,
@@ -121,7 +116,8 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
       anything,
       anything,
       anything,
-      'my encoded settings',
+      agent_settings,
+      anything,
       anything,
       anything
     ).and_return(instance)
@@ -147,6 +143,7 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
       anything,
       anything,
       { 'tag' => 'tag_value' },
+      anything,
       anything
     )
     cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)

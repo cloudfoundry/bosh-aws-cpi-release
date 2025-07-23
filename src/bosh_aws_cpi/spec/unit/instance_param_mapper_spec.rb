@@ -6,6 +6,13 @@ module Bosh::AwsCloud
     let(:logger) { Logger.new('/dev/null') }
     let(:instance_param_mapper) { InstanceParamMapper.new(security_group_mapper, logger) }
     let(:user_data) { {} }
+    let(:fake_nic_configuration) do
+      {
+       device_index: 0,
+       network_interface_id: 'eni-12345678',
+      }
+    end
+
     let(:security_group_mapper) { SecurityGroupMapper.new(ec2_resource) }
     let(:ec2_resource) { instance_double(Aws::EC2::Resource) }
     let(:security_groups) do
@@ -59,7 +66,15 @@ module Bosh::AwsCloud
             networks_spec: network_cloud_props
           }
         end
-        let(:output) { { image_id: 'fake-stemcell' } }
+        let(:output) do
+           { image_id: 'fake-stemcell',
+             network_interfaces:
+              [
+                device_index: 0,
+                network_interface_id: "eni-12345678"
+              ]
+            }
+        end
 
         it 'maps to image_id' do
           expect(mapping(input)).to eq(output)
@@ -74,8 +89,19 @@ module Bosh::AwsCloud
             metadata_options: {foo: 'bar'},
           }
         end
+
+        let(:output) do
+          {
+            metadata_options: {foo: 'bar'},
+            network_interfaces:
+            [
+              device_index: 0,
+              network_interface_id: "eni-12345678"
+            ]
+          }
+        end
         it 'passes metadata in output' do
-          expect(mapping(input)).to eq({ metadata_options: {foo: 'bar'} })
+          expect(mapping(input)).to eq(output)
         end
       end
       context 'when instance metadata is provided the CPI config AND cloud properties' do
@@ -89,8 +115,19 @@ module Bosh::AwsCloud
             metadata_options: {foo: 'bar', bar: 'quux'},
           }
         end
+
+        let(:output) do
+          {
+            metadata_options: {foo: 'bar', bar: 'baz'},
+            network_interfaces:
+            [
+              device_index: 0,
+              network_interface_id: "eni-12345678"
+            ]
+          }
+        end
         it 'passes merged metadata in output with the cloud properties taking precedence' do
-          expect(mapping(input)).to eq({ metadata_options: {foo: 'bar', bar: 'baz'} })
+          expect(mapping(input)).to eq(output)
         end
       end
       context 'when instance metadata is nil' do
@@ -114,7 +151,17 @@ module Bosh::AwsCloud
             networks_spec: network_cloud_props
           }
         end
-        let(:output) { { instance_type: 'fake-instance' } }
+        let(:output) do
+          {
+            instance_type: 'fake-instance',
+            network_interfaces:
+            [
+              device_index: 0,
+              network_interface_id: "eni-12345678"
+            ]
+          }
+
+        end
 
         it 'maps to instance_type' do expect(mapping(input)).to eq(output) end
       end
@@ -129,7 +176,16 @@ module Bosh::AwsCloud
             networks_spec: network_cloud_props
           }
         end
-        let(:output) { { placement: { group_name: 'fake-group' } } }
+        let(:output) do
+          {
+            placement: { group_name: 'fake-group' },
+            network_interfaces:
+            [
+              device_index: 0,
+              network_interface_id: "eni-12345678"
+            ]
+          }
+        end
 
         it 'maps to placement.group_name' do expect(mapping(input)).to eq(output) end
       end
@@ -143,7 +199,16 @@ module Bosh::AwsCloud
               networks_spec: network_cloud_props
             }
           end
-          let(:output) { { placement: { tenancy: 'dedicated' } } }
+          let(:output) do
+            {
+              placement: { tenancy: 'dedicated' },
+              network_interfaces:
+              [
+                device_index: 0,
+                network_interface_id: "eni-12345678"
+              ]
+            }
+          end
 
           it 'maps to placement.tenancy' do expect(mapping(input)).to eq(output) end
         end
@@ -155,7 +220,15 @@ module Bosh::AwsCloud
               networks_spec: network_cloud_props
             }
           end
-          let(:output) { {} }
+          let(:output) do
+            {
+              network_interfaces:
+              [
+                device_index: 0,
+                network_interface_id: "eni-12345678"
+              ]
+            }
+        end
 
           it 'is ignored' do expect(mapping(input)).to eq(output) end
         end
@@ -169,7 +242,16 @@ module Bosh::AwsCloud
               networks_spec: network_cloud_props
             }
           end
-          let(:output) { { key_name: 'default-fake-key-name' } }
+          let(:output) do
+            {
+              key_name: 'default-fake-key-name',
+              network_interfaces:
+              [
+                device_index: 0,
+                network_interface_id: "eni-12345678"
+              ]
+            }
+          end
 
           before do
             expect(aws_config).to receive(:default_key_name).and_return('default-fake-key-name')
@@ -186,7 +268,16 @@ module Bosh::AwsCloud
               networks_spec: network_cloud_props
             }
           end
-          let(:output) { { key_name: 'fake-key-name' } }
+          let(:output) do
+             { 
+              key_name: 'fake-key-name',
+              network_interfaces:
+              [
+                device_index: 0,
+                network_interface_id: "eni-12345678"
+              ]
+             }
+          end
 
           it 'maps key_name from vm_type' do
             expect(mapping(input)).to eq(output)
@@ -202,7 +293,16 @@ module Bosh::AwsCloud
               networks_spec: network_cloud_props
             }
           end
-          let(:output) { { iam_instance_profile: { name: 'default-fake-iam-profile' } } }
+          let(:output) do
+             { 
+              iam_instance_profile: { name: 'default-fake-iam-profile' },
+              network_interfaces:
+              [
+                device_index: 0,
+                network_interface_id: "eni-12345678"
+              ]
+             }
+          end
 
           before do
             expect(aws_config).to receive(:default_iam_instance_profile).and_return('default-fake-iam-profile')
@@ -221,7 +321,16 @@ module Bosh::AwsCloud
               networks_spec: network_cloud_props
             }
           end
-          let(:output) { { iam_instance_profile: { name: 'fake-iam-profile' } } }
+          let(:output) do
+             { 
+              iam_instance_profile: { name: 'fake-iam-profile' },
+              network_interfaces:
+              [
+                device_index: 0,
+                network_interface_id: "eni-12345678"
+              ]
+             }
+          end
 
           it 'maps iam_instance_profile from vm_type' do expect(mapping(input)).to eq(output) end
         end
@@ -247,17 +356,14 @@ module Bosh::AwsCloud
           end
           let(:output) do
             {
-              network_interfaces: [{
-                device_index: 0,
-                subnet_id: dynamic_subnet_id,
-                private_ip_address: nil,
-                groups: ['sg-11111111', 'sg-22222222']
-              }]
+              subnet_id: dynamic_subnet_id,
+              private_ip_address: nil,
+              groups: ['sg-11111111', 'sg-22222222']
             }
           end
 
           it 'maps network_interfaces.first[:groups] from defaults' do
-            expect(mapping(input)).to eq(output)
+            expect(mapping_network_interface_params(input)).to eq(output)
           end
         end
 
@@ -289,16 +395,13 @@ module Bosh::AwsCloud
           end
           let(:output) do
             {
-              network_interfaces: [{
-                device_index: 0,
-                subnet_id: dynamic_subnet_id,
-                groups: ['sg-11111111', 'sg-22222222', 'sg-33333333']
-              }]
+              subnet_id: dynamic_subnet_id,
+              groups: ['sg-11111111', 'sg-22222222', 'sg-33333333']
             }
           end
 
           it 'maps network_interfaces.first[:groups] from networks_spec' do
-            expect(mapping(input)).to eq(output)
+            expect(mapping_network_interface_params(input)).to eq(output)
           end
         end
 
@@ -331,16 +434,13 @@ module Bosh::AwsCloud
           end
           let(:output) do
             {
-              network_interfaces: [{
-                device_index: 0,
-                subnet_id: dynamic_subnet_id,
-                groups: ['sg-11111111', 'sg-22222222']
-              }]
+              subnet_id: dynamic_subnet_id,
+              groups: ['sg-11111111', 'sg-22222222']
             }
           end
 
           it 'maps network_interfaces.first[:groups] from vm_type' do
-            expect(mapping(input)).to eq(output)
+            expect(mapping_network_interface_params(input)).to eq(output)
           end
         end
       end
@@ -354,7 +454,16 @@ module Bosh::AwsCloud
             user_data: user_data
           }
         end
-        let(:output) { { user_data: user_data } }
+        let(:output) do
+          {
+            user_data: user_data,
+            network_interfaces:
+            [
+              device_index: 0,
+              network_interface_id: "eni-12345678"
+            ]
+          }
+        end
 
         it 'maps to Base64 encoded user_data.registry.endpoint' do
           expect(mapping(input)).to eq(output)
@@ -377,7 +486,16 @@ module Bosh::AwsCloud
             user_data: user_data
           }
         end
-        let(:output) { { user_data: user_data } }
+        let(:output) do
+          { 
+            user_data: user_data,
+            network_interfaces:
+            [
+              device_index: 0,
+              network_interface_id: "eni-12345678"
+            ]
+          }
+        end
 
         it 'maps to Base64 encoded user_data.dns, from the first matching network' do
           expect(mapping(input)).to eq(output)
@@ -402,7 +520,12 @@ module Bosh::AwsCloud
         end
         let(:output) do
           {
-            user_data: user_data
+            user_data: user_data,
+            network_interfaces:
+            [
+              device_index: 0,
+              network_interface_id: "eni-12345678"
+            ]
           }
         end
 
@@ -422,17 +545,12 @@ module Bosh::AwsCloud
           end
           let(:output) do
             {
-              network_interfaces: [
-                {
-                  associate_public_ip_address: true,
-                  device_index: 0
-                }
-              ]
+                  associate_public_ip_address: true
             }
           end
 
           it 'adds the option to the output' do
-            expect(mapping(input)).to eq(output)
+            expect(mapping_network_interface_params(input)).to eq(output)
           end
         end
 
@@ -446,17 +564,12 @@ module Bosh::AwsCloud
           end
           let(:output) do
             {
-                network_interfaces: [
-                    {
-                        associate_public_ip_address: false,
-                        device_index: 0
-                    }
-                ]
+              associate_public_ip_address: false,
             }
           end
 
           it 'adds the option to the output' do
-            expect(mapping(input)).to eq(output)
+            expect(mapping_network_interface_params(input)).to eq(output)
           end
         end
       end
@@ -485,19 +598,13 @@ module Bosh::AwsCloud
           end
           let(:output) do
             {
-              network_interfaces: [
-                {
-                  subnet_id: manual_subnet_id,
-                  private_ip_address: nil,
-                  device_index: 0
-                }
-              ],
-              placement: { availability_zone: 'region-1b' }
+              subnet_id: manual_subnet_id,
+              private_ip_address: nil,
             }
           end
 
           it 'maps subnet from the first matching network to subnet_id' do
-            expect(mapping(input)).to eq(output)
+            expect(mapping_network_interface_params(input)).to eq(output)
           end
         end
 
@@ -526,21 +633,13 @@ module Bosh::AwsCloud
           end
           let(:output) do
             {
-              placement: {
-                availability_zone: 'region-1a'
-              },
-              network_interfaces: [
-                {
-                  subnet_id: dynamic_subnet_id,
-                  private_ip_address: nil,
-                  device_index: 0
-                }
-              ]
+              subnet_id: dynamic_subnet_id,
+              private_ip_address: nil
             }
           end
 
           it 'maps subnet from the first matching network to subnet_id' do
-            expect(mapping(input)).to eq(output)
+            expect(mapping_network_interface_params(input)).to eq(output)
           end
         end
 
@@ -567,22 +666,18 @@ module Bosh::AwsCloud
           end
           let(:output) do
             {
-              network_interfaces: [
-                {
-                  subnet_id: manual_subnet_id,
-                  ipv_6_addresses: [{
-                    ipv_6_address: '2600::1',
-                  },
-                ],
-                  private_ip_address: '1.1.1.1',
-                  device_index: 0
-                }
-              ]
-            }
+                subnet_id: manual_subnet_id,
+                ipv_6_addresses: [{
+                  ipv_6_address: '2600::1',
+                },
+              ],
+                private_ip_address: '1.1.1.1'            }
           end
 
           it 'attaches an ipv4 and an ipv6 to the nic' do
-            expect(mapping(input)).to eq(output)
+            allow(logger).to receive(:warn)
+
+            expect(mapping_network_interface_params(input)).to eq(output)
           end
         end
 
@@ -611,7 +706,7 @@ module Bosh::AwsCloud
 
           it 'logs a warning message since there is a mismatch in subnet ids provided' do
             allow(logger).to receive(:warn)
-            mapping(input)
+            mapping_network_interface_params(input)
             expect(logger).to have_received(:warn).with(/Subnet ID mismatch detected. Proceeding with the first subnet ID/)
           end
         end
@@ -630,7 +725,16 @@ module Bosh::AwsCloud
               networks_spec: network_cloud_props
             }
           end
-          let(:output) { { placement: { availability_zone: 'region-1a' } } }
+          let(:output) do
+             {
+              placement: { availability_zone: 'region-1a' },
+              network_interfaces:
+              [
+                device_index: 0,
+                network_interface_id: "eni-12345678"
+              ]
+              }
+            end
           it 'maps placement.availability_zone from vm_type' do
             expect(mapping(input)).to eq(output)
           end
@@ -659,11 +763,10 @@ module Bosh::AwsCloud
               placement: {
                 availability_zone: 'region-1a'
               },
-              network_interfaces: [
-                {
-                  subnet_id: dynamic_subnet_id,
-                  device_index: 0
-                }
+              network_interfaces:
+              [
+                device_index: 0,
+                network_interface_id: "eni-12345678"
               ]
             }
           end
@@ -697,11 +800,10 @@ module Bosh::AwsCloud
               placement: {
                 availability_zone: 'region-1a'
               },
-              network_interfaces: [
-                {
-                  subnet_id: dynamic_subnet_id,
-                  device_index: 0
-                }
+              network_interfaces:
+              [
+                device_index: 0,
+                network_interface_id: "eni-12345678"
               ]
             }
           end
@@ -720,7 +822,16 @@ module Bosh::AwsCloud
             block_device_mappings: ['fake-device']
           }
         end
-        let(:output) { { block_device_mappings: ['fake-device'] } }
+        let(:output) do
+          {
+            block_device_mappings: ['fake-device'],
+            network_interfaces:
+            [
+              device_index: 0,
+              network_interface_id: "eni-12345678"
+            ]
+          }
+          end
 
         it 'passes the mapping through to the output' do
           expect(mapping(input)).to eq(output)
@@ -774,13 +885,10 @@ module Bosh::AwsCloud
               },
               key_name: 'fake-key-name',
               iam_instance_profile: { name: 'fake-iam-profile' },
-              network_interfaces: [
-                {
-                  subnet_id: manual_subnet_id,
-                  private_ip_address: '1.1.1.1',
-                  device_index: 0,
-                  groups: ['sg-12345678', 'sg-23456789'],
-                }
+              network_interfaces:
+              [
+                device_index: 0,
+                network_interface_id: "eni-12345678"
               ],
               user_data: user_data,
               block_device_mappings: ['fake-device']
@@ -801,9 +909,9 @@ module Bosh::AwsCloud
               networks_spec: network_cloud_props,
               tags: { 'tag' => 'tag_value' }
             }
-            expect(instance_param_mapper.instance_params[:tag_specifications]).to_not be_nil
-            expect(instance_param_mapper.instance_params[:tag_specifications][0][:tags]).to eq([{key: 'tag', value: 'tag_value'}])
-            expect(instance_param_mapper.instance_params[:tag_specifications][0][:resource_type]).to eq('instance')
+            expect(instance_param_mapper.instance_params(fake_nic_configuration)[:tag_specifications]).to_not be_nil
+            expect(instance_param_mapper.instance_params(fake_nic_configuration)[:tag_specifications][0][:tags]).to eq([{key: 'tag', value: 'tag_value'}])
+            expect(instance_param_mapper.instance_params(fake_nic_configuration)[:tag_specifications][0][:resource_type]).to eq('instance')
           end
         end
       end
@@ -909,7 +1017,12 @@ module Bosh::AwsCloud
 
     def mapping(input)
       instance_param_mapper.manifest_params = input
-      instance_param_mapper.instance_params
+      instance_param_mapper.instance_params(fake_nic_configuration)
+    end
+
+    def mapping_network_interface_params(input)
+      instance_param_mapper.manifest_params = input
+      instance_param_mapper.network_interface_params
     end
 
     def agent_network_spec(networks_cloud_props)
