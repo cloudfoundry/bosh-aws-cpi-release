@@ -582,8 +582,6 @@ module Bosh::AwsCloud
           end
 
           it 'attaches an ipv4 and an ipv6 to the nic' do
-            allow(logger).to receive(:warn)
-
             expect(mapping(input)).to eq(output)
           end
         end

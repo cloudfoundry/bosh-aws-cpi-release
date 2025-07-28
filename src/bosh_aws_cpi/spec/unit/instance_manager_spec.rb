@@ -115,6 +115,7 @@ module Bosh::AwsCloud
         allow(instance).to receive(:wait_until_exists)
         allow(instance).to receive(:wait_until_running)
         allow(instance).to receive(:update_routing_tables)
+        allow(instance).to receive(:attach_ip_prefixes)
       end
 
       context 'when user_data is defined as a parameter' do
@@ -122,7 +123,6 @@ module Bosh::AwsCloud
 
         it 'should use user_data when building the instance params' do
           allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
-          allow(instance_manager).to receive(:attach_ip_prefixes)
           allow(aws_client).to receive(:run_instances)
 
           expect(param_mapper).to receive(:manifest_params=).with(hash_including(user_data: user_data))
@@ -142,7 +142,6 @@ module Bosh::AwsCloud
 
       it 'should ask AWS to create an instance in the given region, with parameters built up from the given arguments' do
         allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
-        allow(instance_manager).to receive(:attach_ip_prefixes)
 
         expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
         instance_manager.create(
@@ -161,7 +160,6 @@ module Bosh::AwsCloud
       context 'redacts' do
         before do
           allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
-          allow(instance_manager).to receive(:attach_ip_prefixes)
           allow(aws_client).to receive(:run_instances)
 
           allow(logger).to receive(:info)
@@ -215,7 +213,6 @@ module Bosh::AwsCloud
 
         it 'should ask AWS to create a SPOT instance in the given region, when vm_type includes spot_bid_price' do
           allow(ec2).to receive(:client).and_return(aws_client)
-          allow(instance_manager).to receive(:attach_ip_prefixes)
 
           # need to translate security group names to security group ids
           sg1 = instance_double('Aws::EC2::SecurityGroup', id:'sg-baz-1234')
@@ -255,8 +252,6 @@ module Bosh::AwsCloud
 
         context 'when spot creation fails' do
           it 'raises and logs an error' do
-            allow(instance_manager).to receive(:attach_ip_prefixes)
-
             expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false))
             expect(logger).to receive(:warn).with(/Spot instance creation failed/)
 
@@ -291,7 +286,6 @@ module Bosh::AwsCloud
             before do
               allow(aws_client).to receive(:run_instances)
               allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
-              allow(instance_manager).to receive(:attach_ip_prefixes)
               expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false), message)
             end
 
@@ -338,7 +332,6 @@ module Bosh::AwsCloud
       context 'when source_dest_check is set to true' do
         it 'does NOT call disable_dest_check' do
           allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
-          allow(instance_manager).to receive(:attach_ip_prefixes)
 
           expect(instance).not_to receive(:disable_dest_check)
           expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
@@ -365,7 +358,6 @@ module Bosh::AwsCloud
 
         it 'disables source_dest_check on the instance' do
           allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
-          allow(instance_manager).to receive(:attach_ip_prefixes)
 
           expect(instance).to receive(:disable_dest_check)
           expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
@@ -388,7 +380,6 @@ module Bosh::AwsCloud
       it 'should retry creating the VM when Aws::EC2::Errors::InvalidIPAddressInUse raised' do
         allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
         allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
-        allow(instance_manager).to receive(:attach_ip_prefixes)
 
         expect(aws_client).to receive(:run_instances).
           with(run_instances_params).
@@ -443,7 +434,6 @@ module Bosh::AwsCloud
 
         it 'should retry creating the VM twice then give up when Bosh::Clouds::AbruptlyTerminated is raised' do
           allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
-          allow(instance_manager).to receive(:attach_ip_prefixes)
 
           expect(Instance).to receive(:new).exactly(3).times
 

@@ -18,7 +18,7 @@ module Bosh::AwsCloud
     def create(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, default_security_groups, block_device_mappings, user_data, tags, metadata_options)
       abruptly_terminated_retries = 2
       begin 
-        params = build_instance_params(
+        instance_params, ip_addresses = build_instance_params(
           stemcell_id,
           vm_cloud_props,
           networks_cloud_props,
@@ -29,9 +29,6 @@ module Bosh::AwsCloud
           tags,
           metadata_options
         )
-
-        instance_params = params[0]
-        ip_addresses = params[1]
 
         redacted_instance_params = Bosh::Cpi::Redactor.clone_and_redact(
           instance_params,
@@ -74,7 +71,7 @@ module Bosh::AwsCloud
         instance.wait_until_running
         instance.update_routing_tables(vm_cloud_props.advertised_routes)
         instance.disable_dest_check unless vm_cloud_props.source_dest_check
-        attach_ip_prefixes(instance, private_ip_addresses)
+        instance.attach_ip_prefixes(instance, private_ip_addresses)
       rescue => e
         if e.is_a?(Bosh::AwsCloud::AbruptlyTerminated)
           raise
@@ -87,29 +84,6 @@ module Bosh::AwsCloud
           end
           raise
         end
-      end
-    end
-
-    def attach_ip_prefixes(instance, private_ip_addresses)
-      private_ip_addresses.each do |address|
-          private_ip = address[:ip]
-          prefix = address[:prefix].to_s
-        
-          if @param_mapper.ipv6_address?(private_ip)
-            if !prefix.empty? && prefix.to_i < 128
-              @ec2.client.assign_ipv_6_addresses(
-                network_interface_id: instance.network_interface_id,
-                ipv_6_prefixes: ["#{private_ip}/#{prefix}"] # aws only supports /80 prefixes
-              )
-            end
-          else
-            if !prefix.empty? && prefix.to_i < 32
-              @ec2.client.assign_private_ip_addresses(
-                network_interface_id: instance.network_interface_id,
-                ipv_4_prefixes: ["#{private_ip}/#{prefix}"] # aws only supports /28 prefixes
-              )
-            end
-          end
       end
     end
 

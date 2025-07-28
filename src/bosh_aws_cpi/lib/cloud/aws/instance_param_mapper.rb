@@ -93,7 +93,7 @@ module Bosh::AwsCloud
       nic[:groups] = sg unless sg.nil? || sg.empty?
       nic[:subnet_id] = subnet_id if subnet_id
 
-      check_network_validity
+      log_network_id_mismatch
 
       private_ip_addresses.each do |address|
         private_ip = address[:ip]
@@ -117,18 +117,11 @@ module Bosh::AwsCloud
 
       params.delete_if { |_k, v| v.nil? }
     end
-    
+
     def private_ip_addresses
-      manual_subnets = subnets.select { |subnet| subnet.type == 'manual' }
-      ips_with_optional_prefixes = manual_subnets.map do |subnet_network|
-        if subnet_network.prefix
-          { ip: subnet_network.ip, prefix: subnet_network.prefix }
-        else
-          { ip: subnet_network.ip }
-        end
-      end
-    
-      ips_with_optional_prefixes unless ips_with_optional_prefixes.nil?
+      manual_subnets = subnets.select { |subnet| subnet.type == 'manual' }    
+
+      return manual_subnets.map { |subnet| { ip: subnet.ip, prefix: subnet.prefix }.compact }
     end
 
     def ipv6_address?(addr)
@@ -187,7 +180,7 @@ module Bosh::AwsCloud
       subnets.map { |subnet_network| subnet_network.subnet }
     end
 
-    def check_network_validity
+    def log_network_id_mismatch
       first_id = subnet_id
       mismatched_ids = subnet_ids.reject { |id| id == first_id }
       unless mismatched_ids.empty?
