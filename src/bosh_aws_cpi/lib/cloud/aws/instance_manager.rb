@@ -176,7 +176,7 @@ module Bosh::AwsCloud
     end
 
     def network_interface_create_wait_time
-      30
+      Bosh::AwsCloud::NetworkInterface::CREATE_NETWORK_INTERFACE_WAIT_TIME
     end
 
     def subnet_az_mapping(networks_cloud_props)
