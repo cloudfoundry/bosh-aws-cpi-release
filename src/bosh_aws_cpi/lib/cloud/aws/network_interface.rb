@@ -2,6 +2,8 @@ module Bosh::AwsCloud
   class NetworkInterface
     include Helpers
 
+    CREATE_NETWORK_INTERFACE_WAIT_TIME = 30
+
     def initialize(aws_network_interface, ec2_client, logger)
       @aws_network_interface = aws_network_interface
       @ec2_client = ec2_client
@@ -15,11 +17,11 @@ module Bosh::AwsCloud
     def wait_until_available
       begin
         @logger.info("Waiting for network interface to become available...")
-        @ec2_client.wait_until(:network_interface_available, network_interface_ids: [@aws_network_interface.id])
+        @ec2_client.wait_until(:network_interface_available, network_interface_ids: [id])
       rescue Aws::Waiters::Errors::TooManyAttemptsError
-        message = "Timed out waiting for network interface '#{@aws_instance.id}' to become available"
+        message = "Timed out waiting for network interface '#{id}' to become available"
         @logger.warn(message)
-        raise Bosh::Clouds::NetworkInterfaceCreationFailed.new(true), message
+        raise Bosh::Clouds::CloudError, message
       end
     end
 
