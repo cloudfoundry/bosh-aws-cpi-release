@@ -85,6 +85,15 @@ module Bosh::AwsCloud
 
     def terminate(fast=false)
       begin
+          @instance_manager.find_network_interface(network_interface_id).delete
+      rescue => e
+        if e.is_a?(Aws::EC2::Errors::InvalidNetworkInterfaceIDNotFound)
+          @logger.warn("Network interface `#{network_interface_id}' not found while trying to delete it")
+        else
+          raise e
+        end
+      end
+      begin
         @aws_instance.terminate
       rescue Aws::EC2::Errors::InvalidInstanceIDNotFound => e
         @logger.warn("Failed to terminate instance '#{@aws_instance.id}' because it was not found: #{e.inspect}")
