@@ -143,19 +143,7 @@ module Bosh::AwsCloud
 
     def delete_vm(instance_id)
       aws_instance = @instance_manager.find(instance_id)
-      network_interface_id = aws_instance.network_interface_id
       aws_instance.terminate(@config.aws.fast_path_delete?)
-      begin
-        if network_interface_id
-          @instance_manager.find_network_interface(network_interface_id).delete
-        end
-      rescue => e
-        if e.is_a?(Aws::EC2::Errors::InvalidNetworkInterfaceIDNotFound)
-          @logger.warn("Network interface `#{network_interface_id}' not found while trying to delete it")
-        else
-          raise e
-        end
-      end
 
       yield instance_id if block_given?
     end
