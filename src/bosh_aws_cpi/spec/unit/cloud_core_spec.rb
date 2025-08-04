@@ -95,8 +95,7 @@ describe Bosh::AwsCloud::CloudCore do
     let(:instance_id) {'fake-id'}
     let(:network_interface_id) {'fake-network-interface-id'}
     let(:ec2) {instance_double(Aws::EC2::Resource)}
-    let(:instance) {instance_double(Bosh::AwsCloud::Instance, {network_interface_id: network_interface_id})}
-    let(:network_interface) {instance_double(Bosh::AwsCloud::NetworkInterface)}
+    let(:instance) {instance_double(Bosh::AwsCloud::Instance)}
 
     before do
       allow(Bosh::AwsCloud::InstanceManager).to receive(:new).and_return(instance_manager)
@@ -104,9 +103,7 @@ describe Bosh::AwsCloud::CloudCore do
 
     it 'deletes an EC2 instance' do
       allow(instance_manager).to receive(:find).with(instance_id).and_return(instance)
-      allow(instance_manager).to receive(:find_network_interface).with(network_interface_id).and_return(network_interface)
       expect(instance).to receive(:terminate).with(false)
-      expect(network_interface).to receive(:delete)
 
       cloud.delete_vm(instance_id)
     end
