@@ -152,14 +152,24 @@ module Bosh::AwsCloud
     def cleanup_network_interface
       if !network_interface.nil?
         begin
-          network_interface.detach({
-            force: true,
-          })
-          network_interface.delete
+          @logger.info("Deleting network_interface: #{network_interface.id}")
+          errors = [Aws::EC2::Errors::InvalidNetworkInterfaceInUse]
+
+          Bosh::Common.retryable(sleep: network_interface_delete_wait_time, tries: 20, on: errors) do |_tries, error|
+            if error.class == Aws::EC2::Errors::InvalidNetworkInterfaceInUse
+              @logger.warn("Network Interface was in use: #{error}")
+            end
+            network_interface.delete
+            true
+          end
         rescue Aws::EC2::Errors::InvalidNetworkInterfaceIDNotFound => e
           @logger.warn("Failed to delete network interface '#{network_interface.id}' because it was not found: #{e.inspect}")
         end
       end
+    end
+
+    def network_interface_delete_wait_time
+      5
     end
   end
 end
