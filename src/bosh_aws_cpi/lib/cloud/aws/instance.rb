@@ -153,10 +153,10 @@ module Bosh::AwsCloud
       if !network_interface.nil?
         begin
           @logger.info("Deleting network_interface: #{network_interface.id}")
-          errors = [Aws::EC2::Errors::InvalidNetworkInterfaceInUse]
+          errors = [Aws::EC2::Errors::InvalidNetworkInterfaceInUse, Aws::EC2::Errors::InvalidParameterValue]
 
           Bosh::Common.retryable(sleep: network_interface_delete_wait_time, tries: 20, on: errors) do |_tries, error|
-            if error.class == Aws::EC2::Errors::InvalidNetworkInterfaceInUse
+            if error.class == Aws::EC2::Errors::InvalidNetworkInterfaceInUse || error.class == Aws::EC2::Errors::InvalidParameterValue
               @logger.warn("Network Interface was in use: #{error}")
             end
             network_interface.delete
