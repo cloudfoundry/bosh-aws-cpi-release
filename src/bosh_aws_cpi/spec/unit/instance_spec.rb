@@ -104,8 +104,20 @@ module Bosh::AwsCloud
 
     describe '#terminate' do
       it 'should terminate an instance and its attached network interface given the id' do
+        allow(instance).to receive(:network_interface_delete_wait_time).and_return(0)
         expect(aws_instance).to receive(:terminate).with(no_args).ordered
         expect(aws_instance).to receive(:network_interfaces).and_return([network_interface])
+        expect(network_interface).to receive(:delete)
+        expect(aws_instance).to receive(:wait_until_terminated).ordered
+
+        instance.terminate
+      end
+
+      it 'should retry deleting the Network Interface when Aws::EC2::Errors::InvalidNetworkInterfaceInUse raised' do
+        allow(instance).to receive(:network_interface_delete_wait_time).and_return(0)
+        expect(aws_instance).to receive(:terminate).with(no_args).ordered
+        expect(aws_instance).to receive(:network_interfaces).and_return([network_interface])
+        expect(network_interface).to receive(:delete).and_raise(Aws::EC2::Errors::InvalidNetworkInterfaceInUse.new(nil, 'in-use'))
         expect(network_interface).to receive(:delete)
         expect(aws_instance).to receive(:wait_until_terminated).ordered
 
