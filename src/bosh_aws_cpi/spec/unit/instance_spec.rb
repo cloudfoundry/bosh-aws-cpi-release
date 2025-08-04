@@ -133,8 +133,6 @@ module Bosh::AwsCloud
         end
 
         it 'raises Bosh::Clouds::VMNotFound but still removes settings from registry and removes the network interface' do
-          expect(aws_instance).to receive(:network_interfaces).and_return([network_interface])
-          expect(network_interface).to receive(:delete)
           expect {
             instance.terminate
           }.to raise_error(Bosh::Clouds::VMNotFound, "VM `#{instance_id}' not found")
