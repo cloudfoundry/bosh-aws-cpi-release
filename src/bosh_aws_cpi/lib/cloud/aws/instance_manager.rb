@@ -44,10 +44,10 @@ module Bosh::AwsCloud
         )
         @logger.info("Creating new instance with: #{redacted_instance_params.inspect}")
 
-        aws_instance = create_aws_instance(instance_params, vm_cloud_props, network_interface)
+        aws_instance = create_aws_instance(instance_params, vm_cloud_props)
         instance = Bosh::AwsCloud::Instance.new(aws_instance, @logger)
 
-        babysit_instance_creation(instance, vm_cloud_props, network_interface)
+        babysit_instance_creation(instance, vm_cloud_props)
       rescue => e
         if e.is_a?(Bosh::AwsCloud::AbruptlyTerminated)
           @logger.warn("Failed to configure instance '#{instance.id}': #{e.inspect}")
@@ -65,10 +65,6 @@ module Bosh::AwsCloud
     # @param [String] instance_id EC2 instance id
     def find(instance_id)
       Bosh::AwsCloud::Instance.new(@ec2.instance(instance_id), @logger)
-    end
-
-    def find_network_interface(network_interface_id)
-      Bosh::AwsCloud::NetworkInterface.new(@ec2.network_interface(network_interface_id), @ec2.client, @logger)
     end
 
     private
@@ -116,7 +112,7 @@ module Bosh::AwsCloud
       resp.network_interface.network_interface_id
     end
 
-    def babysit_instance_creation(instance, vm_cloud_props, network_interface)
+    def babysit_instance_creation(instance, vm_cloud_props)
       begin
         # We need to wait here for the instance to be running, as if we are going to
         # attach to a load balancer, the instance must be running.
@@ -130,10 +126,9 @@ module Bosh::AwsCloud
         else
           @logger.warn("Failed to configure instance '#{instance.id}': #{e.inspect}")
           begin
-            network_interface.delete
             instance.terminate
           rescue => e
-            @logger.error("Failed to terminate mis-configured instance '#{instance.id}': #{e.inspect}")
+            @logger.error("Failed to terminate mis-configured instance '#{instance.id}': #{e.inspect}")            
           end
           raise
         end
@@ -147,7 +142,7 @@ module Bosh::AwsCloud
       spot_manager.create(launch_specification, spot_bid_price)
     end
 
-    def create_aws_instance(instance_params, vm_cloud_props, network_interface)
+    def create_aws_instance(instance_params, vm_cloud_props)
       if vm_cloud_props.spot_bid_price
         begin
           return create_aws_spot_instance(instance_params, vm_cloud_props.spot_bid_price)
@@ -155,7 +150,6 @@ module Bosh::AwsCloud
           if vm_cloud_props.spot_ondemand_fallback
             @logger.info("Spot instance creation failed with this message: #{e.message}; will create ondemand instance because `spot_ondemand_fallback` is set.")
           else
-            network_interface.delete
             message = "Spot instance creation failed: #{e.inspect}"
             @logger.warn(message)
             raise e, message

@@ -332,7 +332,6 @@ module Bosh::AwsCloud
             allow(instance_manager).to receive(:get_created_network_interface_id).and_return('fake_network_interface_id')
             allow(aws_client).to receive(:create_network_interface)
             expect(logger).to receive(:warn).with(/Spot instance creation failed/)
-            expect(network_interface).to receive(:delete)
 
             expect {
               instance_manager.create(
@@ -513,7 +512,6 @@ module Bosh::AwsCloud
           expect(instance).to receive(:wait_until_running).and_raise(create_err)
 
           expect(instance).to receive(:terminate).with(no_args)
-          expect(network_interface).to receive(:delete)
 
           expect {
             instance_manager.create(
@@ -568,7 +566,6 @@ module Bosh::AwsCloud
             allow(aws_client).to receive(:create_network_interface)
 
             expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
-            expect(network_interface).to receive(:delete)
             expect(instance).to receive(:wait_until_running).and_raise(create_err)
 
             expect {
