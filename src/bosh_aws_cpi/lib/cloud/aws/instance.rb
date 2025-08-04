@@ -92,8 +92,9 @@ module Bosh::AwsCloud
       ensure
         #TODO move this into v1
         @logger.info("Deleting instance settings for '#{@aws_instance.id}'")
-        cleanup_network_interface
       end
+
+      cleanup_network_interface
 
       if fast
         TagManager.tag(@aws_instance, "Name", "to be deleted")
