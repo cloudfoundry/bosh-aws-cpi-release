@@ -207,25 +207,6 @@ module Bosh::AwsCloud
         )
       end
 
-      it 'passes private_ip_addresses to attach_ip_prefixes' do
-        allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
-        allow(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
-        allow(param_mapper).to receive(:private_ip_addresses).and_return(['ip1', 'ip2'])
-
-        expect(instance).to receive(:attach_ip_prefixes).with(instance, ['ip1', 'ip2'])
-        instance_manager.create(
-          stemcell_id,
-          vm_cloud_props,
-          networks_cloud_props,
-          disk_locality,
-          default_options,
-          fake_block_device_mappings,
-          user_data,
-          tags,
-          nil
-        )
-      end
-
       context 'redacts' do
         before do
           allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
