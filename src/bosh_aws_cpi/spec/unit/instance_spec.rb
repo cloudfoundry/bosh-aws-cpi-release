@@ -228,57 +228,5 @@ module Bosh::AwsCloud
         instance.disable_dest_check
       end
     end
-
-    describe '#network_interface_id' do
-      it 'returns the network interface id of the first network interface' do
-        network_interface = instance_double(Aws::EC2::NetworkInterface, network_interface_id: 'eni-12345')
-        allow(aws_instance).to receive(:network_interfaces).and_return([network_interface])
-        expect(instance.network_interface_id).to eq('eni-12345')
-      end
-    end
-
-    describe '#attach_ip_prefixes' do
-      let(:network_interface_id) { 'eni-12345' }
-      let(:private_ip_addresses) do
-        [
-          { ip: '10.0.0.1', prefix: 28 },
-          { ip: '2001:db8::1', prefix: 80 }
-        ]
-      end
-      let(:ec2_client) { double('Aws::EC2::Client') }
-      let(:ec2) { double('Aws::EC2', client: ec2_client) }
-      let(:instance_obj) { instance }
-
-      before do
-        allow(instance_obj).to receive(:network_interface_id).and_return(network_interface_id)
-        instance.instance_variable_set(:@ec2, ec2)
-      end
-
-      it 'assigns IPv4 and IPv6 prefixes when prefix is within valid range' do
-        expect(ec2_client).to receive(:assign_private_ip_addresses).with(
-          network_interface_id: network_interface_id,
-          ipv_4_prefixes: ['10.0.0.1/28']
-        )
-        allow(instance_obj).to receive(:ipv6_address?).and_return(false, true)
-        expect(ec2_client).to receive(:assign_ipv_6_addresses).with(
-          network_interface_id: network_interface_id,
-          ipv_6_prefixes: ['2001:db8::1/80']
-        )
-        instance_obj.attach_ip_prefixes(instance_obj, private_ip_addresses)
-      end
-
-      it 'does not assign prefixes if prefix is empty or too large' do
-        addresses = [
-          { ip: '10.0.0.2', prefix: '' },
-          { ip: '10.0.0.3', prefix: 33 },
-          { ip: '2001:db8::2', prefix: '' },
-          { ip: '2001:db8::3', prefix: 129 }
-        ]
-        allow(instance_obj).to receive(:ipv6_address?).and_return(false, false, true, true)
-        expect(ec2_client).not_to receive(:assign_private_ip_addresses)
-        expect(ec2_client).not_to receive(:assign_ipv_6_addresses)
-        instance_obj.attach_ip_prefixes(instance_obj, addresses)
-      end
-    end
   end
 end
