@@ -20,7 +20,7 @@ module Bosh::AwsCloud
       begin
         set_manifest_params(stemcell_id, vm_cloud_props, networks_cloud_props, block_device_mappings, settings.encode(stemcell_api_version), disk_locality, default_security_groups, tags, metadata_options)
 
-        network_interface = create_network_interface
+        network_interface = create_network_interface(vm_cloud_props)
 
         settings.update_agent_networks_settings(network_interface.mac_address)
 
@@ -85,26 +85,27 @@ module Bosh::AwsCloud
       }
     end
 
-    def create_network_interface
-      # Retry the create instance operation a couple of times if we are told that the IP
-      # address is in use - it can happen when the director recreates a VM and AWS
-      # is too slow to update its state when we have released the IP address and want to
-      # reallocate it again.
+    def create_network_interfaces(vm_cloud_props)
       network_interface_params = @param_mapper.network_interface_params
-      @logger.info("Creating new network_interface with: #{network_interface_params.inspect}")
-      errors = [Aws::EC2::Errors::InvalidIPAddressInUse]
+      return unless network_interface_params.is_a?(Array)
 
-      Bosh::Common.retryable(sleep: network_interface_create_wait_time, tries: 20, on: errors) do |_tries, error|
-        @logger.info('Launching network interface...')
-        if error.class == Aws::EC2::Errors::InvalidIPAddressInUse
-          @logger.warn("IP address was in use: #{error}")
+      errors = [Aws::EC2::Errors::InvalidIPAddressInUse]
+      network_interface_params.map do |nic_and_prefix|
+        nic_params = nic_and_prefix[:nic]
+        prefixes = nic_and_prefix[:prefixes]
+        @logger.info("Creating new network_interface with: #{nic_params.inspect}")
+        Bosh::Common.retryable(sleep: network_interface_create_wait_time, tries: 20, on: errors) do |_tries, error|
+          @logger.info('Launching network interface...')
+          @logger.warn("IP address was in use: #{error}") if error.is_a?(Aws::EC2::Errors::InvalidIPAddressInUse)
+
+          resp = @ec2.client.create_network_interface(nic_params)
+          network_interface_id = get_created_network_interface_id(resp)
+          network_interface = Bosh::AwsCloud::NetworkInterface.new(@ec2.network_interface(network_interface_id), @ec2.client, @logger)
+          network_interface.wait_until_available
+          network_interface.attach_ip_prefixes(prefixes) unless prefixes.nil?
+          network_interface.add_associate_public_ip_address(vm_cloud_props)
+          network_interface
         end
-        resp = @ec2.client.create_network_interface(network_interface_params)
-        network_interface_id = get_created_network_interface_id(resp)
-        network_interface = Bosh::AwsCloud::NetworkInterface.new(@ec2.network_interface(network_interface_id), @ec2.client, @logger)
-        network_interface.wait_until_available
-        network_interface.attach_ip_prefixes(@param_mapper.private_ip_addresses)
-        network_interface
       end
     end
 
