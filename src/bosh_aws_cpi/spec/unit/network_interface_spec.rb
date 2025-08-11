@@ -33,18 +33,15 @@ describe Bosh::AwsCloud::NetworkInterface do
   end
 
   describe '#attach_ip_prefixes' do
-    let(:private_ip_addresses) do
-      [
-        { ip: '192.168.1.1', prefix: 28 },
-        { ip: '2001:db8::1', prefix: 80 }
-      ]
-    end
-
     it 'attaches IPv4 and IPv6 prefixes to the network interface' do
       allow(ec2_client).to receive(:assign_private_ip_addresses)
       allow(ec2_client).to receive(:assign_ipv_6_addresses)
 
-      network_interface.attach_ip_prefixes(private_ip_addresses)
+      prefixes = {
+        ipv4: { address: '192.168.1.1', prefix: 28 },
+        ipv6: { address: '2001:db8::1', prefix: 80 }
+      }
+      network_interface.attach_ip_prefixes(prefixes)
 
       expect(ec2_client).to have_received(:assign_private_ip_addresses).with(
         network_interface_id: 'eni-12345',
@@ -54,6 +51,46 @@ describe Bosh::AwsCloud::NetworkInterface do
         network_interface_id: 'eni-12345',
         ipv_6_prefixes: ['2001:db8::1/80']
       )
+    end
+
+    it 'does nothing when prefixes are nil' do
+      allow(ec2_client).to receive(:assign_private_ip_addresses)
+      allow(ec2_client).to receive(:assign_ipv_6_addresses)
+
+      network_interface.attach_ip_prefixes(nil)
+
+      expect(ec2_client).not_to have_received(:assign_private_ip_addresses)
+      expect(ec2_client).not_to have_received(:assign_ipv_6_addresses)
+    end
+  end
+
+  describe '#add_associate_public_ip_address' do
+    let(:vm_type) { double('VMType') }
+
+    context 'when auto_assign_public_ip is true' do
+      before do
+        allow(vm_type).to receive(:auto_assign_public_ip).and_return(true)
+        allow(ec2_client).to receive(:modify_network_interface_attribute)
+      end
+
+      it 'associates public IP address with the network interface' do
+        network_interface.add_associate_public_ip_address(vm_type)
+
+        expect(ec2_client).to have_received(:modify_network_interface_attribute).with(
+          network_interface_id: 'eni-12345',
+          associate_public_ip_address: { value: true }
+        )
+      end
+    end
+
+    context 'when auto_assign_public_ip is false' do
+      it 'does not associate public IP address' do
+        allow(vm_type).to receive(:auto_assign_public_ip).and_return(false)
+        allow(ec2_client).to receive(:modify_network_interface_attribute)
+
+        network_interface.add_associate_public_ip_address(vm_type)
+        expect(ec2_client).not_to have_received(:modify_network_interface_attribute)
+      end
     end
   end
 

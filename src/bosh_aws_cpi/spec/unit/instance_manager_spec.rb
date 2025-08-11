@@ -86,17 +86,24 @@ module Bosh::AwsCloud
         fake_instance_params.merge(min_count: 1, max_count: 1)
       end
       let(:network_interface) { instance_double(Bosh::AwsCloud::NetworkInterface) }
+      let(:network_interfaces) { [{ nic: network_interface, networks: ['default'] }] }
       let(:fake_network_interface_params) do
-        {
-          ip_address: 'fake-ip-address'
-        }
+        [
+          {
+            nic: {
+              ip_address: 'fake-ip-address'
+            },
+            networks: ['default'],
+            prefixes: nil
+          }
+        ]
       end
       let(:tags) { {'tag' => 'tag_value'} }
 
       before do
         allow(param_mapper).to receive(:instance_params).and_return(fake_instance_params)
         allow(param_mapper).to receive(:network_interface_params).and_return(fake_network_interface_params)
-        allow(param_mapper).to receive(:private_ip_addresses)
+
         allow(param_mapper).to receive(:manifest_params=)
         allow(param_mapper).to receive(:validate)
         allow(param_mapper).to receive(:update_user_data)
@@ -133,6 +140,7 @@ module Bosh::AwsCloud
         allow(network_interface).to receive(:wait_until_available)
         allow(network_interface).to receive(:mac_address)
         allow(network_interface).to receive(:nic_configuration)
+        allow(network_interface).to receive(:add_associate_public_ip_address)
 
         allow(settings).to receive(:encode).and_return(user_data)
         allow(settings).to receive(:update_agent_networks_settings)
@@ -240,6 +248,80 @@ module Bosh::AwsCloud
 
         it '`defaults.secret_access_key` when creating an instance' do
           expect(logger).to have_received(:info).with(/"secret_access_key"=>"<redacted>"/)
+        end
+      end
+
+      context 'network interface creation' do
+        before do
+          allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
+          allow(instance_manager).to receive(:get_created_network_interface_id).and_return('fake_network_interface_id')
+          allow(aws_client).to receive(:run_instances)
+          allow(aws_client).to receive(:create_network_interface)
+        end
+
+        it 'calls add_associate_public_ip_address with vm_cloud_props' do
+          expect(network_interface).to receive(:add_associate_public_ip_address).with(vm_cloud_props)
+
+          instance_manager.create(
+            stemcell_id,
+            vm_cloud_props,
+            networks_cloud_props,
+            disk_locality,
+            default_options,
+            fake_block_device_mappings,
+            settings,
+            tags,
+            nil,
+            nil
+          )
+        end
+
+        it 'does not call attach_ip_prefixes when prefixes are nil' do
+          expect(network_interface).not_to receive(:attach_ip_prefixes)
+
+          instance_manager.create(
+            stemcell_id,
+            vm_cloud_props,
+            networks_cloud_props,
+            disk_locality,
+            default_options,
+            fake_block_device_mappings,
+            settings,
+            tags,
+            nil,
+            nil
+          )
+        end
+
+        context 'when prefixes are present' do
+          let(:fake_network_interface_params) do
+            [
+              {
+                nic: {
+                  ip_address: 'fake-ip-address'
+                },
+                networks: ['default'],
+                prefixes: ['2001:db8::/64']
+              }
+            ]
+          end
+
+          it 'calls attach_ip_prefixes with the correct prefixes' do
+            expect(network_interface).to receive(:attach_ip_prefixes).with(['2001:db8::/64'])
+
+            instance_manager.create(
+              stemcell_id,
+              vm_cloud_props,
+              networks_cloud_props,
+              disk_locality,
+              default_options,
+              fake_block_device_mappings,
+              settings,
+              tags,
+              nil,
+              nil
+            )
+          end
         end
       end
 
@@ -453,12 +535,14 @@ module Bosh::AwsCloud
         allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
         allow(instance_manager).to receive(:get_created_network_interface_id).and_return('fake_network_interface_id')
 
+        expected_nic_params = fake_network_interface_params.first[:nic]
+        
         expect(aws_client).to receive(:create_network_interface).
-          with(fake_network_interface_params).
+          with(expected_nic_params).
           and_raise(Aws::EC2::Errors::InvalidIPAddressInUse.new(nil, 'in-use'))
 
         expect(aws_client).to receive(:create_network_interface)
-          .with(fake_network_interface_params)
+          .with(expected_nic_params)
 
         expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
 

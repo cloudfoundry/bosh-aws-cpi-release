@@ -124,6 +124,18 @@ module Bosh::AwsCloud
         instance.terminate
       end
 
+      it 'should terminate an instance and delete multiple attached network interfaces' do
+        network_interface2 = instance_double(Aws::EC2::NetworkInterface, id: 'fake-network-interface-id-2')
+        allow(instance).to receive(:network_interface_delete_wait_time).and_return(0)
+        expect(aws_instance).to receive(:terminate).with(no_args).ordered
+        expect(aws_instance).to receive(:network_interfaces).and_return([network_interface, network_interface2])
+        expect(network_interface).to receive(:delete)
+        expect(network_interface2).to receive(:delete)
+        expect(aws_instance).to receive(:wait_until_terminated).ordered
+
+        instance.terminate
+      end
+
       context 'when instance was deleted in AWS and no longer exists (showing in AWS console)' do
         before do
           # AWS returns NotFound error if instance no longer exists in AWS console

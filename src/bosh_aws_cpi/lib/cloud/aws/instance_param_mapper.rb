@@ -65,90 +65,7 @@ module Bosh::AwsCloud
       build_network_interfaces_from_groups(updated_nic_groups)
     end
 
-    private
-
-    def group_networks_by_nic_group(network_specs)
-      nic_groups = Hash.new { |h, k| h[k] = [] }
-      network_specs.each_value do |net|
-        group_key = net['nic_group'] || net['name']
-        nic_groups[group_key] << net
-      end
-      nic_groups
-    end
-
-    def validate_nic_groups_subnets(nic_groups)
-      nic_groups.each do |nic_group, nets|
-        subnet_ids = nets.map { |net| net['subnet'] }.compact.uniq
-        if subnet_ids.size > 1
-          raise Bosh::Clouds::CloudError, "Networks in nic_group '#{nic_group}' have different subnet_ids: #{subnet_ids.join(', ')}. All networks in a nic_group must have the same subnet_id."
-        end
-      end
-    end
-
-    def assign_ip_configs_to_nic_groups(nic_groups)
-      nic_groups.each do |_nic_group, nets|
-        ip_entries = nets.filter_map do |net|
-          next unless net['ip']
-          entry = {}
-          entry[:ip] = net['ip']
-          entry[:prefix] = net['prefix'] if net['prefix']
-          entry
-        end
-
-        # Separate IPv4 and IPv6 addresses with standard prefixes (32 for IPv4, 128 for IPv6)
-        ipv4_addresses = ip_entries.select { |entry| !ipv6_address?(entry[:ip]) && (entry[:prefix].to_s.empty? || entry[:prefix].to_i == 32) }
-        ipv6_addresses = ip_entries.select { |entry| ipv6_address?(entry[:ip]) && (entry[:prefix].to_s.empty? || entry[:prefix].to_i == 128) }
-        
-        # Separate IPv4 and IPv6 prefixes (non-standard prefix lengths)
-        ipv4_prefixes = ip_entries.select { |entry| !ipv6_address?(entry[:ip]) && entry[:prefix] && entry[:prefix].to_i != 32 }
-        ipv6_prefixes = ip_entries.select { |entry| ipv6_address?(entry[:ip]) && entry[:prefix] && entry[:prefix].to_i != 128 }
-
-        # Validate AWS constraints: max 1 of each type per network interface
-        if ipv4_addresses.size > 1 || ipv6_addresses.size > 1 || ipv4_prefixes.size > 1 || ipv6_prefixes.size > 1
-          raise Bosh::Clouds::CloudError, "Network interface in nic_group #{nic_group} cannot have more than 1 IPv4/IPv6/PrefixV6/PrefixV4 defined all together. Please check the network configuration."
-        end
-
-        # Build consolidated IP configuration
-        ip_config = {}
-        ip_config[:private_ip_address] = ipv4_addresses.first[:ip] if ipv4_addresses.any?
-        ip_config[:ipv6_address] = ipv6_addresses.first[:ip] if ipv6_addresses.any?
-        ip_config[:prefix_v4] = { address: ipv4_prefixes.first[:ip], prefix: ipv4_prefixes.first[:prefix] } if ipv4_prefixes.any?
-        ip_config[:prefix_v6] = { address: ipv6_prefixes.first[:ip], prefix: ipv6_prefixes.first[:prefix] } if ipv6_prefixes.any?
-        
-        nets.first['ip_config'] = ip_config unless ip_config.empty?
-      end
-
-      nic_groups
-    end
-
-    def build_network_interfaces_from_groups(nic_groups)
-      network_interfaces = []
-      nic_groups.each_value do |nets|
-        subnet_id_val = nets.first['subnet'] if nets.first.key?('subnet')
-        ip_config = nets.first['ip_config'] || {}
-        nic = build_network_interface_params(subnet_id_val, ip_config)
-        network_interfaces << nic if nic
-      end
-      network_interfaces
-    end
-
-    def build_network_interface_params(subnet_id_val, ip_config)
-      sg = @security_group_mapper.map_to_ids(security_groups, subnet_id_val)
-
-      nic = {}
-      nic[:groups] = sg unless sg.nil? || sg.empty?
-      nic[:subnet_id] = subnet_id_val
-      nic[:ipv_6_addresses] = [{ ipv_6_address: ip_config[:ipv6_address] }] if ip_config[:ipv6_address]
-      nic[:private_ip_address] = ip_config[:private_ip_address] if ip_config[:private_ip_address]
-      
-      prefixes = {}
-      prefixes[:ipv4] = ip_config[:prefix_v4] if ip_config[:prefix_v4]
-      prefixes[:ipv6] = ip_config[:prefix_v6] if ip_config[:prefix_v6]
-      
-      { nic: nic, prefixes: prefixes.empty? ? nil : prefixes }
-    end
-
-    def instance_params(nic_configuration)
+    def instance_params(network_interfaces)
       if @manifest_params[:metadata_options].nil? && vm_type.metadata_options.empty?
         metadata_options = nil
       else
@@ -162,7 +79,7 @@ module Bosh::AwsCloud
         user_data: @manifest_params[:user_data],
         block_device_mappings: @manifest_params[:block_device_mappings],
         metadata_options: metadata_options,
-        network_interfaces: [nic_configuration],
+        network_interfaces: network_interfaces.map { |nic| nic[:nic].configuration }
       }
       unless @manifest_params[:tags].nil? || @manifest_params[:tags].empty?
         params.merge!(
@@ -189,6 +106,97 @@ module Bosh::AwsCloud
     end
 
     private
+
+    def group_networks_by_nic_group(subnets)
+      nic_groups = Hash.new { |h, k| h[k] = [] }
+      subnets.each do |net|
+        group_key = net.to_h['nic_group'] || net.name
+        nic_groups[group_key] << net
+      end
+      nic_groups
+    end
+
+    def validate_nic_groups_subnets(nic_groups)
+      nic_groups.each do |nic_group, nets|
+        subnet_ids = nets.map { |net| net.subnet }.compact.uniq
+        if subnet_ids.size > 1
+          raise Bosh::Clouds::CloudError, "Networks in nic_group '#{nic_group}' have different subnet_ids: #{subnet_ids.join(', ')}. All networks in a nic_group must have the same subnet_id."
+        end
+      end
+    end
+
+    def assign_ip_configs_to_nic_groups(nic_groups)
+      nic_groups.each do |_nic_group, nets|
+        ip_entries = nets.filter_map do |net|
+          ip_value = net.to_h['ip']
+          next unless ip_value
+          
+          entry = {}
+          entry[:ip] = ip_value
+          entry[:prefix] = net.to_h['prefix'] if net.to_h['prefix']
+          entry[:name] = net.name
+          entry
+        end
+
+        # Separate IPv4 and IPv6 addresses with standard prefixes (32 for IPv4, 128 for IPv6)
+        ipv4_addresses = ip_entries.select { |entry| !ipv6_address?(entry[:ip]) && (entry[:prefix].to_s.empty? || entry[:prefix].to_i == 32) }
+        ipv6_addresses = ip_entries.select { |entry| ipv6_address?(entry[:ip]) && (entry[:prefix].to_s.empty? || entry[:prefix].to_i == 128) }
+        
+        # Separate IPv4 and IPv6 prefixes (non-standard prefix lengths)
+        ipv4_prefixes = ip_entries.select { |entry| !ipv6_address?(entry[:ip]) && entry[:prefix] && entry[:prefix].to_i != 32 }
+        ipv6_prefixes = ip_entries.select { |entry| ipv6_address?(entry[:ip]) && entry[:prefix] && entry[:prefix].to_i != 128 }
+
+        # Validate AWS constraints: max 1 of each type per network interface
+        if ipv4_addresses.size > 1 || ipv6_addresses.size > 1 || ipv4_prefixes.size > 1 || ipv6_prefixes.size > 1
+          raise Bosh::Clouds::CloudError, "Network interface in nic_group #{nic_group} cannot have more than 1 IPv4/IPv6/PrefixV6/PrefixV4 defined all together. Please check the network configuration."
+        end
+
+        # Build consolidated IP configuration
+        ip_config = {}
+        ip_config[:private_ip_address] = ipv4_addresses.first[:ip] if ipv4_addresses.any?
+        ip_config[:ipv6_address] = ipv6_addresses.first[:ip] if ipv6_addresses.any?
+        ip_config[:prefix_v4] = { address: ipv4_prefixes.first[:ip], prefix: ipv4_prefixes.first[:prefix] } if ipv4_prefixes.any?
+        ip_config[:prefix_v6] = { address: ipv6_prefixes.first[:ip], prefix: ipv6_prefixes.first[:prefix] } if ipv6_prefixes.any?
+        ip_config[:network_names] = [
+          (ipv4_addresses.first[:name] if ipv4_addresses.any?),
+          (ipv6_addresses.first[:name] if ipv6_addresses.any?),
+          (ipv4_prefixes.first[:name] if ipv4_prefixes.any?),
+          (ipv6_prefixes.first[:name] if ipv6_prefixes.any?)
+        ].compact
+
+        nets.first.instance_variable_set(:@ip_config, ip_config) unless ip_config.empty?
+      end
+
+      nic_groups
+    end
+
+    def build_network_interfaces_from_groups(nic_groups)
+      network_interfaces = []
+      nic_groups.each_value do |nets|
+        subnet_id_val = nets.first.subnet
+        ip_config = nets.first.instance_variable_get(:@ip_config) || {}
+        next if ip_config[:network_names].nil? || ip_config[:network_names].empty?
+        nic = build_network_interface_params(subnet_id_val, ip_config)
+        network_interfaces << nic if nic
+      end
+      network_interfaces
+    end
+
+    def build_network_interface_params(subnet_id_val, ip_config)
+      sg = @security_group_mapper.map_to_ids(security_groups, subnet_id_val)
+
+      nic = {}
+      nic[:groups] = sg unless sg.nil? || sg.empty?
+      nic[:subnet_id] = subnet_id_val
+      nic[:ipv_6_addresses] = [{ ipv_6_address: ip_config[:ipv6_address] }] if ip_config[:ipv6_address]
+      nic[:private_ip_address] = ip_config[:private_ip_address] if ip_config[:private_ip_address]
+      
+      prefixes = {}
+      prefixes[:ipv4] = ip_config[:prefix_v4] if ip_config[:prefix_v4]
+      prefixes[:ipv6] = ip_config[:prefix_v6] if ip_config[:prefix_v6]
+
+      { nic: nic, prefixes: prefixes.empty? ? nil : prefixes, networks: ip_config[:network_names] || [] }
+    end
 
     def vm_type
       @manifest_params[:vm_type]
