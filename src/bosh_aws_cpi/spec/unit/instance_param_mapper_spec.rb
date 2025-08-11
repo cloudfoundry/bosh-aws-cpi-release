@@ -7,10 +7,14 @@ module Bosh::AwsCloud
     let(:instance_param_mapper) { InstanceParamMapper.new(security_group_mapper, logger) }
     let(:user_data) { {} }
     let(:fake_nic_configuration) do
-      {
-       device_index: 0,
-       network_interface_id: 'eni-12345678',
-      }
+      [
+        {
+          nic: double('network_interface', configuration: {
+            device_index: 0,
+            network_interface_id: 'eni-12345678',
+          })
+        }
+      ]
     end
 
     let(:security_group_mapper) { SecurityGroupMapper.new(ec2_resource) }
@@ -341,6 +345,8 @@ module Bosh::AwsCloud
           let(:networks_spec) do
             {
               'net1' => {
+                'ip' => '10.0.0.1',
+                'type' => 'dynamic',
                 'cloud_properties' => {
                   'subnet' => dynamic_subnet_id
                 }
@@ -355,11 +361,12 @@ module Bosh::AwsCloud
             }
           end
           let(:output) do
-            {
-              subnet_id: dynamic_subnet_id,
-              private_ip_address: nil,
-              groups: ['sg-11111111', 'sg-22222222']
-            }
+            [{:networks=>["net1"],
+              :nic=>
+               {:groups=>["sg-11111111", "sg-22222222"],
+                :private_ip_address=>"10.0.0.1",
+                :subnet_id=>"dynamic-subnet"},
+              :prefixes=>nil}]
           end
 
           it 'maps network_interfaces.first[:groups] from defaults' do
@@ -371,6 +378,7 @@ module Bosh::AwsCloud
           let(:networks_spec) do
             {
               'net1' => {
+                'ip' => '10.0.0.4',
                 'cloud_properties' => {
                   'security_groups' => ['sg-11111111', 'sg-2-name'],
                   'subnet' => dynamic_subnet_id
@@ -378,6 +386,7 @@ module Bosh::AwsCloud
                 'type' => 'dynamic'
               },
               'net2' => {
+                'ip' => '10.0.0.5',
                 'cloud_properties' => {
                   'security_groups' => 'sg-33333333',
                   'subnet' => dynamic_subnet_id
@@ -394,10 +403,18 @@ module Bosh::AwsCloud
             }
           end
           let(:output) do
-            {
-              subnet_id: dynamic_subnet_id,
-              groups: ['sg-11111111', 'sg-22222222', 'sg-33333333']
-            }
+            [{:networks=>["net1"],
+              :nic=>
+               {:groups=>["sg-11111111", "sg-22222222", "sg-33333333"],
+                :private_ip_address=>"10.0.0.4",
+                :subnet_id=>"dynamic-subnet"},
+              :prefixes=>nil},
+             {:networks=>["net2"],
+              :nic=>
+               {:groups=>["sg-11111111", "sg-22222222", "sg-33333333"],
+                :private_ip_address=>"10.0.0.5",
+                :subnet_id=>"dynamic-subnet"},
+              :prefixes=>nil}]
           end
 
           it 'maps network_interfaces.first[:groups] from networks_spec' do
@@ -410,6 +427,7 @@ module Bosh::AwsCloud
           let(:networks_spec) do
             {
               'net1' => {
+                'ip' => '10.0.0.5',
                 'cloud_properties' => {
                   'security_groups' => ['sg-33333333', 'sg-4-name'],
                   'subnet' => dynamic_subnet_id
@@ -417,6 +435,7 @@ module Bosh::AwsCloud
                 'type' => 'dynamic'
               },
               'net2' => {
+                'ip' => '10.0.0.6',
                 'cloud_properties' => {
                   'security_groups' => 'sg-55555555',
                   'subnet' => dynamic_subnet_id
@@ -433,10 +452,18 @@ module Bosh::AwsCloud
             }
           end
           let(:output) do
-            {
-              subnet_id: dynamic_subnet_id,
-              groups: ['sg-11111111', 'sg-22222222']
-            }
+            [{:networks=>["net1"],
+              :nic=>
+               {:groups=>["sg-11111111", "sg-22222222"],
+                :private_ip_address=>"10.0.0.5",
+                :subnet_id=>"dynamic-subnet"},
+              :prefixes=>nil},
+             {:networks=>["net2"],
+              :nic=>
+               {:groups=>["sg-11111111", "sg-22222222"],
+                :private_ip_address=>"10.0.0.6",
+                :subnet_id=>"dynamic-subnet"},
+              :prefixes=>nil}]
           end
 
           it 'maps network_interfaces.first[:groups] from vm_type' do
@@ -534,46 +561,6 @@ module Bosh::AwsCloud
         end
       end
 
-      describe 'IP address options' do
-        context 'when associate_public_ip_address is true' do
-          let(:vm_type) { { 'auto_assign_public_ip' => true } }
-          let(:input) do
-            {
-              vm_type: vm_cloud_props,
-              networks_spec: network_cloud_props,
-            }
-          end
-          let(:output) do
-            {
-                  associate_public_ip_address: true
-            }
-          end
-
-          it 'adds the option to the output' do
-            expect(mapping_network_interface_params(input)).to eq(output)
-          end
-        end
-
-        context 'when associate_public_ip_address is false' do
-          let(:vm_type) { { 'auto_assign_public_ip' => false } }
-          let(:input) do
-            {
-                vm_type: vm_cloud_props,
-                networks_spec: network_cloud_props,
-            }
-          end
-          let(:output) do
-            {
-              associate_public_ip_address: false,
-            }
-          end
-
-          it 'adds the option to the output' do
-            expect(mapping_network_interface_params(input)).to eq(output)
-          end
-        end
-      end
-
       describe 'Subnet options' do
         context 'when subnet is provided by manual (explicit or implicit)' do
           let(:networks_spec) do
@@ -583,6 +570,8 @@ module Bosh::AwsCloud
                 'cloud_properties' => { 'subnet' => 'vip-subnet' }
               },
               'net2' => {
+                'ip' => '10.0.0.2',
+                'type' => 'manual',
                 'cloud_properties' => { 'subnet' => manual_subnet_id }
               }
             }
@@ -597,10 +586,9 @@ module Bosh::AwsCloud
             }
           end
           let(:output) do
-            {
-              subnet_id: manual_subnet_id,
-              private_ip_address: nil,
-            }
+            [{:networks=>["net2"],
+              :nic=>{:private_ip_address=>"10.0.0.2", :subnet_id=>"manual-subnet"},
+              :prefixes=>nil}]
           end
 
           it 'maps subnet from the first matching network to subnet_id' do
@@ -613,6 +601,7 @@ module Bosh::AwsCloud
             {
               'net1' => {
                 'type' => 'dynamic',
+                'ip' => '10.0.0.3',
                 'cloud_properties' => { 'subnet' => dynamic_subnet_id }
               },
               'net2' => {
@@ -632,10 +621,9 @@ module Bosh::AwsCloud
             }
           end
           let(:output) do
-            {
-              subnet_id: dynamic_subnet_id,
-              private_ip_address: nil
-            }
+            [{:networks=>["net1"],
+              :nic=>{:private_ip_address=>"10.0.0.3", :subnet_id=>"dynamic-subnet"},
+              :prefixes=>nil}]
           end
 
           it 'maps subnet from the first matching network to subnet_id' do
@@ -665,13 +653,14 @@ module Bosh::AwsCloud
             }
           end
           let(:output) do
-            {
-                subnet_id: manual_subnet_id,
-                ipv_6_addresses: [{
-                  ipv_6_address: '2600::1',
-                },
-              ],
-                private_ip_address: '1.1.1.1'            }
+            [{:networks=>["net1"],
+              :nic=>{:private_ip_address=>"1.1.1.1", :subnet_id=>"manual-subnet"},
+              :prefixes=>nil},
+             {:networks=>["net2"],
+              :nic=>
+               {:ipv_6_addresses=>[{:ipv_6_address=>"2600::1"}],
+                :subnet_id=>"manual-subnet"},
+              :prefixes=>nil}]
           end
 
           it 'attaches an ipv4 and an ipv6 to the nic' do
@@ -688,12 +677,14 @@ module Bosh::AwsCloud
               'net1' => {
                 'type' => 'manual',
                 'cloud_properties' => { 'subnet' => manual_subnet_id },
-                'ip' => '1.1.1.1'
+                'ip' => '1.1.1.1',
+                'nic_group' => 'same-group'
               },
               'net2' => {
                 'type' => 'manual',
                 'cloud_properties' => { 'subnet' => 'different-subnet' },
-                'ip' => '2600::1'
+                'ip' => '2600::1',
+                'nic_group' => 'same-group'
               }
             }
           end
@@ -704,10 +695,120 @@ module Bosh::AwsCloud
             }
           end
 
-          it 'logs a warning message since there is a mismatch in subnet ids provided' do
-            allow(logger).to receive(:warn)
-            mapping_network_interface_params(input)
-            expect(logger).to have_received(:warn).with(/Subnet ID mismatch detected. Proceeding with the first subnet ID/)
+          it 'raises an error for subnet ID mismatch' do
+            expect {
+              mapping_network_interface_params(input)
+            }.to raise_error(Bosh::Clouds::CloudError, /Networks in nic_group .* have different subnet_ids: .* All networks in a nic_group must have the same subnet_id/)
+          end
+        end
+
+        context 'when nic_group combines IPv4 and IPv6 addresses' do
+          let(:networks_spec) do
+            {
+              'net1' => {
+                'type' => 'manual',
+                'cloud_properties' => { 'subnet' => manual_subnet_id },
+                'ip' => '10.0.0.1',
+                'nic_group' => 'mixed-group'
+              },
+              'net2' => {
+                'type' => 'manual',
+                'cloud_properties' => { 'subnet' => manual_subnet_id },
+                'ip' => '2600::1',
+                'nic_group' => 'mixed-group'
+              }
+            }
+          end
+          let(:input) do
+            {
+              vm_type: vm_cloud_props,
+              networks_spec: network_cloud_props,
+            }
+          end
+          let(:output) do
+            [{:nic=>{:ipv_6_addresses=>[{:ipv_6_address=>"2600::1"}], :private_ip_address=>"10.0.0.1", :subnet_id=>"manual-subnet"}, :prefixes=>nil, :networks=>["net1", "net2"]}]
+          end
+
+          it 'creates single network interface with both IPv4 and IPv6' do
+            expect(mapping_network_interface_params(input)).to eq(output)
+          end
+        end
+
+        context 'when nic_group combines IPv4 prefix and IPv6 address' do
+          let(:networks_spec) do
+            {
+              'net1' => {
+                'type' => 'manual',
+                'cloud_properties' => { 'subnet' => manual_subnet_id },
+                'ip' => '10.0.0.0',
+                'prefix' => 28,
+                'nic_group' => 'prefix-group'
+              },
+              'net2' => {
+                'type' => 'manual',
+                'cloud_properties' => { 'subnet' => manual_subnet_id },
+                'ip' => '2600::1',
+                'nic_group' => 'prefix-group'
+              }
+            }
+          end
+          let(:input) do
+            {
+              vm_type: vm_cloud_props,
+              networks_spec: network_cloud_props,
+            }
+          end
+          let(:output) do
+            [{:nic=>{:ipv_6_addresses=>[{:ipv_6_address=>"2600::1"}], :subnet_id=>"manual-subnet"}, :prefixes=>{:ipv4=>{:address=>"10.0.0.0", :prefix=>28}}, :networks=>["net2", "net1"]}]
+          end
+
+          it 'creates single network interface with IPv4 prefix and IPv6 address' do
+            expect(mapping_network_interface_params(input)).to eq(output)
+          end
+        end
+
+        context 'when multiple networks share same nic_group and one is separate' do
+          let(:networks_spec) do
+            {
+              'net1' => {
+                'type' => 'manual',
+                'cloud_properties' => { 'subnet' => manual_subnet_id },
+                'ip' => '10.0.0.1',
+                'nic_group' => 'shared-group'
+              },
+              'net2' => {
+                'type' => 'manual',
+                'cloud_properties' => { 'subnet' => manual_subnet_id },
+                'ip' => '2600::1',
+                'nic_group' => 'shared-group'
+              },
+              'net3' => {
+                'type' => 'manual',
+                'cloud_properties' => { 'subnet' => manual_subnet_id },
+                'ip' => '10.0.0.0',
+                'prefix' => 28,
+                'nic_group' => 'shared-group'
+              },
+              'net4' => {
+                'type' => 'manual',
+                'cloud_properties' => { 'subnet' => manual_subnet_id },
+                'ip' => '10.0.1.1'
+              }
+            }
+          end
+          let(:input) do
+            {
+              vm_type: vm_cloud_props,
+              networks_spec: network_cloud_props,
+            }
+          end
+          let(:output) do
+            [{:nic=>{:ipv_6_addresses=>[{:ipv_6_address=>"2600::1"}], :private_ip_address=>"10.0.0.1", :subnet_id=>"manual-subnet"}, :prefixes=>{:ipv4=>{:address=>"10.0.0.0", :prefix=>28}}, :networks=>["net1", "net2", "net3"]},
+             {:nic=>{:private_ip_address=>"10.0.1.1", :subnet_id=>"manual-subnet"}, :prefixes=>nil, :networks=>["net4"]}]
+          end
+
+          it 'creates separate network interfaces for different nic_groups' do
+            expect(mapping_network_interface_params(input)).to eq(output)
           end
         end
       end

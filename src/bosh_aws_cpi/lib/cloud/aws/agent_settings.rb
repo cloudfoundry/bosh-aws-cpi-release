@@ -70,9 +70,16 @@ module Bosh::AwsCloud
       end
     end
 
-    def update_agent_networks_settings(mac_address)
-      @networks.map do |_, settings|
-        settings[:mac] = mac_address if settings[:mac].nil?
+    def update_agent_networks_settings(network_interfaces)
+      mac_addresses = {}
+      network_interfaces.each do |nic_and_network|
+        nic = nic_and_network[:nic]
+        nic_and_network[:networks].each do |network|
+          mac_addresses[network] = nic.mac_address
+        end
+      end
+      @networks.each do |network_name, settings|
+        settings[:mac] = mac_addresses[network_name] if settings[:mac].nil?
       end
     end
 

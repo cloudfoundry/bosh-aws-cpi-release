@@ -20,21 +20,21 @@ module Bosh::AwsCloud
       begin
         set_manifest_params(stemcell_id, vm_cloud_props, networks_cloud_props, block_device_mappings, settings.encode(stemcell_api_version), disk_locality, default_security_groups, tags, metadata_options)
 
-        network_interface = create_network_interface(vm_cloud_props)
+        network_interfaces = create_network_interfaces(vm_cloud_props)
 
-        settings.update_agent_networks_settings(network_interface.mac_address)
+        settings.update_agent_networks_settings(network_interfaces)
 
         @param_mapper.update_user_data(settings.encode(stemcell_api_version))
 
         @param_mapper.validate
       rescue => e
-        @logger.error("Failed to create network interface: #{e.inspect}")
-        network_interface.delete if network_interface
+        @logger.error("Failed to create network interfaces: #{e.inspect}")
+        network_interfaces&.each { |nic| nic[:nic].delete }
         raise
       end
 
       begin
-        instance_params  = @param_mapper.instance_params(network_interface.nic_configuration)
+        instance_params  = @param_mapper.instance_params(network_interfaces)
 
         redacted_instance_params = Bosh::Cpi::Redactor.clone_and_redact(
           instance_params,
@@ -90,6 +90,7 @@ module Bosh::AwsCloud
       return unless network_interface_params.is_a?(Array)
 
       errors = [Aws::EC2::Errors::InvalidIPAddressInUse]
+      network_interfaces = []
       network_interface_params.map do |nic_and_prefix|
         nic_params = nic_and_prefix[:nic]
         prefixes = nic_and_prefix[:prefixes]
@@ -104,9 +105,10 @@ module Bosh::AwsCloud
           network_interface.wait_until_available
           network_interface.attach_ip_prefixes(prefixes) unless prefixes.nil?
           network_interface.add_associate_public_ip_address(vm_cloud_props)
-          network_interface
+          network_interfaces << { nic: network_interface, networks: nic_and_prefix[:networks] }
         end
       end
+      network_interfaces
     end
 
     def get_created_network_interface_id(resp)

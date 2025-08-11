@@ -94,7 +94,7 @@ module Bosh::AwsCloud
         @logger.info("Deleting instance settings for '#{@aws_instance.id}'")
       end
 
-      cleanup_network_interface
+      cleanup_network_interfaces
 
       if fast
         TagManager.tag(@aws_instance, "Name", "to be deleted")
@@ -150,21 +150,24 @@ module Bosh::AwsCloud
 
     private
 
-    def cleanup_network_interface
-      if !network_interface.nil?
-        begin
-          @logger.info("Deleting network_interface: #{network_interface.id}")
-          errors = [Aws::EC2::Errors::InvalidNetworkInterfaceInUse, Aws::EC2::Errors::InvalidParameterValue]
+    def cleanup_network_interfaces
+      network_interfaces = @aws_instance&.network_interfaces
+      if network_interfaces && !network_interfaces.empty?
+        network_interfaces.each do |nic|
+          begin
+            @logger.info("Deleting network_interface: #{nic.id}")
+            errors = [Aws::EC2::Errors::InvalidNetworkInterfaceInUse, Aws::EC2::Errors::InvalidParameterValue]
 
-          Bosh::Common.retryable(sleep: network_interface_delete_wait_time, tries: 20, on: errors) do |_tries, error|
-            if error.class == Aws::EC2::Errors::InvalidNetworkInterfaceInUse || error.class == Aws::EC2::Errors::InvalidParameterValue
-              @logger.warn("Network Interface was in use: #{error}")
+            Bosh::Common.retryable(sleep: network_interface_delete_wait_time, tries: 20, on: errors) do |_tries, error|
+              if error.class == Aws::EC2::Errors::InvalidNetworkInterfaceInUse || error.class == Aws::EC2::Errors::InvalidParameterValue
+                @logger.warn("Network Interface was in use: #{error}")
+              end
+              nic.delete
+              true
             end
-            network_interface.delete
-            true
+          rescue Aws::EC2::Errors::InvalidNetworkInterfaceIDNotFound => e
+            @logger.warn("Failed to delete network interface '#{nic.id}' because it was not found: #{e.inspect}")
           end
-        rescue Aws::EC2::Errors::InvalidNetworkInterfaceIDNotFound => e
-          @logger.warn("Failed to delete network interface '#{network_interface.id}' because it was not found: #{e.inspect}")
         end
       end
     end
