@@ -9,10 +9,14 @@ module Bosh::AwsCloud
     let(:fake_nic_configuration) do
       [
         {
-          nic: double('network_interface', configuration: {
-            device_index: 0,
-            network_interface_id: 'eni-12345678',
-          })
+          nic: double('network_interface').tap do |nic|
+            allow(nic).to receive(:nic_configuration) do |device_index = 0|
+              {
+                device_index: device_index,
+                network_interface_id: 'eni-12345678',
+              }
+            end
+          end
         }
       ]
     end
