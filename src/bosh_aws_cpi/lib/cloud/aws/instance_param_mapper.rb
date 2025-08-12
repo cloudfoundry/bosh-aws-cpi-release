@@ -79,7 +79,7 @@ module Bosh::AwsCloud
         user_data: @manifest_params[:user_data],
         block_device_mappings: @manifest_params[:block_device_mappings],
         metadata_options: metadata_options,
-        network_interfaces: network_interfaces.map { |nic| nic[:nic].nic_configuration }
+        network_interfaces: network_interfaces.map.with_index { |nic, index| nic[:nic].nic_configuration(index) }
       }
       unless @manifest_params[:tags].nil? || @manifest_params[:tags].empty?
         params.merge!(

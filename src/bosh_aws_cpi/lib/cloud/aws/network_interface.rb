@@ -70,10 +70,10 @@ module Bosh::AwsCloud
       @aws_network_interface.mac_address
     end
 
-    def nic_configuration
+    def nic_configuration(device_index = 0)
       nic = {}
 
-      nic[:device_index] = 0
+      nic[:device_index] = device_index
       nic[:network_interface_id] = @aws_network_interface.id
 
       nic
