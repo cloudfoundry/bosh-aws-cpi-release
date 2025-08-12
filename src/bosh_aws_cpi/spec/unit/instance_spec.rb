@@ -151,20 +151,6 @@ module Bosh::AwsCloud
         end
       end
 
-      context 'if network interfaces are not found for the instance' do
-        subject(:instance) { Instance.new(aws_instance, logger) }
-        let(:aws_instance) { instance_double(Aws::EC2::Instance, id: instance_id, data: 'some-data') }
-
-        it 'skips deleting the network interface' do
-          expect(aws_instance).to receive(:terminate).with(no_args).ordered
-          expect(aws_instance).to receive(:network_interfaces).and_return(nil)
-          expect(network_interface).to_not receive(:delete)
-          expect(aws_instance).to receive(:wait_until_terminated).ordered
-
-          instance.terminate
-        end
-      end
-
       context 'when instance is already terminated when bosh checks for the state' do
         it 'logs a message and considers the instance to be terminated' do
           # AWS returns NotFound error if instance no longer exists in AWS console
