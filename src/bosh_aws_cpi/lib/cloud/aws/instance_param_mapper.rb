@@ -15,6 +15,10 @@ module Bosh::AwsCloud
       validate_availability_zone
     end
 
+    def update_user_data(user_data)
+      @manifest_params[:user_data] = user_data
+    end
+
     def validate_required_inputs
       required_top_level = [
         'stemcell_id',
@@ -54,7 +58,14 @@ module Bosh::AwsCloud
       availability_zone
     end
 
-    def instance_params
+    def network_interface_params
+      nic_groups = group_networks_by_nic_group(subnets)
+      validate_nic_groups_subnets(nic_groups)
+      updated_nic_groups = assign_ip_configs_to_nic_groups(nic_groups)
+      build_network_interfaces_from_groups(updated_nic_groups)
+    end
+
+    def instance_params(network_interfaces)
       if @manifest_params[:metadata_options].nil? && vm_type.metadata_options.empty?
         metadata_options = nil
       else
@@ -67,7 +78,8 @@ module Bosh::AwsCloud
         iam_instance_profile: iam_instance_profile,
         user_data: @manifest_params[:user_data],
         block_device_mappings: @manifest_params[:block_device_mappings],
-        metadata_options: metadata_options
+        metadata_options: metadata_options,
+        network_interfaces: network_interfaces.map.with_index { |nic, index| nic[:nic].nic_configuration(index) }
       }
       unless @manifest_params[:tags].nil? || @manifest_params[:tags].empty?
         params.merge!(
@@ -86,53 +98,105 @@ module Bosh::AwsCloud
       placement[:availability_zone] = az if az
       placement[:tenancy] = vm_type.tenancy.dedicated if vm_type.tenancy.dedicated?
       params[:placement] = placement unless placement.empty?
-
-      sg = @security_group_mapper.map_to_ids(security_groups, subnet_id)
-
-      nic = {}
-      nic[:groups] = sg unless sg.nil? || sg.empty?
-      nic[:subnet_id] = subnet_id if subnet_id
-
-      if dual_stack_mode?
-        ipv6_count = ipv4_count = 0
-        private_ip_addresses.each do |private_ip|
-          if ipv6_address?(private_ip)
-            nic[:ipv_6_addresses] = [{ipv_6_address: private_ip}]
-            ipv6_count += 1
-          else
-            nic[:private_ip_address] = private_ip
-            ipv4_count += 1
-          end
-        end
-        if ipv4_count == 1 && ipv6_count == 1
-          @logger.info("Running in dual stack mode")
-        else
-          if ipv4_count == 0
-            raise Bosh::Clouds::CloudError, "Dual Stack Mode: No ipv4 address assigned"
-          elsif ipv6_count == 0
-            raise Bosh::Clouds::CloudError, "Dual Stack Mode: No ipv6 address assigned"
-          end
-        end
-      else
-        private_ip_address = private_ip_addresses.first
-        if private_ip_address
-          if ipv6_address?(private_ip_address)
-            nic[:ipv_6_addresses] = [{ipv_6_address: private_ip_address}]
-          else
-            nic[:private_ip_address] = private_ip_address
-          end
-        end
-      end
-
-      nic[:associate_public_ip_address] = vm_type.auto_assign_public_ip unless vm_type.auto_assign_public_ip.nil?
-
-      nic[:device_index] = 0 unless nic.empty?
-      params[:network_interfaces] = [nic] unless nic.empty?
-
       params.delete_if { |_k, v| v.nil? }
     end
 
+    def ipv6_address?(addr)
+      addr.to_s.include?(':')
+    end
+
     private
+
+    def group_networks_by_nic_group(subnets)
+      nic_groups = Hash.new { |h, k| h[k] = [] }
+      subnets.each do |net|
+        group_key = net.to_h['nic_group'] || net.name
+        nic_groups[group_key] << net
+      end
+      nic_groups
+    end
+
+    def validate_nic_groups_subnets(nic_groups)
+      nic_groups.each do |nic_group, nets|
+        subnet_ids = nets.map { |net| net.subnet }.compact.uniq
+        if subnet_ids.size > 1
+          raise Bosh::Clouds::CloudError, "Networks in nic_group '#{nic_group}' have different subnet_ids: #{subnet_ids.join(', ')}. All networks in a nic_group must have the same subnet_id."
+        end
+      end
+    end
+
+    def assign_ip_configs_to_nic_groups(nic_groups)
+      nic_groups.each do |_nic_group, nets|
+        ip_entries = nets.filter_map do |net|
+          ip_value = net.to_h['ip']
+          next unless ip_value
+          
+          entry = {}
+          entry[:ip] = ip_value
+          entry[:prefix] = net.to_h['prefix'] if net.to_h['prefix']
+          entry[:name] = net.name
+          entry
+        end
+
+        # Separate IPv4 and IPv6 addresses with standard prefixes (32 for IPv4, 128 for IPv6)
+        ipv4_addresses = ip_entries.select { |entry| !ipv6_address?(entry[:ip]) && (entry[:prefix].to_s.empty? || entry[:prefix].to_i == 32) }
+        ipv6_addresses = ip_entries.select { |entry| ipv6_address?(entry[:ip]) && (entry[:prefix].to_s.empty? || entry[:prefix].to_i == 128) }
+        
+        # Separate IPv4 and IPv6 prefixes (non-standard prefix lengths)
+        ipv4_prefixes = ip_entries.select { |entry| !ipv6_address?(entry[:ip]) && entry[:prefix] && entry[:prefix].to_i != 32 }
+        ipv6_prefixes = ip_entries.select { |entry| ipv6_address?(entry[:ip]) && entry[:prefix] && entry[:prefix].to_i != 128 }
+
+        # Validate AWS constraints: max 1 of each type per network interface
+        if ipv4_addresses.size > 1 || ipv6_addresses.size > 1 || ipv4_prefixes.size > 1 || ipv6_prefixes.size > 1
+          raise Bosh::Clouds::CloudError, "Network interface in nic_group #{nic_group} cannot have more than 1 IPv4/IPv6/PrefixV6/PrefixV4 defined all together. Please check the network configuration."
+        end
+
+        # Build consolidated IP configuration
+        ip_config = {}
+        ip_config[:private_ip_address] = ipv4_addresses.first[:ip] if ipv4_addresses.any?
+        ip_config[:ipv6_address] = ipv6_addresses.first[:ip] if ipv6_addresses.any?
+        ip_config[:prefix_v4] = { address: ipv4_prefixes.first[:ip], prefix: ipv4_prefixes.first[:prefix] } if ipv4_prefixes.any?
+        ip_config[:prefix_v6] = { address: ipv6_prefixes.first[:ip], prefix: ipv6_prefixes.first[:prefix] } if ipv6_prefixes.any?
+        ip_config[:network_names] = [
+          (ipv4_addresses.first[:name] if ipv4_addresses.any?),
+          (ipv6_addresses.first[:name] if ipv6_addresses.any?),
+          (ipv4_prefixes.first[:name] if ipv4_prefixes.any?),
+          (ipv6_prefixes.first[:name] if ipv6_prefixes.any?)
+        ].compact
+
+        nets.first.instance_variable_set(:@ip_config, ip_config) unless ip_config.empty?
+      end
+
+      nic_groups
+    end
+
+    def build_network_interfaces_from_groups(nic_groups)
+      network_interfaces = []
+      nic_groups.each_value do |nets|
+        subnet_id_val = nets.first.subnet
+        ip_config = nets.first.instance_variable_get(:@ip_config) || {}
+        next if ip_config[:network_names].nil? || ip_config[:network_names].empty?
+        nic = build_network_interface_params(subnet_id_val, ip_config)
+        network_interfaces << nic if nic
+      end
+      network_interfaces
+    end
+
+    def build_network_interface_params(subnet_id_val, ip_config)
+      sg = @security_group_mapper.map_to_ids(security_groups, subnet_id_val)
+
+      nic = {}
+      nic[:groups] = sg unless sg.nil? || sg.empty?
+      nic[:subnet_id] = subnet_id_val
+      nic[:ipv_6_addresses] = [{ ipv_6_address: ip_config[:ipv6_address] }] if ip_config[:ipv6_address]
+      nic[:private_ip_address] = ip_config[:private_ip_address] if ip_config[:private_ip_address]
+      
+      prefixes = {}
+      prefixes[:ipv4] = ip_config[:prefix_v4] if ip_config[:prefix_v4]
+      prefixes[:ipv6] = ip_config[:prefix_v6] if ip_config[:prefix_v6]
+
+      { nic: nic, prefixes: prefixes.empty? ? nil : prefixes, networks: ip_config[:network_names] || [] }
+    end
 
     def vm_type
       @manifest_params[:vm_type]
@@ -166,17 +230,6 @@ module Bosh::AwsCloud
       groups
     end
 
-    def ipv6_address?(addr)
-      addr.to_s.include?(':')
-    end
-
-    def private_ip_addresses
-      manual_subnets = subnets.select {|subnet| subnet.type == 'manual' }
-      ips = manual_subnets.map { |subnet_network| subnet_network.ip }
-
-      ips unless ips.nil?
-    end
-
     # NOTE: do NOT lookup the subnet (from EC2 client) anymore. We just need to
     # pass along the subnet_id anyway, and we have that.
     def subnets
@@ -193,17 +246,6 @@ module Bosh::AwsCloud
 
     def subnet_ids
       subnets.map { |subnet_network| subnet_network.subnet }
-    end
-
-    def dual_stack_mode?
-      dual_stack_mode = false
-      if subnets.length == 2 && subnets.find {|subnet| subnet.type == 'dynamic'}.nil?
-          # if two manual networks refer to the same subnet we assume dual stack mode
-        if subnet_ids[0] == subnet_ids[1]
-          dual_stack_mode = true
-        end
-      end
-      dual_stack_mode
     end
 
     def availability_zone

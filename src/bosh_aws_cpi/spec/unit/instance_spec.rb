@@ -4,10 +4,11 @@ require 'logger'
 module Bosh::AwsCloud
   describe Instance do
     subject(:instance) { Instance.new(aws_instance, logger) }
-    let(:aws_instance) { instance_double(Aws::EC2::Instance, id: instance_id, data: 'some-data') }
+    let(:aws_instance) { instance_double(Aws::EC2::Instance, id: instance_id, data: 'some-data', network_interfaces: [network_interface]) }
     let(:logger) { Logger.new('/dev/null') }
     let(:elastic_ip) { instance_double(Aws::EC2::VpcAddress, public_ip: 'fake-ip') }
     let(:instance_id) { 'fake-id' }
+    let(:network_interface) { instance_double(Aws::EC2::NetworkInterface, id: 'fake-network-interface-id') }
 
     describe '#id' do
       it('returns instance id') { expect(instance.id).to eq(instance_id) }
@@ -102,8 +103,34 @@ module Bosh::AwsCloud
     end
 
     describe '#terminate' do
-      it 'should terminate an instance given the id' do
+      it 'should terminate an instance and its attached network interface given the id' do
+        allow(instance).to receive(:network_interface_delete_wait_time).and_return(0)
         expect(aws_instance).to receive(:terminate).with(no_args).ordered
+        expect(aws_instance).to receive(:network_interfaces).and_return([network_interface])
+        expect(network_interface).to receive(:delete)
+        expect(aws_instance).to receive(:wait_until_terminated).ordered
+
+        instance.terminate
+      end
+
+      it 'should retry deleting the Network Interface when Aws::EC2::Errors::InvalidNetworkInterfaceInUse raised' do
+        allow(instance).to receive(:network_interface_delete_wait_time).and_return(0)
+        expect(aws_instance).to receive(:terminate).with(no_args).ordered
+        expect(aws_instance).to receive(:network_interfaces).and_return([network_interface])
+        expect(network_interface).to receive(:delete).and_raise(Aws::EC2::Errors::InvalidNetworkInterfaceInUse.new(nil, 'in-use'))
+        expect(network_interface).to receive(:delete)
+        expect(aws_instance).to receive(:wait_until_terminated).ordered
+
+        instance.terminate
+      end
+
+      it 'should terminate an instance and delete multiple attached network interfaces' do
+        network_interface2 = instance_double(Aws::EC2::NetworkInterface, id: 'fake-network-interface-id-2')
+        allow(instance).to receive(:network_interface_delete_wait_time).and_return(0)
+        expect(aws_instance).to receive(:terminate).with(no_args).ordered
+        expect(aws_instance).to receive(:network_interfaces).and_return([network_interface, network_interface2])
+        expect(network_interface).to receive(:delete)
+        expect(network_interface2).to receive(:delete)
         expect(aws_instance).to receive(:wait_until_terminated).ordered
 
         instance.terminate
@@ -117,7 +144,7 @@ module Bosh::AwsCloud
             with(no_args).and_raise(Aws::EC2::Errors::InvalidInstanceIDNotFound.new(nil, 'not-found'))
         end
 
-        it 'raises Bosh::Clouds::VMNotFound but still removes settings from registry' do
+        it 'raises Bosh::Clouds::VMNotFound but still removes settings from registry and removes the network interface' do
           expect {
             instance.terminate
           }.to raise_error(Bosh::Clouds::VMNotFound, "VM `#{instance_id}' not found")
@@ -128,6 +155,8 @@ module Bosh::AwsCloud
         it 'logs a message and considers the instance to be terminated' do
           # AWS returns NotFound error if instance no longer exists in AWS console
           # (This could happen when instance was deleted very quickly and BOSH didn't catch the terminated state)
+          expect(aws_instance).to receive(:network_interfaces).and_return([network_interface])
+          expect(network_interface).to receive(:delete)
           expect(aws_instance).to receive(:terminate).with(no_args).ordered
 
           err = Aws::EC2::Errors::InvalidInstanceIDNotFound.new(nil, 'not-found')
@@ -140,6 +169,8 @@ module Bosh::AwsCloud
 
       describe 'fast path deletion' do
         it 'deletes the instance without waiting for confirmation of termination' do
+          expect(aws_instance).to receive(:network_interfaces).and_return([network_interface])
+          expect(network_interface).to receive(:delete)
           expect(aws_instance).to receive(:terminate).ordered
           expect(TagManager).to receive(:tag).with(aws_instance, "Name", "to be deleted").ordered
           instance.terminate(true)

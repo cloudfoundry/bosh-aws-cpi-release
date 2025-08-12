@@ -3,6 +3,7 @@ module Bosh::AwsCloud
 
     attr_accessor :agent_disk_info, :agent_config, :root_device_name
     attr_accessor :agent_id, :environment
+    attr_reader :networks
 
     # Generates initial agent settings. These settings will be read by agent
     # from AWS registry (also a BOSH component) on a target instance. Disk
@@ -69,7 +70,21 @@ module Bosh::AwsCloud
       end
     end
 
+    def update_agent_networks_settings(network_interfaces)
+      mac_addresses = {}
+      network_interfaces.each do |nic_and_network|
+        nic = nic_and_network[:nic]
+        nic_and_network[:networks].each do |network|
+          mac_addresses[network] = nic.mac_address
+        end
+      end
+      @networks.each do |network_name, settings|
+        settings[:mac] = mac_addresses[network_name] if settings[:mac].nil?
+      end
+    end
+
     private
+
     def agent_network_spec(networks_cloud_props)
       spec = networks_cloud_props.networks.map do |net|
         settings = net.to_h
