@@ -524,9 +524,10 @@ resources:
 - name: bosh-integration-image
   type: registry-image
   source:
-    repository: bosh/integration
-    username: ((dockerhub_username))
-    password: ((dockerhub_password))
+    repository: ghcr.io/cloudfoundry/bosh/integration
+    tag: main
+    username: ((github_read_write_packages.username))
+    password: ((github_read_write_packages.password))
 - name: bosh-ruby-release-registry-image
   type: registry-image
   source:
