@@ -1,30 +1,22 @@
 #!/usr/bin/env bash
+set -eu -o pipefail
 
-set -e
+export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
+export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
+export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}"
 
-: ${AWS_ACCESS_KEY_ID:?}
-: ${AWS_SECRET_ACCESS_KEY:?}
-: ${AWS_DEFAULT_REGION:?}
+set -x
 
+vpc_id=$(jq --raw-output '.vpc_id' < environment/metadata)
 
-aws configure --profile creds_account set aws_access_key_id "${AWS_ACCESS_KEY_ID}"
-aws configure --profile creds_account set aws_secret_access_key "${AWS_SECRET_ACCESS_KEY}"
-aws configure --profile resource_account set source_profile "creds_account"
-aws configure --profile resource_account set region "${AWS_DEFAULT_REGION}"
-unset AWS_ACCESS_KEY_ID
-unset AWS_SECRET_ACCESS_KEY
-unset AWS_DEFAULT_REGION
-export AWS_PROFILE=resource_account
-
-metadata=$(cat environment/metadata)
-vpc_id=$(echo ${metadata} | jq --raw-output ".vpc_id")
-
-if [[ ! -z "${vpc_id}" ]] ; then
-  instances=$(aws ec2 describe-instances --query "Reservations[*].Instances[*].InstanceId[]" --filters "Name=vpc-id,Values=${vpc_id}" | jq '.[]' --raw-output)
-  instance_list=$(echo ${instances} | sed "s/[\n\r]+/ /g")
+if [[ -n "${vpc_id}" ]] ; then
+  instance_list=$(
+    aws ec2 describe-instances --query "Reservations[*].Instances[*].InstanceId[]" --filters "Name=vpc-id,Values=${vpc_id}" \
+      | jq --raw-output '. | join(" ")'
+  )
 
   # if it's not an empty string (of any length)...
-  if [[ ! -z "${instance_list// }" ]] ; then
-    aws ec2 terminate-instances --instance-ids ${instance_list}
+  if [[ -n "${instance_list// }" ]] ; then
+    aws ec2 terminate-instances --instance-ids "${instance_list}"
   fi
 fi
