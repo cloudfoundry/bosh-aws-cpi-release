@@ -7,6 +7,9 @@ export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}"
 
 set -x
 
+# set this to empty string the cli doesn't fail looking for `less`
+export AWS_PAGER=
+
 vpc_id=$(jq --raw-output '.vpc_id' < environment/metadata)
 
 if [[ -n "${vpc_id}" ]] ; then
@@ -17,6 +20,7 @@ if [[ -n "${vpc_id}" ]] ; then
 
   # if it's not an empty string (of any length)...
   if [[ -n "${instance_list// }" ]] ; then
-    aws ec2 terminate-instances --instance-ids "${instance_list}"
+    # shellcheck disable=SC2086
+    aws ec2 terminate-instances --instance-ids ${instance_list}
   fi
 fi
