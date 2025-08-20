@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
+set -eu -o pipefail
+set -x
 
-set -eux -o pipefail
-
-GOBIN=/usr/local/bin/ go install github.com/genevieve/leftovers/cmd/leftovers@latest
-
-leftovers -n -i aws -f awscpi
+go run github.com/genevieve/leftovers/cmd/leftovers@latest \
+  --debug \
+  --no-confirm \
+  --iaas=aws \
+  --filter=awscpi
