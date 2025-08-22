@@ -291,7 +291,8 @@ module Bosh::AwsCloud
     end
 
     class ManualNetwork < Network
-      attr_reader :netmask, :gateway, :default, :dns, :ip, :prefix
+      attr_reader :netmask, :gateway, :default, :dns, :ip, :prefix, :nic_group
+      attr_accessor :mac
 
       def initialize(name, settings)
         super(name, settings)
@@ -302,10 +303,7 @@ module Bosh::AwsCloud
         @ip = settings['ip']
         @prefix = settings['prefix']
         @dns = settings['dns']
-
-        # TODO (cdutra): not used by aws cpi but used by other cpis
-        # @gateway = settings['gateway']
-        # @mac = settings['mac']
+        @nic_group = settings['nic_group'] || name
       end
     end
 

@@ -58,10 +58,6 @@ module Bosh::AwsCloud
       raise Bosh::Clouds::CloudError, "Failed to associate public IP address: #{e.message}"
     end
 
-    def ipv6_address?(addr)
-      addr.to_s.include?(':')
-    end
-
     def delete
       @aws_network_interface.delete
     end

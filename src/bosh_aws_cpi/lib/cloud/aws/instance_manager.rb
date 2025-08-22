@@ -10,19 +10,18 @@ module Bosh::AwsCloud
       @ec2 = ec2
       @logger = logger
       @imds_v2_enable = {}
-
-      security_group_mapper = SecurityGroupMapper.new(@ec2)
-      @param_mapper = InstanceParamMapper.new(security_group_mapper, logger)
+      @param_mapper = InstanceParamMapper.new(logger)
     end
 
     def create(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, default_security_groups, block_device_mappings, settings, tags, metadata_options, stemcell_api_version)
       abruptly_terminated_retries = 2
       begin
-        set_manifest_params(stemcell_id, vm_cloud_props, networks_cloud_props, block_device_mappings, settings.encode(stemcell_api_version), disk_locality, default_security_groups, tags, metadata_options)
 
-        network_interfaces = create_network_interfaces(vm_cloud_props)
+        security_group_mapper = SecurityGroupMapper.new(@ec2)
+        network_interface_manager = Bosh::AwsCloud::NetworkInterfaceManager.new(@ec2, @logger, security_group_mapper)
+        network_interfaces = network_interface_manager.create_network_interfaces(networks_cloud_props, vm_cloud_props, default_security_groups)
 
-        settings.update_agent_networks_settings(network_interfaces)
+        set_manifest_params(stemcell_id, vm_cloud_props, block_device_mappings, settings.encode(stemcell_api_version), disk_locality, tags, metadata_options)
 
         @param_mapper.update_user_data(settings.encode(stemcell_api_version))
 
@@ -69,13 +68,11 @@ module Bosh::AwsCloud
 
     private
 
-    def set_manifest_params(stemcell_id, vm_cloud_props, networks_cloud_props, block_device_mappings, user_data, disk_locality = [], default_security_groups = [], tags, metadata_options)
+    def set_manifest_params(stemcell_id, vm_cloud_props, block_device_mappings, user_data, disk_locality = [], tags, metadata_options)
       volume_zones = (disk_locality || []).map { |volume_id| @ec2.volume(volume_id).availability_zone }
       @param_mapper.manifest_params = {
         stemcell_id: stemcell_id,
         vm_type: vm_cloud_props,
-        networks_spec: networks_cloud_props,
-        default_security_groups: default_security_groups,
         volume_zones: volume_zones,
         subnet_az_mapping: subnet_az_mapping(networks_cloud_props),
         block_device_mappings: block_device_mappings,
@@ -83,36 +80,6 @@ module Bosh::AwsCloud
         user_data: user_data,
         metadata_options: metadata_options,
       }
-    end
-
-    def create_network_interfaces(vm_cloud_props)
-      network_interface_params = @param_mapper.network_interface_params
-      return unless network_interface_params.is_a?(Array)
-
-      errors = [Aws::EC2::Errors::InvalidIPAddressInUse]
-      network_interfaces = []
-      network_interface_params.map do |nic_and_prefix|
-        nic_params = nic_and_prefix[:nic]
-        prefixes = nic_and_prefix[:prefixes]
-        @logger.info("Creating new network_interface with: #{nic_params.inspect}")
-        Bosh::Common.retryable(sleep: network_interface_create_wait_time, tries: 20, on: errors) do |_tries, error|
-          @logger.info('Launching network interface...')
-          @logger.warn("IP address was in use: #{error}") if error.is_a?(Aws::EC2::Errors::InvalidIPAddressInUse)
-
-          resp = @ec2.client.create_network_interface(nic_params)
-          network_interface_id = get_created_network_interface_id(resp)
-          network_interface = Bosh::AwsCloud::NetworkInterface.new(@ec2.network_interface(network_interface_id), @ec2.client, @logger)
-          network_interface.wait_until_available
-          network_interface.attach_ip_prefixes(prefixes) unless prefixes.nil?
-          network_interface.add_associate_public_ip_address(vm_cloud_props)
-          network_interfaces << { nic: network_interface, networks: nic_and_prefix[:networks] }
-        end
-      end
-      network_interfaces
-    end
-
-    def get_created_network_interface_id(resp)
-      resp.network_interface.network_interface_id
     end
 
     def babysit_instance_creation(instance, vm_cloud_props)
@@ -170,10 +137,6 @@ module Bosh::AwsCloud
 
     def get_created_instance_id(resp)
       resp.instances.first.instance_id
-    end
-
-    def network_interface_create_wait_time
-      Bosh::AwsCloud::NetworkInterface::CREATE_NETWORK_INTERFACE_WAIT_TIME
     end
 
     def subnet_az_mapping(networks_cloud_props)
