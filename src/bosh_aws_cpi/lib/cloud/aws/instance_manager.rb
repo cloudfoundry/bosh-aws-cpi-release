@@ -10,25 +10,30 @@ module Bosh::AwsCloud
       @ec2 = ec2
       @logger = logger
       @imds_v2_enable = {}
-
-      security_group_mapper = SecurityGroupMapper.new(@ec2)
-      @param_mapper = InstanceParamMapper.new(security_group_mapper, logger)
+      @param_mapper = InstanceParamMapper.new(logger)
     end
 
-    def create(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, default_security_groups, block_device_mappings, user_data, tags, metadata_options)
+    def create(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, default_security_groups, block_device_mappings, settings, tags, metadata_options, stemcell_api_version)
       abruptly_terminated_retries = 2
       begin
-        instance_params = build_instance_params(
-          stemcell_id,
-          vm_cloud_props,
-          networks_cloud_props,
-          block_device_mappings,
-          user_data,
-          disk_locality,
-          default_security_groups,
-          tags,
-          metadata_options
-        )
+
+        security_group_mapper = SecurityGroupMapper.new(@ec2)
+        network_interface_manager = Bosh::AwsCloud::NetworkInterfaceManager.new(@ec2, @logger, security_group_mapper)
+        network_interfaces = network_interface_manager.create_network_interfaces(networks_cloud_props, vm_cloud_props, default_security_groups)
+
+        set_manifest_params(stemcell_id, vm_cloud_props, block_device_mappings, settings.encode(stemcell_api_version), disk_locality, tags, metadata_options)
+
+        @param_mapper.update_user_data(settings.encode(stemcell_api_version))
+
+        @param_mapper.validate
+      rescue => e
+        @logger.error("Failed to create network interfaces: #{e.inspect}")
+        network_interfaces&.each { |nic| nic.delete }
+        raise
+      end
+
+      begin
+        instance_params  = @param_mapper.instance_params(network_interfaces)
 
         redacted_instance_params = Bosh::Cpi::Redactor.clone_and_redact(
           instance_params,
@@ -63,6 +68,19 @@ module Bosh::AwsCloud
 
     private
 
+    def set_manifest_params(stemcell_id, vm_cloud_props, block_device_mappings, user_data, disk_locality = [], tags, metadata_options)
+      volume_zones = (disk_locality || []).map { |volume_id| @ec2.volume(volume_id).availability_zone }
+      @param_mapper.manifest_params = {
+        stemcell_id: stemcell_id,
+        vm_type: vm_cloud_props,
+        volume_zones: volume_zones,
+        block_device_mappings: block_device_mappings,
+        tags: tags,
+        user_data: user_data,
+        metadata_options: metadata_options,
+      }
+    end
+
     def babysit_instance_creation(instance, vm_cloud_props)
       begin
         # We need to wait here for the instance to be running, as if we are going to
@@ -79,29 +97,11 @@ module Bosh::AwsCloud
           begin
             instance.terminate
           rescue => e
-            @logger.error("Failed to terminate mis-configured instance '#{instance.id}': #{e.inspect}")
+            @logger.error("Failed to terminate mis-configured instance '#{instance.id}': #{e.inspect}")            
           end
           raise
         end
       end
-    end
-
-    def build_instance_params(stemcell_id, vm_cloud_props, networks_cloud_props, block_device_mappings, user_data, disk_locality = [], default_security_groups = [], tags, metadata_options)
-      volume_zones = (disk_locality || []).map { |volume_id| @ec2.volume(volume_id).availability_zone }
-      @param_mapper.manifest_params = {
-        stemcell_id: stemcell_id,
-        vm_type: vm_cloud_props,
-        user_data: user_data,
-        networks_spec: networks_cloud_props,
-        default_security_groups: default_security_groups,
-        volume_zones: volume_zones,
-        subnet_az_mapping: subnet_az_mapping(networks_cloud_props),
-        block_device_mappings: block_device_mappings,
-        tags: tags,
-        metadata_options: metadata_options,
-      }
-      @param_mapper.validate
-      @param_mapper.instance_params
     end
 
     def create_aws_spot_instance(launch_specification, spot_bid_price)
@@ -129,44 +129,13 @@ module Bosh::AwsCloud
       instance_params[:min_count] = 1
       instance_params[:max_count] = 1
 
-      # Retry the create instance operation a couple of times if we are told that the IP
-      # address is in use - it can happen when the director recreates a VM and AWS
-      # is too slow to update its state when we have released the IP address and want to
-      # reallocate it again.
-      errors = [Aws::EC2::Errors::InvalidIPAddressInUse]
-      Bosh::Common.retryable(sleep: instance_create_wait_time, tries: 20, on: errors) do |_tries, error|
-        @logger.info('Launching on demand instance...')
-        if error.class == Aws::EC2::Errors::InvalidIPAddressInUse
-          @logger.warn("IP address was in use: #{error}")
-        end
-        resp = @ec2.client.run_instances(instance_params)
-        @ec2.instance(get_created_instance_id(resp))
-      end
+      @logger.info('Launching on demand instance...')
+      resp = @ec2.client.run_instances(instance_params)
+      @ec2.instance(get_created_instance_id(resp))
     end
 
     def get_created_instance_id(resp)
       resp.instances.first.instance_id
-    end
-
-    def instance_create_wait_time
-      30
-    end
-
-    def subnet_az_mapping(networks_cloud_props)
-      subnet_ids = networks_cloud_props.filter('dynamic', 'manual').map do |net|
-        net.subnet if net.cloud_properties?
-      end
-      filtered_subnets = @ec2.subnets(
-        filters: [{
-          name: 'subnet-id',
-          values: subnet_ids
-        }]
-      )
-
-      filtered_subnets.inject({}) do |mapping, subnet|
-        mapping[subnet.id] = subnet.availability_zone
-        mapping
-      end
     end
   end
 end

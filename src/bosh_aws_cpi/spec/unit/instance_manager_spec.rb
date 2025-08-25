@@ -10,13 +10,11 @@ module Bosh::AwsCloud
     let(:instance_manager) { InstanceManager.new(ec2, logger) }
     let(:logger) { Logger.new('/dev/null') }
 
+    let(:settings) { instance_double(Bosh::AwsCloud::AgentSettings) }
     let(:user_data) { { password: 'secret' } }
 
     describe '#create' do
-      let(:fake_aws_subnet) { instance_double(Aws::EC2::Subnet, id: 'sub-123456', availability_zone: 'us-east-1a') }
-
       let(:aws_instance) { instance_double(Aws::EC2::Instance, id: 'i-12345678') }
-
       let(:stemcell_id) { 'stemcell-id' }
       let(:vm_type) do
         {
@@ -82,23 +80,30 @@ module Bosh::AwsCloud
       let(:run_instances_params) do
         fake_instance_params.merge(min_count: 1, max_count: 1)
       end
+      let(:network_interface) { instance_double(Bosh::AwsCloud::NetworkInterface) }
+      let(:network_interfaces) { [network_interface] }
       let(:tags) { {'tag' => 'tag_value'} }
+
+      # Mock the NetworkInterfaceManager which now handles network interface creation
+      let(:security_group_mapper) { instance_double(SecurityGroupMapper) }
+      let(:network_interface_manager) { instance_double(Bosh::AwsCloud::NetworkInterfaceManager) }
 
       before do
         allow(param_mapper).to receive(:instance_params).and_return(fake_instance_params)
         allow(param_mapper).to receive(:manifest_params=)
         allow(param_mapper).to receive(:validate)
+        allow(param_mapper).to receive(:update_user_data)
         instance_manager.instance_variable_set('@param_mapper', param_mapper)
 
-        allow(ec2).to receive(:subnets).with(
-          filters: [{
-            name: 'subnet-id',
-            values: ['sub-default', 'sub-123456'],
-          }],
-        ).and_return([fake_aws_subnet])
+        # Mock the NetworkInterfaceManager creation and usage
+        allow(SecurityGroupMapper).to receive(:new).with(ec2).and_return(security_group_mapper)
+        allow(Bosh::AwsCloud::NetworkInterfaceManager).to receive(:new)
+          .with(ec2, logger, security_group_mapper)
+          .and_return(network_interface_manager)
+        allow(network_interface_manager).to receive(:create_network_interfaces)
+          .with(networks_cloud_props, vm_cloud_props, default_options)
+          .and_return(network_interfaces)
 
-        # allow(ec2).to receive(:instances).and_return([aws_instance])
-        allow(ec2).to receive(:instances)
         allow(ec2).to receive(:image).with(stemcell_id).and_return(
           instance_double(
             Aws::EC2::Image,
@@ -114,6 +119,10 @@ module Bosh::AwsCloud
         allow(instance).to receive(:wait_until_exists)
         allow(instance).to receive(:wait_until_running)
         allow(instance).to receive(:update_routing_tables)
+
+        allow(network_interface).to receive(:delete)
+
+        allow(settings).to receive(:encode).and_return(user_data)
       end
 
       context 'when user_data is defined as a parameter' do
@@ -124,6 +133,8 @@ module Bosh::AwsCloud
           allow(aws_client).to receive(:run_instances)
 
           expect(param_mapper).to receive(:manifest_params=).with(hash_including(user_data: user_data))
+          expect(param_mapper).to receive(:update_user_data)
+
           instance_manager.create(
             stemcell_id,
             vm_cloud_props,
@@ -131,9 +142,29 @@ module Bosh::AwsCloud
             disk_locality,
             default_options,
             fake_block_device_mappings,
-            user_data,
+            settings,
             tags,
+            nil,
             nil
+          )
+        end
+
+        it 'uses the requested api version to encode agent settings' do
+          allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
+          allow(aws_client).to receive(:run_instances)
+          expect(settings).to receive(:encode).with('fake_api_version')
+
+          instance_manager.create(
+            stemcell_id,
+            vm_cloud_props,
+            networks_cloud_props,
+            disk_locality,
+            default_options,
+            fake_block_device_mappings,
+            settings,
+            tags,
+            nil,
+            'fake_api_version'
           )
         end
       end
@@ -149,8 +180,31 @@ module Bosh::AwsCloud
           disk_locality,
           default_options,
           fake_block_device_mappings,
-          user_data,
+          settings,
           tags,
+          nil,
+          nil
+        )
+      end
+
+      it 'calls NetworkInterfaceManager.create_network_interfaces with the correct parameters' do
+        allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
+        allow(aws_client).to receive(:run_instances).and_return('run-instances-response')
+
+        expect(network_interface_manager).to receive(:create_network_interfaces)
+          .with(networks_cloud_props, vm_cloud_props, default_options)
+          .and_return(network_interfaces)
+
+        instance_manager.create(
+          stemcell_id,
+          vm_cloud_props,
+          networks_cloud_props,
+          disk_locality,
+          default_options,
+          fake_block_device_mappings,
+          settings,
+          tags,
+          nil,
           nil
         )
       end
@@ -159,7 +213,6 @@ module Bosh::AwsCloud
         before do
           allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
           allow(aws_client).to receive(:run_instances)
-
           allow(logger).to receive(:info)
           instance_manager.create(
             stemcell_id,
@@ -168,8 +221,9 @@ module Bosh::AwsCloud
             disk_locality,
             default_options,
             fake_block_device_mappings,
-            user_data,
+            settings,
             tags,
+            nil,
             nil
           )
         end
@@ -186,6 +240,7 @@ module Bosh::AwsCloud
           expect(logger).to have_received(:info).with(/"secret_access_key"=>"<redacted>"/)
         end
       end
+
 
       context 'when spot_bid_price is specified' do
         let(:vm_type) do
@@ -242,8 +297,9 @@ module Bosh::AwsCloud
             disk_locality,
             default_options,
             fake_block_device_mappings,
-            user_data,
+            settings,
             tags,
+            nil,
             nil
           )
         end
@@ -261,8 +317,9 @@ module Bosh::AwsCloud
                 disk_locality,
                 default_options,
                 fake_block_device_mappings,
-                user_data,
+                settings,
                 tags,
+                nil,
                 nil
               )
             }.to raise_error(Bosh::Clouds::VMCreationFailed, /Spot instance creation failed/)
@@ -288,6 +345,7 @@ module Bosh::AwsCloud
             end
 
             it 'creates an on demand instance' do
+              expect(network_interface).to_not receive(:delete)
               expect(aws_client).to receive(:run_instances)
                 .with(run_instances_params)
 
@@ -298,8 +356,9 @@ module Bosh::AwsCloud
                 disk_locality,
                 default_options,
                 fake_block_device_mappings,
-                user_data,
+                settings,
                 tags,
+                nil,
                 nil
               )
             end
@@ -317,8 +376,9 @@ module Bosh::AwsCloud
                 disk_locality,
                 default_options,
                 fake_block_device_mappings,
-                user_data,
+                settings,
                 tags,
+                nil,
                 nil
               )
             end
@@ -342,16 +402,21 @@ module Bosh::AwsCloud
             disk_locality,
             default_options,
             fake_block_device_mappings,
-            user_data,
+            settings,
             tags,
+            nil,
             nil
           )
         end
       end
 
       context 'when source_dest_check is set to false' do
-        before do
-          vm_type['source_dest_check'] = false
+        let(:vm_type) do
+          {
+            'instance_type' => 'm1.small',
+            'availability_zone' => 'us-east-1a',
+            'source_dest_check' => false
+          }
         end
 
         it 'disables source_dest_check on the instance' do
@@ -368,37 +433,12 @@ module Bosh::AwsCloud
             disk_locality,
             default_options,
             fake_block_device_mappings,
-            user_data,
+            settings,
             tags,
+            nil,
             nil
           )
         end
-      end
-
-      it 'should retry creating the VM when Aws::EC2::Errors::InvalidIPAddressInUse raised' do
-        allow(instance_manager).to receive(:instance_create_wait_time).and_return(0)
-        allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
-
-        expect(aws_client).to receive(:run_instances).
-          with(run_instances_params).
-          and_raise(Aws::EC2::Errors::InvalidIPAddressInUse.new(nil, 'in-use'))
-
-        expect(aws_client).to receive(:run_instances)
-          .with(run_instances_params).and_return('run-instances-response')
-
-        expect(logger).to receive(:warn).with(/IP address was in use/).once
-
-        instance_manager.create(
-          stemcell_id,
-          vm_cloud_props,
-          networks_cloud_props,
-          disk_locality,
-          default_options,
-          fake_block_device_mappings,
-          user_data,
-          tags,
-          nil
-        )
       end
 
       context 'when waiting for the instance to be running fails' do
@@ -423,8 +463,9 @@ module Bosh::AwsCloud
               disk_locality,
               default_options,
               fake_block_device_mappings,
-              user_data,
+              settings,
               tags,
+              nil,
               nil
             )
           }.to raise_error(create_err)
@@ -448,8 +489,9 @@ module Bosh::AwsCloud
               disk_locality,
               default_options,
               fake_block_device_mappings,
-              user_data,
+              settings,
               tags,
+              nil,
               nil
             )
           }.to raise_error(Bosh::AwsCloud::AbruptlyTerminated)
@@ -472,8 +514,9 @@ module Bosh::AwsCloud
                 disk_locality,
                 default_options,
                 fake_block_device_mappings,
-                user_data,
+                settings,
                 tags,
+                nil,
                 nil
               )
             }.to raise_error(create_err)
