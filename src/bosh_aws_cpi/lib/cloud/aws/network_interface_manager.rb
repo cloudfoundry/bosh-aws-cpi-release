@@ -10,12 +10,12 @@ module Bosh::AwsCloud
       @security_group_mapper = security_group_mapper
     end
 
-    def provision_network_interfaces(nic_groups)
+    def provision_network_interfaces(network_cloud_props, nic_groups, vm_type, default_security_groups)
       network_interfaces = []
       nic_groups.each_value do |nic_group|
         # Get subnet from the nic_group
         subnet_id_val = nic_group.subnet_id
-        
+
         # Get security groups
         sg = @security_group_mapper.map_to_ids(security_groups(network_cloud_props, vm_type, default_security_groups), subnet_id_val)
 
@@ -24,7 +24,7 @@ module Bosh::AwsCloud
         end
 
         nic = {}
-        nic[:groups] = sg unless sg.nil? || sg.empty?
+        nic[:groups] = sg
         nic[:subnet_id] = subnet_id_val
         
         # Only populate addresses if the nic_group contains manual networks
@@ -55,7 +55,7 @@ module Bosh::AwsCloud
       end
     end
 
-    def create_network_interfaces(network_cloud_props, vm_type, default_security_groups)
+    def create_network_interfaces(networks_cloud_props, vm_type, default_security_groups)
       # Iterate over network cloud props and group networks by nic_group
       nic_groups = {}
       first_dynamic_network = nil
@@ -76,7 +76,7 @@ module Bosh::AwsCloud
         nic_groups[first_dynamic_network.name] = Bosh::AwsCloud::NicGroup.new(first_dynamic_network.name, [first_dynamic_network])
       end
 
-      provision_network_interfaces(nic_groups)
+      provision_network_interfaces(networks_cloud_props, nic_groups, vm_type, default_security_groups)
     end
 
     private
