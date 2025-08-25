@@ -10,7 +10,7 @@ module Bosh::AwsCloud
       @security_group_mapper = security_group_mapper
     end
 
-    def provision_network_interfaces(network_cloud_props, nic_groups, vm_type, default_security_groups)
+    def provision_network_interfaces(nic_groups, network_cloud_props, vm_type, default_security_groups)
       network_interfaces = []
       nic_groups.each_value do |nic_group|
         # Get subnet from the nic_group
@@ -47,12 +47,12 @@ module Bosh::AwsCloud
           network_interface = Bosh::AwsCloud::NetworkInterface.new(@ec2_client.network_interface(network_interface_id), @ec2_client.client, @logger)
           network_interface.wait_until_available
           network_interface.attach_ip_prefixes(prefixes) unless prefixes.nil?
-          network_interface.add_associate_public_ip_address(vm_cloud_props)
+          network_interface.add_associate_public_ip_address(network_cloud_props)
           nic_group.assign_mac_address(network_interface.mac_address)
           network_interfaces.append(network_interface)
         end
-        network_interfaces
       end
+      network_interfaces
     end
 
     def create_network_interfaces(networks_cloud_props, vm_type, default_security_groups)
@@ -76,7 +76,9 @@ module Bosh::AwsCloud
         nic_groups[first_dynamic_network.name] = Bosh::AwsCloud::NicGroup.new(first_dynamic_network.name, [first_dynamic_network])
       end
 
-      provision_network_interfaces(networks_cloud_props, nic_groups, vm_type, default_security_groups)
+      validate_subnet_az_mapping(nic_groups)
+
+      provision_network_interfaces(nic_groups, networks_cloud_props, vm_type, default_security_groups)
     end
 
     private
@@ -96,6 +98,20 @@ module Bosh::AwsCloud
 
     def network_interface_create_wait_time
       Bosh::AwsCloud::NetworkInterface::CREATE_NETWORK_INTERFACE_WAIT_TIME
+    end
+
+    def validate_subnet_az_mapping(nic_groups)
+      subnet_ids = nic_groups.values.map(&:subnet_id).compact.uniq
+      
+      return {} if subnet_ids.empty?
+      
+      availability_zones = @ec2_client.subnets(
+        filters: [{ name: 'subnet-id', values: subnet_ids }]
+      ).map(&:availability_zone).uniq
+      
+      if availability_zones.size > 1
+        raise Bosh::Clouds::CloudError, "All nic groups must be in the same availability zone. Found subnets in zones: #{availability_zones.join(', ')}"
+      end
     end
   end
 end

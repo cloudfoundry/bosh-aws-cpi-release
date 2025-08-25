@@ -28,7 +28,7 @@ module Bosh::AwsCloud
         @param_mapper.validate
       rescue => e
         @logger.error("Failed to create network interfaces: #{e.inspect}")
-        network_interfaces&.each { |nic| nic[:nic].delete }
+        network_interfaces&.each { |nic| nic.delete }
         raise
       end
 
@@ -74,7 +74,6 @@ module Bosh::AwsCloud
         stemcell_id: stemcell_id,
         vm_type: vm_cloud_props,
         volume_zones: volume_zones,
-        subnet_az_mapping: subnet_az_mapping(networks_cloud_props),
         block_device_mappings: block_device_mappings,
         tags: tags,
         user_data: user_data,
@@ -137,23 +136,6 @@ module Bosh::AwsCloud
 
     def get_created_instance_id(resp)
       resp.instances.first.instance_id
-    end
-
-    def subnet_az_mapping(networks_cloud_props)
-      subnet_ids = networks_cloud_props.filter('dynamic', 'manual').map do |net|
-        net.subnet if net.cloud_properties?
-      end
-      filtered_subnets = @ec2.subnets(
-        filters: [{
-          name: 'subnet-id',
-          values: subnet_ids
-        }]
-      )
-
-      filtered_subnets.inject({}) do |mapping, subnet|
-        mapping[subnet.id] = subnet.availability_zone
-        mapping
-      end
     end
   end
 end

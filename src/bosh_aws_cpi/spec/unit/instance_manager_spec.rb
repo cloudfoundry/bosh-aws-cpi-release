@@ -11,15 +11,10 @@ module Bosh::AwsCloud
     let(:logger) { Logger.new('/dev/null') }
 
     let(:settings) { instance_double(Bosh::AwsCloud::AgentSettings) }
-
     let(:user_data) { { password: 'secret' } }
 
     describe '#create' do
-      let(:fake_aws_subnet) { instance_double(Aws::EC2::Subnet, id: 'sub-123456', availability_zone: 'us-east-1a') }
-
       let(:aws_instance) { instance_double(Aws::EC2::Instance, id: 'i-12345678') }
-      let(:aws_network_interface) { instance_double(Aws::EC2::NetworkInterface) }
-
       let(:stemcell_id) { 'stemcell-id' }
       let(:vm_type) do
         {
@@ -86,38 +81,29 @@ module Bosh::AwsCloud
         fake_instance_params.merge(min_count: 1, max_count: 1)
       end
       let(:network_interface) { instance_double(Bosh::AwsCloud::NetworkInterface) }
-      let(:network_interfaces) { [{ nic: network_interface, networks: ['default'] }] }
-      let(:fake_network_interface_params) do
-        [
-          {
-            nic: {
-              ip_address: 'fake-ip-address'
-            },
-            networks: ['default'],
-            prefixes: nil
-          }
-        ]
-      end
+      let(:network_interfaces) { [network_interface] }
       let(:tags) { {'tag' => 'tag_value'} }
+
+      # Mock the NetworkInterfaceManager which now handles network interface creation
+      let(:security_group_mapper) { instance_double(SecurityGroupMapper) }
+      let(:network_interface_manager) { instance_double(Bosh::AwsCloud::NetworkInterfaceManager) }
 
       before do
         allow(param_mapper).to receive(:instance_params).and_return(fake_instance_params)
-        allow(param_mapper).to receive(:network_interface_params).and_return(fake_network_interface_params)
-
         allow(param_mapper).to receive(:manifest_params=)
         allow(param_mapper).to receive(:validate)
         allow(param_mapper).to receive(:update_user_data)
         instance_manager.instance_variable_set('@param_mapper', param_mapper)
 
-        allow(ec2).to receive(:subnets).with(
-          filters: [{
-            name: 'subnet-id',
-            values: ['sub-default', 'sub-123456'],
-          }],
-        ).and_return([fake_aws_subnet])
+        # Mock the NetworkInterfaceManager creation and usage
+        allow(SecurityGroupMapper).to receive(:new).with(ec2).and_return(security_group_mapper)
+        allow(Bosh::AwsCloud::NetworkInterfaceManager).to receive(:new)
+          .with(ec2, logger, security_group_mapper)
+          .and_return(network_interface_manager)
+        allow(network_interface_manager).to receive(:create_network_interfaces)
+          .with(networks_cloud_props, vm_cloud_props, default_options)
+          .and_return(network_interfaces)
 
-        # allow(ec2).to receive(:instances).and_return([aws_instance])
-        allow(ec2).to receive(:instances)
         allow(ec2).to receive(:image).with(stemcell_id).and_return(
           instance_double(
             Aws::EC2::Image,
@@ -128,22 +114,15 @@ module Bosh::AwsCloud
         )
 
         allow(ec2).to receive(:instance).with('i-12345678').and_return(aws_instance)
-        allow(ec2).to receive(:network_interface).with('fake_network_interface_id').and_return(aws_network_interface)
 
         allow(Instance).to receive(:new).and_return(instance)
         allow(instance).to receive(:wait_until_exists)
         allow(instance).to receive(:wait_until_running)
         allow(instance).to receive(:update_routing_tables)
 
-        allow(NetworkInterface).to receive(:new).and_return(network_interface)
-        allow(network_interface).to receive(:attach_ip_prefixes)
-        allow(network_interface).to receive(:wait_until_available)
-        allow(network_interface).to receive(:mac_address)
-        allow(network_interface).to receive(:nic_configuration)
-        allow(network_interface).to receive(:add_associate_public_ip_address)
+        allow(network_interface).to receive(:delete)
 
         allow(settings).to receive(:encode).and_return(user_data)
-        allow(settings).to receive(:update_agent_networks_settings)
       end
 
       context 'when user_data is defined as a parameter' do
@@ -151,9 +130,7 @@ module Bosh::AwsCloud
 
         it 'should use user_data when building the instance params' do
           allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
-          allow(instance_manager).to receive(:get_created_network_interface_id).and_return('fake_network_interface_id')
           allow(aws_client).to receive(:run_instances)
-          allow(aws_client).to receive(:create_network_interface)
 
           expect(param_mapper).to receive(:manifest_params=).with(hash_including(user_data: user_data))
           expect(param_mapper).to receive(:update_user_data)
@@ -174,9 +151,7 @@ module Bosh::AwsCloud
 
         it 'uses the requested api version to encode agent settings' do
           allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
-          allow(instance_manager).to receive(:get_created_network_interface_id).and_return('fake_network_interface_id')
           allow(aws_client).to receive(:run_instances)
-          allow(aws_client).to receive(:create_network_interface)
           expect(settings).to receive(:encode).with('fake_api_version')
 
           instance_manager.create(
@@ -196,11 +171,30 @@ module Bosh::AwsCloud
 
       it 'should ask AWS to create an instance in the given region, with parameters built up from the given arguments' do
         allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
-        allow(instance_manager).to receive(:get_created_network_interface_id).and_return('fake_network_interface_id')
-
-        allow(aws_client).to receive(:create_network_interface)
 
         expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
+        instance_manager.create(
+          stemcell_id,
+          vm_cloud_props,
+          networks_cloud_props,
+          disk_locality,
+          default_options,
+          fake_block_device_mappings,
+          settings,
+          tags,
+          nil,
+          nil
+        )
+      end
+
+      it 'calls NetworkInterfaceManager.create_network_interfaces with the correct parameters' do
+        allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
+        allow(aws_client).to receive(:run_instances).and_return('run-instances-response')
+
+        expect(network_interface_manager).to receive(:create_network_interfaces)
+          .with(networks_cloud_props, vm_cloud_props, default_options)
+          .and_return(network_interfaces)
+
         instance_manager.create(
           stemcell_id,
           vm_cloud_props,
@@ -218,11 +212,7 @@ module Bosh::AwsCloud
       context 'redacts' do
         before do
           allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
-          allow(instance_manager).to receive(:get_created_network_interface_id).and_return('fake_network_interface_id')
-
           allow(aws_client).to receive(:run_instances)
-          allow(aws_client).to receive(:create_network_interface)
-
           allow(logger).to receive(:info)
           instance_manager.create(
             stemcell_id,
@@ -251,79 +241,6 @@ module Bosh::AwsCloud
         end
       end
 
-      context 'network interface creation' do
-        before do
-          allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
-          allow(instance_manager).to receive(:get_created_network_interface_id).and_return('fake_network_interface_id')
-          allow(aws_client).to receive(:run_instances)
-          allow(aws_client).to receive(:create_network_interface)
-        end
-
-        it 'calls add_associate_public_ip_address with vm_cloud_props' do
-          expect(network_interface).to receive(:add_associate_public_ip_address).with(vm_cloud_props)
-
-          instance_manager.create(
-            stemcell_id,
-            vm_cloud_props,
-            networks_cloud_props,
-            disk_locality,
-            default_options,
-            fake_block_device_mappings,
-            settings,
-            tags,
-            nil,
-            nil
-          )
-        end
-
-        it 'does not call attach_ip_prefixes when prefixes are nil' do
-          expect(network_interface).not_to receive(:attach_ip_prefixes)
-
-          instance_manager.create(
-            stemcell_id,
-            vm_cloud_props,
-            networks_cloud_props,
-            disk_locality,
-            default_options,
-            fake_block_device_mappings,
-            settings,
-            tags,
-            nil,
-            nil
-          )
-        end
-
-        context 'when prefixes are present' do
-          let(:fake_network_interface_params) do
-            [
-              {
-                nic: {
-                  ip_address: 'fake-ip-address'
-                },
-                networks: ['default'],
-                prefixes: ['2001:db8::/64']
-              }
-            ]
-          end
-
-          it 'calls attach_ip_prefixes with the correct prefixes' do
-            expect(network_interface).to receive(:attach_ip_prefixes).with(['2001:db8::/64'])
-
-            instance_manager.create(
-              stemcell_id,
-              vm_cloud_props,
-              networks_cloud_props,
-              disk_locality,
-              default_options,
-              fake_block_device_mappings,
-              settings,
-              tags,
-              nil,
-              nil
-            )
-          end
-        end
-      end
 
       context 'when spot_bid_price is specified' do
         let(:vm_type) do
@@ -349,8 +266,6 @@ module Bosh::AwsCloud
 
         it 'should ask AWS to create a SPOT instance in the given region, when vm_type includes spot_bid_price' do
           allow(ec2).to receive(:client).and_return(aws_client)
-          allow(instance_manager).to receive(:get_created_network_interface_id).and_return('fake_network_interface_id')
-          allow(aws_client).to receive(:create_network_interface)
 
           # need to translate security group names to security group ids
           sg1 = instance_double('Aws::EC2::SecurityGroup', id:'sg-baz-1234')
@@ -392,8 +307,6 @@ module Bosh::AwsCloud
         context 'when spot creation fails' do
           it 'raises and logs an error' do
             expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false))
-            allow(instance_manager).to receive(:get_created_network_interface_id).and_return('fake_network_interface_id')
-            allow(aws_client).to receive(:create_network_interface)
             expect(logger).to receive(:warn).with(/Spot instance creation failed/)
 
             expect {
@@ -426,8 +339,6 @@ module Bosh::AwsCloud
             let(:message) { 'bid-price-too-low' }
 
             before do
-              allow(instance_manager).to receive(:get_created_network_interface_id).and_return('fake_network_interface_id')
-              allow(aws_client).to receive(:create_network_interface)
               allow(aws_client).to receive(:run_instances)
               allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
               expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false), message)
@@ -479,11 +390,9 @@ module Bosh::AwsCloud
       context 'when source_dest_check is set to true' do
         it 'does NOT call disable_dest_check' do
           allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
-          allow(instance_manager).to receive(:get_created_network_interface_id).and_return('fake_network_interface_id')
 
           expect(instance).not_to receive(:disable_dest_check)
           expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
-          allow(aws_client).to receive(:create_network_interface)
           expect(instance).to receive(:wait_until_running)
 
           instance_manager.create(
@@ -502,14 +411,16 @@ module Bosh::AwsCloud
       end
 
       context 'when source_dest_check is set to false' do
-        before do
-          vm_type['source_dest_check'] = false
+        let(:vm_type) do
+          {
+            'instance_type' => 'm1.small',
+            'availability_zone' => 'us-east-1a',
+            'source_dest_check' => false
+          }
         end
 
         it 'disables source_dest_check on the instance' do
           allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
-          allow(instance_manager).to receive(:get_created_network_interface_id).and_return('fake_network_interface_id')
-          allow(aws_client).to receive(:create_network_interface)
 
           expect(instance).to receive(:disable_dest_check)
           expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
@@ -530,38 +441,6 @@ module Bosh::AwsCloud
         end
       end
 
-      it 'should retry creating the Network Interface when Aws::EC2::Errors::InvalidIPAddressInUse raised' do
-        allow(instance_manager).to receive(:network_interface_create_wait_time).and_return(0)
-        allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
-        allow(instance_manager).to receive(:get_created_network_interface_id).and_return('fake_network_interface_id')
-
-        expected_nic_params = fake_network_interface_params.first[:nic]
-        
-        expect(aws_client).to receive(:create_network_interface).
-          with(expected_nic_params).
-          and_raise(Aws::EC2::Errors::InvalidIPAddressInUse.new(nil, 'in-use'))
-
-        expect(aws_client).to receive(:create_network_interface)
-          .with(expected_nic_params)
-
-        expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
-
-        expect(logger).to receive(:warn).with(/IP address was in use/).once
-
-        instance_manager.create(
-          stemcell_id,
-          vm_cloud_props,
-          networks_cloud_props,
-          disk_locality,
-          default_options,
-          fake_block_device_mappings,
-          settings,
-          tags,
-          nil,
-          nil
-        )
-      end
-
       context 'when waiting for the instance to be running fails' do
         let(:instance) { instance_double(Bosh::AwsCloud::Instance, id: 'fake-instance-id') }
         let(:create_err) { StandardError.new('fake-err') }
@@ -570,8 +449,6 @@ module Bosh::AwsCloud
 
         it 'terminates created instance and re-raises the error' do
           allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
-          allow(instance_manager).to receive(:get_created_network_interface_id).and_return('fake_network_interface_id')
-          allow(aws_client).to receive(:create_network_interface)
 
           expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
           expect(instance).to receive(:wait_until_running).and_raise(create_err)
@@ -596,11 +473,9 @@ module Bosh::AwsCloud
 
         it 'should retry creating the VM twice then give up when Bosh::Clouds::AbruptlyTerminated is raised' do
           allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
-          allow(instance_manager).to receive(:get_created_network_interface_id).and_return('fake_network_interface_id')
 
           expect(Instance).to receive(:new).exactly(3).times
 
-          allow(aws_client).to receive(:create_network_interface)
           expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response').exactly(3).times
           expect(instance).to receive(:wait_until_running).and_raise(Bosh::AwsCloud::AbruptlyTerminated, 'Server.InternalError: Internal error on launch').exactly(3).times
           expect(logger).to receive(:warn).with(/Failed to configure instance 'fake-instance-id'/).exactly(3).times
@@ -627,8 +502,6 @@ module Bosh::AwsCloud
 
           it 're-raises creation error' do
             allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
-            allow(instance_manager).to receive(:get_created_network_interface_id).and_return('fake_network_interface_id')
-            allow(aws_client).to receive(:create_network_interface)
 
             expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
             expect(instance).to receive(:wait_until_running).and_raise(create_err)

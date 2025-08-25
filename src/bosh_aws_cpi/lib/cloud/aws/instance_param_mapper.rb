@@ -45,7 +45,9 @@ module Bosh::AwsCloud
 
     def validate_availability_zone
       # Check to see if provided availability zones match
-      availability_zone
+      # For validation purposes, we can use nil for subnet_az since we're just checking configuration
+      availability_zone(nil)
+      true
     end
 
     def instance_params(network_interfaces)
@@ -62,7 +64,7 @@ module Bosh::AwsCloud
         user_data: @manifest_params[:user_data],
         block_device_mappings: @manifest_params[:block_device_mappings],
         metadata_options: metadata_options,
-        network_interfaces: network_interfaces.map.with_index { |nic, index| nic[:nic].nic_configuration(index) }
+        network_interfaces: network_interfaces.map.with_index { |nic, index| nic.nic_configuration(index) }
       }
       unless @manifest_params[:tags].nil? || @manifest_params[:tags].empty?
         params.merge!(
@@ -75,7 +77,7 @@ module Bosh::AwsCloud
         )
       end
 
-      az = availability_zone
+      az = availability_zone(network_interfaces.first.availability_zone)
       placement = {}
       placement[:group_name] = vm_type.placement_group if vm_type.placement_group
       placement[:availability_zone] = az if az
@@ -90,24 +92,20 @@ module Bosh::AwsCloud
       @manifest_params[:vm_type]
     end
 
-    def volume_zones
-      @manifest_params[:volume_zones] || []
-    end
-
-    def subnet_az_mapping
-      @manifest_params[:subnet_az_mapping] || {}
-    end
-
     def iam_instance_profile
       { name: vm_type.iam_instance_profile } if vm_type.iam_instance_profile
     end
 
-    def availability_zone
+    def volume_zones
+      @manifest_params[:volume_zones] || []
+    end
+
+    def availability_zone(subnet_az)
       az_selector = AvailabilityZoneSelector.new(nil)
       az_selector.common_availability_zone(
         volume_zones,
         vm_type.availability_zone,
-        subnet_az_mapping[subnet_id]
+        subnet_az
       )
     end
   end

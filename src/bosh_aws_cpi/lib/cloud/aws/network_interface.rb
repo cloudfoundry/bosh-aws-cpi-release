@@ -66,6 +66,11 @@ module Bosh::AwsCloud
       @aws_network_interface.mac_address
     end
 
+    def ipv6_address?(address)
+      # Check if the address contains a colon, which is characteristic of IPv6
+      address.include?(':')
+    end
+
     def nic_configuration(device_index = 0)
       nic = {}
 
