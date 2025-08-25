@@ -10,7 +10,7 @@ module Bosh::AwsCloud
       @ipv4_prefix = nil
       @ipv6_prefix = nil
       
-      validate_and_extract_ip_config
+      validate_and_extract_ip_config unless @networks.empty?
     end
 
     def add_network(network)
@@ -84,7 +84,7 @@ module Bosh::AwsCloud
       
       # Take the first entry of each kind
       @networks.each do |network|
-        next unless network.ip
+        next unless network.respond_to?(:ip) && network.ip
         
         if ipv6_address?(network.ip)
           if network.prefix && network.prefix.to_i != 128
