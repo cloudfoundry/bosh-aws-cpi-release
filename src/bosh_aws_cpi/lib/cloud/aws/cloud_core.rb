@@ -142,8 +142,7 @@ module Bosh::AwsCloud
     end
 
     def delete_vm(instance_id)
-      aws_instance = @instance_manager.find(instance_id)
-      aws_instance.terminate(@config.aws.fast_path_delete?)
+      @instance_manager.find(instance_id).terminate(@config.aws.fast_path_delete?)
 
       yield instance_id if block_given?
     end

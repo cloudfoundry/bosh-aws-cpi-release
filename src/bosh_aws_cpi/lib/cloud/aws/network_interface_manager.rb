@@ -10,6 +10,34 @@ module Bosh::AwsCloud
       @security_group_mapper = security_group_mapper
     end
 
+    def create_network_interfaces(networks_cloud_props, vm_type, default_security_groups)
+      # Iterate over network cloud props and group networks by nic_group
+      nic_groups = {}
+      first_dynamic_network = nil
+      
+      networks_cloud_props.networks.each do |network|
+        if network.type == 'manual'
+          nic_group_name = network.nic_group
+          nic_groups[nic_group_name] ||= Bosh::AwsCloud::NicGroup.new(nic_group_name)
+          nic_groups[nic_group_name].add_network(network)
+        elsif network.type == 'dynamic'
+          # Capture the first dynamic network encountered
+          first_dynamic_network ||= network
+        end
+      end
+      
+      # Add dynamic network to the nic_group structure if one was found
+      if first_dynamic_network
+        nic_groups[first_dynamic_network.name] = Bosh::AwsCloud::NicGroup.new(first_dynamic_network.name, [first_dynamic_network])
+      end
+
+      validate_subnet_az_mapping(nic_groups)
+
+      provision_network_interfaces(nic_groups, networks_cloud_props, vm_type, default_security_groups)
+    end
+
+    private
+
     def provision_network_interfaces(nic_groups, network_cloud_props, vm_type, default_security_groups)
       network_interfaces = []
       nic_groups.each_value do |nic_group|
@@ -54,34 +82,6 @@ module Bosh::AwsCloud
       end
       network_interfaces
     end
-
-    def create_network_interfaces(networks_cloud_props, vm_type, default_security_groups)
-      # Iterate over network cloud props and group networks by nic_group
-      nic_groups = {}
-      first_dynamic_network = nil
-      
-      networks_cloud_props.networks.each do |network|
-        if network.type == 'manual'
-          nic_group_name = network.nic_group
-          nic_groups[nic_group_name] ||= Bosh::AwsCloud::NicGroup.new(nic_group_name)
-          nic_groups[nic_group_name].add_network(network)
-        elsif network.type == 'dynamic'
-          # Capture the first dynamic network encountered
-          first_dynamic_network ||= network
-        end
-      end
-      
-      # Add dynamic network to the nic_group structure if one was found
-      if first_dynamic_network
-        nic_groups[first_dynamic_network.name] = Bosh::AwsCloud::NicGroup.new(first_dynamic_network.name, [first_dynamic_network])
-      end
-
-      validate_subnet_az_mapping(nic_groups)
-
-      provision_network_interfaces(nic_groups, networks_cloud_props, vm_type, default_security_groups)
-    end
-
-    private
 
     def get_created_network_interface_id(resp)
       resp.network_interface.network_interface_id
