@@ -50,7 +50,7 @@ module Bosh::AwsCloud
         @logger.info("Associating public IP address with network interface '#{id}'")
         @ec2_client.modify_network_interface_attribute(
           network_interface_id: id,
-          associate_public_ip_address: { value: true }
+          associate_public_ip_address: true
         )
       end
     rescue Aws::EC2::Errors::InvalidParameterValue => e
@@ -64,6 +64,10 @@ module Bosh::AwsCloud
 
     def mac_address
       @aws_network_interface.mac_address
+    end
+
+    def availability_zone
+      @aws_network_interface.availability_zone
     end
 
     def ipv6_address?(address)

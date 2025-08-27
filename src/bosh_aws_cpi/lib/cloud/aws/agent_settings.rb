@@ -69,6 +69,10 @@ module Bosh::AwsCloud
       end
     end
 
+    def update_agent_settings(network_cloud_props)
+      @networks = agent_network_spec(network_cloud_props)
+    end
+
     private
     def agent_network_spec(networks_cloud_props)
       spec = networks_cloud_props.networks.map do |net|

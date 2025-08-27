@@ -4,16 +4,16 @@ module Bosh::AwsCloud
 
     CREATE_NETWORK_INTERFACE_WAIT_TIME = 30
 
-    def initialize(ec2_client, logger, security_group_mapper)
+    def initialize(ec2_client, logger)
       @ec2_client = ec2_client
       @logger = logger
-      @security_group_mapper = security_group_mapper
     end
 
     def create_network_interfaces(networks_cloud_props, vm_type, default_security_groups)
       # Iterate over network cloud props and group networks by nic_group
       nic_groups = {}
       first_dynamic_network = nil
+      security_group_mapper = SecurityGroupMapper.new(@ec2_client)
       
       networks_cloud_props.networks.each do |network|
         if network.type == 'manual'
@@ -33,19 +33,19 @@ module Bosh::AwsCloud
 
       validate_subnet_az_mapping(nic_groups)
 
-      provision_network_interfaces(nic_groups, networks_cloud_props, vm_type, default_security_groups)
+      provision_network_interfaces(nic_groups, networks_cloud_props, vm_type, default_security_groups, security_group_mapper)
     end
 
     private
 
-    def provision_network_interfaces(nic_groups, network_cloud_props, vm_type, default_security_groups)
+    def provision_network_interfaces(nic_groups, network_cloud_props, vm_type, default_security_groups, security_group_mapper)
       network_interfaces = []
       nic_groups.each_value do |nic_group|
         # Get subnet from the nic_group
         subnet_id_val = nic_group.subnet_id
 
         # Get security groups
-        sg = @security_group_mapper.map_to_ids(security_groups(network_cloud_props, vm_type, default_security_groups), subnet_id_val)
+        sg = security_group_mapper.map_to_ids(security_groups(network_cloud_props, vm_type, default_security_groups), subnet_id_val)
 
         if ( sg.nil? || sg.empty? )
           raise Bosh::Clouds::CloudError, "Missing security groups. See http://bosh.io/docs/aws-cpi.html for the list of supported properties."
@@ -75,12 +75,12 @@ module Bosh::AwsCloud
           network_interface = Bosh::AwsCloud::NetworkInterface.new(@ec2_client.network_interface(network_interface_id), @ec2_client.client, @logger)
           network_interface.wait_until_available
           network_interface.attach_ip_prefixes(prefixes) unless prefixes.nil?
-          network_interface.add_associate_public_ip_address(network_cloud_props)
+          network_interface.add_associate_public_ip_address(vm_type)
           nic_group.assign_mac_address(network_interface.mac_address)
           network_interfaces.append(network_interface)
         end
       end
-      network_interfaces
+      return network_interfaces, network_cloud_props
     end
 
     def get_created_network_interface_id(resp)
