@@ -16,10 +16,10 @@ module Bosh::AwsCloud
     def create(stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality, default_security_groups, block_device_mappings, settings, tags, metadata_options, stemcell_api_version)
       abruptly_terminated_retries = 2
       begin
+        network_interface_manager = Bosh::AwsCloud::NetworkInterfaceManager.new(@ec2, @logger)
+        network_interfaces, updated_network_props = network_interface_manager.create_network_interfaces(networks_cloud_props, vm_cloud_props, default_security_groups)
 
-        security_group_mapper = SecurityGroupMapper.new(@ec2)
-        network_interface_manager = Bosh::AwsCloud::NetworkInterfaceManager.new(@ec2, @logger, security_group_mapper)
-        network_interfaces = network_interface_manager.create_network_interfaces(networks_cloud_props, vm_cloud_props, default_security_groups)
+        settings.update_agent_settings(updated_network_props)
 
         set_manifest_params(stemcell_id, vm_cloud_props, block_device_mappings, settings.encode(stemcell_api_version), disk_locality, tags, metadata_options)
 
