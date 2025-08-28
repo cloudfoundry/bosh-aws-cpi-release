@@ -78,7 +78,7 @@ describe Bosh::AwsCloud::NetworkInterface do
 
         expect(ec2_client).to have_received(:modify_network_interface_attribute).with(
           network_interface_id: 'eni-12345',
-          associate_public_ip_address: { value: true }
+          associate_public_ip_address: true
         )
       end
     end
