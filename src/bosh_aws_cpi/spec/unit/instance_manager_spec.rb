@@ -98,11 +98,11 @@ module Bosh::AwsCloud
         # Mock the NetworkInterfaceManager creation and usage
         allow(SecurityGroupMapper).to receive(:new).with(ec2).and_return(security_group_mapper)
         allow(Bosh::AwsCloud::NetworkInterfaceManager).to receive(:new)
-          .with(ec2, logger, security_group_mapper)
+          .with(ec2, logger)
           .and_return(network_interface_manager)
         allow(network_interface_manager).to receive(:create_network_interfaces)
           .with(networks_cloud_props, vm_cloud_props, default_options)
-          .and_return(network_interfaces)
+          .and_return([network_interfaces, networks_cloud_props])
 
         allow(ec2).to receive(:image).with(stemcell_id).and_return(
           instance_double(
@@ -123,6 +123,7 @@ module Bosh::AwsCloud
         allow(network_interface).to receive(:delete)
 
         allow(settings).to receive(:encode).and_return(user_data)
+        allow(settings).to receive(:update_agent_settings)
       end
 
       context 'when user_data is defined as a parameter' do

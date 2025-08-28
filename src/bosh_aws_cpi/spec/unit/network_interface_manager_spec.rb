@@ -5,7 +5,13 @@ module Bosh::AwsCloud
     let(:logger) { Logger.new('/dev/null') }
     let(:ec2_client) { instance_double(Aws::EC2::Resource) }
     let(:security_group_mapper) { instance_double(SecurityGroupMapper) }
-    let(:network_interface_manager) { NetworkInterfaceManager.new(ec2_client, logger, security_group_mapper) }
+    let(:network_interface_manager) { NetworkInterfaceManager.new(ec2_client, logger) }
+    
+    before do
+      # Mock SecurityGroupMapper creation and usage
+      allow(SecurityGroupMapper).to receive(:new).with(ec2_client).and_return(security_group_mapper)
+      allow(security_group_mapper).to receive(:map_to_ids).and_return(['sg-123456'])
+    end
     
     let(:manual_subnet_id) { 'manual-subnet' }
     let(:dynamic_subnet_id) { 'dynamic-subnet' }
@@ -68,7 +74,7 @@ module Bosh::AwsCloud
           allow(mock_bosh_ni).to receive(:add_associate_public_ip_address)
           allow(mock_bosh_ni).to receive(:mac_address).and_return('00:11:22:33:44:55')
 
-          result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
+          result, _updated_props = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
           
           expect(result).to be_an(Array)
           expect(result.size).to eq(1)
@@ -109,7 +115,7 @@ module Bosh::AwsCloud
           allow(mock_bosh_ni).to receive(:add_associate_public_ip_address)
           allow(mock_bosh_ni).to receive(:mac_address).and_return('00:11:22:33:44:66')
 
-          result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
+          result, _updated_props = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
           
           expect(result).to be_an(Array)
           expect(result.size).to eq(1)
@@ -157,7 +163,7 @@ module Bosh::AwsCloud
           allow(mock_bosh_ni).to receive(:add_associate_public_ip_address)
           allow(mock_bosh_ni).to receive(:mac_address).and_return('00:11:22:33:44:77')
 
-          result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
+          result, _updated_props = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
           
           expect(result).to be_an(Array)
           expect(result.size).to eq(1)
@@ -210,7 +216,7 @@ module Bosh::AwsCloud
             allow(mock_ni).to receive(:mac_address).and_return("00:11:22:33:44:#{call_count}#{call_count}")
           end
 
-          result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
+          result, _updated_props = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
           
           expect(result).to be_an(Array)
           expect(result.size).to eq(2)
@@ -261,7 +267,7 @@ module Bosh::AwsCloud
             allow(mock_ni).to receive(:mac_address).and_return("00:11:22:33:55:#{call_count}#{call_count}")
           end
 
-          result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
+          result, _updated_props = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
           
           expect(result).to be_an(Array)
           expect(result.size).to eq(2)
@@ -311,7 +317,7 @@ module Bosh::AwsCloud
             allow(mock_ni).to receive(:mac_address).and_return("00:11:22:44:55:#{call_count}#{call_count}")
           end
 
-          result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
+          result, _updated_props = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
           
           expect(result).to be_an(Array)
           expect(result.size).to eq(2)
@@ -375,7 +381,7 @@ module Bosh::AwsCloud
             allow(mock_ni).to receive(:mac_address).and_return("00:11:22:66:77:#{call_count}#{call_count}")
           end
 
-          result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
+          result, _updated_props = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
           
           expect(result).to be_an(Array)
           expect(result.size).to eq(3) # shared-group (1), isolated-group (1), dynamic-default (1)
@@ -448,7 +454,7 @@ module Bosh::AwsCloud
             allow(mock_bosh_ni).to receive(:add_associate_public_ip_address)
             allow(mock_bosh_ni).to receive(:mac_address).and_return('00:11:22:33:99:99')
 
-            result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
+            result, _updated_props = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
             
             expect(result).to be_an(Array)
             expect(result.size).to eq(1) # Only first dynamic network creates interface
@@ -529,7 +535,7 @@ module Bosh::AwsCloud
         network_cloud_props = instance_double(Bosh::AwsCloud::NetworkCloudProps)
         allow(network_cloud_props).to receive(:security_groups).and_return([])
         
-        result = network_interface_manager.send(:provision_network_interfaces, nic_groups, network_cloud_props, vm_cloud_props, default_security_groups)
+        result, _updated_props = network_interface_manager.send(:provision_network_interfaces, nic_groups, network_cloud_props, vm_cloud_props, default_security_groups, security_group_mapper)
         
         expect(result).to be_an(Array)
         expect(result.size).to eq(1)
@@ -546,7 +552,7 @@ module Bosh::AwsCloud
           allow(network_cloud_props).to receive(:security_groups).and_return([])
           
           expect {
-            network_interface_manager.send(:provision_network_interfaces, nic_groups, network_cloud_props, vm_cloud_props, default_security_groups)
+            network_interface_manager.send(:provision_network_interfaces, nic_groups, network_cloud_props, vm_cloud_props, default_security_groups, security_group_mapper)
           }.to raise_error(Bosh::Clouds::CloudError, /Missing security groups/)
         end
       end
@@ -645,7 +651,7 @@ module Bosh::AwsCloud
             allow(mock_ni).to receive(:mac_address).and_return("00:11:22:33:dns:#{call_count}")
           end
 
-          result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
+          result, _updated_props = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
           
           expect(result).to be_an(Array)
           expect(result.size).to eq(2)
@@ -704,7 +710,7 @@ module Bosh::AwsCloud
             allow(mock_ni).to receive(:mac_address).and_return("00:11:22:33:dns:#{call_count}")
           end
 
-          result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
+          result, _updated_props = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
           
           expect(result).to be_an(Array)
           expect(result.size).to eq(3)
@@ -752,7 +758,7 @@ module Bosh::AwsCloud
           allow(mock_bosh_ni).to receive(:add_associate_public_ip_address)
           allow(mock_bosh_ni).to receive(:mac_address).and_return('00:11:22:33:mixed:dns')
 
-          result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
+          result, _updated_props = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
           
           expect(result).to be_an(Array)
           expect(result.size).to eq(1)
@@ -802,7 +808,7 @@ module Bosh::AwsCloud
             allow(mock_ni).to receive(:mac_address).and_return("00:11:22:33:opt:#{call_count}")
           end
 
-          result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
+          result, _updated_props = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
           
           expect(result).to be_an(Array)
           expect(result.size).to eq(2)
