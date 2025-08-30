@@ -93,9 +93,10 @@ module Bosh::AwsCloud
           (disk_locality || []),
           @config.aws.default_security_groups,
           block_device_mappings,
-          settings.encode(@stemcell_api_version),
+          settings,
           tags,
-          @config.aws.metadata_options
+          @config.aws.metadata_options,
+          @stemcell_api_version
         )
 
         target_groups.each do |target_group_name|

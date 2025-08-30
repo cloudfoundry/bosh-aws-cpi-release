@@ -93,6 +93,7 @@ describe Bosh::AwsCloud::CloudCore do
   describe '#delete_vm' do
     let(:instance_manager) {instance_double(Bosh::AwsCloud::InstanceManager)}
     let(:instance_id) {'fake-id'}
+    let(:network_interface_id) {'fake-network-interface-id'}
     let(:ec2) {instance_double(Aws::EC2::Resource)}
     let(:instance) {instance_double(Bosh::AwsCloud::Instance)}
 
@@ -135,7 +136,7 @@ describe Bosh::AwsCloud::CloudCore do
       }
 
       it 'passes instance metadata to AWS' do
-        expect(instance_manager).to receive(:create).with(anything,anything,anything,anything,anything,anything,anything,anything,metadata_options).and_return(instance)
+        expect(instance_manager).to receive(:create).with(anything,anything,anything,anything,anything,anything,anything,anything,metadata_options,anything).and_return(instance)
 
         cloud.create_vm('foo', 'stemcell_id', 'vm_type', double('network_props', {filter: []}), settings)
       end
@@ -143,7 +144,7 @@ describe Bosh::AwsCloud::CloudCore do
     context 'when instance metadata is not set in cpi config' do
 
       it 'passes instance metadata to AWS' do
-        expect(instance_manager).to receive(:create).with(anything,anything,anything,anything,anything,anything,anything,anything,nil).and_return(instance)
+        expect(instance_manager).to receive(:create).with(anything,anything,anything,anything,anything,anything,anything,anything,nil,anything).and_return(instance)
         expect(options['aws']).to_not have_key('metadata_options')
 
         cloud.create_vm('foo', 'stemcell_id', 'vm_type', double('network_props', {filter: []}), settings)

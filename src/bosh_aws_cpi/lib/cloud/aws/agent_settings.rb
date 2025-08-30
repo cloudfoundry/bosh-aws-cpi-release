@@ -69,11 +69,18 @@ module Bosh::AwsCloud
       end
     end
 
+    def update_agent_settings(network_cloud_props)
+      @networks = agent_network_spec(network_cloud_props)
+    end
+
     private
     def agent_network_spec(networks_cloud_props)
       spec = networks_cloud_props.networks.map do |net|
         settings = net.to_h
         settings['use_dhcp'] = true
+        
+        # Include MAC address if it's available (for manual networks)
+        settings['mac'] = net.mac if net.respond_to?(:mac) && net.mac
 
         [net.name, settings]
       end
