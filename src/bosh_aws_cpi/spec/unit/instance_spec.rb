@@ -104,34 +104,34 @@ module Bosh::AwsCloud
 
     describe '#terminate' do
       it 'should terminate an instance and its attached network interface given the id' do
-        allow(instance).to receive(:network_interface_delete_wait_time).and_return(0)
+        stub_const('Bosh::AwsCloud::NetworkInterface::DELETE_NETWORK_INTERFACE_WAIT_TIME', 0)
         expect(aws_instance).to receive(:terminate).with(no_args).ordered
+        expect(aws_instance).to receive(:wait_until_terminated).and_return(aws_instance).ordered
         expect(aws_instance).to receive(:network_interfaces).and_return([network_interface])
         expect(network_interface).to receive(:delete)
-        expect(aws_instance).to receive(:wait_until_terminated).ordered
 
         instance.terminate
       end
 
       it 'should retry deleting the Network Interface when Aws::EC2::Errors::InvalidNetworkInterfaceInUse raised' do
-        allow(instance).to receive(:network_interface_delete_wait_time).and_return(0)
+        stub_const('Bosh::AwsCloud::NetworkInterface::DELETE_NETWORK_INTERFACE_WAIT_TIME', 0)
         expect(aws_instance).to receive(:terminate).with(no_args).ordered
+        expect(aws_instance).to receive(:wait_until_terminated).and_return(aws_instance).ordered
         expect(aws_instance).to receive(:network_interfaces).and_return([network_interface])
         expect(network_interface).to receive(:delete).and_raise(Aws::EC2::Errors::InvalidNetworkInterfaceInUse.new(nil, 'in-use'))
         expect(network_interface).to receive(:delete)
-        expect(aws_instance).to receive(:wait_until_terminated).ordered
 
         instance.terminate
       end
 
       it 'should terminate an instance and delete multiple attached network interfaces' do
         network_interface2 = instance_double(Aws::EC2::NetworkInterface, id: 'fake-network-interface-id-2')
-        allow(instance).to receive(:network_interface_delete_wait_time).and_return(0)
+        stub_const('Bosh::AwsCloud::NetworkInterface::DELETE_NETWORK_INTERFACE_WAIT_TIME', 0)
         expect(aws_instance).to receive(:terminate).with(no_args).ordered
+        expect(aws_instance).to receive(:wait_until_terminated).and_return(aws_instance).ordered
         expect(aws_instance).to receive(:network_interfaces).and_return([network_interface, network_interface2])
         expect(network_interface).to receive(:delete)
         expect(network_interface2).to receive(:delete)
-        expect(aws_instance).to receive(:wait_until_terminated).ordered
 
         instance.terminate
       end
@@ -167,15 +167,6 @@ module Bosh::AwsCloud
         end
       end
 
-      describe 'fast path deletion' do
-        it 'deletes the instance without waiting for confirmation of termination' do
-          expect(aws_instance).to receive(:network_interfaces).and_return([network_interface])
-          expect(network_interface).to receive(:delete)
-          expect(aws_instance).to receive(:terminate).ordered
-          expect(TagManager).to receive(:tag).with(aws_instance, "Name", "to be deleted").ordered
-          instance.terminate(true)
-        end
-      end
     end
 
     describe '#reboot' do
