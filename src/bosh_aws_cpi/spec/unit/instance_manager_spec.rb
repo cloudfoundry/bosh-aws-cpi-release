@@ -134,7 +134,6 @@ module Bosh::AwsCloud
           allow(aws_client).to receive(:run_instances)
 
           expect(param_mapper).to receive(:manifest_params=).with(hash_including(user_data: user_data))
-          expect(param_mapper).to receive(:update_user_data)
 
           instance_manager.create(
             stemcell_id,

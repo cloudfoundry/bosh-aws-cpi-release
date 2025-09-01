@@ -94,30 +94,20 @@ module Bosh::AwsCloud
         @logger.info("Deleting instance settings for '#{@aws_instance.id}'")
       end
 
-      cleanup_network_interfaces
-
-      if fast
-        TagManager.tag(@aws_instance, "Name", "to be deleted")
-        @logger.info("Instance #{@aws_instance.id} marked to deletion")
-        return
-      end
-
       begin
         @logger.info("Deleting instance '#{@aws_instance.id}'")
         @aws_instance = @aws_instance.wait_until_terminated
+        cleanup_network_interfaces
       rescue Aws::EC2::Errors::InvalidInstanceIDNotFound => e
         @logger.debug("Failed to find terminated instance '#{@aws_instance.id}' after deletion: #{e.inspect}")
         # It's OK, just means that instance has already been deleted
+        cleanup_network_interfaces
       end
     end
 
     # Determines if the instance exists.
     def exists?
       @aws_instance.exists? && @aws_instance.state.name != 'terminated'
-    end
-
-    def network_interface
-      @aws_instance&.network_interfaces&.first
     end
 
     def update_routing_tables(route_definitions)
@@ -152,12 +142,12 @@ module Bosh::AwsCloud
 
     def cleanup_network_interfaces
       network_interfaces = @aws_instance&.network_interfaces
-        network_interfaces.each do |nic|
+      network_interfaces&.each do |nic|
         begin
           @logger.info("Deleting network_interface: #{nic.id}")
           errors = [Aws::EC2::Errors::InvalidNetworkInterfaceInUse, Aws::EC2::Errors::InvalidParameterValue]
 
-          Bosh::Common.retryable(sleep: network_interface_delete_wait_time, tries: 100, on: errors) do |_tries, error|
+          Bosh::Common.retryable(sleep: Bosh::AwsCloud::NetworkInterface::DELETE_NETWORK_INTERFACE_WAIT_TIME, tries: 100, on: errors) do |_tries, error|
             if error.class == Aws::EC2::Errors::InvalidNetworkInterfaceInUse || error.class == Aws::EC2::Errors::InvalidParameterValue
               @logger.warn("Network Interface was in use: #{error}")
             end
@@ -168,10 +158,6 @@ module Bosh::AwsCloud
           @logger.warn("Failed to delete network interface '#{nic.id}' because it was not found: #{e.inspect}")
         end
       end
-    end
-
-    def network_interface_delete_wait_time
-      10
     end
   end
 end

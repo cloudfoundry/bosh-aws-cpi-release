@@ -4,16 +4,16 @@ module Bosh::AwsCloud
 
     CREATE_NETWORK_INTERFACE_WAIT_TIME = 30
 
-    def initialize(ec2_client, logger)
-      @ec2_client = ec2_client
+    def initialize(ec2, logger)
+      @ec2 = ec2
       @logger = logger
     end
 
-    def create_network_interfaces(networks_cloud_props, vm_type, default_security_groups)
+    def create_network_interfaces(networks_cloud_props, vm_cloud_props, default_security_groups)
       # Iterate over network cloud props and group networks by nic_group
       nic_groups = {}
       first_dynamic_network = nil
-      security_group_mapper = SecurityGroupMapper.new(@ec2_client)
+      security_group_mapper = SecurityGroupMapper.new(@ec2)
       
       networks_cloud_props.networks.each do |network|
         if network.type == 'manual'
@@ -31,21 +31,24 @@ module Bosh::AwsCloud
         nic_groups[first_dynamic_network.name] = Bosh::AwsCloud::NicGroup.new(first_dynamic_network.name, [first_dynamic_network])
       end
 
+      # Now validate and extract IP config for all nic groups
+      nic_groups.each_value(&:validate_and_extract_ip_config)
+
       validate_subnet_az_mapping(nic_groups)
 
-      provision_network_interfaces(nic_groups, networks_cloud_props, vm_type, default_security_groups, security_group_mapper)
+      provision_network_interfaces(nic_groups, networks_cloud_props, vm_cloud_props, default_security_groups, security_group_mapper)
     end
 
     private
 
-    def provision_network_interfaces(nic_groups, network_cloud_props, vm_type, default_security_groups, security_group_mapper)
+    def provision_network_interfaces(nic_groups, network_cloud_props, vm_cloud_props, default_security_groups, security_group_mapper)
       network_interfaces = []
       nic_groups.each_value do |nic_group|
         # Get subnet from the nic_group
         subnet_id_val = nic_group.subnet_id
 
         # Get security groups
-        sg = security_group_mapper.map_to_ids(security_groups(network_cloud_props, vm_type, default_security_groups), subnet_id_val)
+        sg = security_group_mapper.map_to_ids(security_groups(network_cloud_props, vm_cloud_props, default_security_groups), subnet_id_val)
 
         if ( sg.nil? || sg.empty? )
           raise Bosh::Clouds::CloudError, "Missing security groups. See http://bosh.io/docs/aws-cpi.html for the list of supported properties."
@@ -70,29 +73,29 @@ module Bosh::AwsCloud
           @logger.info('Launching network interface...')
           @logger.warn("IP address was in use: #{error}") if error.is_a?(Aws::EC2::Errors::InvalidIPAddressInUse)
 
-          resp = @ec2_client.client.create_network_interface(nic)
+          resp = @ec2.client.create_network_interface(nic)
           network_interface_id = get_created_network_interface_id(resp)
-          network_interface = Bosh::AwsCloud::NetworkInterface.new(@ec2_client.network_interface(network_interface_id), @ec2_client.client, @logger)
+          network_interface = Bosh::AwsCloud::NetworkInterface.new(@ec2.network_interface(network_interface_id), @ec2.client, @logger)
           network_interface.wait_until_available
           network_interface.attach_ip_prefixes(prefixes) unless prefixes.nil?
-          network_interface.add_associate_public_ip_address(vm_type)
+          network_interface.add_associate_public_ip_address(vm_cloud_props)
           nic_group.assign_mac_address(network_interface.mac_address)
           network_interfaces.append(network_interface)
         end
       end
-      return network_interfaces, network_cloud_props
+      return network_interfaces
     end
 
     def get_created_network_interface_id(resp)
       resp.network_interface.network_interface_id
     end
 
-    def security_groups(networks_cloud_props, vm_type, default_security_groups)
+    def security_groups(networks_cloud_props, vm_cloud_props, default_security_groups)
       networks_security_groups = networks_cloud_props.security_groups
 
       groups = default_security_groups
       groups = networks_security_groups unless networks_security_groups.empty?
-      groups = vm_type.security_groups unless vm_type.security_groups.empty?
+      groups = vm_cloud_props.security_groups unless vm_cloud_props.security_groups.empty?
       groups
     end
 
@@ -105,7 +108,7 @@ module Bosh::AwsCloud
       
       return {} if subnet_ids.empty?
       
-      availability_zones = @ec2_client.subnets(
+      availability_zones = @ec2.subnets(
         filters: [{ name: 'subnet-id', values: subnet_ids }]
       ).map(&:availability_zone).uniq
       

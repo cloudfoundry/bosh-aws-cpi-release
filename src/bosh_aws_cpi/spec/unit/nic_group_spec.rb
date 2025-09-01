@@ -56,6 +56,7 @@ module Bosh::AwsCloud
 
       it 'adds network and validates configuration' do
         nic_group.add_network(manual_network_ipv4)
+        nic_group.validate_and_extract_ip_config
         
         expect(nic_group.networks).to eq([manual_network_ipv4])
         expect(nic_group.ipv4_address).to eq('10.0.0.1')
@@ -64,6 +65,7 @@ module Bosh::AwsCloud
       it 'adds multiple networks to same group' do
         nic_group.add_network(manual_network_ipv4)
         nic_group.add_network(manual_network_ipv6)
+        nic_group.validate_and_extract_ip_config
         
         expect(nic_group.networks).to eq([manual_network_ipv4, manual_network_ipv6])
         expect(nic_group.ipv4_address).to eq('10.0.0.1')
@@ -83,9 +85,10 @@ module Bosh::AwsCloud
 
         it 'raises an error' do
           nic_group.add_network(manual_network_ipv4)
+          nic_group.add_network(different_subnet_network)
           
           expect {
-            nic_group.add_network(different_subnet_network)
+            nic_group.validate_and_extract_ip_config
           }.to raise_error(Bosh::Clouds::CloudError, /Networks in nic_group.*have different subnet ids/)
         end
       end

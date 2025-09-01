@@ -15,7 +15,6 @@ module Bosh::AwsCloud
 
     def add_network(network)
       @networks << network
-      validate_and_extract_ip_config
     end
 
     def subnet_id
@@ -67,8 +66,6 @@ module Bosh::AwsCloud
       end
     end
 
-    private
-
     def validate_and_extract_ip_config
       # Check subnet consistency
       subnet_ids = @networks.map(&:subnet).compact.uniq
@@ -101,6 +98,8 @@ module Bosh::AwsCloud
         end
       end
     end
+
+    private
 
     def ipv6_address?(addr)
       addr.to_s.include?(':')

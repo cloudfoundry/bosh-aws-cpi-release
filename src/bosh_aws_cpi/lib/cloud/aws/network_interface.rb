@@ -3,6 +3,7 @@ module Bosh::AwsCloud
     include Helpers
 
     CREATE_NETWORK_INTERFACE_WAIT_TIME = 30
+    DELETE_NETWORK_INTERFACE_WAIT_TIME = 2
 
     def initialize(aws_network_interface, ec2_client, logger)
       @aws_network_interface = aws_network_interface
