@@ -94,14 +94,20 @@ module Bosh::AwsCloud
         @logger.info("Deleting instance settings for '#{@aws_instance.id}'")
       end
 
+      cleanup_network_interfaces
+
+      if fast
+        TagManager.tag(@aws_instance, "Name", "to be deleted")
+        @logger.info("Instance #{@aws_instance.id} marked to deletion")
+        return
+      end
+
       begin
         @logger.info("Deleting instance '#{@aws_instance.id}'")
         @aws_instance = @aws_instance.wait_until_terminated
-        cleanup_network_interfaces
       rescue Aws::EC2::Errors::InvalidInstanceIDNotFound => e
         @logger.debug("Failed to find terminated instance '#{@aws_instance.id}' after deletion: #{e.inspect}")
         # It's OK, just means that instance has already been deleted
-        cleanup_network_interfaces
       end
     end
 
