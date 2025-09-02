@@ -167,6 +167,15 @@ module Bosh::AwsCloud
         end
       end
 
+      describe 'fast path deletion' do
+        it 'deletes the instance without waiting for confirmation of termination' do
+          expect(aws_instance).to receive(:terminate).ordered
+          expect(aws_instance).to receive(:network_interfaces).and_return([network_interface])
+          expect(network_interface).to receive(:delete)
+          expect(TagManager).to receive(:tag).with(aws_instance, "Name", "to be deleted").ordered
+          instance.terminate(true)
+        end
+      end
     end
 
     describe '#reboot' do
