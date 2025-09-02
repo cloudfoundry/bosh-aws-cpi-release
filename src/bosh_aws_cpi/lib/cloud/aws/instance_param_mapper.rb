@@ -9,13 +9,9 @@ module Bosh::AwsCloud
       @logger = logger
     end
 
-    def validate
+    def validate(subnet_az)
       validate_required_inputs
-      validate_availability_zone
-    end
-
-    def update_user_data(user_data)
-      @manifest_params[:user_data] = user_data
+      validate_availability_zone(subnet_az)
     end
 
     def validate_required_inputs
@@ -43,10 +39,9 @@ module Bosh::AwsCloud
       end
     end
 
-    def validate_availability_zone
+    def validate_availability_zone(subnet_az)
       # Check to see if provided availability zones match
-      # For validation purposes, we can use nil for subnet_az since we're just checking configuration
-      availability_zone(nil)
+      availability_zone(subnet_az)
       true
     end
 

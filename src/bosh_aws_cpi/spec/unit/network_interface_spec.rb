@@ -120,7 +120,7 @@ describe Bosh::AwsCloud::NetworkInterface do
 
   describe '#nic_configuration' do
     it 'returns the NIC configuration hash' do
-      expect(network_interface.nic_configuration).to eq(
+      expect(network_interface.nic_configuration(0)).to eq(
         device_index: 0,
         network_interface_id: 'eni-12345'
       )

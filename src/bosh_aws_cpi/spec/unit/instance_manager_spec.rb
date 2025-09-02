@@ -92,7 +92,6 @@ module Bosh::AwsCloud
         allow(param_mapper).to receive(:instance_params).and_return(fake_instance_params)
         allow(param_mapper).to receive(:manifest_params=)
         allow(param_mapper).to receive(:validate)
-        allow(param_mapper).to receive(:update_user_data)
         instance_manager.instance_variable_set('@param_mapper', param_mapper)
 
         # Mock the NetworkInterfaceManager creation and usage
@@ -102,7 +101,7 @@ module Bosh::AwsCloud
           .and_return(network_interface_manager)
         allow(network_interface_manager).to receive(:create_network_interfaces)
           .with(networks_cloud_props, vm_cloud_props, default_options)
-          .and_return([network_interfaces, networks_cloud_props])
+          .and_return(network_interfaces)
 
         allow(ec2).to receive(:image).with(stemcell_id).and_return(
           instance_double(
@@ -121,6 +120,7 @@ module Bosh::AwsCloud
         allow(instance).to receive(:update_routing_tables)
 
         allow(network_interface).to receive(:delete)
+        allow(network_interface).to receive(:availability_zone).and_return('us-east-1a')
 
         allow(settings).to receive(:encode).and_return(user_data)
         allow(settings).to receive(:update_agent_settings)
