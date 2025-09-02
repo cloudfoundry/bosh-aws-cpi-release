@@ -23,7 +23,7 @@ module Bosh::AwsCloud
 
         set_manifest_params(stemcell_id, vm_cloud_props, block_device_mappings, settings.encode(stemcell_api_version), disk_locality, tags, metadata_options)
 
-        @param_mapper.validate
+        @param_mapper.validate(network_interfaces.first.availability_zone)
       rescue => e
         @logger.error("Failed to create network interfaces: #{e.inspect}")
         network_interfaces&.each { |nic| nic.delete }

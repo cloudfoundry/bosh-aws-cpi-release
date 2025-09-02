@@ -531,8 +531,8 @@ module Bosh::AwsCloud
 
       it 'calls both validate_required_inputs and validate_availability_zone' do
         expect(instance_param_mapper).to receive(:validate_required_inputs)
-        expect(instance_param_mapper).to receive(:validate_availability_zone)
-        instance_param_mapper.validate
+        expect(instance_param_mapper).to receive(:validate_availability_zone).with('us-east-1a')
+        instance_param_mapper.validate('us-east-1a')
       end
 
       context 'with valid input' do
@@ -552,7 +552,7 @@ module Bosh::AwsCloud
             user_data: user_data
           }
           expect {
-            instance_param_mapper.validate
+            instance_param_mapper.validate('us-east-1a')
           }.to_not raise_error
         end
       end
@@ -564,7 +564,7 @@ module Bosh::AwsCloud
             vm_type: vm_cloud_props,
           }
           expect {
-            instance_param_mapper.validate
+            instance_param_mapper.validate('us-east-1a')
           }.to raise_error Bosh::Clouds::CloudError, /Missing properties: user_data/
         end
       end
@@ -601,7 +601,7 @@ module Bosh::AwsCloud
       end
 
       it 'validates availability zone configuration' do
-        expect(instance_param_mapper.validate_availability_zone).to be_truthy
+        expect(instance_param_mapper.validate_availability_zone('us-east-1a')).to be_truthy
       end
     end
 

@@ -76,7 +76,7 @@ module Bosh::AwsCloud
       address.include?(':')
     end
 
-    def nic_configuration(device_index = 0)
+    def nic_configuration(device_index)
       nic = {}
 
       nic[:device_index] = device_index
