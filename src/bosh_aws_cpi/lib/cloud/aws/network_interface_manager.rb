@@ -2,8 +2,6 @@ module Bosh::AwsCloud
   class NetworkInterfaceManager
     include Helpers
 
-    CREATE_NETWORK_INTERFACE_WAIT_TIME = 30
-
     def initialize(ec2, logger)
       @ec2 = ec2
       @logger = logger
@@ -69,7 +67,7 @@ module Bosh::AwsCloud
 
         errors = [Aws::EC2::Errors::InvalidIPAddressInUse]
         @logger.info("Creating new network_interface with: #{nic.inspect}")
-        Bosh::Common.retryable(sleep: network_interface_create_wait_time, tries: 20, on: errors) do |_tries, error|
+        Bosh::Common.retryable(sleep: Bosh::AwsCloud::NetworkInterface::CREATE_NETWORK_INTERFACE_WAIT_TIME, tries: 20, on: errors) do |_tries, error|
           @logger.info('Launching network interface...')
           @logger.warn("IP address was in use: #{error}") if error.is_a?(Aws::EC2::Errors::InvalidIPAddressInUse)
 
@@ -97,10 +95,6 @@ module Bosh::AwsCloud
       groups = networks_security_groups unless networks_security_groups.empty?
       groups = vm_cloud_props.security_groups unless vm_cloud_props.security_groups.empty?
       groups
-    end
-
-    def network_interface_create_wait_time
-      Bosh::AwsCloud::NetworkInterface::CREATE_NETWORK_INTERFACE_WAIT_TIME
     end
 
     def validate_subnet_az_mapping(nic_groups)
