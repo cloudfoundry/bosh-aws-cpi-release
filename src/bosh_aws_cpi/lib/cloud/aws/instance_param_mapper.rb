@@ -42,7 +42,6 @@ module Bosh::AwsCloud
     def validate_availability_zone(subnet_az)
       # Check to see if provided availability zones match
       availability_zone(subnet_az)
-      true
     end
 
     def instance_params(network_interfaces)
