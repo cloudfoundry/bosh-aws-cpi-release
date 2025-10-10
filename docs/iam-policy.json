@@ -23,7 +23,7 @@
                 "ec2:CreateNetworkInterface",
                 "ec2:DeleteNetworkInterface",
                 "ec2:DescribeNetworkInterfaces",
-                "ec2:ModifyNetworkInterface"
+                "ec2:ModifyNetworkInterfaceAttribute"
             ],
             "Resource": "*"
         },
