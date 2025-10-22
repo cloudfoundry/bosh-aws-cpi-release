@@ -94,8 +94,6 @@ module Bosh::AwsCloud
         @logger.info("Deleting instance settings for '#{@aws_instance.id}'")
       end
 
-      cleanup_network_interfaces
-
       if fast
         TagManager.tag(@aws_instance, "Name", "to be deleted")
         @logger.info("Instance #{@aws_instance.id} marked to deletion")
@@ -140,28 +138,6 @@ module Bosh::AwsCloud
           else
             table.create_route(destination_cidr_block: definition.destination, instance_id: @aws_instance.id)
           end
-        end
-      end
-    end
-
-    private
-
-    def cleanup_network_interfaces
-      network_interfaces = @aws_instance&.network_interfaces
-      network_interfaces&.each do |nic|
-        begin
-          @logger.info("Deleting network_interface: #{nic.id}")
-          errors = [Aws::EC2::Errors::InvalidNetworkInterfaceInUse, Aws::EC2::Errors::InvalidParameterValue]
-
-          Bosh::Common.retryable(sleep: Bosh::AwsCloud::NetworkInterface::DELETE_NETWORK_INTERFACE_WAIT_TIME, tries: 100, on: errors) do |_tries, error|
-            if error.class == Aws::EC2::Errors::InvalidNetworkInterfaceInUse || error.class == Aws::EC2::Errors::InvalidParameterValue
-              @logger.warn("Network Interface was in use: #{error}")
-            end
-            nic.delete
-            true
-          end
-        rescue Aws::EC2::Errors::InvalidNetworkInterfaceIDNotFound => e
-          @logger.warn("Failed to delete network interface '#{nic.id}' because it was not found: #{e.inspect}")
         end
       end
     end
