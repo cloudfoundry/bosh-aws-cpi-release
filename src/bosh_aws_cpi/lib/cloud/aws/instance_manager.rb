@@ -44,7 +44,7 @@ module Bosh::AwsCloud
         aws_instance = create_aws_instance(instance_params, vm_cloud_props)
         instance = Bosh::AwsCloud::Instance.new(aws_instance, @logger)
 
-        babysit_instance_creation(instance, vm_cloud_props)
+        babysit_instance_creation(instance, vm_cloud_props, network_interface_manager, network_interfaces)
       rescue => e
         if e.is_a?(Bosh::AwsCloud::AbruptlyTerminated)
           @logger.warn("Failed to configure instance '#{instance.id}': #{e.inspect}")
@@ -53,6 +53,8 @@ module Bosh::AwsCloud
             retry
           end
         end
+        # cleanup all created network interfaces
+        network_interface_manager.delete_network_interfaces(network_interfaces)
         raise
       end
 
@@ -79,12 +81,13 @@ module Bosh::AwsCloud
       }
     end
 
-    def babysit_instance_creation(instance, vm_cloud_props)
+    def babysit_instance_creation(instance, vm_cloud_props, network_interface_manager, network_interfaces)
       begin
         # We need to wait here for the instance to be running, as if we are going to
         # attach to a load balancer, the instance must be running.
         instance.wait_until_exists
         instance.wait_until_running
+        network_interface_manager.set_delete_on_termination_for_network_interfaces(network_interfaces)
         instance.update_routing_tables(vm_cloud_props.advertised_routes)
         instance.disable_dest_check unless vm_cloud_props.source_dest_check
       rescue => e

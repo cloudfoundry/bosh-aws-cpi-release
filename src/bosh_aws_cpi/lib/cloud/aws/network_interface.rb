@@ -60,7 +60,10 @@ module Bosh::AwsCloud
     end
 
     def delete
+      @logger.info("Deleting network_interface: #{@aws_network_interface.id}")
       @aws_network_interface.delete
+    rescue Aws::EC2::Errors::InvalidNetworkInterfaceIDNotFound, Aws::EC2::Errors::InvalidParameterValue => e
+      @logger.warn("Network interface '#{@aws_network_interface.id}' could not be deleted: #{e.message}")
     end
 
     def mac_address

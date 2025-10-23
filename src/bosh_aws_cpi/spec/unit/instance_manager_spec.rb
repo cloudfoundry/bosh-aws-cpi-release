@@ -102,6 +102,7 @@ module Bosh::AwsCloud
         allow(network_interface_manager).to receive(:create_network_interfaces)
           .with(networks_cloud_props, vm_cloud_props, default_options)
           .and_return(network_interfaces)
+        allow(network_interface_manager).to receive(:set_delete_on_termination_for_network_interfaces).with(network_interfaces)
 
         allow(ec2).to receive(:image).with(stemcell_id).and_return(
           instance_double(
@@ -305,9 +306,10 @@ module Bosh::AwsCloud
         end
 
         context 'when spot creation fails' do
-          it 'raises and logs an error' do
+          it 'raises, logs an error and deletes all created network interfaces' do
             expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false))
             expect(logger).to receive(:warn).with(/Spot instance creation failed/)
+            expect(network_interface_manager).to receive(:delete_network_interfaces).with(network_interfaces)
 
             expect {
               instance_manager.create(
@@ -447,13 +449,14 @@ module Bosh::AwsCloud
 
         before { allow(Instance).to receive(:new).and_return(instance) }
 
-        it 'terminates created instance and re-raises the error' do
+        it 'terminates created instance, re-raises the error and deletes all created network interfaces' do
           allow(instance_manager).to receive(:get_created_instance_id).with('run-instances-response').and_return('i-12345678')
 
           expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
           expect(instance).to receive(:wait_until_running).and_raise(create_err)
 
           expect(instance).to receive(:terminate).with(no_args)
+          expect(network_interface_manager).to receive(:delete_network_interfaces).with(network_interfaces)
 
           expect {
             instance_manager.create(
@@ -480,6 +483,7 @@ module Bosh::AwsCloud
           expect(instance).to receive(:wait_until_running).and_raise(Bosh::AwsCloud::AbruptlyTerminated, 'Server.InternalError: Internal error on launch').exactly(3).times
           expect(logger).to receive(:warn).with(/Failed to configure instance 'fake-instance-id'/).exactly(3).times
           expect(logger).to receive(:warn).with(/'fake-instance-id' was abruptly terminated, attempting to re-create/).twice
+          expect(network_interface_manager).to receive(:delete_network_interfaces).with(network_interfaces).once
 
           expect {
             instance_manager.create(
@@ -505,6 +509,7 @@ module Bosh::AwsCloud
 
             expect(aws_client).to receive(:run_instances).with(run_instances_params).and_return('run-instances-response')
             expect(instance).to receive(:wait_until_running).and_raise(create_err)
+            expect(network_interface_manager).to receive(:delete_network_interfaces).with(network_interfaces)
 
             expect {
               instance_manager.create(

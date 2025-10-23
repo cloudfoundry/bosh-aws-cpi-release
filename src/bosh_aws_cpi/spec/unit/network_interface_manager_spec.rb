@@ -6,16 +6,16 @@ module Bosh::AwsCloud
     let(:ec2_client) { instance_double(Aws::EC2::Resource) }
     let(:security_group_mapper) { instance_double(SecurityGroupMapper) }
     let(:network_interface_manager) { NetworkInterfaceManager.new(ec2_client, logger) }
-    
+
     before do
       # Mock SecurityGroupMapper creation and usage
       allow(SecurityGroupMapper).to receive(:new).with(ec2_client).and_return(security_group_mapper)
       allow(security_group_mapper).to receive(:map_to_ids).and_return(['sg-123456'])
     end
-    
+
     let(:manual_subnet_id) { 'manual-subnet' }
     let(:dynamic_subnet_id) { 'dynamic-subnet' }
-    
+
     let(:default_options) do
       {
         'aws' => {
@@ -57,17 +57,17 @@ module Bosh::AwsCloud
           mock_ec2_client = instance_double(Aws::EC2::Client)
           mock_network_interface = instance_double(Aws::EC2::NetworkInterface)
           mock_bosh_ni = instance_double(Bosh::AwsCloud::NetworkInterface)
-          
+
           allow(ec2_client).to receive(:client).and_return(mock_ec2_client)
           allow(ec2_client).to receive(:network_interface).and_return(mock_network_interface)
           allow(ec2_client).to receive(:subnets).and_return([])
-          
+
           expect(mock_ec2_client).to receive(:create_network_interface).with(
             hash_including(subnet_id: manual_subnet_id)
           ).and_return(
             double('response', network_interface: double('ni', network_interface_id: 'eni-123'))
           )
-          
+
           allow(Bosh::AwsCloud::NetworkInterface).to receive(:new).and_return(mock_bosh_ni)
           allow(mock_bosh_ni).to receive(:wait_until_available)
           allow(mock_bosh_ni).to receive(:attach_ip_prefixes)
@@ -75,7 +75,7 @@ module Bosh::AwsCloud
           allow(mock_bosh_ni).to receive(:mac_address).and_return('00:11:22:33:44:55')
 
           result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
-          
+
           expect(result).to be_an(Array)
           expect(result.size).to eq(1)
           expect(result.first).to eq(mock_bosh_ni)
@@ -100,15 +100,15 @@ module Bosh::AwsCloud
           mock_ec2_client = instance_double(Aws::EC2::Client)
           mock_network_interface = instance_double(Aws::EC2::NetworkInterface)
           mock_bosh_ni = instance_double(Bosh::AwsCloud::NetworkInterface)
-          
+
           allow(ec2_client).to receive(:client).and_return(mock_ec2_client)
           allow(ec2_client).to receive(:network_interface).and_return(mock_network_interface)
           allow(ec2_client).to receive(:subnets).and_return([])
-          
+
           allow(mock_ec2_client).to receive(:create_network_interface).and_return(
             double('response', network_interface: double('ni', network_interface_id: 'eni-456'))
           )
-          
+
           allow(Bosh::AwsCloud::NetworkInterface).to receive(:new).and_return(mock_bosh_ni)
           allow(mock_bosh_ni).to receive(:wait_until_available)
           allow(mock_bosh_ni).to receive(:attach_ip_prefixes)
@@ -116,7 +116,7 @@ module Bosh::AwsCloud
           allow(mock_bosh_ni).to receive(:mac_address).and_return('00:11:22:33:44:66')
 
           result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
-          
+
           expect(result).to be_an(Array)
           expect(result.size).to eq(1)
           expect(result.first).to eq(mock_bosh_ni)
@@ -148,15 +148,15 @@ module Bosh::AwsCloud
           mock_ec2_client = instance_double(Aws::EC2::Client)
           mock_network_interface = instance_double(Aws::EC2::NetworkInterface)
           mock_bosh_ni = instance_double(Bosh::AwsCloud::NetworkInterface)
-          
+
           allow(ec2_client).to receive(:client).and_return(mock_ec2_client)
           allow(ec2_client).to receive(:network_interface).and_return(mock_network_interface)
           allow(ec2_client).to receive(:subnets).and_return([])
-          
+
           allow(mock_ec2_client).to receive(:create_network_interface).and_return(
             double('response', network_interface: double('ni', network_interface_id: 'eni-789'))
           )
-          
+
           allow(Bosh::AwsCloud::NetworkInterface).to receive(:new).and_return(mock_bosh_ni)
           allow(mock_bosh_ni).to receive(:wait_until_available)
           allow(mock_bosh_ni).to receive(:attach_ip_prefixes)
@@ -164,7 +164,7 @@ module Bosh::AwsCloud
           allow(mock_bosh_ni).to receive(:mac_address).and_return('00:11:22:33:44:77')
 
           result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
-          
+
           expect(result).to be_an(Array)
           expect(result.size).to eq(1)
           expect(result.first).to eq(mock_bosh_ni)
@@ -197,17 +197,17 @@ module Bosh::AwsCloud
           mock_network_interface = instance_double(Aws::EC2::NetworkInterface)
           mock_bosh_ni1 = instance_double(Bosh::AwsCloud::NetworkInterface)
           mock_bosh_ni2 = instance_double(Bosh::AwsCloud::NetworkInterface)
-          
+
           allow(ec2_client).to receive(:client).and_return(mock_ec2_client)
           allow(ec2_client).to receive(:network_interface).and_return(mock_network_interface)
           allow(ec2_client).to receive(:subnets).and_return([])
-          
+
           call_count = 0
           allow(mock_ec2_client).to receive(:create_network_interface) do
             call_count += 1
             double('response', network_interface: double('ni', network_interface_id: "eni-#{call_count}00"))
           end
-          
+
           allow(Bosh::AwsCloud::NetworkInterface).to receive(:new).and_return(mock_bosh_ni1, mock_bosh_ni2)
           [mock_bosh_ni1, mock_bosh_ni2].each do |mock_ni|
             allow(mock_ni).to receive(:wait_until_available)
@@ -217,7 +217,7 @@ module Bosh::AwsCloud
           end
 
           result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
-          
+
           expect(result).to be_an(Array)
           expect(result.size).to eq(2)
           expect(result).to contain_exactly(mock_bosh_ni1, mock_bosh_ni2)
@@ -248,17 +248,17 @@ module Bosh::AwsCloud
           mock_network_interface = instance_double(Aws::EC2::NetworkInterface)
           mock_bosh_ni1 = instance_double(Bosh::AwsCloud::NetworkInterface)
           mock_bosh_ni2 = instance_double(Bosh::AwsCloud::NetworkInterface)
-          
+
           allow(ec2_client).to receive(:client).and_return(mock_ec2_client)
           allow(ec2_client).to receive(:network_interface).and_return(mock_network_interface)
           allow(ec2_client).to receive(:subnets).and_return([])
-          
+
           call_count = 0
           allow(mock_ec2_client).to receive(:create_network_interface) do
             call_count += 1
             double('response', network_interface: double('ni', network_interface_id: "eni-default-#{call_count}"))
           end
-          
+
           allow(Bosh::AwsCloud::NetworkInterface).to receive(:new).and_return(mock_bosh_ni1, mock_bosh_ni2)
           [mock_bosh_ni1, mock_bosh_ni2].each do |mock_ni|
             allow(mock_ni).to receive(:wait_until_available)
@@ -268,7 +268,7 @@ module Bosh::AwsCloud
           end
 
           result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
-          
+
           expect(result).to be_an(Array)
           expect(result.size).to eq(2)
           expect(result).to contain_exactly(mock_bosh_ni1, mock_bosh_ni2)
@@ -298,17 +298,17 @@ module Bosh::AwsCloud
           mock_network_interface = instance_double(Aws::EC2::NetworkInterface)
           mock_bosh_ni1 = instance_double(Bosh::AwsCloud::NetworkInterface)
           mock_bosh_ni2 = instance_double(Bosh::AwsCloud::NetworkInterface)
-          
+
           allow(ec2_client).to receive(:client).and_return(mock_ec2_client)
           allow(ec2_client).to receive(:network_interface).and_return(mock_network_interface)
           allow(ec2_client).to receive(:subnets).and_return([])
-          
+
           call_count = 0
           allow(mock_ec2_client).to receive(:create_network_interface) do
             call_count += 1
             double('response', network_interface: double('ni', network_interface_id: "eni-mixed-#{call_count}"))
           end
-          
+
           allow(Bosh::AwsCloud::NetworkInterface).to receive(:new).and_return(mock_bosh_ni1, mock_bosh_ni2)
           [mock_bosh_ni1, mock_bosh_ni2].each do |mock_ni|
             allow(mock_ni).to receive(:wait_until_available)
@@ -318,7 +318,7 @@ module Bosh::AwsCloud
           end
 
           result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
-          
+
           expect(result).to be_an(Array)
           expect(result.size).to eq(2)
           expect(result).to contain_exactly(mock_bosh_ni1, mock_bosh_ni2)
@@ -362,17 +362,17 @@ module Bosh::AwsCloud
           mock_bosh_ni1 = instance_double(Bosh::AwsCloud::NetworkInterface)
           mock_bosh_ni2 = instance_double(Bosh::AwsCloud::NetworkInterface)
           mock_bosh_ni3 = instance_double(Bosh::AwsCloud::NetworkInterface)
-          
+
           allow(ec2_client).to receive(:client).and_return(mock_ec2_client)
           allow(ec2_client).to receive(:network_interface).and_return(mock_network_interface)
           allow(ec2_client).to receive(:subnets).and_return([])
-          
+
           call_count = 0
           allow(mock_ec2_client).to receive(:create_network_interface) do
             call_count += 1
             double('response', network_interface: double('ni', network_interface_id: "eni-complex-#{call_count}"))
           end
-          
+
           allow(Bosh::AwsCloud::NetworkInterface).to receive(:new).and_return(mock_bosh_ni1, mock_bosh_ni2, mock_bosh_ni3)
           [mock_bosh_ni1, mock_bosh_ni2, mock_bosh_ni3].each do |mock_ni|
             allow(mock_ni).to receive(:wait_until_available)
@@ -382,7 +382,7 @@ module Bosh::AwsCloud
           end
 
           result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
-          
+
           expect(result).to be_an(Array)
           expect(result.size).to eq(3) # shared-group (1), isolated-group (1), dynamic-default (1)
           expect(result).to contain_exactly(mock_bosh_ni1, mock_bosh_ni2, mock_bosh_ni3)
@@ -439,15 +439,15 @@ module Bosh::AwsCloud
             mock_ec2_client = instance_double(Aws::EC2::Client)
             mock_network_interface = instance_double(Aws::EC2::NetworkInterface)
             mock_bosh_ni = instance_double(Bosh::AwsCloud::NetworkInterface)
-            
+
             allow(ec2_client).to receive(:client).and_return(mock_ec2_client)
             allow(ec2_client).to receive(:network_interface).and_return(mock_network_interface)
             allow(ec2_client).to receive(:subnets).and_return([])
-            
+
             allow(mock_ec2_client).to receive(:create_network_interface).and_return(
               double('response', network_interface: double('ni', network_interface_id: 'eni-dynamic-only'))
             )
-            
+
             allow(Bosh::AwsCloud::NetworkInterface).to receive(:new).and_return(mock_bosh_ni)
             allow(mock_bosh_ni).to receive(:wait_until_available)
             allow(mock_bosh_ni).to receive(:attach_ip_prefixes)
@@ -455,7 +455,7 @@ module Bosh::AwsCloud
             allow(mock_bosh_ni).to receive(:mac_address).and_return('00:11:22:33:99:99')
 
             result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
-            
+
             expect(result).to be_an(Array)
             expect(result.size).to eq(1) # Only first dynamic network creates interface
             expect(result.first).to eq(mock_bosh_ni)
@@ -469,13 +469,13 @@ module Bosh::AwsCloud
         it 'does not raise an error' do
           mock_subnet1 = double('subnet1', availability_zone: 'us-east-1a')
           mock_subnet2 = double('subnet2', availability_zone: 'us-east-1a')
-          
+
           allow(ec2_client).to receive(:subnets).and_return([mock_subnet1, mock_subnet2])
-          
+
           nic_group1 = instance_double(Bosh::AwsCloud::NicGroup, subnet_id: 'subnet-1')
           nic_group2 = instance_double(Bosh::AwsCloud::NicGroup, subnet_id: 'subnet-2')
           nic_groups = { 'group1' => nic_group1, 'group2' => nic_group2 }
-          
+
           expect {
             network_interface_manager.send(:validate_subnet_az_mapping, nic_groups)
           }.not_to raise_error
@@ -486,13 +486,13 @@ module Bosh::AwsCloud
         it 'raises an error' do
           mock_subnet1 = double('subnet1', availability_zone: 'us-east-1a')
           mock_subnet2 = double('subnet2', availability_zone: 'us-east-1b')
-          
+
           allow(ec2_client).to receive(:subnets).and_return([mock_subnet1, mock_subnet2])
-          
+
           nic_group1 = instance_double(Bosh::AwsCloud::NicGroup, subnet_id: 'subnet-1')
           nic_group2 = instance_double(Bosh::AwsCloud::NicGroup, subnet_id: 'subnet-2')
           nic_groups = { 'group1' => nic_group1, 'group2' => nic_group2 }
-          
+
           expect {
             network_interface_manager.send(:validate_subnet_az_mapping, nic_groups)
           }.to raise_error(Bosh::Clouds::CloudError, /All nic groups must be in the same availability zone/)
@@ -503,7 +503,7 @@ module Bosh::AwsCloud
     describe '#provision_network_interfaces' do
       let(:nic_group) { instance_double(Bosh::AwsCloud::NicGroup) }
       let(:nic_groups) { { 'group1' => nic_group } }
-      
+
       before do
         allow(nic_group).to receive(:subnet_id).and_return('subnet-123')
         allow(nic_group).to receive(:manual_network?).and_return(true)
@@ -518,14 +518,14 @@ module Bosh::AwsCloud
         mock_ec2_client = instance_double(Aws::EC2::Client)
         mock_network_interface = instance_double(Aws::EC2::NetworkInterface)
         mock_bosh_ni = instance_double(Bosh::AwsCloud::NetworkInterface)
-        
+
         allow(ec2_client).to receive(:client).and_return(mock_ec2_client)
         allow(ec2_client).to receive(:network_interface).and_return(mock_network_interface)
-        
+
         allow(mock_ec2_client).to receive(:create_network_interface).and_return(
           double('response', network_interface: double('ni', network_interface_id: 'eni-provision'))
         )
-        
+
         allow(Bosh::AwsCloud::NetworkInterface).to receive(:new).and_return(mock_bosh_ni)
         allow(mock_bosh_ni).to receive(:wait_until_available)
         allow(mock_bosh_ni).to receive(:attach_ip_prefixes)
@@ -534,9 +534,9 @@ module Bosh::AwsCloud
 
         network_cloud_props = instance_double(Bosh::AwsCloud::NetworkCloudProps)
         allow(network_cloud_props).to receive(:security_groups).and_return([])
-        
+
         result = network_interface_manager.send(:provision_network_interfaces, nic_groups, network_cloud_props, vm_cloud_props, default_security_groups, security_group_mapper)
-        
+
         expect(result).to be_an(Array)
         expect(result.size).to eq(1)
         expect(result.first).to eq(mock_bosh_ni)
@@ -550,7 +550,7 @@ module Bosh::AwsCloud
         it 'raises an error' do
           network_cloud_props = instance_double(Bosh::AwsCloud::NetworkCloudProps)
           allow(network_cloud_props).to receive(:security_groups).and_return([])
-          
+
           expect {
             network_interface_manager.send(:provision_network_interfaces, nic_groups, network_cloud_props, vm_cloud_props, default_security_groups, security_group_mapper)
           }.to raise_error(Bosh::Clouds::CloudError, /Missing security groups/)
@@ -579,19 +579,19 @@ module Bosh::AwsCloud
 
         it 'uses default security groups' do
           expect(security_group_mapper).to receive(:map_to_ids).with(default_security_groups, dynamic_subnet_id)
-          
+
           mock_ec2_client = instance_double(Aws::EC2::Client)
           mock_network_interface = instance_double(Aws::EC2::NetworkInterface)
           mock_bosh_ni = instance_double(Bosh::AwsCloud::NetworkInterface)
-          
+
           allow(ec2_client).to receive(:client).and_return(mock_ec2_client)
           allow(ec2_client).to receive(:network_interface).and_return(mock_network_interface)
           allow(ec2_client).to receive(:subnets).and_return([])
-          
+
           allow(mock_ec2_client).to receive(:create_network_interface).and_return(
             double('response', network_interface: double('ni', network_interface_id: 'eni-sg-test'))
           )
-          
+
           allow(Bosh::AwsCloud::NetworkInterface).to receive(:new).and_return(mock_bosh_ni)
           allow(mock_bosh_ni).to receive(:wait_until_available)
           allow(mock_bosh_ni).to receive(:attach_ip_prefixes)
@@ -603,10 +603,91 @@ module Bosh::AwsCloud
       end
     end
 
+    describe '#set_delete_on_termination_for_network_interfaces' do
+      let(:mock_ec2_client) { instance_double(Aws::EC2::Client) }
+      let(:mock_describe_nic_result) { instance_double(Aws::EC2::Types::DescribeNetworkInterfacesResult) }
+      let(:mock_bosh_ni1) { instance_double(Bosh::AwsCloud::NetworkInterface) }
+      let(:mock_bosh_ni2) { instance_double(Bosh::AwsCloud::NetworkInterface) }
+      let(:mock_bosh_ni1_type) { instance_double(Aws::EC2::Types::NetworkInterface) }
+      let(:mock_bosh_ni2_type) { instance_double(Aws::EC2::Types::NetworkInterface) }
+      let(:mock_bosh_nic_attachment1) { instance_double(Aws::EC2::Types::NetworkInterfaceAttachment) }
+      let(:mock_bosh_nic_attachment2) { instance_double(Aws::EC2::Types::NetworkInterfaceAttachment) }
+
+      before do
+        allow(mock_bosh_ni1).to receive(:id).and_return('eni-12345')
+        allow(mock_bosh_ni2).to receive(:id).and_return('eni-67890')
+
+        allow(ec2_client).to receive(:client).and_return(mock_ec2_client)
+
+      end
+
+      it 'deletes the provided network interfaces' do
+        allow(mock_ec2_client).to receive(:describe_network_interfaces).with({
+          network_interface_ids: ['eni-12345', 'eni-67890']
+        }).and_return(mock_describe_nic_result)
+
+        allow(mock_describe_nic_result).to receive(:network_interfaces).and_return([mock_bosh_ni1_type, mock_bosh_ni2_type])
+
+        allow(mock_bosh_ni1_type).to receive(:attachment).and_return(mock_bosh_nic_attachment1)
+        allow(mock_bosh_ni2_type).to receive(:attachment).and_return(mock_bosh_nic_attachment2)
+
+        allow(mock_bosh_ni1_type).to receive(:network_interface_id).and_return('eni-12345')
+        allow(mock_bosh_ni2_type).to receive(:network_interface_id).and_return('eni-67890')
+
+        allow(mock_bosh_nic_attachment1).to receive(:attachment_id).and_return('attach-11111')
+        allow(mock_bosh_nic_attachment2).to receive(:attachment_id).and_return('attach-22222')
+
+
+        expect(mock_ec2_client).to receive(:modify_network_interface_attribute).with({
+          network_interface_id: 'eni-12345',
+          attachment: {
+            attachment_id: 'attach-11111',
+            delete_on_termination: true
+            }
+            })
+        expect(mock_ec2_client).to receive(:modify_network_interface_attribute).with({
+          network_interface_id: 'eni-67890',
+          attachment: {
+            attachment_id: 'attach-22222',
+            delete_on_termination: true
+            }
+            })
+
+        network_interface_manager.set_delete_on_termination_for_network_interfaces([mock_bosh_ni1, mock_bosh_ni2])
+      end
+
+
+      it 'raises an error if a network interface is not attached' do
+        allow(mock_ec2_client).to receive(:describe_network_interfaces).with({
+          network_interface_ids: ['eni-12345']
+        }).and_return(mock_describe_nic_result)
+
+        allow(mock_describe_nic_result).to receive(:network_interfaces).and_return([mock_bosh_ni1_type])
+        allow(mock_bosh_ni1_type).to receive(:attachment).and_return(nil)
+        allow(mock_bosh_ni1_type).to receive(:network_interface_id).and_return('eni-12345')
+
+        expect {
+          network_interface_manager.set_delete_on_termination_for_network_interfaces([mock_bosh_ni1])
+        }.to raise_error(Bosh::Clouds::CloudError, /Network interface 'eni-12345' is not attached to any instance/)
+      end
+    end
+
+    describe '#delete_network_interfaces' do
+      it 'deletes the provided network interfaces' do
+        mock_bosh_ni1 = instance_double(Bosh::AwsCloud::NetworkInterface)
+        mock_bosh_ni2 = instance_double(Bosh::AwsCloud::NetworkInterface)
+
+        expect(mock_bosh_ni1).to receive(:delete)
+        expect(mock_bosh_ni2).to receive(:delete)
+
+        network_interface_manager.delete_network_interfaces([mock_bosh_ni1, mock_bosh_ni2])
+      end
+    end
+
     describe 'DNS configuration' do
       let(:mock_ec2_client) { instance_double(Aws::EC2::Client) }
       let(:mock_network_interface) { instance_double(Aws::EC2::NetworkInterface) }
-      
+
       before do
         allow(ec2_client).to receive(:client).and_return(mock_ec2_client)
         allow(ec2_client).to receive(:network_interface).and_return(mock_network_interface)
@@ -636,13 +717,13 @@ module Bosh::AwsCloud
         it 'creates network interfaces and preserves DNS configuration in manual networks' do
           mock_bosh_ni1 = instance_double(Bosh::AwsCloud::NetworkInterface)
           mock_bosh_ni2 = instance_double(Bosh::AwsCloud::NetworkInterface)
-          
+
           call_count = 0
           allow(mock_ec2_client).to receive(:create_network_interface) do
             call_count += 1
             double('response', network_interface: double('ni', network_interface_id: "eni-dns-#{call_count}"))
           end
-          
+
           allow(Bosh::AwsCloud::NetworkInterface).to receive(:new).and_return(mock_bosh_ni1, mock_bosh_ni2)
           [mock_bosh_ni1, mock_bosh_ni2].each do |mock_ni|
             allow(mock_ni).to receive(:wait_until_available)
@@ -652,14 +733,14 @@ module Bosh::AwsCloud
           end
 
           result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
-          
+
           expect(result).to be_an(Array)
           expect(result.size).to eq(2)
-          
+
           # Verify that DNS configuration is preserved in network_cloud_props for manual networks
           net1 = network_cloud_props.networks.find { |n| n.name == 'net1' }
           net2 = network_cloud_props.networks.find { |n| n.name == 'net2' }
-          
+
           expect(net1.dns).to be_nil
           expect(net2.dns).to eq('1.1.1.1')
         end
@@ -695,13 +776,13 @@ module Bosh::AwsCloud
           mock_bosh_ni1 = instance_double(Bosh::AwsCloud::NetworkInterface)
           mock_bosh_ni2 = instance_double(Bosh::AwsCloud::NetworkInterface)
           mock_bosh_ni3 = instance_double(Bosh::AwsCloud::NetworkInterface)
-          
+
           call_count = 0
           allow(mock_ec2_client).to receive(:create_network_interface) do
             call_count += 1
             double('response', network_interface: double('ni', network_interface_id: "eni-dns-#{call_count}"))
           end
-          
+
           allow(Bosh::AwsCloud::NetworkInterface).to receive(:new).and_return(mock_bosh_ni1, mock_bosh_ni2, mock_bosh_ni3)
           [mock_bosh_ni1, mock_bosh_ni2, mock_bosh_ni3].each do |mock_ni|
             allow(mock_ni).to receive(:wait_until_available)
@@ -711,11 +792,11 @@ module Bosh::AwsCloud
           end
 
           result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
-          
+
           expect(result).to be_an(Array)
           expect(result.size).to eq(3)
           expect(result).to contain_exactly(mock_bosh_ni1, mock_bosh_ni2, mock_bosh_ni3)
-          
+
           # Verify that DNS configuration is preserved in network_cloud_props
           expect(network_cloud_props.networks.find { |n| n.name == 'net2' }.dns).to eq('1.1.1.1')
           expect(network_cloud_props.networks.find { |n| n.name == 'net3' }.dns).to eq('2.2.2.2')
@@ -747,11 +828,11 @@ module Bosh::AwsCloud
 
         it 'creates network interface with mixed DNS configurations' do
           mock_bosh_ni = instance_double(Bosh::AwsCloud::NetworkInterface)
-          
+
           allow(mock_ec2_client).to receive(:create_network_interface).and_return(
             double('response', network_interface: double('ni', network_interface_id: 'eni-mixed-dns'))
           )
-          
+
           allow(Bosh::AwsCloud::NetworkInterface).to receive(:new).and_return(mock_bosh_ni)
           allow(mock_bosh_ni).to receive(:wait_until_available)
           allow(mock_bosh_ni).to receive(:attach_ip_prefixes)
@@ -759,11 +840,11 @@ module Bosh::AwsCloud
           allow(mock_bosh_ni).to receive(:mac_address).and_return('00:11:22:33:mixed:dns')
 
           result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
-          
+
           expect(result).to be_an(Array)
           expect(result.size).to eq(1)
           expect(result.first).to eq(mock_bosh_ni)
-          
+
           # Verify that DNS configuration is preserved for both networks
           expect(network_cloud_props.networks.find { |n| n.name == 'net1' }.dns).to eq('8.8.8.8')
           expect(network_cloud_props.networks.find { |n| n.name == 'net2' }.dns).to eq('1.1.1.1')
@@ -793,13 +874,13 @@ module Bosh::AwsCloud
         it 'handles mixed DNS configurations correctly' do
           mock_bosh_ni1 = instance_double(Bosh::AwsCloud::NetworkInterface)
           mock_bosh_ni2 = instance_double(Bosh::AwsCloud::NetworkInterface)
-          
+
           call_count = 0
           allow(mock_ec2_client).to receive(:create_network_interface) do
             call_count += 1
             double('response', network_interface: double('ni', network_interface_id: "eni-mixed-dns-#{call_count}"))
           end
-          
+
           allow(Bosh::AwsCloud::NetworkInterface).to receive(:new).and_return(mock_bosh_ni1, mock_bosh_ni2)
           [mock_bosh_ni1, mock_bosh_ni2].each do |mock_ni|
             allow(mock_ni).to receive(:wait_until_available)
@@ -809,15 +890,15 @@ module Bosh::AwsCloud
           end
 
           result = network_interface_manager.create_network_interfaces(network_cloud_props, vm_cloud_props, default_security_groups)
-          
+
           expect(result).to be_an(Array)
           expect(result.size).to eq(2)
           expect(result).to contain_exactly(mock_bosh_ni1, mock_bosh_ni2)
-          
+
           # Verify DNS configurations
           no_dns_network = network_cloud_props.networks.find { |n| n.name == 'no-dns-net' }
           with_dns_network = network_cloud_props.networks.find { |n| n.name == 'with-dns-net' }
-          
+
           expect(no_dns_network.dns).to be_nil
           expect(with_dns_network.dns).to eq('9.9.9.9')
         end
