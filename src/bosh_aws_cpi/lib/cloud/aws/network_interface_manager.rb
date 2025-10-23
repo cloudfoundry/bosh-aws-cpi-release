@@ -112,7 +112,7 @@ module Bosh::AwsCloud
           @logger.error("Failed to create network interface for nic_group '#{nic_group.name}': #{e.inspect}")
           network_interfaces&.each { |nic| nic.delete }
           network_interface.delete if network_interface
-          raise
+          raise Bosh::Clouds::CloudError, "Failed to create network interface for nic_group '#{nic_group.name}': #{e.message}"
         end
       end
       return network_interfaces
