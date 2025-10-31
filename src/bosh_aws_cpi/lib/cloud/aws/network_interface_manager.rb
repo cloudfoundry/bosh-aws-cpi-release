@@ -2,35 +2,24 @@ module Bosh::AwsCloud
   class NetworkInterfaceManager
     include Helpers
 
-    def initialize(ec2, logger)
-      @ec2 = ec2
+    def initialize(ec2_resource, logger)
+      @ec2_resource = ec2_resource
       @logger = logger
     end
 
     def create_network_interfaces(networks_cloud_props, vm_cloud_props, default_security_groups)
-      # Iterate over network cloud props and group networks by nic_group
       nic_groups = {}
-      first_dynamic_network = nil
-      security_group_mapper = SecurityGroupMapper.new(@ec2)
+      security_group_mapper = SecurityGroupMapper.new(@ec2_resource)
 
-      networks_cloud_props.networks.each do |network|
-        if network.type == 'manual'
-          nic_group_name = network.nic_group
-          nic_groups[nic_group_name] ||= Bosh::AwsCloud::NicGroup.new(nic_group_name)
-          nic_groups[nic_group_name].add_network(network)
-        elsif network.type == 'dynamic'
-          # Capture the first dynamic network encountered
-          first_dynamic_network ||= network
-        end
+      manual_networks = networks_cloud_props.networks.select { |network| network.type == 'manual' }
+      first_dynamic_network = networks_cloud_props.networks.select { |network| network.type == 'dynamic' }.first #nic groups are not supported for multiple dynamic networks
+      manual_networks.group_by(&:nic_group).map do |nic_group_name, networks|
+        nic_groups[nic_group_name] = Bosh::AwsCloud::NicGroup.new(nic_group_name, networks)
       end
 
-      # Add dynamic network to the nic_group structure if one was found
       if first_dynamic_network
         nic_groups[first_dynamic_network.name] = Bosh::AwsCloud::NicGroup.new(first_dynamic_network.name, [first_dynamic_network])
       end
-
-      # Now validate and extract IP config for all nic groups
-      nic_groups.each_value(&:validate_and_extract_ip_config)
 
       validate_subnet_az_mapping(nic_groups)
 
@@ -40,14 +29,14 @@ module Bosh::AwsCloud
     def set_delete_on_termination_for_network_interfaces(network_interfaces)
       #we need to get the objects again from aws to update the attachment on the network interface objects
       network_interface_ids = network_interfaces.map(&:id)
-      @ec2.client.describe_network_interfaces({
+      @ec2_resource.client.describe_network_interfaces({
         network_interface_ids: network_interface_ids
       }).network_interfaces.each do |nic|
         attachment = nic.attachment
         if attachment
           attachment_id = attachment.attachment_id
           @logger.info("Setting delete_on_termination for network_interface '#{nic.network_interface_id}' and attachment id '#{attachment_id}' to true")
-          @ec2.client.modify_network_interface_attribute({
+          @ec2_resource.client.modify_network_interface_attribute({
             network_interface_id: nic.network_interface_id,
             attachment: {
               attachment_id: attachment_id,
@@ -86,28 +75,29 @@ module Bosh::AwsCloud
         nic[:subnet_id] = subnet_id_val
 
         # Only populate addresses if the nic_group contains manual networks
-        if nic_group.manual_network?
+        if nic_group.manual?
           nic[:ipv_6_addresses] = [{ ipv_6_address: nic_group.ipv6_address }] if nic_group.has_ipv6_address?
           nic[:private_ip_address] = nic_group.ipv4_address if nic_group.has_ipv4_address?
         end
 
-        # Get prefixes from nic_group
         prefixes = nic_group.prefixes
+        begin
+          network_interface = nil
+          errors = [Aws::EC2::Errors::InvalidIPAddressInUse]
+          @logger.info("Creating new network_interface with: #{nic.inspect}")
+          Bosh::Common.retryable(sleep: network_interface_create_wait_time, tries: 20, on: errors) do |_tries, error|
+            @logger.info('Launching network interface...')
+            @logger.warn("IP address was in use: #{error}") if error.is_a?(Aws::EC2::Errors::InvalidIPAddressInUse)
 
-        errors = [Aws::EC2::Errors::InvalidIPAddressInUse]
-        @logger.info("Creating new network_interface with: #{nic.inspect}")
-        Bosh::Common.retryable(sleep: Bosh::AwsCloud::NetworkInterface::CREATE_NETWORK_INTERFACE_WAIT_TIME, tries: 20, on: errors) do |_tries, error|
-          @logger.info('Launching network interface...')
-          @logger.warn("IP address was in use: #{error}") if error.is_a?(Aws::EC2::Errors::InvalidIPAddressInUse)
-
-          resp = @ec2.client.create_network_interface(nic)
-          network_interface_id = get_created_network_interface_id(resp)
-          network_interface = Bosh::AwsCloud::NetworkInterface.new(@ec2.network_interface(network_interface_id), @ec2.client, @logger)
-          network_interface.wait_until_available
-          network_interface.attach_ip_prefixes(prefixes) unless prefixes.nil?
-          network_interface.add_associate_public_ip_address(vm_cloud_props)
-          nic_group.assign_mac_address(network_interface.mac_address)
-          network_interfaces.append(network_interface)
+            resp = @ec2_resource.client.create_network_interface(nic)
+            network_interface_id = get_created_network_interface_id(resp)
+            network_interface = Bosh::AwsCloud::NetworkInterface.new(@ec2_resource.network_interface(network_interface_id), @ec2_resource.client, @logger)
+            network_interface.wait_until_available
+            network_interface.attach_ip_prefixes(prefixes) unless prefixes.nil?
+            network_interface.add_associate_public_ip_address(vm_cloud_props)
+            nic_group.assign_mac_address(network_interface.mac_address)
+            network_interfaces.append(network_interface)
+          end
         rescue => e
           @logger.error("Failed to create network interface for nic_group '#{nic_group.name}': #{e.inspect}")
           network_interfaces&.each { |nic| nic.delete }
@@ -116,6 +106,10 @@ module Bosh::AwsCloud
         end
       end
       return network_interfaces
+    end
+
+    def network_interface_create_wait_time
+      Bosh::AwsCloud::NetworkInterface::CREATE_NETWORK_INTERFACE_WAIT_TIME
     end
 
     def get_created_network_interface_id(resp)
@@ -136,7 +130,7 @@ module Bosh::AwsCloud
 
       return {} if subnet_ids.empty?
 
-      availability_zones = @ec2.subnets(
+      availability_zones = @ec2_resource.subnets(
         filters: [{ name: 'subnet-id', values: subnet_ids }]
       ).map(&:availability_zone).uniq
 
