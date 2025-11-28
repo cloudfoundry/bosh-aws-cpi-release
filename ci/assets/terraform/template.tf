@@ -291,10 +291,37 @@ output "bats_eip" {
   value = aws_eip.deployment.public_ip
 }
 output "network_static_ip_1" {
-  value = cidrhost(aws_vpc.default.cidr_block, 29)
+  value = cidrhost(aws_vpc.default.cidr_block, 28)
 }
 output "network_static_ip_2" {
+  value = cidrhost(aws_vpc.default.cidr_block, 29)
+}
+output "network_second_static_ip" {
   value = cidrhost(aws_vpc.default.cidr_block, 30)
+}
+output "network_static_ipv6" {
+  value = cidrhost(aws_subnet.default.ipv6_cidr_block, 4)
+}
+output "ipv6_cidr" {
+  value = aws_subnet.default.ipv6_cidr_block
+}
+output "ipv6_gateway" {
+  value = cidrhost(aws_subnet.default.ipv6_cidr_block, 1)
+}
+output "ipv6_reserved_range" {
+  value = "${cidrhost(aws_subnet.default.ipv6_cidr_block, 2)}-${cidrhost(aws_subnet.default.ipv6_cidr_block, 9)}"
+}
+output "ipv6_static_range" {
+  value = "${cidrhost(aws_subnet.default.ipv6_cidr_block, 10)}-${cidrhost(aws_subnet.default.ipv6_cidr_block, 30)}"
+}
+output "network_prefix" {
+  value = 80
+}
+output "default_nic_group" {
+  value = "default"
+}
+output "second_nic_group" {
+  value = "second"
 }
 
 # Used by integration tests
