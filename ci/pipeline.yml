@@ -22,7 +22,7 @@ shared:
   image: bosh-integration-image
   params:
     INFRASTRUCTURE: aws
-    STEMCELL_NAME: bosh-aws-xen-hvm-ubuntu-jammy-go_agent
+    STEMCELL_NAME: bosh-aws-xen-hvm-ubuntu-noble
     BAT_INFRASTRUCTURE: aws
     BAT_RSPEC_FLAGS: "--tag ~root_partition"
 
