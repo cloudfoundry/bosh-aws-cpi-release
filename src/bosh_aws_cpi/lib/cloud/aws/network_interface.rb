@@ -4,6 +4,7 @@ module Bosh::AwsCloud
 
     CREATE_NETWORK_INTERFACE_WAIT_TIME = 30
     DELETE_NETWORK_INTERFACE_WAIT_TIME = 10
+    RETRYABLE_ERRORS = [Aws::EC2::Errors::InvalidNetworkInterfaceInUse, Aws::EC2::Errors::InvalidParameterValue]
 
     def initialize(aws_network_interface, ec2_client, logger)
       @aws_network_interface = aws_network_interface
@@ -62,10 +63,9 @@ module Bosh::AwsCloud
     def delete
       begin
         @logger.info("Deleting network_interface: #{@aws_network_interface.id}")
-        errors = [Aws::EC2::Errors::InvalidNetworkInterfaceInUse, Aws::EC2::Errors::InvalidParameterValue]
 
-        Bosh::Common.retryable(sleep: delete_network_interface_wait_time, tries: 50, on: errors) do |_tries, error|
-          if error.class == Aws::EC2::Errors::InvalidNetworkInterfaceInUse || error.class == Aws::EC2::Errors::InvalidParameterValue
+        Bosh::Common.retryable(sleep: Bosh::AwsCloud::NetworkInterface::DELETE_NETWORK_INTERFACE_WAIT_TIME, tries: 50, on: RETRYABLE_ERRORS) do |_tries, error|
+          if RETRYABLE_ERRORS.include?(error.class)
             @logger.warn("Network Interface was in use: #{error}. Retrying deletion after #{Bosh::AwsCloud::NetworkInterface::DELETE_NETWORK_INTERFACE_WAIT_TIME} seconds...")
           end
           @aws_network_interface.delete
@@ -96,12 +96,6 @@ module Bosh::AwsCloud
       nic[:network_interface_id] = @aws_network_interface.id
 
       nic
-    end
-
-    private
-
-    def delete_network_interface_wait_time
-      Bosh::AwsCloud::NetworkInterface::DELETE_NETWORK_INTERFACE_WAIT_TIME
     end
   end
 end

@@ -112,7 +112,7 @@ describe Bosh::AwsCloud::NetworkInterface do
     end
 
     it 'retries on Aws::EC2::Errors::InvalidNetworkInterfaceInUse error' do
-      allow(network_interface).to receive(:delete_network_interface_wait_time).and_return(0)
+      stub_const('Bosh::AwsCloud::NetworkInterface::DELETE_NETWORK_INTERFACE_WAIT_TIME', 0)
 
       return_values = [:raise, true]
 
@@ -125,7 +125,7 @@ describe Bosh::AwsCloud::NetworkInterface do
     end
 
     it 'retries on Aws::EC2::Errors::InvalidParameterValue error' do
-      allow(network_interface).to receive(:delete_network_interface_wait_time).and_return(0)
+      stub_const('Bosh::AwsCloud::NetworkInterface::DELETE_NETWORK_INTERFACE_WAIT_TIME', 0)
 
       return_values = [:raise, true]
 
