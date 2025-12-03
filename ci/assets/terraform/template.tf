@@ -300,7 +300,7 @@ output "network_second_static_ip" {
   value = cidrhost(aws_vpc.default.cidr_block, 30)
 }
 output "network_static_ipv6" {
-  value = cidrhost(aws_subnet.default.ipv6_cidr_block, 4)
+  value = cidrhost(aws_subnet.default.ipv6_cidr_block, 28)
 }
 output "ipv6_cidr" {
   value = aws_subnet.default.ipv6_cidr_block
