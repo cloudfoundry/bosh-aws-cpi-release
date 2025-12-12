@@ -347,15 +347,6 @@ module Bosh::AwsCloud
         'c6id.24xlarge' => [1425, 4],
         'c6id.32xlarge' => [1900, 4],
 
-        'c5d.large' => [50, 1],
-        'c5d.xlarge' => [100, 1],
-        'c5d.2xlarge' => [200, 1],
-        'c5d.4xlarge' => [400, 1],
-        'c5d.9xlarge' => [900, 1],
-        'c5d.12xlarge' => [900, 2],
-        'c5d.18xlarge' => [900, 2],
-        'c5d.24xlarge' => [900, 4],
-
         'r6id.large' => [118, 1],
         'r6id.xlarge' => [237, 1],
         'r6id.2xlarge' => [474, 1],
