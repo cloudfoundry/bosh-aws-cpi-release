@@ -1036,8 +1036,6 @@ describe Bosh::AwsCloud::CloudV1 do
           'type' => 'manual',
           'ip' => @secondary_manual_ip,
           'cloud_properties' => {
-            # Use same subnet for both NICs - simplifies test setup
-            # Multiple NICs can exist in the same subnet with different IPs
             'subnet' => @manual_subnet_id,
             'nic_group' => 1
           }
@@ -1050,7 +1048,6 @@ describe Bosh::AwsCloud::CloudV1 do
     end
 
     before(:each) do
-      # Allocate a second IP from the same subnet for the secondary NIC
       @ip_semaphore.synchronize do
         secondary_cidr = @ec2.subnet(@manual_subnet_id).cidr_block
         secondary_ips = IPAddr.new(secondary_cidr).to_range.to_a.map(&:to_s)
@@ -1063,7 +1060,6 @@ describe Bosh::AwsCloud::CloudV1 do
 
     it 'creates VM with multiple NICs and associates Elastic IP to primary NIC' do
       vm_lifecycle do |instance_id|
-        # Get instance details
         resp = @cpi.ec2_resource.client.describe_instances(filters: [{ name: 'instance-id', values: [instance_id] }])
         instance_data = resp.reservations[0].instances[0]
         network_interfaces = instance_data.network_interfaces
