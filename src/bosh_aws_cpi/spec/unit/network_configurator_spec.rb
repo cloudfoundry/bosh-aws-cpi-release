@@ -136,13 +136,26 @@ describe Bosh::AwsCloud::NetworkConfigurator do
           context 'and Elastic/Public IP is found' do
             let(:elastic_ip) { instance_double(Aws::EC2::Types::Address) }
             let(:response_addresses) { [elastic_ip] }
+            let(:network_interface) { instance_double(Aws::EC2::Types::InstanceNetworkInterface) }
+            let(:network_interface_attachment) { instance_double(Aws::EC2::Types::InstanceNetworkInterfaceAttachment) }
+            let(:instance_data) { instance_double(Aws::EC2::Types::Instance, network_interfaces: [network_interface]) }
+            let(:reservation) { instance_double(Aws::EC2::Types::Reservation, instances: [instance_data]) }
+            let(:describe_instances_response) { instance_double(Aws::EC2::Types::DescribeInstancesResult, reservations: [reservation]) }
 
             it 'should associate Elastic/Public IP to the instance' do
               expect(ec2_client).to receive(:describe_addresses)
                 .with(describe_addresses_arguments).and_return(describe_addresses_response)
               expect(elastic_ip).to receive(:allocation_id).and_return('allocation-id')
+              
+              # Mock describe_instances to get network interfaces
+              expect(ec2_client).to receive(:describe_instances)
+                .with(instance_ids: ['i-xxxxxxxx']).and_return(describe_instances_response)
+              expect(network_interface_attachment).to receive(:device_index).and_return(0)
+              expect(network_interface).to receive(:attachment).and_return(network_interface_attachment)
+              expect(network_interface).to receive(:network_interface_id).and_return('eni-12345678')
+              
               expect(ec2_client).to receive(:associate_address).with(
-                instance_id: 'i-xxxxxxxx',
+                network_interface_id: 'eni-12345678',
                 allocation_id: 'allocation-id'
               )
 

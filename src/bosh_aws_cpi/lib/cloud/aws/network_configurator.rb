@@ -85,8 +85,6 @@ module Bosh::AwsCloud
         cloud_error("Could not find primary network interface for instance '#{instance.id}'")
       end
 
-      @logger.info("Associating EIP to primary network interface '#{primary_nic.network_interface_id}'")
-
       errors = [Aws::EC2::Errors::IncorrectInstanceState, Aws::EC2::Errors::InvalidInstanceID]
       Bosh::Common.retryable(tries: 10, sleep: 1, on: errors) do
         ec2.client.associate_address(
