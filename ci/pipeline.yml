@@ -495,7 +495,7 @@ resources:
 - name: heavy-stemcell
   type: bosh-io-stemcell
   source:
-    name: bosh-aws-xen-hvm-ubuntu-jammy-go_agent
+    name: bosh-aws-xen-hvm-ubuntu-noble
     force_regular: true
 - name: bats
   type: git

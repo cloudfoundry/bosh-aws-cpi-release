@@ -110,6 +110,38 @@ describe Bosh::AwsCloud::NetworkInterface do
       network_interface.delete
       expect(aws_network_interface).to have_received(:delete)
     end
+
+    it 'retries on Aws::EC2::Errors::InvalidNetworkInterfaceInUse error' do
+      stub_const('Bosh::AwsCloud::NetworkInterface::DELETE_NETWORK_INTERFACE_WAIT_TIME', 0)
+
+      return_values = [:raise, true]
+
+      expect(aws_network_interface).to receive(:delete).exactly(2).times do
+        return_value = return_values.shift
+        return_value == :raise ? raise(Aws::EC2::Errors::InvalidNetworkInterfaceInUse.new(nil, 'IP address is already in use')) : return_value
+      end
+
+      network_interface.delete
+    end
+
+    it 'retries on Aws::EC2::Errors::InvalidParameterValue error' do
+      stub_const('Bosh::AwsCloud::NetworkInterface::DELETE_NETWORK_INTERFACE_WAIT_TIME', 0)
+
+      return_values = [:raise, true]
+
+      expect(aws_network_interface).to receive(:delete).exactly(2).times do
+        return_value = return_values.shift
+        return_value == :raise ? raise(Aws::EC2::Errors::InvalidParameterValue.new(nil, 'Network Interface is currently in use')) : return_value
+      end
+
+      network_interface.delete
+    end
+
+    it 'fails gracefully if deletion fails' do
+      allow(aws_network_interface).to receive(:delete).and_raise(StandardError.new('Deletion failed'))
+      network_interface.delete
+      expect(logger).to have_received(:warn).with(/Failed to delete network interface 'eni-12345' could not be deleted: #<StandardError: Deletion failed>/)
+    end
   end
 
   describe '#mac_address' do
