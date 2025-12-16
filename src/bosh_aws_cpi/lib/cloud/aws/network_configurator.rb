@@ -77,6 +77,7 @@ module Bosh::AwsCloud
       # if this IP is actually an allocated EC2 elastic IP, as
       # API call will fail in that case.
 
+      # AWS requires network_interface_id when the instance has multiple network interfaces.
       network_interfaces = ec2.client.describe_instances(instance_ids: [instance.id]).reservations.first.instances.first.network_interfaces
       primary_nic = network_interfaces.find { |nic| nic.attachment.device_index == 0 }
       
@@ -86,11 +87,11 @@ module Bosh::AwsCloud
 
       errors = [Aws::EC2::Errors::IncorrectInstanceState, Aws::EC2::Errors::InvalidInstanceID]
       Bosh::Common.retryable(tries: 10, sleep: 1, on: errors) do
-        ec2.client.associate_address(instance_id: instance.id, allocation_id: allocation_id)
         ec2.client.associate_address(
           network_interface_id: primary_nic.network_interface_id,
           allocation_id: allocation_id
         )
+        true # need to return true to end the retries
       end
     end
   end
