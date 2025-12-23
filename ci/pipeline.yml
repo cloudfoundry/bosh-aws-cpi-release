@@ -24,7 +24,7 @@ shared:
     INFRASTRUCTURE: aws
     STEMCELL_NAME: bosh-aws-xen-hvm-ubuntu-noble
     BAT_INFRASTRUCTURE: aws
-    BAT_RSPEC_FLAGS: "--tag ~root_partition"
+    BAT_RSPEC_FLAGS: "--tag multiple_manual_networks --tag ipv6 --tag nic_groups"
 
 - &run-end-2-end
   task: run-e2e
