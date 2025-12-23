@@ -138,11 +138,13 @@ describe Bosh::AwsCloud::NetworkConfigurator do
             let(:response_addresses) { [elastic_ip] }
 
             it 'should associate Elastic/Public IP to the instance' do
-              expect(ec2_client).to receive(:describe_addresses)
-                .with(describe_addresses_arguments).and_return(describe_addresses_response)
-              expect(elastic_ip).to receive(:allocation_id).and_return('allocation-id')
+              primary_nic = create_nic_mock(0, 'eni-12345678')
+              
+              setup_vip_mocks(ec2_client, elastic_ip, describe_addresses_arguments, describe_addresses_response)
+              mock_describe_instances(ec2_client, 'i-xxxxxxxx', [primary_nic])
+              
               expect(ec2_client).to receive(:associate_address).with(
-                instance_id: 'i-xxxxxxxx',
+                network_interface_id: 'eni-12345678',
                 allocation_id: 'allocation-id'
               )
 
@@ -160,6 +162,41 @@ describe Bosh::AwsCloud::NetworkConfigurator do
               expect {
                 Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
               }.to raise_error(/Elastic IP with VPC scope not found with address '#{vip_public_ip}'/)
+            end
+          end
+
+          context 'with multiple network interfaces' do
+            let(:elastic_ip) { instance_double(Aws::EC2::Types::Address) }
+            let(:response_addresses) { [elastic_ip] }
+
+            it 'should associate Elastic IP to primary NIC (device_index 0)' do
+              primary_nic = create_nic_mock(0, 'eni-primary')
+              secondary_nic = create_nic_mock(1, nil)
+              
+              setup_vip_mocks(ec2_client, elastic_ip, describe_addresses_arguments, describe_addresses_response)
+              mock_describe_instances(ec2_client, 'i-xxxxxxxx', [secondary_nic, primary_nic])
+              
+              expect(ec2_client).to receive(:associate_address).with(
+                network_interface_id: 'eni-primary',
+                allocation_id: 'allocation-id'
+              )
+
+              Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
+            end
+
+            it 'should handle multiple NICs in any order' do
+              primary_nic = create_nic_mock(0, 'eni-primary')
+              secondary_nic = create_nic_mock(1, nil)
+              
+              setup_vip_mocks(ec2_client, elastic_ip, describe_addresses_arguments, describe_addresses_response)
+              mock_describe_instances(ec2_client, 'i-xxxxxxxx', [primary_nic, secondary_nic])
+              
+              expect(ec2_client).to receive(:associate_address).with(
+                network_interface_id: 'eni-primary',
+                allocation_id: 'allocation-id'
+              )
+
+              Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
             end
           end
         end
