@@ -10,8 +10,8 @@ variable "public_key" {}
 provider "aws" {
   access_key = var.access_key
   secret_key = var.secret_key
-  token = var.session_token
-  region = var.region
+  token      = var.session_token
+  region     = var.region
 }
 
 variable "resource_prefix" {
@@ -24,7 +24,7 @@ data "aws_availability_zones" "available" {}
 # Create a VPC to launch our instances into
 resource "aws_vpc" "default" {
   assign_generated_ipv6_cidr_block = true
-  cidr_block = "10.0.0.0/16"
+  cidr_block                       = "10.0.0.0/16"
   tags = {
     Name = "${var.resource_prefix}-${var.env_name}"
   }
@@ -51,25 +51,25 @@ resource "aws_route_table" "default" {
 }
 
 resource "aws_route_table_association" "a" {
-  subnet_id = aws_subnet.default.id
+  subnet_id      = aws_subnet.default.id
   route_table_id = aws_route_table.default.id
 }
 
 resource "aws_route_table_association" "c" {
-  subnet_id = aws_subnet.manual.id
+  subnet_id      = aws_subnet.manual.id
   route_table_id = aws_route_table.default.id
 }
 
 resource "aws_route_table_association" "b" {
-  subnet_id = aws_subnet.backup.id
+  subnet_id      = aws_subnet.backup.id
   route_table_id = aws_route_table.default.id
 }
 
 resource "aws_subnet" "default" {
-  vpc_id = aws_vpc.default.id
-  cidr_block = cidrsubnet(aws_vpc.default.cidr_block, 8, 0)
-  ipv6_cidr_block = cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 1)
-  depends_on = [ aws_internet_gateway.default ]
+  vpc_id            = aws_vpc.default.id
+  cidr_block        = cidrsubnet(aws_vpc.default.cidr_block, 8, 0)
+  ipv6_cidr_block   = cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 1)
+  depends_on        = [aws_internet_gateway.default]
   availability_zone = data.aws_availability_zones.available.names[0]
 
   tags = {
@@ -80,10 +80,10 @@ resource "aws_subnet" "default" {
 }
 
 resource "aws_subnet" "backup" {
-  vpc_id = aws_vpc.default.id
-  cidr_block = cidrsubnet(aws_vpc.default.cidr_block, 8, 2)
-  ipv6_cidr_block = cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 3)
-  depends_on = [ aws_internet_gateway.default ]
+  vpc_id            = aws_vpc.default.id
+  cidr_block        = cidrsubnet(aws_vpc.default.cidr_block, 8, 2)
+  ipv6_cidr_block   = cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 3)
+  depends_on        = [aws_internet_gateway.default]
   availability_zone = data.aws_availability_zones.available.names[1]
 
   tags = {
@@ -92,10 +92,10 @@ resource "aws_subnet" "backup" {
 }
 
 resource "aws_subnet" "manual" {
-  vpc_id = aws_vpc.default.id
-  cidr_block = cidrsubnet(aws_vpc.default.cidr_block, 8, 4)
-  ipv6_cidr_block = cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 5)
-  depends_on = [ aws_internet_gateway.default ]
+  vpc_id            = aws_vpc.default.id
+  cidr_block        = cidrsubnet(aws_vpc.default.cidr_block, 8, 4)
+  ipv6_cidr_block   = cidrsubnet(aws_vpc.default.ipv6_cidr_block, 8, 5)
+  depends_on        = [aws_internet_gateway.default]
   availability_zone = data.aws_availability_zones.available.names[0]
 
   tags = {
@@ -114,21 +114,21 @@ resource "aws_network_acl" "allow_all" {
   ]
 
   egress {
-    protocol = "-1"
-    rule_no = 2
-    action = "allow"
+    protocol   = "-1"
+    rule_no    = 2
+    action     = "allow"
     cidr_block = "0.0.0.0/0"
-    from_port = 0
-    to_port = 0
+    from_port  = 0
+    to_port    = 0
   }
 
   ingress {
-    protocol = "-1"
-    rule_no = 1
-    action = "allow"
+    protocol   = "-1"
+    rule_no    = 1
+    action     = "allow"
     cidr_block = "0.0.0.0/0"
-    from_port = 0
-    to_port = 0
+    from_port  = 0
+    to_port    = 0
   }
 
   tags = {
@@ -137,24 +137,24 @@ resource "aws_network_acl" "allow_all" {
 }
 
 resource "aws_security_group" "allow_all" {
-  vpc_id = aws_vpc.default.id
-  name = "allow_all-${var.resource_prefix}-${var.env_name}"
+  vpc_id      = aws_vpc.default.id
+  name        = "allow_all-${var.resource_prefix}-${var.env_name}"
   description = "Allow all inbound and outgoing traffic"
 
   ingress {
     from_port = 0
-    to_port = 0
-    protocol = "-1"
+    to_port   = 0
+    protocol  = "-1"
     cidr_blocks = [
-      "0.0.0.0/0"]
+    "0.0.0.0/0"]
   }
 
   egress {
     from_port = 0
-    to_port = 0
-    protocol = "-1"
+    to_port   = 0
+    protocol  = "-1"
     cidr_blocks = [
-      "0.0.0.0/0"]
+    "0.0.0.0/0"]
   }
 
   tags = {
@@ -173,10 +173,10 @@ resource "aws_eip" "deployment" {
 # Create a new classic load balancer
 resource "aws_elb" "default" {
   listener {
-    instance_port = 80
+    instance_port     = 80
     instance_protocol = "http"
-    lb_port = 80
-    lb_protocol = "http"
+    lb_port           = 80
+    lb_protocol       = "http"
   }
 
   subnets = [aws_subnet.default.id]
@@ -199,14 +199,14 @@ resource "aws_alb" "default" {
 }
 
 resource "aws_alb_target_group" "default" {
-  name = "${var.resource_prefix}-${var.env_name}"
-  port = "80"
+  name     = "${var.resource_prefix}-${var.env_name}"
+  port     = "80"
   protocol = "HTTP"
-  vpc_id = aws_vpc.default.id
+  vpc_id   = aws_vpc.default.id
   health_check {
     interval = 5
-    timeout = 4
-    path  = "/"
+    timeout  = 4
+    path     = "/"
     matcher  = "200"
   }
 
@@ -217,24 +217,24 @@ resource "aws_alb_target_group" "default" {
 
 resource "aws_alb_listener" "default" {
   load_balancer_arn = aws_alb.default.arn
-  port = "80"
-  protocol = "HTTP"
+  port              = "80"
+  protocol          = "HTTP"
 
   default_action {
     target_group_arn = aws_alb_target_group.default.arn
-    type = "forward"
+    type             = "forward"
   }
 }
 
 resource "aws_vpc_endpoint" "private-s3" {
-  vpc_id = aws_vpc.default.id
+  vpc_id       = aws_vpc.default.id
   service_name = "com.amazonaws.${var.region}.s3"
   route_table_ids = [
-    aws_route_table.default.id]
+  aws_route_table.default.id]
 }
 
 resource "aws_s3_bucket" "blobstore" {
-  bucket = "cpi-pipeline-blobstore-${var.resource_prefix}-${var.env_name}-${var.region}"
+  bucket        = "cpi-pipeline-blobstore-${var.resource_prefix}-${var.env_name}-${var.region}"
   force_destroy = true
 }
 
@@ -326,8 +326,7 @@ output "second_nic_group" {
 
 # Used by integration tests
 output "manual_static_ipv6" {
-  # workaround: v0.9.5 cidrhost() does not work correctly for IPv6
-  value = format("%s4", cidrhost(aws_subnet.manual.ipv6_cidr_block, 0))
+  value = cidrhost(aws_subnet.manual.ipv6_cidr_block, 4)
 }
 output "elb" {
   value = aws_elb.default.id
