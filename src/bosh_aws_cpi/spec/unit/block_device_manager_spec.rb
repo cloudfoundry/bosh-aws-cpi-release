@@ -189,7 +189,7 @@ module Bosh::AwsCloud
                   expect(actual_output).to match_array(expected_output)
                   expect(agent_info).to eq(
                     'ephemeral' => [{'path' => '/dev/sdb'}],
-                    'raw_ephemeral' => [{'path' => '/dev/nvme0n1'}, {'path' => '/dev/nvme1n1'}],
+                    'raw_ephemeral' => [{'path' => '/dev/nvme2n1'}, {'path' => '/dev/nvme3n1'}],
                   )
                 end
               end

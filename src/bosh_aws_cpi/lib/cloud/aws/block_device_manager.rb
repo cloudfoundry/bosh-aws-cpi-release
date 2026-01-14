@@ -155,8 +155,18 @@ module Bosh::AwsCloud
       case @virtualization_type
 
         when 'hvm'
-          if instance_type =~ /^i3\./ || instance_type =~ /^i3en\./
-            '/dev/nvme0n1'
+          if BlockDeviceManager.requires_nvme_device(instance_type)
+            # On NVMe-based instances, calculate the correct starting device index
+            # NVMe devices are enumerated as:
+            # - nvme0n1: root EBS volume
+            # - nvme1n1: ephemeral EBS volume (if not using use_root_disk or use_instance_storage)
+            # - nvme2n1+: instance storage NVMe disks
+            nvme_index = 1 # Start after root (nvme0n1)
+            ephemeral_disk = @vm_cloud_props.ephemeral_disk
+            unless ephemeral_disk.use_root_disk || ephemeral_disk.use_instance_storage
+              nvme_index += 1 # Account for ephemeral EBS disk
+            end
+            "/dev/nvme#{nvme_index}n1"
           else
             '/dev/xvdba'
           end
