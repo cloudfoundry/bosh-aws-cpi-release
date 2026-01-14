@@ -3,9 +3,10 @@ module Bosh::AwsCloud
     DEFAULT_INSTANCE_STORAGE_DISK_MAPPING = { device_name: '/dev/sdb', virtual_name: 'ephemeral0' }.freeze
     NVME_EBS_BY_ID_DEVICE_PATH_PREFIX = '/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_'
 
-    # Newer, nitro-based instances use NVMe storage volumes.
+    # Instance families that use NVMe device naming (/dev/nvme*).
+    # This includes Nitro-based instances and some Xen-based instances with NVMe storage (e.g., i3 family).
     # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#ec2-nitro-instances
-    NVME_INSTANCE_FAMILIES = %w[a1 c5 c5a c5ad c5d c5n c6a c6g c6gd c6gn c6i c6id c6in c7i c7a d3 d3en g4dn g4ad g5 g6 g6e i3en i4i inf1 m5 m5a m5ad m5d m5dn m5n m5zn m6a m6g m6gd m6i m6id m6idn m6in m7i m7a m7i-flex p3dn p4d p5 r5 r5a r5ad r5b r5d r5dn r5n r6a r6g r6gd r6i r6in r6id r6idn r7i r7a r7iz t3 t3a t4g z1d x2iezn].freeze
+    NVME_INSTANCE_FAMILIES = %w[a1 c5 c5a c5ad c5d c5n c6a c6g c6gd c6gn c6i c6id c6in c7i c7a d3 d3en g4dn g4ad g5 g6 g6e i3 i3en i4i inf1 m5 m5a m5ad m5d m5dn m5n m5zn m6a m6g m6gd m6i m6id m6idn m6in m7i m7a m7i-flex p3dn p4d p5 r5 r5a r5ad r5b r5d r5dn r5n r6a r6g r6gd r6i r6in r6id r6idn r7i r7a r7iz t3 t3a t4g z1d x2iezn].freeze
 
     def initialize(logger, stemcell, vm_cloud_props)
       @logger = logger

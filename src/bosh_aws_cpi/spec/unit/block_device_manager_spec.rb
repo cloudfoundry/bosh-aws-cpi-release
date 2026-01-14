@@ -168,29 +168,43 @@ module Bosh::AwsCloud
                 )
               end
 
-              context 'and NVMe storage types' do
-                let(:instance_type) { 'i3.4xlarge' }
+              # Test all NVMe instance families with raw_instance_storage
+              BlockDeviceManager::NVME_INSTANCE_FAMILIES.each do |nvme_instance_family|
+                # Check if this instance family has any instance types with instance storage defined
+                test_instance_type = "#{nvme_instance_family}.4xlarge"
+                disk_mapping = BlockDeviceManager::DiskInfo::INSTANCE_TYPE_DISK_MAPPING[test_instance_type]
 
-                it 'returns an EBS volume with size 10GB and NO disks NVMe instance storage' do
-                  actual_output, agent_info = manager.mappings_and_info
-                  expected_output = [default_root]
-                  instance_storage_disks = []
-                  expected_output += instance_storage_disks
+                # Skip if instance type doesn't have instance storage defined
+                next unless disk_mapping
 
-                  ebs_disk = {
-                    device_name: '/dev/sdb',
-                    ebs: {
-                      volume_size: 10,
-                      volume_type: 'gp3',
-                      delete_on_termination: true,
+                context "and NVMe storage types (#{nvme_instance_family})" do
+                  let(:instance_type) { test_instance_type }
+
+                  it 'returns an EBS volume with size 10GB and NO disks NVMe instance storage' do
+                    actual_output, agent_info = manager.mappings_and_info
+                    expected_output = [default_root]
+                    instance_storage_disks = []
+                    expected_output += instance_storage_disks
+
+                    ebs_disk = {
+                      device_name: '/dev/sdb',
+                      ebs: {
+                        volume_size: 10,
+                        volume_type: 'gp3',
+                        delete_on_termination: true,
+                      }
                     }
-                  }
-                  expected_output << ebs_disk
-                  expect(actual_output).to match_array(expected_output)
-                  expect(agent_info).to eq(
-                    'ephemeral' => [{'path' => '/dev/sdb'}],
-                    'raw_ephemeral' => [{'path' => '/dev/nvme2n1'}, {'path' => '/dev/nvme3n1'}],
-                  )
+                    expected_output << ebs_disk
+                    expect(actual_output).to match_array(expected_output)
+
+                    num_disks = disk_mapping[1]
+                    expected_devices = num_disks.times.map { |i| {'path' => "/dev/nvme#{i + 2}n1"} }
+
+                    expect(agent_info).to eq(
+                      'ephemeral' => [{'path' => '/dev/sdb'}],
+                      'raw_ephemeral' => expected_devices,
+                    )
+                  end
                 end
               end
 
