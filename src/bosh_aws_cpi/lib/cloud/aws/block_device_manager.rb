@@ -164,7 +164,7 @@ module Bosh::AwsCloud
             # - nvme0n1: root EBS volume
             # - nvme1n1: ephemeral EBS volume (if not using use_root_disk or use_instance_storage)
             # - nvme2n1+: instance storage NVMe disks
-            nvme_index = 1 # Start after root (nvme0n1)
+            nvme_index = 1
             ephemeral_disk = @vm_cloud_props.ephemeral_disk
             unless ephemeral_disk.use_root_disk || ephemeral_disk.use_instance_storage
               nvme_index += 1 # Account for ephemeral EBS disk

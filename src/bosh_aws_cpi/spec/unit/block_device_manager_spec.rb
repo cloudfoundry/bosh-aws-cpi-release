@@ -168,9 +168,7 @@ module Bosh::AwsCloud
                 )
               end
 
-              # Test all NVMe instance families with raw_instance_storage
               BlockDeviceManager::NVME_INSTANCE_FAMILIES.each do |nvme_instance_family|
-                # Check if this instance family has any instance types with instance storage defined
                 test_instance_type = "#{nvme_instance_family}.4xlarge"
                 disk_mapping = BlockDeviceManager::DiskInfo::INSTANCE_TYPE_DISK_MAPPING[test_instance_type]
 
