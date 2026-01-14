@@ -60,7 +60,9 @@ module Bosh::AwsCloud
 
     def mappings(info)
       instance_type = @vm_cloud_props.instance_type.nil? ? 'unspecified' : @vm_cloud_props.instance_type
-      if instance_type =~ /^i3\./ || instance_type =~ /^i3en\./
+      # For NVMe instances with instance storage, AWS auto-attaches the disks,
+      # so we don't include them in the block device mappings
+      if BlockDeviceManager.requires_nvme_device(instance_type)
         info = info.reject { |device| device[:bosh_type] == 'raw_ephemeral' }
       end
 
