@@ -71,6 +71,7 @@ jobs:
 
 - name: integration
   serial: true
+  serial_groups: [integration-jobs]
   plan:
   - in_parallel:
     - get: bosh-cpi-release
@@ -115,6 +116,7 @@ jobs:
 
 - name: bats
   serial: true
+  serial_groups: [bats-jobs]
   plan:
   - in_parallel:
     - get: cpi-release
@@ -165,6 +167,7 @@ jobs:
 
 - name: end-2-end
   serial: true
+  serial_groups: [end-2-end-jobs]
   plan:
   - in_parallel:
     - get: cpi-release
@@ -342,6 +345,7 @@ jobs:
       file: release_metadata/empty-file
 
 - name: cleanup-leftover-environments
+  serial_groups: [integration-jobs, bats-jobs, end-2-end-jobs]
   plan:
     - in_parallel:
         - get: bosh-integration-image
