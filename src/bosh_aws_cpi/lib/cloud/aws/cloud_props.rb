@@ -311,12 +311,13 @@ module Bosh::AwsCloud
     end
 
     class PublicNetwork < Network
-      attr_reader :ip
+      attr_reader :ip, :nic_group
 
       def initialize(name, settings)
         super(name, settings)
 
         @ip = settings['ip']
+        @nic_group = settings['nic_group']
       end
     end
   end
