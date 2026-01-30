@@ -138,7 +138,7 @@ def create_nic_mock(device_index, eni_id)
   attachment = instance_double(Aws::EC2::Types::InstanceNetworkInterfaceAttachment)
   allow(attachment).to receive(:device_index).and_return(device_index)
   allow(nic).to receive(:attachment).and_return(attachment)
-  allow(nic).to receive(:network_interface_id).and_return(eni_id) if device_index == 0
+  allow(nic).to receive(:network_interface_id).and_return(eni_id)
   nic
 end
 
@@ -146,7 +146,7 @@ def mock_describe_instances(ec2_client, instance_id, nics)
   instance_data = instance_double(Aws::EC2::Types::Instance, network_interfaces: nics)
   reservation = instance_double(Aws::EC2::Types::Reservation, instances: [instance_data])
   response = instance_double(Aws::EC2::Types::DescribeInstancesResult, reservations: [reservation])
-  expect(ec2_client).to receive(:describe_instances).with(instance_ids: [instance_id]).and_return(response)
+  allow(ec2_client).to receive(:describe_instances).with(instance_ids: [instance_id]).and_return(response)
 end
 
 def setup_vip_mocks(ec2_client, elastic_ip, describe_addresses_arguments, describe_addresses_response, allocation_id: 'allocation-id')
