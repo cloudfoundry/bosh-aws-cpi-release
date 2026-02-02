@@ -153,44 +153,37 @@ module Bosh::AwsCloud
       result
     end
 
-    def first_raw_ephemeral_device
-      instance_type = @vm_cloud_props.instance_type.nil? ? 'unspecified' : @vm_cloud_props.instance_type
-      case @virtualization_type
-
-        when 'hvm'
-          if BlockDeviceManager.requires_nvme_device(instance_type)
-            # On NVMe-based instances, calculate the correct starting device index
-            # NVMe devices are enumerated as:
-            # - nvme0n1: root EBS volume
-            # - nvme1n1: ephemeral EBS volume (if not using use_root_disk or use_instance_storage)
-            # - nvme2n1+: instance storage NVMe disks
-            nvme_index = 1
-            ephemeral_disk = @vm_cloud_props.ephemeral_disk
-            unless ephemeral_disk.use_root_disk || ephemeral_disk.use_instance_storage
-              nvme_index += 1 # Account for ephemeral EBS disk
-            end
-            "/dev/nvme#{nvme_index}n1"
-          else
-            '/dev/xvdba'
-          end
-        when 'paravirtual'
-          '/dev/sdc'
-        else
-          raise Bosh::Clouds::CloudError, "unknown virtualization type #{@virtualization_type}"
+    def raw_instance_mappings(num_of_devices)
+      # Device hints for raw ephemeral disks:
+      # - NVMe instances: Agent discovers instance storage at runtime (enumeration order varies)
+      #   by excluding EBS volumes identified via /dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_*
+      #   These device_name hints are informational only - agent ignores them and uses discovery.
+      # - Paravirtual/HVM instances: Agent trusts these device paths (enumeration is deterministic)
+      #
+      # In all cases, the count (num_of_devices) must be correct to trigger setup.
+      
+      instance_type = @vm_cloud_props.instance_type || 'unspecified'
+      requires_nvme = BlockDeviceManager.requires_nvme_device(instance_type)
+      
+      num_of_devices.times.map do |index|
+        {
+          virtual_name: "ephemeral#{index}",
+          device_name: raw_ephemeral_device_name(index, requires_nvme),
+          bosh_type: 'raw_ephemeral'
+        }
       end
     end
 
-    def raw_instance_mappings(num_of_devices)
-      next_device = first_raw_ephemeral_device
-
-      num_of_devices.times.map do |index|
-        result = {
-          virtual_name: "ephemeral#{index}",
-          device_name: next_device,
-          bosh_type: 'raw_ephemeral',
-        }
-        next_device = next_raw_ephemeral_disk(next_device)
-        result
+    def raw_ephemeral_device_name(index, requires_nvme)
+      if requires_nvme
+        # Simple sequential hints - agent will discover actual devices via EBS symlink exclusion
+        "/dev/nvme#{index}n1"
+      elsif @virtualization_type == 'paravirtual'
+        "/dev/sd#{(99 + index).chr}" # 99 is 'c'.ord - starts at sdc, sdd, sde...
+      elsif @virtualization_type == 'hvm'
+        "/dev/xvdb#{(97 + index).chr}" # 97 is 'a'.ord - starts at xvdba, xvdbb...
+      else
+        raise Bosh::Clouds::CloudError, "unknown virtualization type #{@virtualization_type}"
       end
     end
 
@@ -235,16 +228,6 @@ module Bosh::AwsCloud
         return '/dev/sda'
       else
         return '/dev/xvda'
-      end
-    end
-
-    def next_raw_ephemeral_disk(current_disk)
-      if current_disk =~ /^\/dev\/nvme/
-        disk_id = /^\/dev\/nvme(\d+)n.*/.match(current_disk)[1]
-        disk_id = disk_id.next
-        "/dev/nvme#{disk_id}n1"
-      else
-        current_disk.next
       end
     end
 
