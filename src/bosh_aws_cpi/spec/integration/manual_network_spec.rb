@@ -780,7 +780,7 @@ describe Bosh::AwsCloud::CloudV1 do
                 'system' => '/dev/xvda',
                 'persistent' => {},
                 'ephemeral' => '/dev/sdb',
-                'raw_ephemeral' => [{ 'path' => '/dev/nvme2n1' }]
+                'raw_ephemeral' => [{ 'path' => '/dev/nvme0n1' }]
               }
             }))
           end
