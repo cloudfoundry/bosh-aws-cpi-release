@@ -196,7 +196,8 @@ module Bosh::AwsCloud
                     expect(actual_output).to match_array(expected_output)
 
                     num_disks = disk_mapping[1]
-                    expected_devices = num_disks.times.map { |i| {'path' => "/dev/nvme#{i + 2}n1"} }
+                    # Device hints start at nvme0n1 - agent discovers actual devices at runtime
+                    expected_devices = num_disks.times.map { |i| {'path' => "/dev/nvme#{i}n1"} }
 
                     expect(agent_info).to eq(
                       'ephemeral' => [{'path' => '/dev/sdb'}],
