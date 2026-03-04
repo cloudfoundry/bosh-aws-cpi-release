@@ -233,7 +233,7 @@ describe Bosh::AwsCloud::NetworkConfigurator do
               
               expect {
                 Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
-              }.to raise_error(Bosh::Clouds::CloudError, /Could not find network interface with device_index 0.*device indexes: 1, 2/)
+              }.to raise_error(Bosh::Clouds::CloudError, /Could not find network interface with device_index 0.*device indexes: \[1, 2\]/)
             end
 
             it 'should retry describe_addresses on transient errors and succeed' do
