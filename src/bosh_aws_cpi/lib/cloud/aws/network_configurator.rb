@@ -97,7 +97,7 @@ module Bosh::AwsCloud
       target_nic = network_interfaces.find { |nic| nic.attachment.device_index == target_device_index }
 
       if target_nic.nil?
-        nic_indexes = network_interfaces.map { |nic| nic.attachment.device_index }.sort.join(', ')
+        nic_indexes = network_interfaces.map { |nic| nic.attachment.device_index }.sort
 
         nic_group_info = @vip_network.nic_group ? "nic_group '#{@vip_network.nic_group}'" : "default (nic_group not specified)"
         cloud_error("Could not find network interface with device_index #{target_device_index} " \
