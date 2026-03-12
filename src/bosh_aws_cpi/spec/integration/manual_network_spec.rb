@@ -1020,4 +1020,74 @@ describe Bosh::AwsCloud::CloudV1 do
       vm_id
     end
   end
+
+  context 'with multiple network interfaces and VIP' do
+    let(:network_spec) do
+      {
+        'default' => {
+          'type' => 'manual',
+          'ip' => @manual_ip,
+          'cloud_properties' => {
+            'subnet' => @manual_subnet_id,
+            'nic_group' => 0
+          }
+        },
+        'secondary' => {
+          'type' => 'manual',
+          'ip' => @secondary_manual_ip,
+          'cloud_properties' => {
+            'subnet' => @manual_subnet_id,
+            'nic_group' => 1
+          }
+        },
+        'elastic' => {
+          'type' => 'vip',
+          'ip' => eip
+        }
+      }
+    end
+
+    before(:each) do
+      @ip_semaphore.synchronize do
+        secondary_cidr = @ec2.subnet(@manual_subnet_id).cidr_block
+        secondary_ips = IPAddr.new(secondary_cidr).to_range.to_a.map(&:to_s)
+        ip_addresses = secondary_ips.first(secondary_ips.size - 1).drop(9)
+        ip_addresses -= @already_used
+        @secondary_manual_ip = ip_addresses[rand(ip_addresses.size)]
+        @already_used << @secondary_manual_ip
+      end
+    end
+
+    it 'creates VM with multiple NICs and associates Elastic IP to primary NIC' do
+      vm_lifecycle do |instance_id|
+        resp = @cpi.ec2_resource.client.describe_instances(filters: [{ name: 'instance-id', values: [instance_id] }])
+        instance_data = resp.reservations[0].instances[0]
+        network_interfaces = instance_data.network_interfaces
+
+        expect(network_interfaces.length).to eq(2), "Expected 2 network interfaces, got #{network_interfaces.length}"
+
+        primary_nic = network_interfaces.find { |nic| nic.attachment.device_index == 0 }
+        secondary_nic = network_interfaces.find { |nic| nic.attachment.device_index == 1 }
+
+        expect(primary_nic).not_to be_nil, "Primary NIC (device_index 0) not found"
+        expect(secondary_nic).not_to be_nil, "Secondary NIC (device_index 1) not found"
+
+        addresses_resp = @cpi.ec2_resource.client.describe_addresses(
+          filters: [{ name: 'public-ip', values: [eip] }]
+        )
+
+        expect(addresses_resp.addresses.length).to eq(1), "Elastic IP #{eip} not found"
+        address = addresses_resp.addresses[0]
+
+        # EIP must be associated via network_interface_id (not instance_id)
+        # when multiple NICs are present, and it must be the primary NIC
+        expect(address.network_interface_id).to eq(primary_nic.network_interface_id),
+          "Elastic IP should be associated with primary NIC #{primary_nic.network_interface_id}, " \
+          "but is associated with #{address.network_interface_id}"
+
+        expect(primary_nic.association).not_to be_nil, "No public IP association found on primary NIC"
+        expect(primary_nic.association.public_ip).to eq(eip), "Expected Elastic IP #{eip} on primary NIC"
+      end
+    end
+  end
 end

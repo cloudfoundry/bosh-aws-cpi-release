@@ -138,11 +138,13 @@ describe Bosh::AwsCloud::NetworkConfigurator do
             let(:response_addresses) { [elastic_ip] }
 
             it 'should associate Elastic/Public IP to the instance' do
-              expect(ec2_client).to receive(:describe_addresses)
-                .with(describe_addresses_arguments).and_return(describe_addresses_response)
-              expect(elastic_ip).to receive(:allocation_id).and_return('allocation-id')
+              primary_nic = create_nic_mock(0, 'eni-12345678')
+              
+              setup_vip_mocks(ec2_client, elastic_ip, describe_addresses_arguments, describe_addresses_response)
+              mock_describe_instances(ec2_client, 'i-xxxxxxxx', [primary_nic])
+              
               expect(ec2_client).to receive(:associate_address).with(
-                instance_id: 'i-xxxxxxxx',
+                network_interface_id: 'eni-12345678',
                 allocation_id: 'allocation-id'
               )
 
@@ -160,6 +162,321 @@ describe Bosh::AwsCloud::NetworkConfigurator do
               expect {
                 Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
               }.to raise_error(/Elastic IP with VPC scope not found with address '#{vip_public_ip}'/)
+            end
+          end
+
+          context 'with multiple network interfaces' do
+            let(:elastic_ip) { instance_double(Aws::EC2::Types::Address) }
+            let(:response_addresses) { [elastic_ip] }
+
+            it 'should associate Elastic IP to primary NIC (device_index 0)' do
+              primary_nic = create_nic_mock(0, 'eni-primary')
+              secondary_nic = create_nic_mock(1, nil)
+              
+              setup_vip_mocks(ec2_client, elastic_ip, describe_addresses_arguments, describe_addresses_response)
+              mock_describe_instances(ec2_client, 'i-xxxxxxxx', [secondary_nic, primary_nic])
+              
+              expect(ec2_client).to receive(:associate_address).with(
+                network_interface_id: 'eni-primary',
+                allocation_id: 'allocation-id'
+              )
+
+              Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
+            end
+
+            it 'should handle multiple NICs in any order' do
+              primary_nic = create_nic_mock(0, 'eni-primary')
+              secondary_nic = create_nic_mock(1, nil)
+              
+              setup_vip_mocks(ec2_client, elastic_ip, describe_addresses_arguments, describe_addresses_response)
+              mock_describe_instances(ec2_client, 'i-xxxxxxxx', [primary_nic, secondary_nic])
+              
+              expect(ec2_client).to receive(:associate_address).with(
+                network_interface_id: 'eni-primary',
+                allocation_id: 'allocation-id'
+              )
+
+              Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
+            end
+
+            it 'should retry describe_instances on transient errors and succeed' do
+              primary_nic = create_nic_mock(0, 'eni-primary')
+              
+              setup_vip_mocks(ec2_client, elastic_ip, describe_addresses_arguments, describe_addresses_response)
+              
+              # Simulate transient error on first call, success on second
+              instance_data = instance_double(Aws::EC2::Types::Instance, network_interfaces: [primary_nic])
+              reservation = instance_double(Aws::EC2::Types::Reservation, instances: [instance_data])
+              response = instance_double(Aws::EC2::Types::DescribeInstancesResult, reservations: [reservation])
+              
+              expect(ec2_client).to receive(:describe_instances).with(instance_ids: ['i-xxxxxxxx'])
+                .and_raise(Aws::EC2::Errors::ServiceError.new(nil, 'Service error'))
+                .ordered
+              expect(ec2_client).to receive(:describe_instances).with(instance_ids: ['i-xxxxxxxx'])
+                .and_return(response)
+                .ordered
+              
+              expect(ec2_client).to receive(:associate_address).with(
+                network_interface_id: 'eni-primary',
+                allocation_id: 'allocation-id'
+              )
+
+              Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
+            end
+
+            it 'should raise error when no primary NIC found with helpful message' do
+              secondary_nic = create_nic_mock(1, nil)
+              tertiary_nic = create_nic_mock(2, nil)
+              
+              setup_vip_mocks(ec2_client, elastic_ip, describe_addresses_arguments, describe_addresses_response)
+              mock_describe_instances(ec2_client, 'i-xxxxxxxx', [secondary_nic, tertiary_nic])
+              
+              expect {
+                Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
+              }.to raise_error(Bosh::Clouds::CloudError, /Could not find network interface with device_index 0.*device indexes: \[1, 2\]/)
+            end
+
+            it 'should retry describe_addresses on transient errors and succeed' do
+              primary_nic = create_nic_mock(0, 'eni-primary')
+              
+              expect(elastic_ip).to receive(:allocation_id).and_return('allocation-id')
+              
+              # Simulate transient error on first call, success on second
+              expect(ec2_client).to receive(:describe_addresses)
+                .with(describe_addresses_arguments)
+                .and_raise(Aws::EC2::Errors::RequestLimitExceeded.new(nil, 'Request limit exceeded'))
+                .ordered
+              expect(ec2_client).to receive(:describe_addresses)
+                .with(describe_addresses_arguments)
+                .and_return(describe_addresses_response)
+                .ordered
+              
+              mock_describe_instances(ec2_client, 'i-xxxxxxxx', [primary_nic])
+              
+              expect(ec2_client).to receive(:associate_address).with(
+                network_interface_id: 'eni-primary',
+                allocation_id: 'allocation-id'
+              )
+
+              Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
+            end
+          end
+
+          context 'with nic_group configuration' do
+            let(:elastic_ip) { instance_double(Aws::EC2::Types::Address) }
+            let(:response_addresses) { [elastic_ip] }
+
+            context 'when vip network has nic_group 0' do
+              let(:spec) do
+                {
+                  'network1' => {
+                    'type' => 'manual',
+                    'ip' => '10.0.0.10',
+                    'netmask' => '255.255.255.0',
+                    'nic_group' => '0',
+                    'cloud_properties' => {
+                      'subnet' => 'subnet-xxxxxxxx'
+                    }
+                  },
+                  'vip' => {
+                    'type' => 'vip',
+                    'ip' => vip_public_ip,
+                    'nic_group' => '0'
+                  }
+                }
+              end
+              let(:networks_spec) { spec }
+
+              it 'should associate Elastic IP to primary NIC (device_index 0)' do
+                primary_nic = create_nic_mock(0, 'eni-primary')
+                secondary_nic = create_nic_mock(1, 'eni-secondary')
+                
+                setup_vip_mocks(ec2_client, elastic_ip, describe_addresses_arguments, describe_addresses_response)
+                mock_describe_instances(ec2_client, 'i-xxxxxxxx', [primary_nic, secondary_nic])
+                
+                expect(ec2_client).to receive(:associate_address).with(
+                  network_interface_id: 'eni-primary',
+                  allocation_id: 'allocation-id'
+                )
+
+                Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
+              end
+            end
+
+            context 'when vip network has nic_group for secondary NIC' do
+              let(:spec) do
+                {
+                  'network1' => {
+                    'type' => 'manual',
+                    'ip' => '10.0.0.10',
+                    'netmask' => '255.255.255.0',
+                    'nic_group' => '0',
+                    'cloud_properties' => {
+                      'subnet' => 'subnet-xxxxxxxx'
+                    }
+                  },
+                  'network2' => {
+                    'type' => 'manual',
+                    'ip' => '10.1.0.10',
+                    'netmask' => '255.255.255.0',
+                    'nic_group' => '1',
+                    'cloud_properties' => {
+                      'subnet' => 'subnet-yyyyyyyy'
+                    }
+                  },
+                  'vip' => {
+                    'type' => 'vip',
+                    'ip' => vip_public_ip,
+                    'nic_group' => '1'
+                  }
+                }
+              end
+              let(:networks_spec) { spec }
+
+              it 'should associate Elastic IP to secondary NIC (device_index 1)' do
+                primary_nic = create_nic_mock(0, 'eni-primary')
+                secondary_nic = create_nic_mock(1, 'eni-secondary')
+                
+                setup_vip_mocks(ec2_client, elastic_ip, describe_addresses_arguments, describe_addresses_response)
+                mock_describe_instances(ec2_client, 'i-xxxxxxxx', [primary_nic, secondary_nic])
+                
+                expect(ec2_client).to receive(:associate_address).with(
+                  network_interface_id: 'eni-secondary',
+                  allocation_id: 'allocation-id'
+                )
+
+                Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
+              end
+            end
+
+            context 'when vip network has nic_group that does not exist' do
+              let(:spec) do
+                {
+                  'network1' => {
+                    'type' => 'manual',
+                    'ip' => '10.0.0.10',
+                    'netmask' => '255.255.255.0',
+                    'nic_group' => '0',
+                    'cloud_properties' => {
+                      'subnet' => 'subnet-xxxxxxxx'
+                    }
+                  },
+                  'vip' => {
+                    'type' => 'vip',
+                    'ip' => vip_public_ip,
+                    'nic_group' => '999'
+                  }
+                }
+              end
+              let(:networks_spec) { spec }
+
+              it 'should default to primary NIC (device_index 0)' do
+                primary_nic = create_nic_mock(0, 'eni-primary')
+                secondary_nic = create_nic_mock(1, 'eni-secondary')
+                
+                setup_vip_mocks(ec2_client, elastic_ip, describe_addresses_arguments, describe_addresses_response)
+                mock_describe_instances(ec2_client, 'i-xxxxxxxx', [primary_nic, secondary_nic])
+                
+                expect(ec2_client).to receive(:associate_address).with(
+                  network_interface_id: 'eni-primary',
+                  allocation_id: 'allocation-id'
+                )
+
+                Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
+              end
+            end
+
+            context 'when vip network uses string integer nic_group' do
+              let(:spec) do
+                {
+                  'network1' => {
+                    'type' => 'manual',
+                    'ip' => '10.0.0.10',
+                    'netmask' => '255.255.255.0',
+                    'nic_group' => '0',
+                    'cloud_properties' => {
+                      'subnet' => 'subnet-xxxxxxxx'
+                    }
+                  },
+                  'vip' => {
+                    'type' => 'vip',
+                    'ip' => vip_public_ip,
+                    'nic_group' => '0'
+                  }
+                }
+              end
+              let(:networks_spec) { spec }
+
+              it 'should convert string integer to device_index' do
+                primary_nic = create_nic_mock(0, 'eni-primary')
+                secondary_nic = create_nic_mock(1, 'eni-secondary')
+                
+                setup_vip_mocks(ec2_client, elastic_ip, describe_addresses_arguments, describe_addresses_response)
+                mock_describe_instances(ec2_client, 'i-xxxxxxxx', [primary_nic, secondary_nic])
+                
+                expect(ec2_client).to receive(:associate_address).with(
+                  network_interface_id: 'eni-primary',
+                  allocation_id: 'allocation-id'
+                )
+
+                Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
+              end
+            end
+
+            context 'when using non-contiguous nic_groups' do
+              let(:spec) do
+                {
+                  'network1' => {
+                    'type' => 'manual',
+                    'ip' => '10.0.0.10',
+                    'netmask' => '255.255.255.0',
+                    'nic_group' => '0',
+                    'cloud_properties' => {
+                      'subnet' => 'subnet-xxxxxxxx'
+                    }
+                  },
+                  'network2' => {
+                    'type' => 'manual',
+                    'ip' => '10.1.0.10',
+                    'netmask' => '255.255.255.0',
+                    'nic_group' => '5',
+                    'cloud_properties' => {
+                      'subnet' => 'subnet-yyyyyyyy'
+                    }
+                  },
+                  'network3' => {
+                    'type' => 'manual',
+                    'ip' => '10.2.0.10',
+                    'netmask' => '255.255.255.0',
+                    'nic_group' => '10',
+                    'cloud_properties' => {
+                      'subnet' => 'subnet-zzzzzzzz'
+                    }
+                  },
+                  'vip' => {
+                    'type' => 'vip',
+                    'ip' => vip_public_ip,
+                    'nic_group' => '5'
+                  }
+                }
+              end
+              let(:networks_spec) { spec }
+
+              it 'should match nic_group 5 to device_index 1' do
+                nic0 = create_nic_mock(0, 'eni-0')
+                nic1 = create_nic_mock(1, 'eni-1')
+                nic2 = create_nic_mock(2, 'eni-2')
+                
+                setup_vip_mocks(ec2_client, elastic_ip, describe_addresses_arguments, describe_addresses_response)
+                mock_describe_instances(ec2_client, 'i-xxxxxxxx', [nic0, nic1, nic2])
+                
+                expect(ec2_client).to receive(:associate_address).with(
+                  network_interface_id: 'eni-1',
+                  allocation_id: 'allocation-id'
+                )
+
+                Bosh::AwsCloud::NetworkConfigurator.new(network_cloud_props).configure(ec2_resource, instance)
+              end
             end
           end
         end
