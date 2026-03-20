@@ -53,7 +53,7 @@ module Bosh::AwsCloud
         Aws::EC2::Errors::RequestLimitExceeded
       ]
 
-      addresses = Bosh::Common.retryable(tries: 10, sleep: 1, on: describe_address_errors) do
+      addresses = Bosh::Common.retryable(tries: 10, sleep: ->(n, _) { [2**(n - 1), 30].min }, on: describe_address_errors) do
         ec2.client.describe_addresses(
           public_ips: [@vip_network.ip],
           filters: [
@@ -79,7 +79,7 @@ module Bosh::AwsCloud
         Aws::EC2::Errors::InvalidInstanceID
       ]
 
-      network_interfaces = Bosh::Common.retryable(tries: 10, sleep: 1, on: describe_errors) do
+      network_interfaces = Bosh::Common.retryable(tries: 10, sleep: ->(n, _) { [2**(n - 1), 30].min }, on: describe_errors) do
         response = ec2.client.describe_instances(instance_ids: [instance.id])
         if response.reservations.empty? || response.reservations.first.instances.empty?
           raise Aws::EC2::Errors::InvalidInstanceID.new(nil, "Instance '#{instance.id}' not found in describe_instances response")
