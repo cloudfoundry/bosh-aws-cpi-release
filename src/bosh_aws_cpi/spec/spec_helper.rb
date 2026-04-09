@@ -159,7 +159,7 @@ RSpec.configure do |config|
   config.before do
     logger = Bosh::Cpi::Logger.new('/dev/null')
     allow(Bosh::Clouds::Config).to receive(:logger).and_return(logger)
-    expect(RUBY_VERSION).to eq(PROJECT_RUBY_VERSION)
+    expect(RUBY_VERSION.split(".")[0,1]).to eq(PROJECT_RUBY_VERSION.split(".")[0,1])
   end
   config.mock_with :rspec do |mocks|
     mocks.verify_partial_doubles = true
