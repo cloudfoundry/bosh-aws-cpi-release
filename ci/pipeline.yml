@@ -243,6 +243,7 @@ jobs:
         version: current-version
       params:
         SEVERITY: CRITICAL,HIGH
+        ENABLE_GIT_LFS: true
       on_success:
         do:
         - put: bosh-cpi-release-notes
