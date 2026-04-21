@@ -1,14 +1,14 @@
 ---
 platform: linux
-image_resource:
-  type: docker-image
-  source: {repository: bosh/integration}
+
 inputs:
   - name: bosh-aws-cpi-release
   - name: environment
   - name: stemcell
+
 run:
   path: bosh-aws-cpi-release/ci/tasks/run-integration.sh
+
 params:
   AWS_ACCESS_KEY_ID:                       ""
   AWS_SECRET_ACCESS_KEY:                   ""
