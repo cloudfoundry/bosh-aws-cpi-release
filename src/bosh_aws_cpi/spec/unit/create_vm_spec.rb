@@ -148,4 +148,64 @@ describe Bosh::AwsCloud::CloudCore, 'create_vm' do
     )
     cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)
   end
+
+  context 'when vm cloud properties include tags' do
+    let(:vm_cloud_props) do
+      Bosh::AwsCloud::VMCloudProps.new({ 'tags' => { 'cloud_prop_tag' => 'cloud_prop_value' } }, global_config)
+    end
+
+    it 'should include cloud property tags when creating the instance' do
+      expect(instance_manager).to receive(:create).with(
+        anything,
+        anything,
+        anything,
+        anything,
+        anything,
+        anything,
+        anything,
+        hash_including('cloud_prop_tag' => 'cloud_prop_value'),
+        anything,
+        anything
+      ).and_return(instance)
+      cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)
+    end
+
+    it 'should merge cloud property tags with environment tags' do
+      expect(instance_manager).to receive(:create).with(
+        anything,
+        anything,
+        anything,
+        anything,
+        anything,
+        anything,
+        anything,
+        { 'tag' => 'tag_value', 'cloud_prop_tag' => 'cloud_prop_value' },
+        anything,
+        anything
+      ).and_return(instance)
+      cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)
+    end
+  end
+
+  context 'when cloud property tags conflict with environment tags' do
+    let(:vm_cloud_props) do
+      Bosh::AwsCloud::VMCloudProps.new({ 'tags' => { 'tag' => 'cloud_prop_override' } }, global_config)
+    end
+
+    it 'cloud property tags take precedence over environment tags' do
+      expect(instance_manager).to receive(:create).with(
+        anything,
+        anything,
+        anything,
+        anything,
+        anything,
+        anything,
+        anything,
+        { 'tag' => 'cloud_prop_override' },
+        anything,
+        anything
+      ).and_return(instance)
+      cloud.create_vm(agent_id, stemcell_id, vm_type, networks_cloud_props, agent_settings, disk_locality, environment)
+    end
+  end
 end

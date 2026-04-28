@@ -35,6 +35,13 @@ module Bosh::AwsCloud
       Bosh::Clouds::Config.logger
     end
 
+    def self.tags_hash(value, default: nil)
+      return default if value.nil?
+      return value.dup if value.is_a?(Hash)
+
+      raise Bosh::Clouds::CloudError,
+            "Invalid value for 'tags': expected a Hash but got #{value.class} (#{value.inspect})"
+    end
 
     def self.format_tags(tags)
       formatted_tags = tags.map do |k, v|
@@ -50,6 +57,16 @@ module Bosh::AwsCloud
       end
 
       formatted_tags.compact
+    end
+
+    def self.tag_specifications_for_resources(tags_hash, resource_types)
+      normalized_tags = self.tags_hash(tags_hash)
+      return [] if normalized_tags.nil? || normalized_tags.empty?
+
+      formatted = format_tags(normalized_tags)
+      return [] if formatted.empty?
+
+      Array(resource_types).map { |rt| { resource_type: rt, tags: formatted } }
     end
   end
 end

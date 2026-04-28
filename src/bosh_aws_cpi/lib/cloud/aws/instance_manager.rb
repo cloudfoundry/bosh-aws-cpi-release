@@ -17,7 +17,7 @@ module Bosh::AwsCloud
       abruptly_terminated_retries = 2
       begin
         network_interface_manager = Bosh::AwsCloud::NetworkInterfaceManager.new(@ec2, @logger)
-        network_interfaces = network_interface_manager.create_network_interfaces(networks_cloud_props, vm_cloud_props, default_security_groups)
+        network_interfaces = network_interface_manager.create_network_interfaces(networks_cloud_props, vm_cloud_props, default_security_groups, tags)
 
         settings.update_agent_settings(networks_cloud_props)
 
@@ -39,6 +39,7 @@ module Bosh::AwsCloud
           'defaults.access_key_id',
           'defaults.secret_access_key'
         )
+        redact_tag_specifications!(redacted_instance_params)
         @logger.info("Creating new instance with: #{redacted_instance_params.inspect}")
 
         aws_instance = create_aws_instance(instance_params, vm_cloud_props)
@@ -136,6 +137,7 @@ module Bosh::AwsCloud
         'defaults.access_key_id',
         'defaults.secret_access_key'
       )
+      redact_tag_specifications!(redacted)
       @logger.info('Launching spot instance...')
       @logger.debug("RunInstances (spot) with: #{redacted.inspect}")
 
@@ -165,13 +167,28 @@ module Bosh::AwsCloud
       instance_params[:min_count] = 1
       instance_params[:max_count] = 1
 
+      redacted = Bosh::Cpi::Redactor.clone_and_redact(
+        instance_params,
+        'user_data',
+        'defaults.access_key_id',
+        'defaults.secret_access_key'
+      )
+      redact_tag_specifications!(redacted)
+
       @logger.info('Launching on demand instance...')
+      @logger.debug("RunInstances (on-demand) with: #{redacted.inspect}")
       resp = @ec2.client.run_instances(instance_params)
       @ec2.instance(get_created_instance_id(resp))
     end
 
     def get_created_instance_id(resp)
       resp.instances.first.instance_id
+    end
+
+    def redact_tag_specifications!(params)
+      params['tag_specifications']&.flat_map { |spec| spec['tags'] }&.each do |tag|
+        Bosh::Cpi::Redactor.redact!(tag, 'value')
+      end
     end
   end
 end
