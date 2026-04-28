@@ -96,5 +96,23 @@ describe Bosh::AwsCloud::CloudV1 do
         end
       end
     end
+
+    describe 'tags' do
+      it 'passes tag_specifications when disk cloud_properties include tags' do
+        @cloud.create_disk(2048, { 'tags' => { 'env' => 'prod', 'owner' => 'bosh' } })
+
+        expect(@ec2.client).to have_received(:create_volume) do |params|
+          expect(params[:tag_specifications]).to eq([
+            {
+              resource_type: 'volume',
+              tags: [
+                { key: 'env', value: 'prod' },
+                { key: 'owner', value: 'bosh' },
+              ],
+            },
+          ])
+        end
+      end
+    end
   end
 end

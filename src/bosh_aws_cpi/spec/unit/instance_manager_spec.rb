@@ -100,7 +100,7 @@ module Bosh::AwsCloud
           .with(ec2, logger)
           .and_return(network_interface_manager)
         allow(network_interface_manager).to receive(:create_network_interfaces)
-          .with(networks_cloud_props, vm_cloud_props, default_options)
+          .with(networks_cloud_props, vm_cloud_props, default_options, tags)
           .and_return(network_interfaces)
         allow(network_interface_manager).to receive(:set_delete_on_termination_for_network_interfaces).with(network_interfaces)
 
@@ -193,7 +193,7 @@ module Bosh::AwsCloud
         allow(aws_client).to receive(:run_instances).and_return('run-instances-response')
 
         expect(network_interface_manager).to receive(:create_network_interfaces)
-          .with(networks_cloud_props, vm_cloud_props, default_options)
+          .with(networks_cloud_props, vm_cloud_props, default_options, tags)
           .and_return(network_interfaces)
 
         instance_manager.create(
@@ -242,6 +242,94 @@ module Bosh::AwsCloud
         end
       end
 
+      context 'tag_specifications redaction in the "Creating new instance" info log' do
+        let(:fake_instance_params) do
+          {
+            fake: 'instance-params',
+            user_data: user_data,
+            defaults: { access_key_id: 'AWSKEYID', secret_access_key: 'AWSSECRET' },
+            tag_specifications: [
+              {
+                resource_type: 'instance',
+                tags: [
+                  { key: 'deployment', value: 'secret-deployment' },
+                  { key: 'job', value: 'secret-job' }
+                ]
+              }
+            ]
+          }
+        end
+
+        before do
+          allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
+          allow(aws_client).to receive(:run_instances)
+          allow(logger).to receive(:info)
+          allow(logger).to receive(:debug)
+
+          instance_manager.create(
+            stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality,
+            default_options, fake_block_device_mappings, settings, tags, nil, nil
+          )
+        end
+
+        it 'does not include raw tag values in the info log' do
+          expect(logger).not_to have_received(:info).with(/secret-deployment/)
+          expect(logger).not_to have_received(:info).with(/secret-job/)
+        end
+
+        it 'includes <redacted> in place of tag values in the info log' do
+          expect(logger).to have_received(:info).with(/Creating new instance with:.*<redacted>/m)
+        end
+      end
+
+      context 'tag_specifications redaction in on-demand debug log' do
+        let(:fake_instance_params) do
+          {
+            fake: 'instance-params',
+            user_data: user_data,
+            defaults: { access_key_id: 'AWSKEYID', secret_access_key: 'AWSSECRET' },
+            tag_specifications: [
+              {
+                resource_type: 'instance',
+                tags: [
+                  { key: 'deployment', value: 'secret-deployment' },
+                  { key: 'job', value: 'secret-job' }
+                ]
+              }
+            ]
+          }
+        end
+
+        before do
+          allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
+          allow(aws_client).to receive(:run_instances)
+          allow(logger).to receive(:info)
+          allow(logger).to receive(:debug)
+
+          instance_manager.create(
+            stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality,
+            default_options, fake_block_device_mappings, settings, tags, nil, nil
+          )
+        end
+
+        it 'emits a RunInstances (on-demand) debug log' do
+          expect(logger).to have_received(:debug).with(/RunInstances \(on-demand\) with:/)
+        end
+
+        it 'does not include raw tag values in the on-demand debug log' do
+          expect(logger).not_to have_received(:debug).with(/secret-deployment/)
+          expect(logger).not_to have_received(:debug).with(/secret-job/)
+        end
+
+        it 'includes <redacted> in place of tag values in the on-demand debug log' do
+          expect(logger).to have_received(:debug).with(/<redacted>/)
+        end
+
+        it 'preserves tag keys in the on-demand debug log' do
+          expect(logger).to have_received(:debug).with(/"deployment"/)
+          expect(logger).to have_received(:debug).with(/"job"/)
+        end
+      end
 
       context 'when spot_bid_price is specified' do
         let(:vm_type) do
@@ -361,7 +449,7 @@ module Bosh::AwsCloud
             end
 
             it 'retries RunInstances without InstanceMarketOptions when spot fails with insufficient capacity' do
-              expect(network_interface).to_not receive(:delete)
+              expect(network_interface_manager).to_not receive(:delete_network_interfaces)
               expect(aws_client).to receive(:run_instances).ordered.with(spot_run_instances_params).and_raise(
                 Aws::EC2::Errors::InsufficientInstanceCapacity.new(nil, 'no capacity')
               )
@@ -408,6 +496,61 @@ module Bosh::AwsCloud
                 nil
               )
             end
+          end
+        end
+
+        context 'tag_specifications redaction in spot debug log' do
+          let(:fake_instance_params) do
+            {
+              fake: 'instance-params',
+              user_data: user_data,
+              defaults: { access_key_id: 'AWSKEYID', secret_access_key: 'AWSSECRET' },
+              tag_specifications: [
+                {
+                  resource_type: 'instance',
+                  tags: [
+                    { key: 'deployment', value: 'secret-deployment' },
+                    { key: 'job', value: 'secret-job' }
+                  ]
+                }
+              ]
+            }
+          end
+          let(:run_instances_response) do
+            instance_double(
+              Aws::EC2::Types::Reservation,
+              instances: [instance_double(Aws::EC2::Types::Instance, instance_id: 'i-12345678')]
+            )
+          end
+
+          before do
+            allow(aws_client).to receive(:run_instances).and_return(run_instances_response)
+            allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
+            allow(logger).to receive(:info)
+            allow(logger).to receive(:debug)
+
+            instance_manager.create(
+              stemcell_id, vm_cloud_props, networks_cloud_props, disk_locality,
+              default_options, fake_block_device_mappings, settings, tags, nil, nil
+            )
+          end
+
+          it 'emits a RunInstances (spot) debug log' do
+            expect(logger).to have_received(:debug).with(/RunInstances \(spot\) with:/)
+          end
+
+          it 'does not include raw tag values in the spot debug log' do
+            expect(logger).not_to have_received(:debug).with(/secret-deployment/)
+            expect(logger).not_to have_received(:debug).with(/secret-job/)
+          end
+
+          it 'includes <redacted> in place of tag values in the spot debug log' do
+            expect(logger).to have_received(:debug).with(/<redacted>/)
+          end
+
+          it 'preserves tag keys in the spot debug log' do
+            expect(logger).to have_received(:debug).with(/"deployment"/)
+            expect(logger).to have_received(:debug).with(/"job"/)
           end
         end
       end

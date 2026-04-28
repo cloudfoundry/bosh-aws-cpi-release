@@ -6,6 +6,7 @@ module Bosh::AwsCloud
     attr_reader :disk, :architecture, :virtualization_type, :root_device_name, :kernel_id, :boot_mode
     # AWS Permissions: ec2:CopyImage
     attr_reader :encrypted, :kms_key_arn
+    attr_reader :tags
 
     # @param [Hash] cloud_properties
     # @param [Bosh::AwsCloud::Config] global_config
@@ -30,6 +31,7 @@ module Bosh::AwsCloud
       @root_device_name = @cloud_properties['root_device_name']
       @kernel_id = @cloud_properties['kernel_id']
       @boot_mode = @cloud_properties['boot_mode'] || 'legacy-bios'
+      @tags = TagManager.tags_hash(@cloud_properties['tags'], default: {})
     end
 
     # old stemcells doesn't have name & version
@@ -63,7 +65,7 @@ module Bosh::AwsCloud
   end
 
   class DiskCloudProps
-    attr_reader :type, :iops, :throughput, :encrypted, :kms_key_arn
+    attr_reader :type, :iops, :throughput, :encrypted, :kms_key_arn, :tags
 
     # @param [Hash] cloud_properties
     # @param [Bosh::AwsCloud::Config] global_config
@@ -76,6 +78,8 @@ module Bosh::AwsCloud
 
       @kms_key_arn = global_config.aws.kms_key_arn
       @kms_key_arn = cloud_properties['kms_key_arn'] if cloud_properties.key?('kms_key_arn')
+
+      @tags = TagManager.tags_hash(cloud_properties['tags'], default: {})
     end
   end
 
@@ -97,6 +101,7 @@ module Bosh::AwsCloud
     attr_reader :source_dest_check
     # AWS Permissions: ec2:ModifyInstanceMetadataOptions
     attr_reader :metadata_options
+    attr_reader :tags
 
     # @param [Hash] cloud_properties
     # @param [Bosh::AwsCloud::Config] global_config
@@ -122,6 +127,7 @@ module Bosh::AwsCloud
       @raw_instance_storage = !!cloud_properties['raw_instance_storage']
       @source_dest_check = true
       @source_dest_check = !!cloud_properties['source_dest_check'] unless cloud_properties['source_dest_check'].nil?
+      @tags = TagManager.tags_hash(cloud_properties['tags'], default: {})
 
       @ephemeral_disk = EphemeralDisk.new(@cloud_properties['ephemeral_disk'], global_config)
       @cloud_properties['ephemeral_disk'] = @ephemeral_disk.disk if !@ephemeral_disk.disk.nil?
