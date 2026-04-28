@@ -34,8 +34,6 @@ resource "aws_iam_role_policy" "e2e" {
       "ec2:CreateTags",
       "ec2:RunInstances",
       "ec2:TerminateInstances",
-      "ec2:RequestSpotInstances",
-      "ec2:CancelSpotInstanceRequests",
       "ec2:DeregisterImage",
       "ec2:DescribeImages",
       "ec2:RegisterImage"

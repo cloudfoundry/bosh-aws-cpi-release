@@ -248,49 +248,37 @@ module Bosh::AwsCloud
           # NB: The spot_bid_price param should trigger spot instance creation
           {'spot_bid_price'=>0.15, 'instance_type' => 'm1.small', 'key_name' => 'bar', 'availability_zone' => 'us-east-1a'}
         end
-        let(:request_spot_instances_result) {
-          instance_double(Aws::EC2::Types::RequestSpotInstancesResult, spot_instance_requests: spot_instance_requests)
-        }
-        let(:spot_instance_requests) {
-          [
-            instance_double(
-              Aws::EC2::Types::SpotInstanceRequest,
-              spot_instance_request_id: 'sir-12345c',
-              state: 'active',
-              instance_id: 'i-12345678',
-            ),
-          ]
-        }
-        let(:describe_spot_instance_requests_result) {
-          instance_double(Aws::EC2::Types::DescribeSpotInstanceRequestsResult, spot_instance_requests: spot_instance_requests)
-        }
+        let(:spot_market_options) do
+          {
+            market_type: 'spot',
+            spot_options: {
+              max_price: '0.15',
+              spot_instance_type: 'one-time',
+              instance_interruption_behavior: 'terminate',
+            },
+          }
+        end
+        let(:spot_run_instances_params) do
+          fake_instance_params.merge(
+            min_count: 1,
+            max_count: 1,
+            instance_market_options: spot_market_options
+          )
+        end
+        let(:run_instances_response) do
+          instance_double(
+            Aws::EC2::Types::Reservation,
+            instances: [instance_double(Aws::EC2::Types::Instance, instance_id: 'i-12345678')]
+          )
+        end
 
-        it 'should ask AWS to create a SPOT instance in the given region, when vm_type includes spot_bid_price' do
+        it 'calls RunInstances with InstanceMarketOptions when vm_type includes spot_bid_price' do
           allow(ec2).to receive(:client).and_return(aws_client)
 
-          # need to translate security group names to security group ids
-          sg1 = instance_double('Aws::EC2::SecurityGroup', id:'sg-baz-1234')
-          allow(ec2).to receive(:security_groups).and_return([sg1])
+          expect(aws_client).not_to receive(:request_spot_instances)
+          expect(aws_client).to receive(:run_instances).with(spot_run_instances_params).and_return(run_instances_response)
+          allow(instance_manager).to receive(:get_created_instance_id).with(run_instances_response).and_return('i-12345678')
 
-          # Should not receive an on-demand instance create call
-          expect(aws_client).to_not receive(:run_instances)
-
-          # Should rather receive a spot instance request
-          expect(aws_client).to receive(:request_spot_instances) do |spot_request|
-            expect(spot_request[:spot_price]).to eq('0.15')
-            expect(spot_request[:instance_count]).to eq(1)
-            expect(spot_request[:launch_specification]).to eq(fake_instance_params)
-
-            # return
-            request_spot_instances_result
-          end
-
-          # Should poll the spot instance request until state is active
-          expect(aws_client).to receive(:describe_spot_instance_requests).
-            with(:spot_instance_request_ids=>['sir-12345c']).
-              and_return(describe_spot_instance_requests_result)
-
-          # Trigger spot instance request
           instance_manager.create(
             stemcell_id,
             vm_cloud_props,
@@ -305,9 +293,37 @@ module Bosh::AwsCloud
           )
         end
 
+        it 'rejects spot when launch params include security_groups (names)' do
+          allow(ec2).to receive(:client).and_return(aws_client)
+          allow(param_mapper).to receive(:instance_params).and_return(
+            fake_instance_params.merge(security_groups: ['sg-by-name'])
+          )
+          expect(aws_client).to_not receive(:run_instances)
+          expect(logger).to receive(:error).with(/Cannot use security group names when creating spot instances/)
+          expect(network_interface_manager).to receive(:delete_network_interfaces).with(network_interfaces)
+
+          expect {
+            instance_manager.create(
+              stemcell_id,
+              vm_cloud_props,
+              networks_cloud_props,
+              disk_locality,
+              default_options,
+              fake_block_device_mappings,
+              settings,
+              tags,
+              nil,
+              nil
+            )
+          }.to raise_error(Bosh::Clouds::VMCreationFailed, /Cannot use security group names when creating spot instances/)
+        end
+
         context 'when spot creation fails' do
           it 'raises, logs an error and deletes all created network interfaces' do
-            expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false))
+            allow(ec2).to receive(:client).and_return(aws_client)
+            allow(aws_client).to receive(:run_instances).with(spot_run_instances_params).and_raise(
+              Aws::EC2::Errors::InsufficientInstanceCapacity.new(nil, 'no capacity')
+            )
             expect(logger).to receive(:warn).with(/Spot instance creation failed/)
             expect(network_interface_manager).to receive(:delete_network_interfaces).with(network_interfaces)
 
@@ -338,18 +354,18 @@ module Bosh::AwsCloud
                 'availability_zone' => 'us-east-1a'
               }
             end
-            let(:message) { 'bid-price-too-low' }
 
             before do
-              allow(aws_client).to receive(:run_instances)
-              allow(instance_manager).to receive(:get_created_instance_id).and_return('i-12345678')
-              expect(instance_manager).to receive(:create_aws_spot_instance).and_raise(Bosh::Clouds::VMCreationFailed.new(false), message)
+              allow(ec2).to receive(:client).and_return(aws_client)
+              allow(instance_manager).to receive(:get_created_instance_id).with(run_instances_response).and_return('i-12345678')
             end
 
-            it 'creates an on demand instance' do
+            it 'retries RunInstances without InstanceMarketOptions when spot fails with insufficient capacity' do
               expect(network_interface).to_not receive(:delete)
-              expect(aws_client).to receive(:run_instances)
-                .with(run_instances_params)
+              expect(aws_client).to receive(:run_instances).ordered.with(spot_run_instances_params).and_raise(
+                Aws::EC2::Errors::InsufficientInstanceCapacity.new(nil, 'no capacity')
+              )
+              expect(aws_client).to receive(:run_instances).ordered.with(run_instances_params).and_return(run_instances_response)
 
               instance_manager.create(
                 stemcell_id,
@@ -365,11 +381,19 @@ module Bosh::AwsCloud
               )
             end
 
-            it 'does not log a warn but logs an info' do
+            it 'does not log a warn but logs an info when falling back' do
+              allow(aws_client).to receive(:run_instances).with(spot_run_instances_params).and_raise(
+                Aws::EC2::Errors::InsufficientInstanceCapacity.new(nil, 'no capacity')
+              )
+              allow(aws_client).to receive(:run_instances).with(run_instances_params).and_return(run_instances_response)
+
               expect(logger).to_not receive(:warn)
               allow(logger).to receive(:info)
-              expect(logger).to receive(:info).exactly(1)
-                .with("Spot instance creation failed with this message: #{message}; will create ondemand instance because `spot_ondemand_fallback` is set.")
+              expect(logger).to receive(:info).with(
+                a_string_matching(/Spot instance creation failed with this message:/).and(
+                  a_string_matching(/spot_ondemand_fallback/)
+                )
+              )
 
               instance_manager.create(
                 stemcell_id,

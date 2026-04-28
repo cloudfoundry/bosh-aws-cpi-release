@@ -105,11 +105,46 @@ module Bosh::AwsCloud
       end
     end
 
-    def create_aws_spot_instance(launch_specification, spot_bid_price)
-      @logger.info('Launching spot instance...')
-      spot_manager = Bosh::AwsCloud::SpotManager.new(@ec2)
+    def spot_instance_market_options(spot_bid_price)
+      {
+        market_type: 'spot',
+        spot_options: {
+          max_price: spot_bid_price.to_s,
+          spot_instance_type: 'one-time',
+          instance_interruption_behavior: 'terminate',
+        },
+      }
+    end
 
-      spot_manager.create(launch_specification, spot_bid_price)
+    def create_aws_spot_instance(launch_specification, spot_bid_price)
+      security_groups = launch_specification[:security_groups] || launch_specification['security_groups']
+      unless security_groups.nil? || security_groups.empty?
+        message = 'Cannot use security group names when creating spot instances'
+        @logger.error(message)
+        raise Bosh::Clouds::VMCreationFailed.new(false), message
+      end
+
+      params = launch_specification.merge(
+        min_count: 1,
+        max_count: 1,
+        instance_market_options: spot_instance_market_options(spot_bid_price)
+      )
+
+      redacted = Bosh::Cpi::Redactor.clone_and_redact(
+        params,
+        'user_data',
+        'defaults.access_key_id',
+        'defaults.secret_access_key'
+      )
+      @logger.info('Launching spot instance...')
+      @logger.debug("RunInstances (spot) with: #{redacted.inspect}")
+
+      resp = @ec2.client.run_instances(params)
+      @ec2.instance(get_created_instance_id(resp))
+    rescue Aws::EC2::Errors::ServiceError => e
+      message = "Failed to launch spot instance: #{e.inspect}"
+      @logger.error(message)
+      raise Bosh::Clouds::VMCreationFailed.new(false), message
     end
 
     def create_aws_instance(instance_params, vm_cloud_props)
