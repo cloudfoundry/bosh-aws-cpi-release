@@ -51,5 +51,14 @@ module Bosh::AwsCloud
 
       formatted_tags.compact
     end
+
+    def self.tag_specifications_for_resources(tags_hash, resource_types)
+      return [] if tags_hash.nil? || tags_hash.empty?
+
+      formatted = format_tags(tags_hash)
+      return [] if formatted.empty?
+
+      Array(resource_types).map { |rt| { resource_type: rt, tags: formatted } }
+    end
   end
 end
