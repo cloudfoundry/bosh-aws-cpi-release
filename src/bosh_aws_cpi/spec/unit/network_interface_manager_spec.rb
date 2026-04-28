@@ -77,6 +77,27 @@ module Bosh::AwsCloud
           expect(network_interfaces.first).to eq(network_interface)
         end
 
+        it 'includes tag_specifications when tags are provided' do
+          director_tags = { 'env' => 'prod' }
+          expected_with_tags = expected_create_ni_params.merge(
+            tag_specifications: [
+              {
+                resource_type: 'network-interface',
+                tags: [{ key: 'env', value: 'prod' }],
+              },
+            ]
+          )
+          expect(ec2_client).to receive(:create_network_interface).with(expected_with_tags).and_return(create_network_interface_response)
+
+          network_interfaces = network_interface_manager.create_network_interfaces(
+            networks_cloud_props,
+            vm_cloud_props,
+            default_security_groups,
+            director_tags
+          )
+          expect(network_interfaces.size).to eq(1)
+        end
+
         it 'retries the creation of one network interface if one network is defined and the address is currently in use' do
           allow(network_interface_manager).to receive(:network_interface_create_wait_time).and_return(0)
 

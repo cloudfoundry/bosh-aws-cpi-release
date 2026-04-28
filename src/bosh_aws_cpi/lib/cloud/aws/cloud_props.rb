@@ -63,7 +63,7 @@ module Bosh::AwsCloud
   end
 
   class DiskCloudProps
-    attr_reader :type, :iops, :throughput, :encrypted, :kms_key_arn
+    attr_reader :type, :iops, :throughput, :encrypted, :kms_key_arn, :tags
 
     # @param [Hash] cloud_properties
     # @param [Bosh::AwsCloud::Config] global_config
@@ -76,6 +76,9 @@ module Bosh::AwsCloud
 
       @kms_key_arn = global_config.aws.kms_key_arn
       @kms_key_arn = cloud_properties['kms_key_arn'] if cloud_properties.key?('kms_key_arn')
+
+      raw_tags = cloud_properties['tags']
+      @tags = raw_tags.is_a?(Hash) ? raw_tags : {}
     end
   end
 

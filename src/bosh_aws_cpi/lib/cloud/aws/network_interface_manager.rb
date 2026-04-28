@@ -7,7 +7,7 @@ module Bosh::AwsCloud
       @logger = logger
     end
 
-    def create_network_interfaces(networks_cloud_props, vm_cloud_props, default_security_groups)
+    def create_network_interfaces(networks_cloud_props, vm_cloud_props, default_security_groups, tags = nil)
       nic_groups = {}
       security_group_mapper = SecurityGroupMapper.new(@ec2_resource)
 
@@ -23,7 +23,7 @@ module Bosh::AwsCloud
 
       validate_subnet_az_mapping(nic_groups)
 
-      provision_network_interfaces(nic_groups, networks_cloud_props, vm_cloud_props, default_security_groups, security_group_mapper)
+      provision_network_interfaces(nic_groups, networks_cloud_props, vm_cloud_props, default_security_groups, security_group_mapper, tags)
     end
 
     def set_delete_on_termination_for_network_interfaces(network_interfaces)
@@ -57,7 +57,7 @@ module Bosh::AwsCloud
 
     private
 
-    def provision_network_interfaces(nic_groups, network_cloud_props, vm_cloud_props, default_security_groups, security_group_mapper)
+    def provision_network_interfaces(nic_groups, network_cloud_props, vm_cloud_props, default_security_groups, security_group_mapper, tags)
       network_interfaces = []
       nic_groups.each_value do |nic_group|
         # Get subnet from the nic_group
@@ -79,6 +79,9 @@ module Bosh::AwsCloud
           nic[:ipv_6_addresses] = [{ ipv_6_address: nic_group.ipv6_address }] if nic_group.has_ipv6_address?
           nic[:private_ip_address] = nic_group.ipv4_address if nic_group.has_ipv4_address?
         end
+
+        nic_tag_specs = TagManager.tag_specifications_for_resources(tags, ['network-interface'])
+        nic[:tag_specifications] = nic_tag_specs unless nic_tag_specs.empty?
 
         prefixes = nic_group.prefixes
         begin

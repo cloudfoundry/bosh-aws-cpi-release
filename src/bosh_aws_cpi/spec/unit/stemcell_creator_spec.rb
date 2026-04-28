@@ -24,10 +24,15 @@ module Bosh::AwsCloud
       allow(Bosh::AwsCloud::AKIPicker).to receive(:new).and_return(double('aki', :pick => 'aki-xxxxxxxx'))
     end
 
-    let(:volume) { instance_double(Aws::EC2::Volume) }
+    let(:volume) { instance_double(Aws::EC2::Volume, id: 'vol-stemcell') }
     let(:snapshot) { instance_double(Aws::EC2::Snapshot, :id => 'snap-xxxxxxxx') }
     let(:image_id) {'ami-a1b2c3d4'}
     let(:image) { instance_double(Aws::EC2::Image, :id => image_id) }
+    let(:ec2_client) { instance_double(Aws::EC2::Client) }
+
+    before do
+      allow(ec2_resource).to receive(:client).and_return(ec2_client)
+    end
 
     it 'should create a real stemcell' do
       creator = described_class.new(ec2_resource, stemcell_cloud_props)
@@ -35,11 +40,17 @@ module Bosh::AwsCloud
       allow(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(image: image, state: 'available')
       allow(SecureRandom).to receive(:uuid).and_return('fake-uuid')
       allow(ec2_resource).to receive(:images).and_return(double(Aws::Resources::Collection, first: image))
-      allow(ec2_resource).to receive_message_chain(:client, :register_image).and_return(double('object', :image_id => image_id))
+      expect(volume).to receive(:create_snapshot).with(tag_specifications: []).and_return(snapshot)
+      expect(ec2_client).to receive(:register_image) do |params|
+        expect(params[:tag_specifications]).not_to be_nil
+        expect(params[:tag_specifications].first[:resource_type]).to eq('image')
+        expect(params[:tag_specifications].first[:tags]).to include(
+          { key: 'Name', value: 'stemcell-name 0.7.0' }
+        )
+        double('object', image_id: image_id)
+      end
 
       expect(creator).to receive(:copy_root_image)
-      expect(volume).to receive(:create_snapshot).and_return(snapshot)
-      expect(Bosh::AwsCloud::TagManager).to receive(:tag).with(image, 'Name', 'stemcell-name 0.7.0')
 
       creator.create(volume, 'device_path', '/path/to/image')
     end
@@ -71,6 +82,10 @@ module Bosh::AwsCloud
               :virtual_name => 'ephemeral0',
             },
           ])
+          expect(params[:tag_specifications].first[:resource_type]).to eq('image')
+          expect(params[:tag_specifications].first[:tags]).to include(
+            { key: 'Name', value: 'stemcell-name 0.7.0' }
+          )
         end
       end
 
@@ -113,6 +128,10 @@ module Bosh::AwsCloud
           ])
           expect(params[:virtualization_type]).to eq('hvm')
           expect(params[:ena_support]).to be(true)
+          expect(params[:tag_specifications].first[:resource_type]).to eq('image')
+          expect(params[:tag_specifications].first[:tags]).to include(
+            { key: 'Name', value: 'stemcell-name 0.7.0' }
+          )
         end
       end
     end

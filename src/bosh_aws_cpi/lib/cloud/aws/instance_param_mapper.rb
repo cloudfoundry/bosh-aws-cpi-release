@@ -60,15 +60,9 @@ module Bosh::AwsCloud
         metadata_options: metadata_options,
         network_interfaces: network_interfaces.map.with_index { |nic, index| nic.nic_configuration(index) }
       }
-      unless @manifest_params[:tags].nil? || @manifest_params[:tags].empty?
-        params.merge!(
-          tag_specifications: [
-            {
-              resource_type: 'instance',
-              tags: @manifest_params[:tags].map { |k, v| { key: k, value: v } }
-            }
-          ]
-        )
+      tag_specs = TagManager.tag_specifications_for_resources(@manifest_params[:tags], %w[instance volume])
+      unless tag_specs.empty?
+        params[:tag_specifications] = tag_specs
       end
 
       az = availability_zone(network_interfaces.first.availability_zone)

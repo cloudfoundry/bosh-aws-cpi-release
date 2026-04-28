@@ -100,7 +100,7 @@ module Bosh::AwsCloud
           .with(ec2, logger)
           .and_return(network_interface_manager)
         allow(network_interface_manager).to receive(:create_network_interfaces)
-          .with(networks_cloud_props, vm_cloud_props, default_options)
+          .with(networks_cloud_props, vm_cloud_props, default_options, tags)
           .and_return(network_interfaces)
         allow(network_interface_manager).to receive(:set_delete_on_termination_for_network_interfaces).with(network_interfaces)
 
@@ -193,7 +193,7 @@ module Bosh::AwsCloud
         allow(aws_client).to receive(:run_instances).and_return('run-instances-response')
 
         expect(network_interface_manager).to receive(:create_network_interfaces)
-          .with(networks_cloud_props, vm_cloud_props, default_options)
+          .with(networks_cloud_props, vm_cloud_props, default_options, tags)
           .and_return(network_interfaces)
 
         instance_manager.create(

@@ -12,7 +12,7 @@ module Bosh::AwsCloud
         encrypted: true,
         kms_key_arn: 'my_fake_kms_arn',
         root_device_name: '/dev/sda',
-        tags: [{name: "foo", value: "bar"}]
+        tags: [{ key: 'foo', value: 'bar' }]
       }
     end
     describe '#ephemeral_disk_config' do
@@ -78,7 +78,7 @@ module Bosh::AwsCloud
             kms_key_id: 'my_fake_kms_arn',
             tag_specifications: [{
               resource_type: 'volume',
-              tags: [{name: "foo", value: "bar"}]
+              tags: [{ key: 'foo', value: 'bar' }]
             }]
           )
         end

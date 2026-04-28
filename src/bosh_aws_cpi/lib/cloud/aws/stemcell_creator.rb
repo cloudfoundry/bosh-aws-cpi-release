@@ -9,24 +9,27 @@ module Bosh::AwsCloud
     def initialize(resource, stemcell_props)
       @resource = resource
       @stemcell_props = stemcell_props
+      @creation_tags = nil
     end
 
-    def create(volume, device_path, image_path)
+    # @param tags [Hash, nil] optional string-key tag hash (e.g. Director env tags) applied at snapshot and AMI registration
+    def create(volume, device_path, image_path, tags = nil)
       @volume = volume
       @device_path = device_path
       @image_path = image_path
+      @creation_tags = tags
 
       copy_root_image
 
-      snapshot = volume.create_snapshot
+      snapshot = volume.create_snapshot(
+        tag_specifications: TagManager.tag_specifications_for_resources(@creation_tags, ['snapshot']),
+      )
       ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
 
       # the top-level ec2 class' ImageCollection.create does not support the full set of params
       params = image_params(snapshot.id)
       image = resource.images(filters: [{name: 'image-id', values: [resource.client.register_image(params).image_id]}]).first
       ResourceWait.for_image(image: image, state: 'available')
-
-      TagManager.tag(image, 'Name', params[:description]) if params[:description]
 
       Stemcell.new(resource, image)
     end
@@ -117,6 +120,11 @@ module Bosh::AwsCloud
       )
 
       params[:block_device_mappings].push(BlockDeviceManager::DEFAULT_INSTANCE_STORAGE_DISK_MAPPING)
+
+      image_tag_hash = @creation_tags ? @creation_tags.dup : {}
+      image_tag_hash['Name'] = params[:description] if params[:description]
+      img_specs = TagManager.tag_specifications_for_resources(image_tag_hash, ['image'])
+      params[:tag_specifications] = img_specs unless img_specs.empty?
 
       params
     end
