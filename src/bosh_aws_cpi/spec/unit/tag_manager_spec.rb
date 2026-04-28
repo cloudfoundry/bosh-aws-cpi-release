@@ -91,4 +91,56 @@ describe Bosh::AwsCloud::TagManager do
     expect(instance).not_to receive(:create_tags)
     Bosh::AwsCloud::TagManager.tag(instance, 'key', nil)
   end
+
+  describe '.tags_hash' do
+    it 'returns nil for non-Hash values' do
+      expect(described_class.tags_hash(nil)).to be_nil
+      expect(described_class.tags_hash([])).to be_nil
+      expect(described_class.tags_hash('tags')).to be_nil
+    end
+
+    it 'return custom default when specified' do
+      expect(described_class.tags_hash(nil, default: {})).to eq({})
+      expect(described_class.tags_hash([], default: {})).to eq({})
+    end
+
+    it 'returns a dup of a Hash so mutating the result does not change the original' do
+      original = { 'a' => '1' }
+      coerced = described_class.tags_hash(original)
+      expect(coerced).to eq(original)
+      expect(coerced).not_to equal(original)
+      coerced['b'] = '2'
+      expect(original).to eq('a' => '1')
+    end
+
+    it 'returns a dup for an empty Hash' do
+      empty = {}
+      coerced = described_class.tags_hash(empty)
+      expect(coerced).to eq({})
+      expect(coerced).not_to equal(empty)
+    end
+  end
+
+  describe '.tag_specifications_for_resources' do
+    it 'returns empty array for nil or empty tags' do
+      expect(described_class.tag_specifications_for_resources(nil, ['instance'])).to eq([])
+      expect(described_class.tag_specifications_for_resources({}, ['instance'])).to eq([])
+    end
+
+    it 'builds one entry per resource type with formatted tags' do
+      tags = { 'k' => 'v', 'empty' => nil }
+      specs = described_class.tag_specifications_for_resources(tags, %w[instance volume])
+      expect(specs.length).to eq(2)
+      expect(specs[0][:resource_type]).to eq('instance')
+      expect(specs[0][:tags]).to eq([{ key: 'k', value: 'v' }])
+      expect(specs[1][:resource_type]).to eq('volume')
+      expect(specs[1][:tags]).to eq([{ key: 'k', value: 'v' }])
+    end
+
+    it 'accepts a single resource type string' do
+      specs = described_class.tag_specifications_for_resources({ 'a' => 'b' }, 'snapshot')
+      expect(specs.length).to eq(1)
+      expect(specs[0][:resource_type]).to eq('snapshot')
+    end
+  end
 end

@@ -226,7 +226,7 @@ describe Bosh::AwsCloud::CloudV1 do
         expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id).and_return("/dev/sdh")
         expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
 
-        expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo").and_return(stemcell)
+        expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", nil).and_return(stemcell)
 
         expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
         expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
@@ -260,7 +260,7 @@ describe Bosh::AwsCloud::CloudV1 do
           expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
 
           allow(creator).to receive(:create)
-          expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo").and_return(stemcell)
+          expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", nil).and_return(stemcell)
 
           expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
           expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
@@ -313,7 +313,7 @@ describe Bosh::AwsCloud::CloudV1 do
             expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id).and_return("/dev/sdh")
             expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
 
-            expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo").and_return(stemcell)
+            expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", nil).and_return(stemcell)
 
             expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
             expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
@@ -363,7 +363,7 @@ describe Bosh::AwsCloud::CloudV1 do
             expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id).and_return("/dev/sdh")
             expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
 
-            expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo").and_return(stemcell)
+            expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", nil).and_return(stemcell)
 
             expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
             expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
@@ -395,7 +395,7 @@ describe Bosh::AwsCloud::CloudV1 do
           expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id).and_return("/dev/sdh")
           expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
 
-          expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo").and_return(stemcell)
+          expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", nil).and_return(stemcell)
 
           expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
           expect(volume_manager).to receive(:delete_ebs_volume).with(volume)

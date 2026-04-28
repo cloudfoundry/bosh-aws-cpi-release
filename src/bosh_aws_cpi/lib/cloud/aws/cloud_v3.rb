@@ -30,11 +30,7 @@ module Bosh::AwsCloud
     def create_stemcell(image_path, stemcell_properties, env = {})
       with_thread_name("create_stemcell(#{image_path}...)") do
         props = @props_factory.stemcell_props(stemcell_properties)
-        tags = nil
-
-        if !env.nil?
-          tags = env["tags"] || nil
-        end
+        tags = TagManager.tags_hash(env&.dig("tags"))
 
         if props.is_light?
           # select the correct image for the configured ec2 client
@@ -48,21 +44,21 @@ module Bosh::AwsCloud
           raise Bosh::Clouds::CloudError, "Stemcell does not contain an AMI in region #{@config.aws.region}" unless available_image
 
           if props.encrypted
-            copy_image_result = @ec2_client.copy_image(
+            copy_opts = {
               source_region: @config.aws.region,
               source_image_id: props.region_ami,
               name: "Copied from SourceAMI #{props.region_ami}",
               encrypted: props.encrypted,
               kms_key_id: props.kms_key_arn,
-            )
+            }
+            img_specs = TagManager.tag_specifications_for_resources(tags, %w[image snapshot])
+            copy_opts[:tag_specifications] = img_specs unless img_specs.empty?
+
+            copy_image_result = @ec2_client.copy_image(**copy_opts)
 
             encrypted_image_id = copy_image_result.image_id
             encrypted_image = @ec2_resource.image(encrypted_image_id)
             ResourceWait.for_image(image: encrypted_image, state: "available")
-
-            if !tags.nil?
-              TagManager.create_tags(encrypted_image, tags)
-            end
 
             return encrypted_image_id.to_s
           end
@@ -73,19 +69,13 @@ module Bosh::AwsCloud
 
           "#{available_image.id} light"
         else
-          stemcell_id = create_ami_for_stemcell(image_path, props)
+          stemcell_id = create_ami_for_stemcell(image_path, props, tags)
 
-          if !tags.nil?
-            created_ami = @ec2_resource.images(
-              filters: [{
-                          name: "image-id",
-                          values: [stemcell_id],
-                        }]
-              ).first
-
-            TagManager.create_tags(created_ami, tags)
+          if !tags.nil? && !tags.empty?
+            logger.info("Created stemcell AMI #{stemcell_id} with env tags applied at resource creation: #{tags.keys.inspect}")
+          else
+            logger.info("Created stemcell AMI #{stemcell_id}.")
           end
-          logger.info("Tagged #{stemcell_id} with #{tags}.")
           stemcell_id
         end
       end
