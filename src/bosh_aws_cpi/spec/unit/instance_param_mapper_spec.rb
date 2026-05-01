@@ -509,14 +509,22 @@ module Bosh::AwsCloud
 
       describe 'tags' do
         context 'when tags are supplied' do
-          it 'constructs tag specification' do
+          it 'constructs tag specifications for instance and volume (RunInstances)' do
             instance_param_mapper.manifest_params = {
               vm_type: vm_cloud_props,
               tags: { 'tag' => 'tag_value' }
             }
-            expect(instance_param_mapper.instance_params(fake_nic_configuration)[:tag_specifications]).to_not be_nil
-            expect(instance_param_mapper.instance_params(fake_nic_configuration)[:tag_specifications][0][:tags]).to eq([{key: 'tag', value: 'tag_value'}])
-            expect(instance_param_mapper.instance_params(fake_nic_configuration)[:tag_specifications][0][:resource_type]).to eq('instance')
+            tag_specs = instance_param_mapper.instance_params(fake_nic_configuration)[:tag_specifications]
+            expect(tag_specs).to contain_exactly(
+              hash_including(
+                resource_type: 'instance',
+                tags: [{ key: 'tag', value: 'tag_value' }]
+              ),
+              hash_including(
+                resource_type: 'volume',
+                tags: [{ key: 'tag', value: 'tag_value' }]
+              )
+            )
           end
         end
       end

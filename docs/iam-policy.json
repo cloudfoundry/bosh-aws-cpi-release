@@ -105,16 +105,6 @@
             "Resource": "*"
         },
         {
-            "Sid": "RequiredIfUsingSpotBidPriceCloudProperties",
-            "Effect": "Allow",
-            "Action": [
-                "ec2:CancelSpotInstanceRequests",
-                "ec2:DescribeSpotInstanceRequests",
-                "ec2:RequestSpotInstances"
-            ],
-            "Resource": "*"
-        },
-        {
             "Sid": "RequiredIfUsingAdvertisedRoutesCloudProperties",
             "Effect": "Allow",
             "Action": [

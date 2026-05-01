@@ -204,6 +204,8 @@ module Bosh::AwsCloud
       with_thread_name("create_disk(#{size}, #{instance_id})") do
         props = @props_factory.disk_props(cloud_properties)
 
+        tag_list = props.tags.empty? ? [] : TagManager.format_tags(props.tags)
+
         volume_properties = VolumeProperties.new(
           size: size,
           type: props.type,
@@ -211,7 +213,8 @@ module Bosh::AwsCloud
           throughput: props.throughput,
           az: @az_selector.select_availability_zone(instance_id),
           encrypted: props.encrypted,
-          kms_key_arn: props.kms_key_arn
+          kms_key_arn: props.kms_key_arn,
+          tags: tag_list
         )
         volume = @volume_manager.create_ebs_volume(**volume_properties.persistent_disk_config)
 
@@ -308,21 +311,27 @@ module Bosh::AwsCloud
           metadata['device'] = devices.first
         end
 
-        snapshot = volume.create_snapshot(description: name.join('/'))
-        logger.info("snapshot '#{snapshot.id}' of volume '#{disk_id}' created")
+        description = name.join('/')
 
         metadata.merge!(
           'director' => metadata['director_name'],
           'instance_index' => metadata['index'].to_s,
           'instance_name' => metadata['job'] + '/' + metadata['instance_id'],
-          'Name' => name.join('/')
+          'Name' => description
         )
 
         %w[director_name index job].each do |tag|
           metadata.delete(tag)
         end
 
-        TagManager.create_tags(snapshot, **metadata)
+        snapshot_opts = {
+          description: description,
+          tag_specifications: TagManager.tag_specifications_for_resources(metadata, ['snapshot']),
+        }
+
+        snapshot = volume.create_snapshot(snapshot_opts)
+        logger.info("snapshot '#{snapshot.id}' of volume '#{disk_id}' created")
+
         ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
         snapshot.id
       end
@@ -451,7 +460,7 @@ module Bosh::AwsCloud
       logger.debug("updated registry settings: #{registry.read_settings(instance_id)}")
     end
 
-    def create_ami_for_stemcell(image_path, stemcell_cloud_props)
+    def create_ami_for_stemcell(image_path, stemcell_cloud_props, tags = nil)
       creator = StemcellCreator.new(@ec2_resource, stemcell_cloud_props)
 
       begin
@@ -467,11 +476,14 @@ module Bosh::AwsCloud
           )
         end
 
+        normalized_tags = TagManager.tags_hash(tags)
+        stemcell_tags = stemcell_creation_tags(normalized_tags)
         disk_config = VolumeProperties.new(
           size: stemcell_cloud_props.disk,
           az: @az_selector.select_availability_zone(director_vm_id),
           encrypted: stemcell_cloud_props.encrypted,
-          kms_key_arn: stemcell_cloud_props.kms_key_arn
+          kms_key_arn: stemcell_cloud_props.kms_key_arn,
+          tags: stemcell_tags
         ).persistent_disk_config
         volume = @volume_manager.create_ebs_volume(disk_config)
         requested_path = @volume_manager.attach_ebs_volume(instance, volume)
@@ -488,7 +500,7 @@ module Bosh::AwsCloud
 
         logger.debug("Actual block device: #{actual_path}")
         logger.info("Creating stemcell with: '#{volume.id}'")
-        creator.create(volume, actual_path, image_path).id
+        creator.create(volume, actual_path, image_path, normalized_tags).id
       rescue => e
         logger.error(e)
         raise e
@@ -503,6 +515,12 @@ module Bosh::AwsCloud
     def get_volume_ids_for_vm(vm_instance)
       vm_instance.block_device_mappings.select(&:ebs)
                  .map { |block_device| block_device.ebs.volume_id }
+    end
+
+    def stemcell_creation_tags(tags)
+      return [] if tags.nil? || tags.empty?
+
+      TagManager.format_tags(tags)
     end
   end
 end
