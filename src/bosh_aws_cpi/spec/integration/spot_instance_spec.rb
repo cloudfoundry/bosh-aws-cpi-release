@@ -50,14 +50,18 @@ describe 'spot instance provisioning' do
   it 'provisions a spot instance via RunInstances with InstanceMarketOptions' do
     skip 'spot instances not supported in cn-north-1' if @region == 'cn-north-1'
 
-    # environment argument is nil throughout vm_lifecycle, so tags hash is {}
-    # and no tag_specifications appear in the RunInstances call — this test is
-    # scoped to spot provisioning only, not tagging-at-creation
     vm_lifecycle(cpi: cpi_v2, ami_id: ami) do |instance_id|
       resp = @ec2.client.describe_instances(instance_ids: [instance_id])
-      lifecycle = resp.reservations[0].instances[0].instance_lifecycle
+      instance = resp.reservations[0].instances[0]
+
+      lifecycle = instance.instance_lifecycle
       expect(lifecycle).to eq('spot'),
         "Expected InstanceLifecycle to be 'spot' but was '#{lifecycle.inspect}'"
+
+      tags = instance.tags.each_with_object({}) { |t, h| h[t.key] = t.value }
+      expect(tags).not_to be_empty
+      expect(tags['deployment']).to eq('spot-integration-test')
+      expect(tags['delete_me']).to eq('please')
     end
   end
 end
