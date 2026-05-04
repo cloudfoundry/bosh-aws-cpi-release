@@ -55,6 +55,35 @@ module Bosh::AwsCloud
       creator.create(volume, 'device_path', '/path/to/image')
     end
 
+    it 'passes caller-supplied tags through to create_snapshot and register_image' do
+      creator = described_class.new(ec2_resource, stemcell_cloud_props)
+      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(snapshot: snapshot, state: 'completed')
+      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(image: image, state: 'available')
+      allow(SecureRandom).to receive(:uuid).and_return('fake-uuid')
+      allow(ec2_resource).to receive(:images).and_return(double(Aws::Resources::Collection, first: image))
+
+      expect(volume).to receive(:create_snapshot) do |params|
+        expect(params[:tag_specifications]).not_to be_empty
+        expect(params[:tag_specifications].first[:resource_type]).to eq('snapshot')
+        expect(params[:tag_specifications].first[:tags]).to include({ key: 'foo', value: 'bar' })
+        snapshot
+      end
+
+      expect(ec2_client).to receive(:register_image) do |params|
+        expect(params[:tag_specifications]).not_to be_nil
+        expect(params[:tag_specifications].first[:resource_type]).to eq('image')
+        expect(params[:tag_specifications].first[:tags]).to include(
+          { key: 'foo', value: 'bar' },
+          { key: 'Name', value: 'stemcell-name 0.7.0' }
+        )
+        double('object', image_id: image_id)
+      end
+
+      expect(creator).to receive(:copy_root_image)
+
+      creator.create(volume, 'device_path', '/path/to/image', { 'foo' => 'bar' })
+    end
+
     describe '#image_params' do
       context 'when virtualization type is paravirtual, and no kernel_id is specified' do
         let(:virtualization_type) {'paravirtual'}

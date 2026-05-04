@@ -87,7 +87,8 @@ module Bosh::AwsCloud
         begin
           network_interface = nil
           errors = [Aws::EC2::Errors::InvalidIPAddressInUse]
-          @logger.info("Creating new network_interface with: #{nic.inspect}")
+          log_nic = nic.reject { |k, _| k == :tag_specifications }
+          @logger.info("Creating new network_interface with: #{log_nic.inspect}")
           Bosh::Common.retryable(sleep: network_interface_create_wait_time, tries: 20, on: errors) do |_tries, error|
             @logger.info('Launching network interface...')
             @logger.warn("IP address was in use: #{error}") if error.is_a?(Aws::EC2::Errors::InvalidIPAddressInUse)
