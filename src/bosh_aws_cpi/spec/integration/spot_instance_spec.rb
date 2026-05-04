@@ -21,7 +21,7 @@ describe 'spot instance provisioning' do
   end
 
   let(:cpi_v2) { Bosh::AwsCloud::CloudV2.new(cpi_v2_options) }
-  let(:ami)    { ENV.fetch('BOSH_AWS_IMAGE_ID', 'ami-9c91b7fc') }
+  let(:ami)    { ENV.fetch('BOSH_AWS_IMAGE_ID') }
   let(:disks)  { [] }
 
   let(:network_spec) do
