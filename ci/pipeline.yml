@@ -257,6 +257,10 @@ jobs:
     image: bosh-security-scanner-registry-image
     input_mapping:
       task-output-folder: patched_cves
+  - load_var: ruby_version
+    file: bosh-aws-cpi-release/src/bosh_aws_cpi/.ruby-version
+    format: trim
+    reveal: true
   - try:
       task: check-for-updated-vendored-packages
       file: bosh-shared-ci/tasks/release/check-for-updated-vendored-packages.yml
@@ -265,7 +269,7 @@ jobs:
         input_repo: bosh-aws-cpi-release
         version: current-version
       params:
-        PACKAGES: [aws-cpi-ruby-3.3]
+        PACKAGES: [aws-cpi-ruby-((.:ruby_version))]
       on_success:
         do:
           - put: bosh-cpi-release-notes
@@ -371,6 +375,7 @@ jobs:
     - get: bosh-integration-image
   - load_var: ruby_version
     file: bosh-aws-cpi-release/src/bosh_aws_cpi/.ruby-version
+    format: trim
     reveal: true
   - task: bump-gems
     image: bosh-ruby-release-registry-image
@@ -401,6 +406,10 @@ jobs:
     - get: ruby-release
       trigger: true
     - get: bosh-integration-image
+  - load_var: ruby_version
+    file: bosh-aws-cpi-release/src/bosh_aws_cpi/.ruby-version
+    format: trim
+    reveal: true
   - task: bump-ruby-package
     image: bosh-integration-image
     file: ruby-release/ci/tasks/shared/bump-ruby-package.yml
@@ -411,7 +420,7 @@ jobs:
     params:
       GIT_USER_NAME: CI Bot
       GIT_USER_EMAIL: cf-bosh-eng@pivotal.io
-      PACKAGE: ruby-3.3
+      PACKAGE: ruby-((.:ruby_version))
       PACKAGE_PREFIX: aws-cpi
       PRIVATE_YML: |
         blobstore:
@@ -419,7 +428,6 @@ jobs:
           options:
             credentials_source: static
             json_key: '((gcp_json_key))'
-      RUBY_VERSION_PATH: src/bosh_aws_cpi/.ruby-version
   - task: run-unit-specs
     file: bosh-aws-cpi-release/ci/tasks/run-unit-specs.yml
     image: bosh-integration-image
