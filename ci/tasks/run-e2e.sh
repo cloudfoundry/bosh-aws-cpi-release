@@ -53,6 +53,34 @@ time bosh -n run-errand -d e2e-test encrypted-heavy-stemcell-test
 region=$( jq -e --raw-output ".region" environment/metadata )
 if [[ "${region}" != "cn-north-1" ]]; then
   time bosh -n run-errand -d e2e-test spot-instance-test
+
+  # test tags applied on create
+  account_id=$( aws sts get-caller-identity --query Account --output text )
+  policy_arn="arn:aws:iam::${account_id}:policy/EnforceRequiredTags"
+
+  cleanup_enforce_tags_policy() {
+    aws iam detach-user-policy \
+      --user-name "${IAM_USER}" \
+      --policy-arn "${policy_arn}" || true
+    aws iam delete-policy \
+      --policy-arn "${policy_arn}"
+  }
+
+  aws iam create-policy \
+    --policy-name EnforceRequiredTags \
+    --policy-document file://bosh-aws-cpi-release/ci/assets/e2e-test-release/enforce-tags-policy.json \
+    --description "Requires BoshCPITest tag on resource creation"
+
+  trap cleanup_enforce_tags_policy EXIT
+
+  aws iam attach-user-policy \
+    --user-name "${IAM_USER}" \
+    --policy-arn "${policy_arn}"
+
+  time bosh -n run-errand -d e2e-test spot-instance-test
+
+  trap - EXIT
+  cleanup_enforce_tags_policy
 else
   echo "Skipping spot instance tests for ${region}..."
 fi
