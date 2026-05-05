@@ -3,14 +3,10 @@ module Bosh::AwsCloud
     DEFAULT_INSTANCE_STORAGE_DISK_MAPPING = { device_name: '/dev/sdb', virtual_name: 'ephemeral0' }.freeze
     NVME_EBS_BY_ID_DEVICE_PATH_PREFIX = '/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_'
 
-    # Instance families that use NVMe device naming (/dev/nvme*).
-    # This includes Nitro-based instances and some Xen-based instances with NVMe storage (e.g., i3 family).
-    # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-types.html#ec2-nitro-instances
-    NVME_INSTANCE_FAMILIES = %w[a1 c5 c5a c5ad c5d c5n c6a c6g c6gd c6gn c6i c6id c6in c7i c7a d3 d3en g4dn g4ad g5 g6 g6e i3 i3en i4i inf1 m5 m5a m5ad m5d m5dn m5n m5zn m6a m6g m6gd m6i m6id m6idn m6in m7i m7a m7i-flex p3dn p4d p5 r5 r5a r5ad r5b r5d r5dn r5n r6a r6g r6gd r6i r6in r6id r6idn r7i r7a r7iz t3 t3a t4g z1d x2iezn].freeze
-
-    def initialize(logger, stemcell, vm_cloud_props)
+    def initialize(logger, stemcell, vm_cloud_props, instance_type_info)
       @logger = logger
       @vm_cloud_props = vm_cloud_props
+      @instance_type_info = instance_type_info
       @virtualization_type = stemcell.ami.virtualization_type
       @root_device_name = stemcell.ami.root_device_name
       @ami_block_device_names = stemcell.ami.block_device_mappings.map { |blk| blk.device_name }
@@ -22,8 +18,8 @@ module Bosh::AwsCloud
       return mappings(info), agent_info(info)
     end
 
-    def self.device_path(device_name, instance_type, volume_id)
-      if BlockDeviceManager.requires_nvme_device(instance_type)
+    def self.device_path(device_name, instance_type, volume_id, instance_type_info)
+      if instance_type_info.ebs_requires_nvme_path?(instance_type)
         NVME_EBS_BY_ID_DEVICE_PATH_PREFIX + volume_id.sub('-', '')
       else
         device_name
@@ -50,19 +46,13 @@ module Bosh::AwsCloud
       cloud_error('Cannot find EBS volume on current instance')
     end
 
-    def self.requires_nvme_device(instance_type)
-      instance_type = instance_type.nil? ? 'unspecified' : instance_type
-      instance_family = instance_type.split(".")[0]
-      NVME_INSTANCE_FAMILIES.include?(instance_family)
-    end
-
     private
 
     def mappings(info)
       instance_type = @vm_cloud_props.instance_type.nil? ? 'unspecified' : @vm_cloud_props.instance_type
       # For NVMe instances with instance storage, AWS auto-attaches the disks,
       # so we don't include them in the block device mappings
-      if BlockDeviceManager.requires_nvme_device(instance_type)
+      if @instance_type_info.instance_storage_nvme_naming?(instance_type)
         info = info.reject { |device| device[:bosh_type] == 'raw_ephemeral' }
       end
 
@@ -163,7 +153,7 @@ module Bosh::AwsCloud
       # In all cases, the count (num_of_devices) must be correct to trigger setup.
       
       instance_type = @vm_cloud_props.instance_type || 'unspecified'
-      requires_nvme = BlockDeviceManager.requires_nvme_device(instance_type)
+      requires_nvme = @instance_type_info.instance_storage_nvme_naming?(instance_type)
       
       num_of_devices.times.map do |index|
         {

@@ -254,7 +254,7 @@ module Bosh::AwsCloud
           update_agent_settings(instance_id) do |settings|
             settings['disks'] ||= {}
             settings['disks']['persistent'] ||= {}
-            settings['disks']['persistent'][disk_id] = BlockDeviceManager.device_path(device_name, instance.instance_type, disk_id)
+            settings['disks']['persistent'][disk_id] = BlockDeviceManager.device_path(device_name, instance.instance_type, disk_id, @cloud_core.instance_type_info)
           end
         end
       end
@@ -480,7 +480,8 @@ module Bosh::AwsCloud
         expected_path = BlockDeviceManager.device_path(
           requested_path,
           instance.instance_type,
-          volume.id
+          volume.id,
+          @cloud_core.instance_type_info,
         )
 
         logger.debug("Expected block device: #{expected_path}")

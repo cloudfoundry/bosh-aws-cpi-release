@@ -10,6 +10,7 @@ module Bosh::AwsCloud
 
     attr_reader :ec2_resource
     attr_reader :logger
+    attr_reader :instance_type_info
 
     ##
     # Initialize BOSH AWS CPI. The contents of sub-hashes are defined in the {file:README.md}
@@ -33,6 +34,7 @@ module Bosh::AwsCloud
 
       @instance_manager = InstanceManager.new(@ec2_resource, @logger)
       @instance_type_mapper = InstanceTypeMapper.new
+      @instance_type_info = InstanceTypeInfo.new(@ec2_client, @logger)
 
       @props_factory = Bosh::AwsCloud::PropsFactory.new(@config)
     end
@@ -75,6 +77,7 @@ module Bosh::AwsCloud
           @logger,
           stemcell,
           vm_props,
+          @instance_type_info,
         ).mappings_and_info
 
         settings.agent_disk_info = agent_disk_info
