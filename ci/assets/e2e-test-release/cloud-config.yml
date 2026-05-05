@@ -28,6 +28,19 @@ vm_types:
       instance_type: m4.large
       spot_bid_price: 0.10 # 10x the normal bid price
 
+disk_types:
+- name: tagged_disk
+  disk_size: 1024
+  cloud_properties:
+    tags:
+      BoshCPITest: "applied on creation"
+
+vm_extensions:
+- name: custom_tags_extension
+  cloud_properties:
+    tags:
+      BoshCPITest: "applied on creation"
+
 compilation:
   reuse_compilation_vms: true
   workers: 1

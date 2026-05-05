@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -e -o pipefail
+
+echo "Checking persistent disk is mounted at /var/vcap/store..."
+if ! mountpoint -q /var/vcap/store; then
+  echo "Expected /var/vcap/store to be a mount point (persistent disk), but it is not."
+  exit 1
+fi
+
+echo "Persistent disk confirmed at /var/vcap/store"
+echo "Success!"

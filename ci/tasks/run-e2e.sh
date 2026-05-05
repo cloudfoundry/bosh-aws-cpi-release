@@ -3,6 +3,7 @@
 set -e
 
 : ${BOSH_AWS_KMS_KEY_ARN:?}
+export AWS_PAGER=
 
 source director-state/director.env
 
@@ -56,3 +57,80 @@ if [[ "${region}" != "cn-north-1" ]]; then
 else
   echo "Skipping spot instance tests for ${region}..."
 fi
+
+# test tags applied on create
+account_id=$( aws sts get-caller-identity --query Account --output text )
+policy_arn="arn:aws:iam::${account_id}:policy/EnforceRequiredTags"
+
+cleanup_enforce_tags_policy() {
+  local attached
+
+  attached=$(aws iam list-entities-for-policy \
+    --policy-arn "${policy_arn}" \
+    --query 'PolicyUsers[].UserName' \
+    --output text 2>/dev/null) || true
+  for user_name in ${attached}; do
+    [[ "${user_name}" == "None" ]] && continue
+    aws iam detach-user-policy \
+      --user-name "${user_name}" \
+      --policy-arn "${policy_arn}" || true
+  done
+
+  attached=$(aws iam list-entities-for-policy \
+    --policy-arn "${policy_arn}" \
+    --query 'PolicyRoles[].RoleName' \
+    --output text 2>/dev/null) || true
+  for role_name in ${attached}; do
+    [[ "${role_name}" == "None" ]] && continue
+    aws iam detach-role-policy \
+      --role-name "${role_name}" \
+      --policy-arn "${policy_arn}" || true
+  done
+
+  attached=$(aws iam list-entities-for-policy \
+    --policy-arn "${policy_arn}" \
+    --query 'PolicyGroups[].GroupName' \
+    --output text 2>/dev/null) || true
+  for group_name in ${attached}; do
+    [[ "${group_name}" == "None" ]] && continue
+    aws iam detach-group-policy \
+      --group-name "${group_name}" \
+      --policy-arn "${policy_arn}" || true
+  done
+
+  aws iam delete-policy \
+    --policy-arn "${policy_arn}" || true
+}
+
+# Register cleanup before creating the policy so that any exit (including
+# SIGTERM from a Concourse abort) leaves no policy behind from a prior run.
+trap cleanup_enforce_tags_policy EXIT
+
+# Detach from all entities and delete any leftover policy from a previous failed run.
+cleanup_enforce_tags_policy
+
+aws iam create-policy \
+  --policy-name EnforceRequiredTags \
+  --policy-document file://bosh-aws-cpi-release/ci/assets/e2e-test-release/enforce-tags-policy.json \
+  --description "Requires BoshCPITest tag on resource creation"
+
+echo "--- Attaching Deny policy to IAM user: ${IAM_USER} ---"
+aws iam attach-user-policy \
+  --user-name "${IAM_USER}" \
+  --policy-arn "${policy_arn}"
+
+echo "--- Waiting for IAM policy to propagate ---"
+sleep 30
+
+
+echo "--- Testing resource creation ---"
+time bosh -n run-errand -d e2e-test regular-vm-disk-test
+
+if [[ "${region}" != "cn-north-1" ]]; then
+   time bosh -n run-errand -d e2e-test spot-instance-test
+else
+  echo "Skipping spot instance tests for ${region}..."
+fi
+
+trap - EXIT
+cleanup_enforce_tags_policy
