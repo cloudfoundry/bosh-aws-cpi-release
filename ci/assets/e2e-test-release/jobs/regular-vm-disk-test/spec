@@ -1,0 +1,9 @@
+---
+name: regular-vm-disk-test
+
+packages:
+
+templates:
+  run.erb: bin/run
+
+properties: {}
