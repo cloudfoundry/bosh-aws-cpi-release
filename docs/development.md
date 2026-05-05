@@ -40,19 +40,7 @@ cd src/bosh_aws_cpi
 
 ### Creating a Release
 
-The release requires Ruby version 3.2.3 and the Ruby gem Bundler (used by the vendoring script):
-
-```
-gem install bundler
-```
-
-With bundler installed, run the vendoring script from `src/bosh_aws_cpi`:
-
-```
-./vendor_gems
-```
-
-Then create the BOSH release from the root directory:
+Create the BOSH release from the root directory:
 
 ```
 bosh create-release --force
