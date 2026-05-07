@@ -125,11 +125,23 @@ describe Bosh::AwsCloud::CloudV1 do
   context 'when attaching to c5 instance' do
     let(:instance_type) { 'c5.large' }
 
+    before do
+      allow(cloud.ec2_resource.client).to receive(:describe_instance_types)
+        .with(instance_types: ['c5.large'])
+        .and_return(double(instance_types: [double(ebs_info: double(nvme_support: 'required'))]))
+    end
+
     it_behaves_like 'NVMe required instance types'
   end
 
   context 'when attaching to m5 instance' do
     let(:instance_type) { 'm5.xlarge' }
+
+    before do
+      allow(cloud.ec2_resource.client).to receive(:describe_instance_types)
+        .with(instance_types: ['m5.xlarge'])
+        .and_return(double(instance_types: [double(ebs_info: double(nvme_support: 'required'))]))
+    end
 
     it_behaves_like 'NVMe required instance types'
   end
