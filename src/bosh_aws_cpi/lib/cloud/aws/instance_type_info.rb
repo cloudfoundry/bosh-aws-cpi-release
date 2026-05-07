@@ -41,15 +41,11 @@ module Bosh::AwsCloud
 
       @mutex.synchronize do
         return @cache[instance_type] if @cache.key?(instance_type)
-      end
 
-      result = query(instance_type)
-
-      @mutex.synchronize do
+        result = query(instance_type)
         @cache[instance_type] = result
+        result
       end
-
-      result
     end
 
     def query(instance_type)
