@@ -381,7 +381,6 @@ describe Bosh::AwsCloud::CloudV2 do
       }
     }
 
-    let(:nvm_device_path) { device_name }
 
     let(:instance_type_info) { instance_double(Bosh::AwsCloud::InstanceTypeInfo) }
 
