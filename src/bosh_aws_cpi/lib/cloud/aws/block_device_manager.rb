@@ -49,11 +49,13 @@ module Bosh::AwsCloud
     private
 
     def mappings(info)
-      instance_type = @vm_cloud_props.instance_type.nil? ? 'unspecified' : @vm_cloud_props.instance_type
       # For NVMe instances with instance storage, AWS auto-attaches the disks,
       # so we don't include them in the block device mappings
-      if @instance_type_info.instance_storage_nvme_naming?(instance_type)
-        info = info.reject { |device| device[:bosh_type] == 'raw_ephemeral' }
+      if info.any? { |device| device[:bosh_type] == 'raw_ephemeral' }
+        instance_type = @vm_cloud_props.instance_type.nil? ? 'unspecified' : @vm_cloud_props.instance_type
+        if @instance_type_info.instance_storage_nvme_naming?(instance_type)
+          info = info.reject { |device| device[:bosh_type] == 'raw_ephemeral' }
+        end
       end
 
       info.map { |entry| entry.reject { |k| k == :bosh_type } }
@@ -169,9 +171,9 @@ module Bosh::AwsCloud
         # Simple sequential hints - agent will discover actual devices via EBS symlink exclusion
         "/dev/nvme#{index}n1"
       elsif @virtualization_type == 'paravirtual'
-        "/dev/sd#{(99 + index).chr}" # 99 is 'c'.ord - starts at sdc, sdd, sde...
+        "/dev/sd#{('c'.ord + index).chr}"
       elsif @virtualization_type == 'hvm'
-        "/dev/xvdb#{(97 + index).chr}" # 97 is 'a'.ord - starts at xvdba, xvdbb...
+        "/dev/xvdb#{('a'.ord + index).chr}"
       else
         raise Bosh::Clouds::CloudError, "unknown virtualization type #{@virtualization_type}"
       end
