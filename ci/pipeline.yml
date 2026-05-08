@@ -146,7 +146,6 @@ jobs:
         OPTIONAL_OPS_FILE: |
           -o pipelines/shared/assets/ops/remove-hm.yml
           -o bosh-deployment/external-ip-with-registry-not-recommended.yml
-          -o pipelines/shared/assets/ops/remove-provider-cert.yml
     - do:
       - <<: *deploy-director
       - <<: *run-bats
@@ -196,7 +195,6 @@ jobs:
         <<: *prepare-director-params
         OPTIONAL_OPS_FILE: |
           -o bosh-deployment/external-ip-with-registry-not-recommended.yml
-          -o pipelines/shared/assets/ops/remove-provider-cert.yml
           -o pipelines/aws/assets/ops/iam-instance-profile-ops-file.yml
     - do:
       - <<: *deploy-director
