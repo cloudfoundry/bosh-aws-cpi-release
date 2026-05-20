@@ -6,12 +6,13 @@ module Bosh::AwsCloud
     let(:ec2_client) { instance_double(Aws::EC2::Client) }
     let(:instance_type_info) { InstanceTypeInfo.new(ec2_client, logger) }
 
-    def stub_nvme_support(instance_type, nvme_support)
+    def stub_nvme_support(instance_type, ebs_nvme_support, instance_storage_nvme_support = nil)
+      instance_storage_info = instance_storage_nvme_support ? double(nvme_support: instance_storage_nvme_support) : nil
       allow(ec2_client).to receive(:describe_instance_types).with(
         instance_types: [instance_type],
       ).and_return(
         double(instance_types: [
-          double(ebs_info: double(nvme_support: nvme_support)),
+          double(ebs_info: double(nvme_support: ebs_nvme_support), instance_storage_info: instance_storage_info),
         ])
       )
     end
@@ -55,16 +56,16 @@ module Bosh::AwsCloud
     end
 
     describe '#instance_storage_nvme_naming?' do
-      context 'when nvme_support is required (Nitro, e.g. c5d.xlarge)' do
-        before { stub_nvme_support('c5d.xlarge', 'required') }
+      context 'when instance storage nvme_support is required (Nitro, e.g. c5d.xlarge)' do
+        before { stub_nvme_support('c5d.xlarge', 'required', 'required') }
 
         it 'returns true because instance storage uses /dev/nvme*n1 naming' do
           expect(instance_type_info.instance_storage_nvme_naming?('c5d.xlarge')).to be true
         end
       end
 
-      context 'when nvme_support is supported (Xen with NVMe instance storage, e.g. i3.xlarge)' do
-        before { stub_nvme_support('i3.xlarge', 'supported') }
+      context 'when instance storage nvme_support is required (Xen with NVMe instance storage, e.g. i3.xlarge)' do
+        before { stub_nvme_support('i3.xlarge', 'supported', 'required') }
 
         it 'returns true because i3 local disks appear as /dev/nvme*n1' do
           expect(instance_type_info.instance_storage_nvme_naming?('i3.xlarge')).to be true
@@ -77,8 +78,16 @@ module Bosh::AwsCloud
         end
       end
 
-      context 'when nvme_support is unsupported (legacy Xen, e.g. m3.xlarge)' do
-        before { stub_nvme_support('m3.xlarge', 'unsupported') }
+      context 'when instance has no instance storage (e.g. c5.large)' do
+        before { stub_nvme_support('c5.large', 'required', nil) }
+
+        it 'returns false because there is no instance storage' do
+          expect(instance_type_info.instance_storage_nvme_naming?('c5.large')).to be false
+        end
+      end
+
+      context 'when instance storage nvme_support is unsupported (legacy Xen, e.g. m3.xlarge)' do
+        before { stub_nvme_support('m3.xlarge', 'unsupported', 'unsupported') }
 
         it 'returns false' do
           expect(instance_type_info.instance_storage_nvme_naming?('m3.xlarge')).to be false
@@ -136,7 +145,7 @@ module Bosh::AwsCloud
               raise Aws::EC2::Errors::RequestLimitExceeded.new(nil, 'Rate exceeded')
             end
             double(instance_types: [
-              double(ebs_info: double(nvme_support: 'required')),
+              double(ebs_info: double(nvme_support: 'required'), instance_storage_info: double(nvme_support: 'required')),
             ])
           end
         end

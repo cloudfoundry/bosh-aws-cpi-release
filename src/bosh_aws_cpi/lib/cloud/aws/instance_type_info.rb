@@ -7,7 +7,6 @@ module Bosh::AwsCloud
       @ec2_client = ec2_client
       @logger = logger
       @cache = {}
-      @mutex = Mutex.new
     end
 
     # Returns true if EBS volumes on this instance type are exposed exclusively via
@@ -23,13 +22,13 @@ module Bosh::AwsCloud
     end
 
     # Returns true if instance storage (local NVMe SSDs) on this instance type uses
-    # /dev/nvme*n1 device naming. This covers both Nitro instances (nvme_support =
-    # 'required') and Xen-based i3 instances (nvme_support = 'supported').
+    # /dev/nvme*n1 device naming.
+    # Returns true when nvme_support is 'required'.
     def instance_storage_nvme_naming?(instance_type)
       info = fetch(instance_type)
       return false if info.nil?
 
-      %w[required supported].include?(info.ebs_info&.nvme_support)
+      info.instance_storage_info&.nvme_support == 'required'
     end
 
     private
@@ -39,20 +38,18 @@ module Bosh::AwsCloud
     def fetch(instance_type)
       instance_type = instance_type.nil? ? 'unspecified' : instance_type
 
-      @mutex.synchronize do
-        return @cache[instance_type] if @cache.key?(instance_type)
+      return @cache[instance_type] if @cache.key?(instance_type)
 
-        result = query(instance_type)
-        @cache[instance_type] = result
-        result
-      end
+      result = query(instance_type)
+      @cache[instance_type] = result
+      result
     end
 
     def query(instance_type)
       @logger.debug("DescribeInstanceTypes for '#{instance_type}'")
 
       response = nil
-      errors = [Aws::EC2::Errors::RequestLimitExceeded, Aws::EC2::Errors::InternalError, Aws::EC2::Errors::Unavailable]
+      errors = [Aws::EC2::Errors::RequestLimitExceeded, Aws::EC2::Errors::InternalError, Aws::EC2::Errors::ServiceUnavailable]
       Bosh::Common.retryable(tries: 5, sleep: 1, on: errors) do |_tries, error|
         @logger.warn("DescribeInstanceTypes retrying for '#{instance_type}': #{error.message}") if error
         response = @ec2_client.describe_instance_types(
