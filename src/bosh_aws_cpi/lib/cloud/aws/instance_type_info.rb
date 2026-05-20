@@ -22,13 +22,13 @@ module Bosh::AwsCloud
     end
 
     # Returns true if instance storage (local NVMe SSDs) on this instance type uses
-    # /dev/nvme*n1 device naming.
-    # Returns true when nvme_support is 'required'.
+    # /dev/nvme*n1 device naming. Covers both Nitro instances (nvme_support = 'required')
+    # and any instances where NVMe is supported for instance storage.
     def instance_storage_nvme_naming?(instance_type)
       info = fetch(instance_type)
       return false if info.nil?
 
-      info.instance_storage_info&.nvme_support == 'required'
+      %w[required supported].include?(info.instance_storage_info&.nvme_support)
     end
 
     private

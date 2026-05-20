@@ -78,6 +78,14 @@ module Bosh::AwsCloud
         end
       end
 
+      context 'when instance storage nvme_support is supported (future-proofing)' do
+        before { stub_nvme_support('x99.xlarge', 'required', 'supported') }
+
+        it 'returns true because instance storage may appear as /dev/nvme*n1' do
+          expect(instance_type_info.instance_storage_nvme_naming?('x99.xlarge')).to be true
+        end
+      end
+
       context 'when instance has no instance storage (e.g. c5.large)' do
         before { stub_nvme_support('c5.large', 'required', nil) }
 
