@@ -90,6 +90,7 @@ end
 def mock_ec2
   client = instance_double(Aws::EC2::Client)
   allow(Aws::EC2::Client).to receive(:new).and_return(client)
+  allow(client).to receive(:describe_instance_types).and_return(double(instance_types: []))
   ec2 = double(Aws::EC2::Resource, client: client)
 
   yield ec2 if block_given?

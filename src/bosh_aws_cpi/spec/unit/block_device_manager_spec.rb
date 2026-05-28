@@ -38,7 +38,8 @@ module Bosh::AwsCloud
     let(:root_device_name) { '/dev/xvda' }
     let(:original_block_device_mappings) { [] }
 
-    let(:manager) { BlockDeviceManager.new(logger, stemcell, vm_cloud_props) }
+    let(:instance_type_info) { instance_double(Bosh::AwsCloud::InstanceTypeInfo) }
+    let(:manager) { BlockDeviceManager.new(logger, stemcell, vm_cloud_props, instance_type_info) }
 
     before do
       allow(aws_config).to receive(:default_iam_instance_profile)
@@ -48,6 +49,8 @@ module Bosh::AwsCloud
       allow(image).to receive(:virtualization_type).and_return(virtualization_type)
       allow(image).to receive(:root_device_name).and_return(root_device_name)
       allow(image).to receive(:block_device_mappings).and_return(original_block_device_mappings)
+      allow(instance_type_info).to receive(:ebs_requires_nvme_path?).and_return(false)
+      allow(instance_type_info).to receive(:instance_storage_nvme_naming?).and_return(false)
     end
 
     describe '#mappings_and_info' do
@@ -72,7 +75,7 @@ module Bosh::AwsCloud
         end
 
         let(:device_path) do
-          BlockDeviceManager.device_path('/dev/sdf', instance_type, 'vol-123')
+          BlockDeviceManager.device_path('/dev/sdf', instance_type, 'vol-123', instance_type_info)
         end
 
         it 'returns an EBS volume with /dev/sdb' do
@@ -91,14 +94,29 @@ module Bosh::AwsCloud
         end
       end
 
-      BlockDeviceManager::NVME_INSTANCE_FAMILIES.each do |nvme_instance_family|
-        context "when creating #{nvme_instance_family} instances" do
-          let(:instance_type) { "#{nvme_instance_family}.large" }
-          let(:instance_type_disk_mapping) { BlockDeviceManager::DiskInfo::INSTANCE_TYPE_DISK_MAPPING[instance_type] }
-          let(:expected_volume_size) { (instance_type_disk_mapping && instance_type_disk_mapping[0]) || 10 }
+      context 'when creating NVMe instances (detector returns true)' do
+        let(:instance_type) { 'c5.large' }
+        let(:instance_type_disk_mapping) { BlockDeviceManager::DiskInfo::INSTANCE_TYPE_DISK_MAPPING[instance_type] }
+        let(:expected_volume_size) { (instance_type_disk_mapping && instance_type_disk_mapping[0]) || 10 }
 
-          it_behaves_like 'NVMe required instance types'
+        before do
+          allow(instance_type_info).to receive(:ebs_requires_nvme_path?).and_return(true)
+          allow(instance_type_info).to receive(:instance_storage_nvme_naming?).and_return(true)
         end
+
+        it_behaves_like 'NVMe required instance types'
+      end
+
+      context 'when creating a future NVMe instance type (detector returns true)' do
+        let(:instance_type) { 'z99.xlarge' }
+        let(:expected_volume_size) { 10 }
+
+        before do
+          allow(instance_type_info).to receive(:ebs_requires_nvme_path?).and_return(true)
+          allow(instance_type_info).to receive(:instance_storage_nvme_naming?).and_return(true)
+        end
+
+        it_behaves_like 'NVMe required instance types'
       end
 
       context 'when omitting the ephemeral disk EBS' do
@@ -168,29 +186,41 @@ module Bosh::AwsCloud
                 )
               end
 
-              context 'and NVMe storage types' do
+              context 'and NVMe storage types (i3)' do
                 let(:instance_type) { 'i3.4xlarge' }
 
-                it 'returns an EBS volume with size 10GB and NO disks NVMe instance storage' do
-                  actual_output, agent_info = manager.mappings_and_info
-                  expected_output = [default_root]
-                  instance_storage_disks = []
-                  expected_output += instance_storage_disks
+                before do
+                  # i3 is Xen-based: EBS uses xvd paths, but instance storage is NVMe
+                  allow(instance_type_info).to receive(:ebs_requires_nvme_path?).and_return(false)
+                  allow(instance_type_info).to receive(:instance_storage_nvme_naming?).and_return(true)
+                end
 
-                  ebs_disk = {
-                    device_name: '/dev/sdb',
-                    ebs: {
-                      volume_size: 10,
-                      volume_type: 'gp3',
-                      delete_on_termination: true,
+                it 'returns an EBS volume with size 10GB and NO disks NVMe instance storage' do
+                    actual_output, agent_info = manager.mappings_and_info
+                    expected_output = [default_root]
+                    instance_storage_disks = []
+                    expected_output += instance_storage_disks
+
+                    ebs_disk = {
+                      device_name: '/dev/sdb',
+                      ebs: {
+                        volume_size: 10,
+                        volume_type: 'gp3',
+                        delete_on_termination: true,
+                      }
                     }
-                  }
-                  expected_output << ebs_disk
-                  expect(actual_output).to match_array(expected_output)
-                  expect(agent_info).to eq(
-                    'ephemeral' => [{'path' => '/dev/sdb'}],
-                    'raw_ephemeral' => [{'path' => '/dev/nvme0n1'}, {'path' => '/dev/nvme1n1'}],
-                  )
+                    expected_output << ebs_disk
+                    expect(actual_output).to match_array(expected_output)
+
+                    disk_mapping = BlockDeviceManager::DiskInfo::INSTANCE_TYPE_DISK_MAPPING['i3.4xlarge']
+                    num_disks = disk_mapping[1]
+                    # Device hints start at nvme0n1 - agent discovers actual devices at runtime
+                    expected_devices = num_disks.times.map { |i| {'path' => "/dev/nvme#{i}n1"} }
+
+                    expect(agent_info).to eq(
+                      'ephemeral' => [{'path' => '/dev/sdb'}],
+                      'raw_ephemeral' => expected_devices,
+                    )
                 end
               end
 
@@ -284,7 +314,7 @@ module Bosh::AwsCloud
           end
 
           it 'does not configure a block device for ephemeral disk' do
-            manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props)
+            manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props, instance_type_info)
 
             expected_output = [
               default_root
@@ -311,7 +341,7 @@ module Bosh::AwsCloud
         end
 
         it 'returns an EBS with the specified ephemeral disk size' do
-          manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props)
+          manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props, instance_type_info)
 
           expected_output = [
             {
@@ -718,7 +748,7 @@ module Bosh::AwsCloud
             vm_type['root_disk']['type'] = 'io1'
             vm_type['root_disk']['iops'] = 1000
 
-            manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props)
+            manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props, instance_type_info)
             expected_disks = []
 
             ephemeral_disks = [{
@@ -763,7 +793,7 @@ module Bosh::AwsCloud
             vm_type['root_disk']['type'] = 'gp3'
             vm_type['root_disk']['throughput'] = 200
 
-            manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props)
+            manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props, instance_type_info)
             expected_disks = []
 
             ephemeral_disks = [{
@@ -794,7 +824,7 @@ module Bosh::AwsCloud
             vm_type['root_disk']['type'] = 'gp3'
             vm_type['root_disk']['iops'] = 4000
 
-            manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props)
+            manager = BlockDeviceManager.new(logger, stemcell, vm_cloud_props, instance_type_info)
             expected_disks = []
 
             ephemeral_disks = [{

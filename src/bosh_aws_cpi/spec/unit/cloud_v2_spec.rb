@@ -381,7 +381,8 @@ describe Bosh::AwsCloud::CloudV2 do
       }
     }
 
-    let(:nvm_device_path) { device_name }
+
+    let(:instance_type_info) { instance_double(Bosh::AwsCloud::InstanceTypeInfo) }
 
     before do
       allow(registry).to receive(:update_settings)
@@ -390,6 +391,8 @@ describe Bosh::AwsCloud::CloudV2 do
       allow(Bosh::Cpi::RegistryClient).to receive(:new).and_return(registry)
       allow(Bosh::AwsCloud::CloudCore).to receive(:new).and_return(cloud_core)
       allow(cloud_core).to receive(:attach_disk).and_return(device_name).and_yield(instance, device_name)
+      allow(cloud_core).to receive(:instance_type_info).and_return(instance_type_info)
+      allow(instance_type_info).to receive(:ebs_requires_nvme_path?).and_return(false)
     end
 
     context 'when stemcell version is less than 2' do
@@ -412,6 +415,10 @@ describe Bosh::AwsCloud::CloudV2 do
             }
           }
         }
+
+        before do
+          allow(instance_type_info).to receive(:ebs_requires_nvme_path?).with('m5.medium').and_return(true)
+        end
 
         it 'should return NVME device path' do
           expect(registry).to receive(:update_settings).with(instance_id, expected_settings)
@@ -454,6 +461,10 @@ describe Bosh::AwsCloud::CloudV2 do
             }
           }
         }
+
+        before do
+          allow(instance_type_info).to receive(:ebs_requires_nvme_path?).with('m5.medium').and_return(true)
+        end
 
         it 'should return NVME device path' do
           expect(registry).to_not receive(:update_settings)
