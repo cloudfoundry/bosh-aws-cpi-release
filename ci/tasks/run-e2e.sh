@@ -5,6 +5,8 @@ set -e
 : ${BOSH_AWS_KMS_KEY_ARN:?}
 export AWS_PAGER=
 
+[ "$DEBUG" = "true" ] && set -x
+
 source director-state/director.env
 
 # CREATE TEST RELEASE

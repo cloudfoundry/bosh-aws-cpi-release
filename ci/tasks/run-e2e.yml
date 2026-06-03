@@ -17,3 +17,4 @@ params:
   IAM_USER: "aws-cpi-e2e-tests"
   AWS_ACCESS_KEY_ID:
   AWS_SECRET_ACCESS_KEY:
+  DEBUG: false
