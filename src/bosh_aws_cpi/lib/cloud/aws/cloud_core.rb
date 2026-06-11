@@ -89,7 +89,6 @@ module Bosh::AwsCloud
           tags = environment['bosh']['tags']
         end
         tags = tags.merge(vm_props.tags)
-        # TODO IMDS_V2
         instance = @instance_manager.create(
           stemcell.image_id,
           vm_props,
