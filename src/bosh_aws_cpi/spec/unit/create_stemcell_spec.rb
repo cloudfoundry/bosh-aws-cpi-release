@@ -226,12 +226,61 @@ describe Bosh::AwsCloud::CloudV1 do
         expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id, anything).and_return("/dev/sdh")
         expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
 
-        expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo").and_return(stemcell)
+        expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", {}).and_return(stemcell)
 
         expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
         expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
 
         expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
+      end
+
+      it "sets tags to an empty Hash when no tags key is present in cloud properties" do
+        expect(stemcell_cloud_props.tags).to eq({})
+      end
+
+      it "should create a stemcell forwarding tags to the creator" do
+        tags = { "env" => "test", "owner" => "bosh" }
+        tagged_stemcell_properties = stemcell_properties.merge("tags" => tags)
+        tagged_cloud_props = Bosh::AwsCloud::StemcellCloudProps.new(tagged_stemcell_properties, global_config)
+        tagged_disk_config = disk_config.merge(
+          tag_specifications: [
+            {
+              resource_type: "volume",
+              tags: [{ key: "env", value: "test" }, { key: "owner", value: "bosh" }],
+            },
+          ]
+        )
+
+        allow(props_factory).to receive(:stemcell_props)
+            .with(tagged_stemcell_properties)
+            .and_return(tagged_cloud_props)
+
+        cloud = mock_cloud do |ec2|
+          allow(ec2).to receive(:volume).with("vol-xxxxxxxx").and_return(volume)
+          allow(ec2).to receive(:instance).with("i-xxxxxxxx").and_return(instance)
+
+          expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
+              .with(ec2, tagged_cloud_props)
+              .and_return(creator)
+          expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
+          expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
+        end
+
+        allow(instance).to receive(:exists?).and_return(true)
+        allow(instance).to receive(:reload).and_return(instance)
+        allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
+
+        expect(volume_manager).to receive(:create_ebs_volume).with(tagged_disk_config).and_return(volume)
+        expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return("/dev/sdh")
+        expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id, anything).and_return("/dev/sdh")
+        expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
+
+        expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", tags).and_return(stemcell)
+
+        expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
+        expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
+
+        expect(cloud.create_stemcell("/tmp/foo", tagged_stemcell_properties)).to eq("ami-xxxxxxxx")
       end
 
       context "when the CPI configuration includes a kernel_id for stemcell" do
@@ -260,12 +309,60 @@ describe Bosh::AwsCloud::CloudV1 do
           expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
 
           allow(creator).to receive(:create)
-          expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo").and_return(stemcell)
+          expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", {}).and_return(stemcell)
 
           expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
           expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
 
           expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
+        end
+
+        it "creates a stemcell forwarding tags to the creator" do
+          tags = { "env" => "test", "owner" => "bosh" }
+          tagged_stemcell_properties = stemcell_properties.merge("tags" => tags)
+          tagged_cloud_props = Bosh::AwsCloud::StemcellCloudProps.new(tagged_stemcell_properties, global_config)
+          tagged_disk_config = disk_config.merge(
+            tag_specifications: [
+              {
+                resource_type: "volume",
+                tags: [{ key: "env", value: "test" }, { key: "owner", value: "bosh" }],
+              },
+            ]
+          )
+
+          options = mock_cloud_options["properties"]
+          options["aws"]["stemcell"] = { "kernel_id" => "fake-kernel-id" }
+
+          allow(props_factory).to receive(:stemcell_props)
+              .with(tagged_stemcell_properties)
+              .and_return(tagged_cloud_props)
+
+          cloud = mock_cloud(options) do |ec2|
+            allow(ec2).to receive(:volume).with("vol-xxxxxxxx").and_return(volume)
+            allow(ec2).to receive(:instance).with("i-xxxxxxxx").and_return(instance)
+
+            expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
+                .with(ec2, tagged_cloud_props)
+                .and_return(creator)
+            expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
+            expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
+          end
+
+          allow(instance).to receive(:exists?).and_return(true)
+          allow(instance).to receive(:reload).and_return(instance)
+          allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
+
+          expect(volume_manager).to receive(:create_ebs_volume).with(tagged_disk_config).and_return(volume)
+          expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return("/dev/sdh")
+          expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id, anything).and_return("/dev/sdh")
+          expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
+
+          expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", tags).and_return(stemcell)
+
+          expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
+          expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
+
+          expect(cloud.create_stemcell("/tmp/foo", tagged_stemcell_properties)).to eq("ami-xxxxxxxx")
         end
       end
 
@@ -313,12 +410,57 @@ describe Bosh::AwsCloud::CloudV1 do
             expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id, anything).and_return("/dev/sdh")
             expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
 
-            expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo").and_return(stemcell)
+            expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", {}).and_return(stemcell)
 
             expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
             expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
 
             expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
+          end
+
+          it "should create stemcell with encrypted disk with the given kms key, forwarding tags to the creator" do
+            tags = { "env" => "test", "owner" => "bosh" }
+            tagged_stemcell_properties = stemcell_properties.merge("tags" => tags)
+            tagged_cloud_props = Bosh::AwsCloud::StemcellCloudProps.new(tagged_stemcell_properties, global_config)
+            tagged_disk_config = disk_config.merge(
+              tag_specifications: [
+                {
+                  resource_type: "volume",
+                  tags: [{ key: "env", value: "test" }, { key: "owner", value: "bosh" }],
+                },
+              ]
+            )
+
+            allow(props_factory).to receive(:stemcell_props)
+                .with(tagged_stemcell_properties)
+                .and_return(tagged_cloud_props)
+
+            cloud = mock_cloud do |ec2|
+              allow(ec2).to receive(:volume).with("vol-xxxxxxxx").and_return(volume)
+              allow(ec2).to receive(:instance).with("i-xxxxxxxx").and_return(instance)
+
+              expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
+                                                           .with(ec2, tagged_cloud_props)
+                                                           .and_return(creator)
+              expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
+              expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
+            end
+
+            allow(instance).to receive(:exists?).and_return(true)
+            allow(instance).to receive(:reload).and_return(instance)
+            allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
+
+            expect(volume_manager).to receive(:create_ebs_volume).with(tagged_disk_config).and_return(volume)
+            expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return("/dev/sdh")
+            expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id, anything).and_return("/dev/sdh")
+            expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
+
+            expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", tags).and_return(stemcell)
+
+            expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
+            expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
+
+            expect(cloud.create_stemcell("/tmp/foo", tagged_stemcell_properties)).to eq("ami-xxxxxxxx")
           end
         end
 
@@ -363,12 +505,57 @@ describe Bosh::AwsCloud::CloudV1 do
             expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id, anything).and_return("/dev/sdh")
             expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
 
-            expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo").and_return(stemcell)
+            expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", {}).and_return(stemcell)
 
             expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
             expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
 
             expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
+          end
+
+          it "should create stemcell with encrypted disk forwarding tags to the creator" do
+            tags = { "env" => "test", "owner" => "bosh" }
+            tagged_stemcell_properties = stemcell_properties.merge("tags" => tags)
+            tagged_cloud_props = Bosh::AwsCloud::StemcellCloudProps.new(tagged_stemcell_properties, global_config)
+            tagged_disk_config = disk_config.merge(
+              tag_specifications: [
+                {
+                  resource_type: "volume",
+                  tags: [{ key: "env", value: "test" }, { key: "owner", value: "bosh" }],
+                },
+              ]
+            )
+
+            allow(props_factory).to receive(:stemcell_props)
+                .with(tagged_stemcell_properties)
+                .and_return(tagged_cloud_props)
+
+            cloud = mock_cloud do |ec2|
+              allow(ec2).to receive(:volume).with("vol-xxxxxxxx").and_return(volume)
+              allow(ec2).to receive(:instance).with("i-xxxxxxxx").and_return(instance)
+
+              expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
+                                                           .with(ec2, tagged_cloud_props)
+                                                           .and_return(creator)
+              expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
+              expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
+            end
+
+            allow(instance).to receive(:exists?).and_return(true)
+            allow(instance).to receive(:reload).and_return(instance)
+            allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
+
+            expect(volume_manager).to receive(:create_ebs_volume).with(tagged_disk_config).and_return(volume)
+            expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return("/dev/sdh")
+            expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id, anything).and_return("/dev/sdh")
+            expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
+
+            expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", tags).and_return(stemcell)
+
+            expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
+            expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
+
+            expect(cloud.create_stemcell("/tmp/foo", tagged_stemcell_properties)).to eq("ami-xxxxxxxx")
           end
         end
       end
@@ -395,7 +582,7 @@ describe Bosh::AwsCloud::CloudV1 do
           expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id, anything).and_return("/dev/sdh")
           expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
 
-          expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo").and_return(stemcell)
+          expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", {}).and_return(stemcell)
 
           expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
           expect(volume_manager).to receive(:delete_ebs_volume).with(volume)

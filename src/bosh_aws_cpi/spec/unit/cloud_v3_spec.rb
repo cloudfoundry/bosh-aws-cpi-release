@@ -58,6 +58,29 @@ describe Bosh::AwsCloud::CloudV3 do
     let(:encrypted_image) { instance_double(Aws::EC2::Image, state: "available", id: "#{ami_id}-copy") }
     let(:image_copy) { instance_double(Aws::EC2::Image, image_id: "#{ami_id}-copy", id: "#{ami_id}-copy") }
 
+    shared_examples "encrypted copy_image behavior" do
+      let(:cloud) do
+        mock_cloud_v3 do |ec2|
+          expect(ec2).to receive(:images).with(
+            filters: [{
+              name: "image-id",
+              values: [ami_id],
+            }],
+            include_deprecated: true,
+          ).and_return([image])
+
+          expect(ec2.client).to receive(:copy_image).with(expected_copy_image_args).and_return(image_copy)
+
+          expect(ec2).to receive(:image).with("ami-image-id-copy").and_return(encrypted_image)
+
+          expect(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(
+            image: encrypted_image,
+            state: "available",
+          )
+        end
+      end
+    end
+
     context "for light stemcell" do
       let(:stemcell_properties) do
         {
@@ -117,54 +140,66 @@ describe Bosh::AwsCloud::CloudV3 do
           },
         }
       end
-      let(:cloud) {
-        mock_cloud_v3 do |ec2|
-          expect(ec2).to receive(:images).with(
-            filters: [{
-              name: "image-id",
-              values: [ami_id],
-            }],
-            include_deprecated: true,
-          ).and_return([image])
 
-          expect(ec2.client).to receive(:copy_image).with(
+      context "when env tags are passed for copy_image" do
+        let(:expected_copy_image_args) do
+          {
             source_region: "us-east-1",
             source_image_id: ami_id,
             name: "Copied from SourceAMI #{ami_id}",
             encrypted: true,
             kms_key_id: kms_key_arn,
-          ).and_return(image_copy)
-
-          expect(ec2).to receive(:image).with("ami-image-id-copy").and_return(encrypted_image)
-
-          expect(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(
-            image: encrypted_image,
-            state: "available",
-          )
+            tag_specifications: [
+              {
+                resource_type: "image",
+                tags: [{ key: "any", value: "value" }],
+              },
+              {
+                resource_type: "snapshot",
+                tags: [{ key: "any", value: "value" }],
+              },
+            ],
+          }
         end
-      }
 
-      it "if tags are provided" do
-        env = { "tags" => { "any" => "value" } }
-        expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(encrypted_image, env["tags"])
-        cloud.create_stemcell(image, stemcell_properties, env)
+        include_examples "encrypted copy_image behavior"
+
+        it "applies tag_specifications on copy_image" do
+          env = { "tags" => { "any" => "value" } }
+          expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
+          cloud.create_stemcell(image, stemcell_properties, env)
+        end
       end
 
-      it "if tags are not provided" do
-        env = {}
-        expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
-        cloud.create_stemcell(image, stemcell_properties, env)
-      end
+      context "when no tag_specifications on copy_image" do
+        let(:expected_copy_image_args) do
+          {
+            source_region: "us-east-1",
+            source_image_id: ami_id,
+            name: "Copied from SourceAMI #{ami_id}",
+            encrypted: true,
+            kms_key_id: kms_key_arn,
+          }
+        end
 
-      it "if tags are nil" do
-        env = { "tags" => nil }
-        expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
-        cloud.create_stemcell(image, stemcell_properties, env)
-      end
+        include_examples "encrypted copy_image behavior"
 
-      it "if no env is provided" do
-        expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
-        cloud.create_stemcell(image, stemcell_properties)
+        it "if tags are not provided" do
+          env = {}
+          expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
+          cloud.create_stemcell(image, stemcell_properties, env)
+        end
+
+        it "if tags are nil" do
+          env = { "tags" => nil }
+          expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
+          cloud.create_stemcell(image, stemcell_properties, env)
+        end
+
+        it "if no env is provided" do
+          expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
+          cloud.create_stemcell(image, stemcell_properties)
+        end
       end
     end
 
@@ -179,54 +214,66 @@ describe Bosh::AwsCloud::CloudV3 do
           },
         }
       end
-      let(:cloud) {
-        mock_cloud_v3 do |ec2|
-          expect(ec2).to receive(:images).with(
-            filters: [{
-              name: "image-id",
-              values: [ami_id],
-            }],
-            include_deprecated: true,
-          ).and_return([image])
 
-          expect(ec2.client).to receive(:copy_image).with(
+      context "when env tags are passed for copy_image" do
+        let(:expected_copy_image_args) do
+          {
             source_region: "us-east-1",
             source_image_id: ami_id,
             name: "Copied from SourceAMI #{ami_id}",
             encrypted: true,
             kms_key_id: kms_key_arn,
-          ).and_return(image_copy)
-
-          expect(ec2).to receive(:image).with("ami-image-id-copy").and_return(encrypted_image)
-
-          expect(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(
-            image: encrypted_image,
-            state: "available",
-          )
+            tag_specifications: [
+              {
+                resource_type: "image",
+                tags: [{ key: "any", value: "value" }],
+              },
+              {
+                resource_type: "snapshot",
+                tags: [{ key: "any", value: "value" }],
+              },
+            ],
+          }
         end
-      }
 
-      it "if tags are provided" do
-        env = { "tags" => { "any" => "value" } }
-        expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(encrypted_image, env["tags"])
-        cloud.create_stemcell(image, stemcell_properties, env)
+        include_examples "encrypted copy_image behavior"
+
+        it "applies tag_specifications on copy_image" do
+          env = { "tags" => { "any" => "value" } }
+          expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
+          cloud.create_stemcell(image, stemcell_properties, env)
+        end
       end
 
-      it "if tags are not provided" do
-        env = {}
-        expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
-        cloud.create_stemcell(image, stemcell_properties, env)
-      end
+      context "when no tag_specifications on copy_image" do
+        let(:expected_copy_image_args) do
+          {
+            source_region: "us-east-1",
+            source_image_id: ami_id,
+            name: "Copied from SourceAMI #{ami_id}",
+            encrypted: true,
+            kms_key_id: kms_key_arn,
+          }
+        end
 
-      it "if tags are nil" do
-        env = { "tags" => nil }
-        expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
-        cloud.create_stemcell(image, stemcell_properties, env)
-      end
+        include_examples "encrypted copy_image behavior"
 
-      it "if no env is provided" do
-        expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
-        cloud.create_stemcell(image, stemcell_properties)
+        it "if tags are not provided" do
+          env = {}
+          expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
+          cloud.create_stemcell(image, stemcell_properties, env)
+        end
+
+        it "if tags are nil" do
+          env = { "tags" => nil }
+          expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
+          cloud.create_stemcell(image, stemcell_properties, env)
+        end
+
+        it "if no env is provided" do
+          expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
+          cloud.create_stemcell(image, stemcell_properties)
+        end
       end
     end
 
@@ -257,29 +304,48 @@ describe Bosh::AwsCloud::CloudV3 do
       let(:stemcell_cloud_props) { Bosh::AwsCloud::StemcellCloudProps.new(stemcell_properties, global_config) }
       let(:props_factory) { instance_double(Bosh::AwsCloud::PropsFactory) }
 
-      before do
-        allow(cloud).to receive(:create_ami_for_stemcell).and_return(ami_id)
-      end
-
       it "if tags are provided" do
         env = { "tags" => { "any" => "value" } }
-        expect(Bosh::AwsCloud::TagManager).to receive(:create_tags).with(image, env["tags"])
+        expect(cloud).to receive(:create_ami_for_stemcell).with(
+          image,
+          instance_of(Bosh::AwsCloud::StemcellCloudProps),
+          env["tags"],
+        ).and_return(ami_id)
+        expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
+        expect(cloud.logger).to receive(:info).with(
+          "Created stemcell AMI #{ami_id} with env tags applied at resource creation: #{env['tags'].keys.inspect}",
+        )
         cloud.create_stemcell(image, stemcell_properties, env)
       end
 
       it "if tags are not provided" do
         env = {}
+        expect(cloud).to receive(:create_ami_for_stemcell).with(
+          image,
+          instance_of(Bosh::AwsCloud::StemcellCloudProps),
+          nil,
+        ).and_return(ami_id)
         expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
         cloud.create_stemcell(image, stemcell_properties, env)
       end
 
       it "if tags are nil" do
         env = { "tags" => nil }
+        expect(cloud).to receive(:create_ami_for_stemcell).with(
+          image,
+          instance_of(Bosh::AwsCloud::StemcellCloudProps),
+          nil,
+        ).and_return(ami_id)
         expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
         cloud.create_stemcell(image, stemcell_properties, env)
       end
 
       it "if no env is provided" do
+        expect(cloud).to receive(:create_ami_for_stemcell).with(
+          image,
+          instance_of(Bosh::AwsCloud::StemcellCloudProps),
+          nil,
+        ).and_return(ami_id)
         expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
         cloud.create_stemcell(image, stemcell_properties)
       end
