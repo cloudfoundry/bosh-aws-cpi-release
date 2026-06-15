@@ -22,5 +22,23 @@ if [[ ! -b ${OUTPUT_PATH} ]]; then
   exit 1
 fi
 
+# Determine the root device and its parent disk so we can reject any attempt
+# to overwrite the root filesystem. Use findmnt to get the device backing /,
+# then use lsblk to find its parent disk (e.g. /dev/xvda1 → /dev/xvda, or
+# /dev/nvme0n1p1 → /dev/nvme0n1). Resolve OUTPUT_PATH via realpath to guard
+# against symlink attacks.
+ROOT_DEVICE=$(findmnt -n -o SOURCE /)
+ROOT_PKNAME=$(lsblk -no PKNAME "${ROOT_DEVICE}" 2>/dev/null || true)
+ROOT_DISK=""
+[[ -n "${ROOT_PKNAME}" ]] && ROOT_DISK="/dev/${ROOT_PKNAME}"
+
+OUTPUT_REAL=$(realpath "${OUTPUT_PATH}")
+
+if [[ "${OUTPUT_REAL}" == "${ROOT_DEVICE}" || \
+      ( -n "${ROOT_DISK}" && "${OUTPUT_REAL}" == "${ROOT_DISK}" ) ]]; then
+  echo "ERROR: refusing to overwrite root device ${ROOT_DEVICE}"
+  exit 1
+fi
+
 # copy image to block device with 1 MB block size
 tar -xzf ${IMAGE} -O root.img | dd bs=1M of=${OUTPUT_PATH}
