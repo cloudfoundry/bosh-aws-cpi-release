@@ -5,6 +5,7 @@ module Bosh::AwsCloud
     attr_reader :access_key_id, :secret_access_key, :default_key_name, :encrypted, :kms_key_arn
     attr_reader :default_iam_instance_profile, :default_security_groups, :metadata_options
     attr_reader :dualstack
+    attr_reader :enable_describe_instance_types
 
     CREDENTIALS_SOURCE_STATIC = 'static'.freeze
     CREDENTIALS_SOURCE_ENV_OR_PROFILE = 'env_or_profile'.freeze
@@ -30,6 +31,7 @@ module Bosh::AwsCloud
 
       @stemcell = @config['stemcell'] || {}
       @fast_path_delete = @config['fast_path_delete'] || false
+      @enable_describe_instance_types = @config.fetch('enable_describe_instance_types', true)
 
       @encrypted = @config['encrypted']
       @kms_key_arn = @config['kms_key_arn']

@@ -56,7 +56,8 @@ describe 'cpi.json.erb' do
             'encrypted' => false,
             'kms_key_arn' => nil,
             'metadata_options' => nil,
-            'dualstack' => false
+            'dualstack' => false,
+            'enable_describe_instance_types' => true
           },
           'registry' => {
             'endpoint' => 'http://admin:admin@registry-host.example.com:25777',
@@ -169,6 +170,16 @@ describe 'cpi.json.erb' do
 
     it 'overrides the default value' do
       expect(subject['cloud']['properties']['aws']['credentials_source']).to eq('custom')
+    end
+  end
+
+  context 'when enable_describe_instance_types is set to false' do
+    before do
+      manifest['properties']['aws']['enable_describe_instance_types'] = false
+    end
+
+    it 'renders false in the config' do
+      expect(subject['cloud']['properties']['aws']['enable_describe_instance_types']).to eq(false)
     end
   end
 

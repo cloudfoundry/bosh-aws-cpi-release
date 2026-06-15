@@ -34,7 +34,12 @@ module Bosh::AwsCloud
 
       @instance_manager = InstanceManager.new(@ec2_resource, @logger)
       @instance_type_mapper = InstanceTypeMapper.new
-      @instance_type_info = InstanceTypeInfo.new(@ec2_client, @logger)
+      @instance_type_info = if @config.aws.enable_describe_instance_types
+        InstanceTypeInfo.new(@ec2_client, @logger)
+      else
+        @logger.info('Using static NVMe instance type detection (ec2:DescribeInstanceTypes disabled)')
+        StaticInstanceTypeInfo.new
+      end
 
       @props_factory = Bosh::AwsCloud::PropsFactory.new(@config)
     end

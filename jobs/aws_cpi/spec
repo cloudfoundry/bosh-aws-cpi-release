@@ -84,6 +84,13 @@ properties:
           http_endpoint: enabled
           http_tokens: required
     default: null
+  aws.enable_describe_instance_types:
+    description: |
+      When true (default), the CPI calls ec2:DescribeInstanceTypes to accurately detect NVMe
+      characteristics for EBS volume paths and raw instance storage naming. Set to false to use
+      a built-in static family list instead, which requires no additional IAM permissions but may
+      not cover instance families released after this CPI version.
+    default: true
 
   registry.username:
     description: User to access the Registry
