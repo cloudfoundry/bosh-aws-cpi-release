@@ -17,7 +17,8 @@ params = {
         "encrypted" => p('aws.encrypted'),
         "kms_key_arn" => p('aws.kms_key_arn', nil),
         "metadata_options" => p('aws.metadata_options', nil),
-        "dualstack" => p('aws.dualstack')
+        "dualstack" => p('aws.dualstack'),
+        "enable_describe_instance_types" => p('aws.enable_describe_instance_types')
       },
       "agent" => {
         "ntp" => p('ntp')
