@@ -32,6 +32,8 @@ shared:
   image: bosh-integration-image
   params:
     BOSH_AWS_KMS_KEY_ARN: ((arn_keys.aws_kms_key_arn))
+    AWS_ACCESS_KEY_ID: ((aws-cpi-e2e-tests.username))
+    AWS_SECRET_ACCESS_KEY: ((aws-cpi-e2e-tests.password))
 
 - &ensure-terminated
   task: ensure-terminated
