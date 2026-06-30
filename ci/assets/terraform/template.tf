@@ -132,45 +132,19 @@ resource "aws_network_acl" "allow_all" {
   }
 
   ingress {
-    protocol        = "58"
+    protocol        = "-1"
     rule_no         = 100
     action          = "allow"
     ipv6_cidr_block = "::/0"
-    icmp_type       = 128
-    icmp_code       = -1
-    from_port       = 0
-    to_port         = 0
-  }
-
-  ingress {
-    protocol        = "58"
-    rule_no         = 101
-    action          = "allow"
-    ipv6_cidr_block = "::/0"
-    icmp_type       = 129
-    icmp_code       = -1
     from_port       = 0
     to_port         = 0
   }
 
   egress {
-    protocol        = "58"
+    protocol        = "-1"
     rule_no         = 100
     action          = "allow"
     ipv6_cidr_block = "::/0"
-    icmp_type       = 129
-    icmp_code       = -1
-    from_port       = 0
-    to_port         = 0
-  }
-
-  egress {
-    protocol        = "58"
-    rule_no         = 101
-    action          = "allow"
-    ipv6_cidr_block = "::/0"
-    icmp_type       = 128
-    icmp_code       = -1
     from_port       = 0
     to_port         = 0
   }
@@ -194,9 +168,9 @@ resource "aws_security_group" "allow_all" {
   }
 
   ingress {
-    protocol         = "58"
-    from_port        = 128
+    from_port        = 0
     to_port          = 0
+    protocol         = "-1"
     ipv6_cidr_blocks = ["::/0"]
   }
 
@@ -209,9 +183,9 @@ resource "aws_security_group" "allow_all" {
   }
 
   egress {
-    protocol         = "58"
-    from_port        = 128
+    from_port        = 0
     to_port          = 0
+    protocol         = "-1"
     ipv6_cidr_blocks = ["::/0"]
   }
 
