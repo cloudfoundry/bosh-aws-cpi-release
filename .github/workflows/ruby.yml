@@ -5,7 +5,7 @@ jobs:
   unit_specs:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with: { lfs: true }
     - uses: ruby/setup-ruby@v1
       with: { working-directory: src/bosh_aws_cpi/ }
