@@ -355,6 +355,9 @@ output "default_nic_group" {
 output "second_nic_group" {
   value = 2
 }
+output "instance_type" {
+  value = "m6id.large"
+}
 
 # Used by integration tests
 output "manual_static_ipv6" {
