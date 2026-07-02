@@ -230,15 +230,15 @@ module Bosh::AwsCloud
         end
 
         it '`user_data` when creating an instance' do
-          expect(logger).to have_received(:info).with(/"user_data"=>"<redacted>"/)
+          expect(logger).to have_received(:info).with(/"user_data" ?=> ?"<redacted>"/)
         end
 
         it '`defaults.access_key_id` when creating an instance' do
-          expect(logger).to have_received(:info).with(/"access_key_id"=>"<redacted>"/)
+          expect(logger).to have_received(:info).with(/"access_key_id" ?=> ?"<redacted>"/)
         end
 
         it '`defaults.secret_access_key` when creating an instance' do
-          expect(logger).to have_received(:info).with(/"secret_access_key"=>"<redacted>"/)
+          expect(logger).to have_received(:info).with(/"secret_access_key" ?=> ?"<redacted>"/)
         end
       end
 
