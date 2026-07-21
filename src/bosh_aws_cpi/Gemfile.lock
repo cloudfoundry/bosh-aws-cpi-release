@@ -67,6 +67,7 @@ GEM
     multi_json (1.21.1)
     mutex_m (0.3.0)
     openssl (4.0.2)
+    ostruct (0.6.3)
     parallel (2.1.0)
     parser (3.3.11.1)
       ast (~> 2.4.1)
@@ -135,6 +136,7 @@ DEPENDENCIES
   aws-sdk-iam
   bosh_common
   bosh_cpi
+  ostruct
   pry-byebug
   rake
   rexml

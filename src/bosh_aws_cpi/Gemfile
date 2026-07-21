@@ -7,6 +7,7 @@ gem 'aws-sdk-elasticloadbalancingv2'
 gem 'aws-sdk-iam'
 
 gem 'rexml'
+gem 'ostruct'
 gem 'bosh_common'
 gem 'bosh_cpi'
 
