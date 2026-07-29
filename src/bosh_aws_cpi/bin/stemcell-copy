@@ -41,4 +41,4 @@ if [[ "${OUTPUT_REAL}" == "${ROOT_DEVICE}" || \
 fi
 
 # copy image to block device with 1 MB block size
-tar -xzf ${IMAGE} -O root.img | dd bs=1M of=${OUTPUT_PATH}
+tar -xzf "${IMAGE}" -O root.img | dd bs=1M of="${OUTPUT_PATH}"
