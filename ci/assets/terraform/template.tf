@@ -311,7 +311,7 @@ output "dns_recursor_ip" {
   value = cidrhost(aws_vpc.default.cidr_block, 2)
 }
 output "internal_ip" {
-  value = cidrhost(aws_vpc.default.cidr_block, 6)
+  value = cidrhost(aws_vpc.default.cidr_block, 10)
 }
 output "reserved_range" {
   value = "${cidrhost(aws_vpc.default.cidr_block, 2)}-${cidrhost(aws_vpc.default.cidr_block, 9)}"
