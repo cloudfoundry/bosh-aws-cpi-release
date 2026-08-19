@@ -314,10 +314,10 @@ output "internal_ip" {
   value = cidrhost(aws_vpc.default.cidr_block, 10)
 }
 output "reserved_range" {
-  value = "${cidrhost(aws_vpc.default.cidr_block, 2)}-${cidrhost(aws_vpc.default.cidr_block, 9)}"
+  value = "${cidrhost(aws_vpc.default.cidr_block, 2)}-${cidrhost(aws_vpc.default.cidr_block, 10)}"
 }
 output "static_range" {
-  value = "${cidrhost(aws_vpc.default.cidr_block, 10)}-${cidrhost(aws_vpc.default.cidr_block, 30)}"
+  value = "${cidrhost(aws_vpc.default.cidr_block, 11)}-${cidrhost(aws_vpc.default.cidr_block, 30)}"
 }
 output "bats_eip" {
   value = aws_eip.deployment.public_ip
