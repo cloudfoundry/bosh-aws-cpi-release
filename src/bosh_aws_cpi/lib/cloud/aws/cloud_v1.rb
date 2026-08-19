@@ -361,8 +361,15 @@ module Bosh::AwsCloud
 
     ##
     # Creates a new EC2 AMI using stemcell image.
-    # This method can only be run on an EC2 instance, as image creation
-    # involves creating and mounting new EBS volume as local block device.
+    # For light stemcells this resolves an existing AMI via the API. For full
+    # (heavy) stemcells there are two paths:
+    #   * the classic path (#create_ami_for_stemcell) attaches an EBS volume to
+    #     the current EC2 instance and dd's root.img onto it -- this requires
+    #     running on an EC2 instance with sudo and an attachable block device;
+    #   * the import-snapshot path (#create_ami_via_import_snapshot) uploads
+    #     root.img to S3 and uses the AWS ImportSnapshot API -- this works from
+    #     anywhere, including a create-env container that is not itself an EC2
+    #     instance. It is opt-in via the `import_snapshot` stemcell cloud property.
     # @param [String] image_path local filesystem path to a stemcell image
     # @param [Hash] cloud_properties AWS-specific stemcell properties
     # @option cloud_properties [String] kernel_id
@@ -407,6 +414,8 @@ module Bosh::AwsCloud
           end
 
           "#{available_image.id} light"
+        elsif import_snapshot_requested?(stemcell_properties)
+          create_ami_via_import_snapshot(image_path, props, stemcell_properties, props.tags)
         else
           create_ami_for_stemcell(image_path, props, props.tags)
         end
@@ -458,6 +467,45 @@ module Bosh::AwsCloud
       yield settings
       registry.update_settings(instance_id, settings)
       logger.debug("updated registry settings: #{registry.read_settings(instance_id)}")
+    end
+
+    # True when the operator has opted in to the container-friendly
+    # ImportSnapshot path by setting `import_snapshot` on the stemcell
+    # cloud properties (either `true` or a hash carrying at least `bucket`).
+    def import_snapshot_requested?(stemcell_properties)
+      opts = stemcell_properties['import_snapshot']
+      return false if opts.nil? || opts == false
+
+      true
+    end
+
+    # Container-friendly heavy-stemcell path. Unlike #create_ami_for_stemcell
+    # this never calls current_vm_id, never creates or attaches an EBS volume,
+    # and never shells out to stemcell-copy/dd. It hands root.img to AWS via
+    # the ImportSnapshot API, so it can run off-EC2 (e.g. in a create-env
+    # container that is not itself an EC2 instance).
+    def create_ami_via_import_snapshot(image_path, stemcell_cloud_props, stemcell_properties, tags = nil)
+      creator = StemcellCreator.new(@ec2_resource, stemcell_cloud_props)
+
+      opts = stemcell_properties['import_snapshot']
+      opts = {} unless opts.is_a?(Hash)
+
+      bucket = opts['bucket'] || opts['s3_bucket']
+      cloud_error('import_snapshot requires an S3 bucket (set import_snapshot.bucket)') if bucket.nil? || bucket.to_s.empty?
+
+      import_role_name = opts['role_name'] || opts['import_role_name']
+      encrypted = stemcell_cloud_props.respond_to?(:encrypted) ? stemcell_cloud_props.encrypted : false
+      kms_key_arn = stemcell_cloud_props.respond_to?(:kms_key_arn) ? stemcell_cloud_props.kms_key_arn : nil
+
+      logger.info("Creating stemcell via ImportSnapshot using bucket '#{bucket}'")
+      creator.create_via_import_snapshot(
+        image_path,
+        bucket,
+        import_role_name: import_role_name,
+        encrypted: encrypted,
+        kms_key_arn: kms_key_arn,
+        tags: tags,
+      ).id
     end
 
     def create_ami_for_stemcell(image_path, stemcell_cloud_props, tags = nil)

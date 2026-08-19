@@ -6,6 +6,7 @@ require 'aws-sdk-core'
 require 'aws-sdk-ec2'
 require 'aws-sdk-elasticloadbalancing'
 require 'aws-sdk-elasticloadbalancingv2'
+require 'aws-sdk-s3'
 
 require 'httpclient'
 require 'tmpdir'
