@@ -369,7 +369,9 @@ module Bosh::AwsCloud
     #   * the import-snapshot path (#create_ami_via_import_snapshot) uploads
     #     root.img to S3 and uses the AWS ImportSnapshot API -- this works from
     #     anywhere, including a create-env container that is not itself an EC2
-    #     instance. It is opt-in via the `import_snapshot` stemcell cloud property.
+    #     instance. It is opt-in via the landscape-specific
+    #     `cloud_provider.properties.aws.stemcell.import_snapshot` config
+    #     (a stemcell cloud property of the same name may override it).
     # @param [String] image_path local filesystem path to a stemcell image
     # @param [Hash] cloud_properties AWS-specific stemcell properties
     # @option cloud_properties [String] kernel_id
@@ -414,8 +416,8 @@ module Bosh::AwsCloud
           end
 
           "#{available_image.id} light"
-        elsif import_snapshot_requested?(stemcell_properties)
-          create_ami_via_import_snapshot(image_path, props, stemcell_properties, props.tags)
+        elsif (import_snapshot_opts = resolve_import_snapshot_opts(stemcell_properties))
+          create_ami_via_import_snapshot(image_path, props, import_snapshot_opts, props.tags)
         else
           create_ami_for_stemcell(image_path, props, props.tags)
         end
@@ -469,14 +471,33 @@ module Bosh::AwsCloud
       logger.debug("updated registry settings: #{registry.read_settings(instance_id)}")
     end
 
-    # True when the operator has opted in to the container-friendly
-    # ImportSnapshot path by setting `import_snapshot` on the stemcell
-    # cloud properties (either `true` or a hash carrying at least `bucket`).
-    def import_snapshot_requested?(stemcell_properties)
-      opts = stemcell_properties['import_snapshot']
-      return false if opts.nil? || opts == false
+    # Resolves the ImportSnapshot opt-in config, or nil when the classic
+    # (EBS/current_vm_id) path should be used.
+    #
+    # The config is landscape-specific (which S3 bucket, which VM Import/Export
+    # role), so its natural home is the CPI's global config --
+    # `cloud_provider.properties.aws.stemcell.import_snapshot` -- which reaches
+    # us as `@config.aws.stemcell['import_snapshot']`. That is the same for
+    # every stemcell in a given director and is NOT baked into the (shared)
+    # stemcell tarball.
+    #
+    # For backwards compatibility and one-off overrides, a stemcell may still
+    # carry its own `import_snapshot` in its cloud properties; when present it
+    # is merged on top of the global config. Either source may be a bare `true`
+    # (meaning "use the import path, take bucket/role from the other source").
+    #
+    # @return [Hash, nil] the merged import_snapshot options, or nil if not requested
+    def resolve_import_snapshot_opts(stemcell_properties)
+      global = @config.aws.stemcell['import_snapshot'] if @config.aws.stemcell
+      per_stemcell = stemcell_properties['import_snapshot']
 
-      true
+      return nil if global.nil? && per_stemcell.nil?
+      return nil if global == false || per_stemcell == false
+
+      merged = {}
+      merged.merge!(global) if global.is_a?(Hash)
+      merged.merge!(per_stemcell) if per_stemcell.is_a?(Hash)
+      merged
     end
 
     # Container-friendly heavy-stemcell path. Unlike #create_ami_for_stemcell
@@ -484,11 +505,10 @@ module Bosh::AwsCloud
     # and never shells out to stemcell-copy/dd. It hands root.img to AWS via
     # the ImportSnapshot API, so it can run off-EC2 (e.g. in a create-env
     # container that is not itself an EC2 instance).
-    def create_ami_via_import_snapshot(image_path, stemcell_cloud_props, stemcell_properties, tags = nil)
+    #
+    # @param opts [Hash] resolved import_snapshot options (bucket, role_name)
+    def create_ami_via_import_snapshot(image_path, stemcell_cloud_props, opts, tags = nil)
       creator = StemcellCreator.new(@ec2_resource, stemcell_cloud_props)
-
-      opts = stemcell_properties['import_snapshot']
-      opts = {} unless opts.is_a?(Hash)
 
       bucket = opts['bucket'] || opts['s3_bucket']
       cloud_error('import_snapshot requires an S3 bucket (set import_snapshot.bucket)') if bucket.nil? || bucket.to_s.empty?
