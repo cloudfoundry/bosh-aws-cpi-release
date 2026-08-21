@@ -531,7 +531,11 @@ module Bosh::AwsCloud
       cloud_error('import_snapshot requires an S3 bucket (set import_snapshot.bucket)') if bucket.nil? || bucket.to_s.empty?
 
       import_role_name = opts['role_name'] || opts['import_role_name']
-      encrypted = stemcell_cloud_props.respond_to?(:encrypted) ? stemcell_cloud_props.encrypted : false
+      # Normalize to the contract StemcellCreator#create_via_import_snapshot
+      # expects: `encrypted` is always a boolean (an unset props attribute is
+      # nil, which must read as false) and `tags` is always a hash (nil means
+      # "no tags", i.e. {}). This keeps nil out of the AWS boundary.
+      encrypted = stemcell_cloud_props.respond_to?(:encrypted) ? !!stemcell_cloud_props.encrypted : false
       kms_key_arn = stemcell_cloud_props.respond_to?(:kms_key_arn) ? stemcell_cloud_props.kms_key_arn : nil
 
       logger.info("Creating stemcell via ImportSnapshot using bucket '#{bucket}'")
@@ -541,7 +545,7 @@ module Bosh::AwsCloud
         import_role_name: import_role_name,
         encrypted: encrypted,
         kms_key_arn: kms_key_arn,
-        tags: tags,
+        tags: tags.nil? ? {} : tags,
       ).id
     end
 
