@@ -387,40 +387,7 @@ module Bosh::AwsCloud
     def create_stemcell(image_path, stemcell_properties)
       with_thread_name("create_stemcell(#{image_path}...)") do
         props = @props_factory.stemcell_props(stemcell_properties)
-
-        if props.is_light?
-          # select the correct image for the configured ec2 client
-          available_image = @ec2_resource.images(
-            filters: [{
-              name: 'image-id',
-              values: props.ami_ids
-            }],
-            include_deprecated: true,
-          ).first
-          raise Bosh::Clouds::CloudError, "Stemcell does not contain an AMI in region #{@config.aws.region}" unless available_image
-
-          if props.encrypted
-            copy_image_result = @ec2_client.copy_image(
-              source_region: @config.aws.region,
-              source_image_id: props.region_ami,
-              name: "Copied from SourceAMI #{props.region_ami}",
-              encrypted: props.encrypted,
-              kms_key_id: props.kms_key_arn
-            )
-
-            encrypted_image_id = copy_image_result.image_id
-            encrypted_image = @ec2_resource.image(encrypted_image_id)
-            ResourceWait.for_image(image: encrypted_image, state: 'available')
-
-            return encrypted_image_id.to_s
-          end
-
-          "#{available_image.id} light"
-        elsif (import_snapshot_opts = resolve_import_snapshot_opts(stemcell_properties))
-          create_ami_via_import_snapshot(image_path, props, import_snapshot_opts, props.tags)
-        else
-          create_ami_for_stemcell(image_path, props, props.tags)
-        end
+        dispatch_create_stemcell(image_path, props, stemcell_properties, props.tags)
       end
     end
 
@@ -461,6 +428,56 @@ module Bosh::AwsCloud
     end
 
     private
+
+    # Shared create_stemcell routing for all CPI API versions.
+    #
+    # This is the single source of truth for choosing between the light,
+    # import-snapshot, and classic heavy-stemcell paths. CloudV1#create_stemcell
+    # and CloudV3#create_stemcell both delegate here so the routing can never
+    # drift between versions again (the ImportSnapshot branch used to be present
+    # in V1 but missing from V3's override, which silently forced heavy
+    # stemcells onto the off-EC2-incompatible classic path under api_version 3).
+    #
+    # @param image_path [String] local filesystem path to a stemcell image
+    # @param props [StemcellCloudProps] parsed stemcell cloud properties
+    # @param stemcell_properties [Hash] raw stemcell properties (for import_snapshot opt-in)
+    # @param tags [Hash, Array, nil] tags to apply, sourced by the caller
+    # @return [String] EC2 AMI id of the stemcell
+    def dispatch_create_stemcell(image_path, props, stemcell_properties, tags)
+      if props.is_light?
+        # select the correct image for the configured ec2 client
+        available_image = @ec2_resource.images(
+          filters: [{
+            name: 'image-id',
+            values: props.ami_ids
+          }],
+          include_deprecated: true,
+        ).first
+        raise Bosh::Clouds::CloudError, "Stemcell does not contain an AMI in region #{@config.aws.region}" unless available_image
+
+        if props.encrypted
+          copy_image_result = @ec2_client.copy_image(
+            source_region: @config.aws.region,
+            source_image_id: props.region_ami,
+            name: "Copied from SourceAMI #{props.region_ami}",
+            encrypted: props.encrypted,
+            kms_key_id: props.kms_key_arn
+          )
+
+          encrypted_image_id = copy_image_result.image_id
+          encrypted_image = @ec2_resource.image(encrypted_image_id)
+          ResourceWait.for_image(image: encrypted_image, state: 'available')
+
+          return encrypted_image_id.to_s
+        end
+
+        "#{available_image.id} light"
+      elsif (import_snapshot_opts = resolve_import_snapshot_opts(stemcell_properties))
+        create_ami_via_import_snapshot(image_path, props, import_snapshot_opts, tags)
+      else
+        create_ami_for_stemcell(image_path, props, tags)
+      end
+    end
 
     def update_agent_settings(instance_id)
       raise ArgumentError, 'block is not provided' unless block_given?
