@@ -370,8 +370,7 @@ module Bosh::AwsCloud
     #     root.img to S3 and uses the AWS ImportSnapshot API -- this works from
     #     anywhere, including a create-env container that is not itself an EC2
     #     instance. It is opt-in via the landscape-specific
-    #     `cloud_provider.properties.aws.stemcell.import_snapshot` config
-    #     (a stemcell cloud property of the same name may override it).
+    #     `cloud_provider.properties.aws.stemcell.import_snapshot` config.
     # @param [String] image_path local filesystem path to a stemcell image
     # @param [Hash] cloud_properties AWS-specific stemcell properties
     # @option cloud_properties [String] kernel_id
@@ -440,7 +439,8 @@ module Bosh::AwsCloud
     #
     # @param image_path [String] local filesystem path to a stemcell image
     # @param props [StemcellCloudProps] parsed stemcell cloud properties
-    # @param stemcell_properties [Hash] raw stemcell properties (for import_snapshot opt-in)
+    # @param stemcell_properties [Hash] raw stemcell properties (unused; kept so
+    #   V1 and V3 share one dispatch signature)
     # @param tags [Hash, Array, nil] tags to apply, sourced by the caller
     # @return [String] EC2 AMI id of the stemcell
     def dispatch_create_stemcell(image_path, props, stemcell_properties, tags)
@@ -498,23 +498,16 @@ module Bosh::AwsCloud
     # every stemcell in a given director and is NOT baked into the (shared)
     # stemcell tarball.
     #
-    # For backwards compatibility and one-off overrides, a stemcell may still
-    # carry its own `import_snapshot` in its cloud properties; when present it
-    # is merged on top of the global config. Either source may be a bare `true`
-    # (meaning "use the import path, take bucket/role from the other source").
+    # A bare `true` means "use the import path" and yields an empty hash; the
+    # required bucket is then validated in #create_ami_via_import_snapshot.
     #
-    # @return [Hash, nil] the merged import_snapshot options, or nil if not requested
-    def resolve_import_snapshot_opts(stemcell_properties)
+    # @return [Hash, nil] the import_snapshot options, or nil if not requested
+    def resolve_import_snapshot_opts(_stemcell_properties)
       global = @config.aws.stemcell['import_snapshot'] if @config.aws.stemcell
-      per_stemcell = stemcell_properties['import_snapshot']
 
-      return nil if global.nil? && per_stemcell.nil?
-      return nil if global == false || per_stemcell == false
+      return nil if global.nil? || global == false
 
-      merged = {}
-      merged.merge!(global) if global.is_a?(Hash)
-      merged.merge!(per_stemcell) if per_stemcell.is_a?(Hash)
-      merged
+      global.is_a?(Hash) ? global : {}
     end
 
     # Container-friendly heavy-stemcell path. Unlike #create_ami_for_stemcell
