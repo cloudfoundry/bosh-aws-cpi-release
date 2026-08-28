@@ -7,10 +7,12 @@ require "spec_helper"
 # metadata endpoint (current_vm_id) or attaches an EBS volume -- the two things
 # that make the classic path fail off-EC2.
 #
-# The opt-in is landscape-specific, so its home is the CPI's global config
+# The opt-in is landscape-specific (which S3 staging bucket, which VM
+# Import/Export role), so its only home is the CPI's global config
 # (`cloud_provider.properties.aws.stemcell.import_snapshot`), which reaches the
-# CPI as `config.aws.stemcell['import_snapshot']`. A stemcell may still carry
-# its own `import_snapshot` cloud property to override the global config.
+# CPI as `config.aws.stemcell['import_snapshot']`. It is the same for every
+# stemcell in a given director and is NOT baked into the (shared) stemcell
+# tarball.
 #
 # NOTE: `mock_cloud` builds a *real* Config/AwsConfig/PropsFactory from the
 # options hash, so `import_snapshot` is injected via aws.stemcell in the CPI
@@ -73,28 +75,6 @@ describe Bosh::AwsCloud::CloudV1 do
       ).and_return(stemcell)
 
       expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-imported")
-    end
-
-    it "lets a per-stemcell import_snapshot cloud property override the global bucket/role" do
-      cloud = cloud_with_global_import_snapshot("bucket" => "my-stemcell-bucket", "role_name" => "vmimport")
-
-      # bucket comes from the per-stemcell override, role_name still from global
-      override_properties = stemcell_properties.merge(
-        "import_snapshot" => { "bucket" => "override-bucket" },
-      )
-
-      expect(cloud).not_to receive(:current_vm_id)
-
-      expect(creator).to receive(:create_via_import_snapshot).with(
-        "/tmp/foo",
-        "override-bucket",
-        import_role_name: "vmimport",
-        encrypted: false,
-        kms_key_arn: nil,
-        tags: {},
-      ).and_return(stemcell)
-
-      expect(cloud.create_stemcell("/tmp/foo", override_properties)).to eq("ami-imported")
     end
 
     it "forwards the kms_key_arn to the creator when encryption is requested" do
