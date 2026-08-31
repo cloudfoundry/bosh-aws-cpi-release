@@ -110,7 +110,7 @@ describe Bosh::AwsCloud::CloudV1 do
     end
 
     it "falls back to the classic EBS path when import_snapshot is not configured" do
-      cloud = mock_cloud do |ec2|
+      cloud = mock_cloud do
         allow(Bosh::AwsCloud::StemcellCreator).to receive(:new).and_return(creator)
         allow(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
         allow(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
