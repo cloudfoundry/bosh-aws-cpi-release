@@ -171,7 +171,11 @@ module Bosh::AwsCloud
 
       snapshot = resource.snapshot(snapshot_id)
       TagManager.create_tags(snapshot, @creation_tags)
-    rescue Aws::EC2::Errors::TagLimitExceeded => e
+    rescue Aws::Errors::ServiceError => e
+      # Tagging is a cosmetic post-step: the (expensive) import has already
+      # completed and the snapshot exists. A tag failure -- a TagLimitExceeded
+      # or a transient throttle/5xx from the tag API -- must not discard the
+      # finished import, so log and continue to AMI registration.
       logger.error("could not tag snapshot #{snapshot_id}: #{e.message}")
     end
 
