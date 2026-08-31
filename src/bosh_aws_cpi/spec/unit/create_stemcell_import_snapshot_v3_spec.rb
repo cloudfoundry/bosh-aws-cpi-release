@@ -78,6 +78,21 @@ describe Bosh::AwsCloud::CloudV3 do
       expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-imported")
     end
 
+    it "honors the documented `import_role` config key" do
+      cloud = cloud_with_global_import_snapshot("bucket" => "my-stemcell-bucket", "import_role" => "vmimport")
+
+      expect(creator).to receive(:create_via_import_snapshot).with(
+        "/tmp/foo",
+        "my-stemcell-bucket",
+        import_role_name: "vmimport",
+        encrypted: false,
+        kms_key_arn: nil,
+        tags: {},
+      ).and_return(stemcell)
+
+      expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-imported")
+    end
+
     it "applies env tags to the imported stemcell" do
       cloud = cloud_with_global_import_snapshot("bucket" => "my-stemcell-bucket", "role_name" => "vmimport")
 

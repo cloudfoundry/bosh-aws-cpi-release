@@ -514,14 +514,16 @@ module Bosh::AwsCloud
     # the ImportSnapshot API, so it can run off-EC2 (e.g. in a create-env
     # container that is not itself an EC2 instance).
     #
-    # @param opts [Hash] resolved import_snapshot options (bucket, role_name)
+    # @param opts [Hash] resolved import_snapshot options (bucket, import_role)
     def create_ami_via_import_snapshot(image_path, stemcell_cloud_props, opts, tags = nil)
       creator = StemcellCreator.new(@ec2_resource, stemcell_cloud_props)
 
       bucket = opts['bucket'] || opts['s3_bucket']
       cloud_error('import_snapshot requires an S3 bucket (set import_snapshot.bucket)') if bucket.nil? || bucket.to_s.empty?
 
-      import_role_name = opts['role_name'] || opts['import_role_name']
+      # `import_role` is the documented key; `role_name`/`import_role_name` are
+      # kept as backward-compatible aliases.
+      import_role_name = opts['import_role'] || opts['role_name'] || opts['import_role_name']
       # Normalize to the contract StemcellCreator#create_via_import_snapshot
       # expects: `encrypted` is always a boolean (an unset props attribute is
       # nil, which must read as false) and `tags` is always a hash (nil means
