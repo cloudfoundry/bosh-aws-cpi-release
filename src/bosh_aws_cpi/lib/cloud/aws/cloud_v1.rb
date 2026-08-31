@@ -386,7 +386,7 @@ module Bosh::AwsCloud
     def create_stemcell(image_path, stemcell_properties)
       with_thread_name("create_stemcell(#{image_path}...)") do
         props = @props_factory.stemcell_props(stemcell_properties)
-        dispatch_create_stemcell(image_path, props, stemcell_properties, props.tags)
+        dispatch_create_stemcell(image_path, props, props.tags)
       end
     end
 
@@ -439,11 +439,9 @@ module Bosh::AwsCloud
     #
     # @param image_path [String] local filesystem path to a stemcell image
     # @param props [StemcellCloudProps] parsed stemcell cloud properties
-    # @param stemcell_properties [Hash] raw stemcell properties (unused; kept so
-    #   V1 and V3 share one dispatch signature)
     # @param tags [Hash, Array, nil] tags to apply, sourced by the caller
     # @return [String] EC2 AMI id of the stemcell
-    def dispatch_create_stemcell(image_path, props, stemcell_properties, tags)
+    def dispatch_create_stemcell(image_path, props, tags)
       if props.is_light?
         # select the correct image for the configured ec2 client
         available_image = @ec2_resource.images(
@@ -472,7 +470,7 @@ module Bosh::AwsCloud
         end
 
         "#{available_image.id} light"
-      elsif (import_snapshot_opts = resolve_import_snapshot_opts(stemcell_properties))
+      elsif (import_snapshot_opts = resolve_import_snapshot_opts)
         create_ami_via_import_snapshot(image_path, props, import_snapshot_opts, tags)
       else
         create_ami_for_stemcell(image_path, props, tags)
@@ -494,16 +492,16 @@ module Bosh::AwsCloud
     # The config is landscape-specific (which S3 bucket, which VM Import/Export
     # role), so its natural home is the CPI's global config --
     # `cloud_provider.properties.aws.stemcell.import_snapshot` -- which reaches
-    # us as `@config.aws.stemcell['import_snapshot']`. That is the same for
-    # every stemcell in a given director and is NOT baked into the (shared)
-    # stemcell tarball.
+    # us as `@config.aws.stemcell['import_snapshot']` (AwsConfig always exposes
+    # #stemcell as a Hash). That is the same for every stemcell in a given
+    # director and is NOT baked into the (shared) stemcell tarball.
     #
     # A bare `true` means "use the import path" and yields an empty hash; the
     # required bucket is then validated in #create_ami_via_import_snapshot.
     #
     # @return [Hash, nil] the import_snapshot options, or nil if not requested
-    def resolve_import_snapshot_opts(_stemcell_properties)
-      global = @config.aws.stemcell['import_snapshot'] if @config.aws.stemcell
+    def resolve_import_snapshot_opts
+      global = @config.aws.stemcell['import_snapshot']
 
       return nil if global.nil? || global == false
 

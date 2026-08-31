@@ -11,13 +11,10 @@ module Bosh::AwsCloud
     ##
     # Creates a new EC2 AMI using stemcell image.
     #
-    # For light stemcells this resolves (and optionally re-encrypts) an existing
-    # AMI. For full (heavy) stemcells the choice between the classic
-    # EBS/current_vm_id path and the container-friendly ImportSnapshot path is
-    # made by the shared #dispatch_create_stemcell helper on CloudV1, so V1 and
-    # V3 can no longer diverge (this override previously omitted the
-    # ImportSnapshot branch entirely, forcing heavy stemcells onto the
-    # off-EC2-incompatible classic path whenever bosh negotiated api_version 3).
+    # Light stemcells resolve (and optionally re-encrypt) an existing AMI. Heavy
+    # stemcells route through the shared #dispatch_create_stemcell on CloudV1,
+    # which chooses between the classic EBS path and the ImportSnapshot path, so
+    # V1 and V3 cannot diverge.
     #
     # @param [String] image_path local filesystem path to a stemcell image
     # @param [Hash] cloud_properties AWS-specific stemcell properties
@@ -42,10 +39,9 @@ module Bosh::AwsCloud
         if props.is_light?
           create_light_stemcell_v3(props, tags)
         else
-          # Route the heavy path through the shared dispatch so the
-          # ImportSnapshot opt-in is honored identically to CloudV1. Tags are
-          # sourced from the env argument (V3-specific) rather than props.tags.
-          stemcell_id = dispatch_create_stemcell(image_path, props, stemcell_properties, tags)
+          # Route the heavy path through the shared dispatch. Tags are sourced
+          # from the env argument (V3-specific) rather than props.tags.
+          stemcell_id = dispatch_create_stemcell(image_path, props, tags)
 
           if !tags.nil? && !tags.empty?
             logger.info("Created stemcell AMI #{stemcell_id} with env tags applied at resource creation: #{tags.keys.inspect}")
@@ -59,10 +55,8 @@ module Bosh::AwsCloud
 
     private
 
-    # V3 light-stemcell handling, kept separate from CloudV1's shared dispatch
-    # because V3 additionally applies env tags at resource creation:
-    # tag_specifications on the encrypted copy_image call and explicit
-    # create_tags on the resolved image otherwise.
+    # V3 light-stemcell handling, separate from CloudV1's shared dispatch
+    # because V3 additionally applies env tags at resource creation.
     def create_light_stemcell_v3(props, tags)
       # select the correct image for the configured ec2 client
       available_image = @ec2_resource.images(
