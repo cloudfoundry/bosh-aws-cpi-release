@@ -72,6 +72,7 @@ describe Bosh::AwsCloud::CloudV3 do
         import_role_name: "vmimport",
         encrypted: false,
         kms_key_arn: nil,
+        timeout: nil,
         tags: {},
       ).and_return(stemcell)
 
@@ -87,6 +88,7 @@ describe Bosh::AwsCloud::CloudV3 do
         import_role_name: "vmimport",
         encrypted: false,
         kms_key_arn: nil,
+        timeout: nil,
         tags: {},
       ).and_return(stemcell)
 
@@ -106,6 +108,7 @@ describe Bosh::AwsCloud::CloudV3 do
         import_role_name: "vmimport",
         encrypted: false,
         kms_key_arn: nil,
+        timeout: nil,
         tags: { "director" => "my-director" },
       ).and_return(stemcell)
 
@@ -128,6 +131,7 @@ describe Bosh::AwsCloud::CloudV3 do
         import_role_name: "vmimport",
         encrypted: true,
         kms_key_arn: "arn:aws:kms:us-east-1:ID:key/GUID",
+        timeout: nil,
         tags: {},
       ).and_return(stemcell)
 

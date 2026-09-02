@@ -71,6 +71,7 @@ describe Bosh::AwsCloud::CloudV1 do
         import_role_name: "vmimport",
         encrypted: false,
         kms_key_arn: nil,
+        timeout: nil,
         tags: {},
       ).and_return(stemcell)
 
@@ -86,6 +87,23 @@ describe Bosh::AwsCloud::CloudV1 do
         import_role_name: "vmimport",
         encrypted: false,
         kms_key_arn: nil,
+        timeout: nil,
+        tags: {},
+      ).and_return(stemcell)
+
+      expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-imported")
+    end
+
+    it "forwards a configured `timeout` to the creator" do
+      cloud = cloud_with_global_import_snapshot("bucket" => "my-stemcell-bucket", "timeout" => 7200)
+
+      expect(creator).to receive(:create_via_import_snapshot).with(
+        "/tmp/foo",
+        "my-stemcell-bucket",
+        import_role_name: nil,
+        encrypted: false,
+        kms_key_arn: nil,
+        timeout: 7200,
         tags: {},
       ).and_return(stemcell)
 
@@ -108,6 +126,7 @@ describe Bosh::AwsCloud::CloudV1 do
         import_role_name: "vmimport",
         encrypted: true,
         kms_key_arn: "arn:aws:kms:us-east-1:ID:key/GUID",
+        timeout: nil,
         tags: {},
       ).and_return(stemcell)
 

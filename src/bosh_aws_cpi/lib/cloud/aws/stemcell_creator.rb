@@ -3,8 +3,17 @@ module Bosh::AwsCloud
     include Bosh::Exec
     include Helpers
 
-    IMPORT_SNAPSHOT_POLL_TIMEOUT = 3600 # in seconds
+    # Default cap on how long to wait for an ImportSnapshot task before giving
+    # up polling. ImportSnapshot of a multi-GB image can legitimately take a
+    # long time, so this default is generous and the caller can override it via
+    # the `import_snapshot.timeout` config.
+    IMPORT_SNAPSHOT_POLL_TIMEOUT = 10_800 # 3 hours, in seconds
     IMPORT_SNAPSHOT_POLL_INTERVAL = 15 # in seconds
+
+    # Raised when we stop waiting for an ImportSnapshot task that has NOT yet
+    # reached a terminal state. The task is still running server-side, so the
+    # caller must NOT delete the S3 source it is still reading from.
+    class ImportSnapshotTimeout < Bosh::Clouds::CloudError; end
 
     attr_reader :resource
     attr_reader :volume, :device_path, :image_path
@@ -45,19 +54,32 @@ module Bosh::AwsCloud
     # @param encrypted [Boolean] whether the imported snapshot must be encrypted
     # @param kms_key_arn [String, nil] optional KMS key to encrypt the snapshot;
     #   when nil and encrypted is true, AWS uses the account default EBS key
+    # @param timeout [Integer, nil] max seconds to wait for the ImportSnapshot
+    #   task; defaults to IMPORT_SNAPSHOT_POLL_TIMEOUT
     # @param tags [Hash, nil] optional string-key tag hash
-    def create_via_import_snapshot(image_path, s3_bucket, import_role_name: nil, encrypted: false, kms_key_arn: nil, tags: nil)
+    def create_via_import_snapshot(image_path, s3_bucket, import_role_name: nil, encrypted: false, kms_key_arn: nil, timeout: nil, tags: nil)
       @image_path = image_path
       @creation_tags = TagManager.tags_hash(tags)
 
       s3_key = "bosh-stemcell-import/#{SecureRandom.uuid}/root.img"
+      # Cleanup deletes the S3 source only once the import has reached a
+      # terminal state (success or AWS-reported failure). On a poll TIMEOUT the
+      # task is still running server-side and is still reading this object, so
+      # deleting it would sabotage the running import and force a full
+      # re-upload on retry -- leave it in place (an S3 lifecycle rule on the
+      # staging prefix should reap it).
+      delete_source = true
       begin
         upload_root_image_to_s3(image_path, s3_bucket, s3_key)
-        snapshot_id = import_snapshot(s3_bucket, s3_key, import_role_name, encrypted, kms_key_arn)
+        snapshot_id = import_snapshot(s3_bucket, s3_key, import_role_name, encrypted, kms_key_arn, timeout)
         tag_snapshot(snapshot_id)
         register_image_from_snapshot(snapshot_id)
+      rescue ImportSnapshotTimeout => e
+        delete_source = false
+        logger.warn("leaving staging object s3://#{s3_bucket}/#{s3_key} in place: #{e.message}")
+        raise
       ensure
-        delete_s3_object(s3_bucket, s3_key)
+        delete_s3_object(s3_bucket, s3_key) if delete_source
       end
     end
 
@@ -98,7 +120,7 @@ module Bosh::AwsCloud
       raise Bosh::Clouds::CloudError, "Unable to extract stemcell root image: #{e.message}"
     end
 
-    def import_snapshot(bucket, key, import_role_name, encrypted, kms_key_arn)
+    def import_snapshot(bucket, key, import_role_name, encrypted, kms_key_arn, timeout = nil)
       disk_container = {
         description: 'BOSH stemcell root image',
         format: 'RAW',
@@ -124,22 +146,25 @@ module Bosh::AwsCloud
       import_task = resource.client.import_snapshot(params)
       task_id = import_task.import_task_id
 
-      snapshot_id = wait_for_import_snapshot(task_id)
+      snapshot_id = wait_for_import_snapshot(task_id, timeout)
       logger.info("ImportSnapshot task '#{task_id}' produced snapshot '#{snapshot_id}'")
       snapshot_id
     rescue Aws::Errors::ServiceError => e
       raise Bosh::Clouds::CloudError, "ImportSnapshot failed: #{e.message}"
     end
 
-    def wait_for_import_snapshot(task_id)
-      deadline = Time.now + IMPORT_SNAPSHOT_POLL_TIMEOUT
+    def wait_for_import_snapshot(task_id, timeout = nil)
+      timeout ||= IMPORT_SNAPSHOT_POLL_TIMEOUT
+      deadline = Time.now + timeout
       loop do
         begin
           resp = resource.client.describe_import_snapshot_tasks(import_task_ids: [task_id])
         rescue Aws::Errors::ServiceError => e
-          # A transient throttle/5xx during the (up to 1h) poll should not abort
-          # the whole import; log and retry until the deadline is reached.
-          raise Bosh::Clouds::CloudError, "ImportSnapshot polling failed: #{e.message}" if Time.now > deadline
+          # A transient throttle/5xx during the (potentially long) poll should
+          # not abort the whole import; log and retry until the deadline. Once
+          # past the deadline the task is still running, so surface it as a
+          # timeout (leaves the S3 source in place) rather than a hard failure.
+          raise ImportSnapshotTimeout, "ImportSnapshot polling failed after #{timeout}s: #{e.message}" if Time.now > deadline
 
           logger.warn("transient error polling ImportSnapshot task '#{task_id}', will retry: #{e.message}")
           sleep(IMPORT_SNAPSHOT_POLL_INTERVAL)
@@ -158,7 +183,7 @@ module Bosh::AwsCloud
         end
 
         if Time.now > deadline
-          raise Bosh::Clouds::CloudError, "Timed out waiting for ImportSnapshot task '#{task_id}' (last status: #{status})"
+          raise ImportSnapshotTimeout, "Timed out after #{timeout}s waiting for ImportSnapshot task '#{task_id}' (last status: #{status})"
         end
 
         logger.debug("ImportSnapshot task '#{task_id}' status: #{status} (#{detail&.progress}%)")

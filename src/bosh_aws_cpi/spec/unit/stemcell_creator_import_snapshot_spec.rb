@@ -73,14 +73,25 @@ module Bosh::AwsCloud
         expect(creator.send(:wait_for_import_snapshot, 'import-task-1')).to eq('snap-after-retry')
       end
 
-      it 'times out if the task never completes within the poll timeout' do
+      it 'raises ImportSnapshotTimeout if the task never completes within the poll timeout' do
         stub_const('Bosh::AwsCloud::StemcellCreator::IMPORT_SNAPSHOT_POLL_TIMEOUT', -1)
         allow(ec2_client).to receive(:describe_import_snapshot_tasks)
           .and_return(task_double(status: 'active', progress: '10'))
 
         expect {
           creator.send(:wait_for_import_snapshot, 'import-task-1')
-        }.to raise_error(Bosh::Clouds::CloudError, /Timed out waiting for ImportSnapshot task/)
+        }.to raise_error(Bosh::AwsCloud::StemcellCreator::ImportSnapshotTimeout, /Timed out after .* waiting for ImportSnapshot task/)
+      end
+
+      it 'honors an explicit timeout argument over the default constant' do
+        # default constant is large; an explicit already-expired timeout must
+        # win so the caller-provided `import_snapshot.timeout` takes effect.
+        allow(ec2_client).to receive(:describe_import_snapshot_tasks)
+          .and_return(task_double(status: 'active', progress: '10'))
+
+        expect {
+          creator.send(:wait_for_import_snapshot, 'import-task-1', -1)
+        }.to raise_error(Bosh::AwsCloud::StemcellCreator::ImportSnapshotTimeout, /Timed out after -1s/)
       end
     end
 
@@ -179,6 +190,34 @@ module Bosh::AwsCloud
         expect(creator).to receive(:delete_s3_object).ordered
 
         expect(creator.create_via_import_snapshot('/path/to/image', 'the-bucket')).to eq(stemcell)
+      end
+
+      it 'does NOT delete the S3 source on a poll timeout (task still running)' do
+        allow(creator).to receive(:upload_root_image_to_s3)
+        allow(creator).to receive(:import_snapshot)
+          .and_raise(Bosh::AwsCloud::StemcellCreator::ImportSnapshotTimeout, 'still running')
+
+        # The whole point of D: a timeout must leave the source in place so the
+        # running import is not sabotaged and a retry need not re-upload.
+        expect(creator).not_to receive(:delete_s3_object)
+
+        expect {
+          creator.create_via_import_snapshot('/path/to/image', 'the-bucket')
+        }.to raise_error(Bosh::AwsCloud::StemcellCreator::ImportSnapshotTimeout, /still running/)
+      end
+
+      it 'passes a configured timeout through to import_snapshot' do
+        stemcell = instance_double(Bosh::AwsCloud::Stemcell)
+        allow(creator).to receive(:upload_root_image_to_s3)
+        allow(creator).to receive(:tag_snapshot)
+        allow(creator).to receive(:register_image_from_snapshot).and_return(stemcell)
+        allow(creator).to receive(:delete_s3_object)
+
+        expect(creator).to receive(:import_snapshot)
+          .with('the-bucket', anything, nil, false, nil, 7200)
+          .and_return('snap-imported')
+
+        creator.create_via_import_snapshot('/path/to/image', 'the-bucket', timeout: 7200)
       end
     end
 

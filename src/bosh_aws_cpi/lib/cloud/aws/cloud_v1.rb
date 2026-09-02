@@ -530,6 +530,10 @@ module Bosh::AwsCloud
       # "no tags", i.e. {}). This keeps nil out of the AWS boundary.
       encrypted = opts.key?('encrypted') ? !!opts['encrypted'] : !!stemcell_cloud_props.encrypted
       kms_key_arn = opts.key?('kms_key_arn') ? opts['kms_key_arn'] : stemcell_cloud_props.kms_key_arn
+      # Optional per-landscape override for how long to wait on the (possibly
+      # long-running) ImportSnapshot task; nil lets StemcellCreator use its
+      # default.
+      timeout = opts['timeout']
 
       logger.info("Creating stemcell via ImportSnapshot using bucket '#{bucket}'")
       creator.create_via_import_snapshot(
@@ -538,6 +542,7 @@ module Bosh::AwsCloud
         import_role_name: import_role_name,
         encrypted: encrypted,
         kms_key_arn: kms_key_arn,
+        timeout: timeout,
         tags: tags.nil? ? {} : tags,
       ).id
     end
