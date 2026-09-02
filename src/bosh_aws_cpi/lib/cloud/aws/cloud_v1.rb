@@ -528,8 +528,8 @@ module Bosh::AwsCloud
       # expects: `encrypted` is always a boolean (an unset props attribute is
       # nil, which must read as false) and `tags` is always a hash (nil means
       # "no tags", i.e. {}). This keeps nil out of the AWS boundary.
-      encrypted = stemcell_cloud_props.respond_to?(:encrypted) ? !!stemcell_cloud_props.encrypted : false
-      kms_key_arn = stemcell_cloud_props.respond_to?(:kms_key_arn) ? stemcell_cloud_props.kms_key_arn : nil
+      encrypted = opts.key?('encrypted') ? !!opts['encrypted'] : !!stemcell_cloud_props.encrypted
+      kms_key_arn = opts.key?('kms_key_arn') ? opts['kms_key_arn'] : stemcell_cloud_props.kms_key_arn
 
       logger.info("Creating stemcell via ImportSnapshot using bucket '#{bucket}'")
       creator.create_via_import_snapshot(
