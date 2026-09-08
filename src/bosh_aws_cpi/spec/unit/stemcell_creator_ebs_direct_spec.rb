@@ -21,14 +21,17 @@ module Bosh::AwsCloud
         'architecture' => 'x86_64',
         'root_device_name' => '/dev/xvda',
         'virtualization_type' => 'hvm',
+        'disk' => 1024,
       }
     end
     let(:aws_config) do
-      instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}, encrypted: false, kms_key_arn: nil)
+      instance_double(Bosh::AwsCloud::AwsConfig,
+        stemcell: {}, encrypted: false, kms_key_arn: nil,
+        credentials: nil, max_retries: 3, dualstack: false, region: 'us-east-1')
     end
     let(:global_config) { instance_double(Bosh::AwsCloud::Config, aws: aws_config) }
     let(:stemcell_cloud_props) { Bosh::AwsCloud::StemcellCloudProps.new(properties, global_config) }
-    let(:creator) { described_class.new(ec2_resource, stemcell_cloud_props) }
+    let(:creator) { described_class.new(ec2_resource, stemcell_cloud_props, aws_config) }
 
     let(:block_size) { 524288 }
 

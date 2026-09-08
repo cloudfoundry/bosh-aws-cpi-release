@@ -194,7 +194,7 @@ describe Bosh::AwsCloud::CloudV1 do
       it "routes to the EBS-direct creator and returns the AMI id" do
         cloud = mock_cloud do |ec2|
           expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-              .with(ec2, stemcell_cloud_props)
+              .with(ec2, stemcell_cloud_props, anything)
               .and_return(creator)
         end
 
@@ -223,7 +223,7 @@ describe Bosh::AwsCloud::CloudV1 do
 
         cloud = mock_cloud do |ec2|
           expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-              .with(ec2, tagged_cloud_props)
+              .with(ec2, tagged_cloud_props, anything)
               .and_return(creator)
         end
 
@@ -276,7 +276,7 @@ describe Bosh::AwsCloud::CloudV1 do
         stemcell_enc = instance_double(Bosh::AwsCloud::Stemcell, :id => "ami-enc")
         cloud = mock_cloud do |ec2|
           expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-              .with(ec2, cloud_props_enc)
+              .with(ec2, cloud_props_enc, anything)
               .and_return(creator)
         end
 
@@ -306,7 +306,7 @@ describe Bosh::AwsCloud::CloudV1 do
 
           cloud = mock_cloud do |ec2|
             expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-                .with(ec2, cloud_props).and_return(creator)
+                .with(ec2, cloud_props, anything).and_return(creator)
           end
 
           expect(creator).to receive(:create).with(
@@ -333,7 +333,7 @@ describe Bosh::AwsCloud::CloudV1 do
 
           cloud = mock_cloud do |ec2|
             expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-                .with(ec2, cloud_props).and_return(creator)
+                .with(ec2, cloud_props, anything).and_return(creator)
           end
 
           expect(creator).to receive(:create).with(

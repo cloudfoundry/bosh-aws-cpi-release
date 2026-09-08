@@ -17,7 +17,16 @@ module Bosh::AwsCloud
     end
     let(:virtualization_type) { 'paravirtual' }
     let(:aws_config) do
-      instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}, encrypted: false, kms_key_arn: nil)
+      instance_double(
+        Bosh::AwsCloud::AwsConfig,
+        stemcell: {},
+        encrypted: false,
+        kms_key_arn: nil,
+        region: 'us-east-1',
+        max_retries: 3,
+        dualstack: false,
+        credentials: nil,
+      )
     end
     let(:global_config) { instance_double(Bosh::AwsCloud::Config, aws: aws_config) }
     let(:stemcell_cloud_props) { Bosh::AwsCloud::StemcellCloudProps.new(properties, global_config) }
@@ -34,7 +43,7 @@ module Bosh::AwsCloud
         before { properties.delete('kernel_id') }
 
         it 'constructs correct image params' do
-          params = StemcellCreator.new(ec2_resource, stemcell_cloud_props).send(:image_params, 'id')
+          params = StemcellCreator.new(ec2_resource, stemcell_cloud_props, aws_config).send(:image_params, 'id')
 
           expect(params[:architecture]).to eq('x86_64')
           expect(params[:description]).to eq('stemcell-name 0.7.0')
@@ -63,7 +72,7 @@ module Bosh::AwsCloud
         before { properties['kernel_id'] = 'aki-zzzzzzzz' }
 
         it 'constructs the image params, including the specified kernel_id' do
-          params = StemcellCreator.new(ec2_resource, stemcell_cloud_props).send(:image_params, 'id')
+          params = StemcellCreator.new(ec2_resource, stemcell_cloud_props, aws_config).send(:image_params, 'id')
           expect(params[:kernel_id]).to eq('aki-zzzzzzzz')
         end
       end
@@ -72,7 +81,7 @@ module Bosh::AwsCloud
         let(:virtualization_type) { 'hvm' }
 
         it 'should construct correct image params' do
-          params = described_class.new(ec2_resource, stemcell_cloud_props).send(:image_params, 'id')
+          params = described_class.new(ec2_resource, stemcell_cloud_props, aws_config).send(:image_params, 'id')
 
           expect(params[:architecture]).to eq('x86_64')
           expect(params[:description]).to eq('stemcell-name 0.7.0')
@@ -102,7 +111,7 @@ module Bosh::AwsCloud
 
     describe '#create' do
       let(:ebs_client) { instance_double(Aws::EBS::Client) }
-      let(:creator) { described_class.new(ec2_resource, stemcell_cloud_props) }
+      let(:creator) { described_class.new(ec2_resource, stemcell_cloud_props, aws_config) }
 
       before do
         allow(Aws::EBS::Client).to receive(:new).and_return(ebs_client)

@@ -57,21 +57,15 @@ module Bosh::AwsCloud
     # instance id cannot change while current process is running
     # and thus memoizing it.
     def current_vm_id
-      # xxxx = coreCloud.current_vm_id()
-      # process xxxx based on version
-      # return based on version
-
       return @current_vm_id if @current_vm_id
 
       http_client = HTTPClient.new
       http_client.connect_timeout = METADATA_TIMEOUT
       headers = {}
 
-      # Using 169.254.169.254 is an EC2 convention for getting
-      # instance metadata
       response = http_client.put('http://169.254.169.254/latest/api/token', nil, { 'X-aws-ec2-metadata-token-ttl-seconds' => '300' })
       if response.status == 200
-        headers['X-aws-ec2-metadata-token'] = response.body #body consists of the token
+        headers['X-aws-ec2-metadata-token'] = response.body
       end
 
       response = http_client.get('http://169.254.169.254/latest/meta-data/instance-id/', nil, headers)
@@ -88,20 +82,6 @@ module Bosh::AwsCloud
 
     ##
     # Create an EC2 instance and wait until it's in running state
-    # @param [String] agent_id agent id associated with new VM
-    # @param [String] stemcell_id AMI id of the stemcell used to
-    #  create the new instance
-    # @param [Hash] vm_type resource pool specification
-    # @param [Hash] network_spec network specification, if it contains
-    #  security groups they must already exist
-    # @param [optional, Array] disk_locality list of disks that
-    #   might be attached to this instance in the future, can be
-    #   used as a placement hint (i.e. instance will only be created
-    #   if resource pool availability zone is the same as disk
-    #   availability zone)
-    # @param [optional, Hash] environment data to be merged into
-    #   agent settings
-    # @return [String] EC2 instance id of the new virtual machine
     def create_vm(agent_id, stemcell_id, vm_type, network_spec, disk_locality = [], environment = nil)
       raise Bosh::Clouds::CloudError, 'Cannot create VM without registry with CPI v1. Registry not configured.' unless @config.registry_configured?
 
@@ -125,7 +105,6 @@ module Bosh::AwsCloud
     ##
     # Delete EC2 instance ("terminate" in AWS language) and wait until
     # it reports as terminated
-    # @param [String] instance_id EC2 instance id
     def delete_vm(instance_id)
       with_thread_name("delete_vm(#{instance_id})") do
         logger.info("Deleting instance '#{instance_id}'")
@@ -136,29 +115,18 @@ module Bosh::AwsCloud
       end
     end
 
-    ##
-    # Reboot EC2 instance
-    # @param [String] instance_id EC2 instance id
     def reboot_vm(instance_id)
       with_thread_name("reboot_vm(#{instance_id})") do
         @instance_manager.find(instance_id).reboot
       end
     end
 
-    ##
-    # Has EC2 instance
-    # @param [String] instance_id EC2 instance id
     def has_vm?(instance_id)
       with_thread_name("has_vm?(#{instance_id})") do
         @instance_manager.find(instance_id).exists?
       end
     end
 
-    # Add tags to an instance. In addition to the supplied tags,
-    # it adds a 'Name' tag as it is shown in the AWS console.
-    # @param [String] vm vm id that was once returned by {#create_vm}
-    # @param [Hash] metadata metadata key/value pairs
-    # @return [void]
     def set_vm_metadata(vm, metadata)
       metadata = Hash[metadata.map { |key, value| [key.to_s, value] }]
 
@@ -192,12 +160,6 @@ module Bosh::AwsCloud
       logger.error("could not tag #{instance.id}: #{e.message}")
     end
 
-    ##
-    # Creates a new EBS volume
-    # @param [Integer] size disk size in MiB
-    # @param [optional, String] instance_id EC2 instance id
-    #        of the VM that this disk will be attached to
-    # @return [String] created EBS volume id
     def create_disk(size, cloud_properties, instance_id = nil)
       raise ArgumentError, 'disk size needs to be an integer' unless size.is_a?(Integer)
 
@@ -222,19 +184,10 @@ module Bosh::AwsCloud
       end
     end
 
-    ##
-    # Check whether an EBS volume exists or not
-    #
-    # @param [String] disk_id EBS volume UUID
-    # @return [bool] whether the specific disk is there or not
     def has_disk?(disk_id)
       @cloud_core.has_disk?(disk_id)
     end
 
-    ##
-    # Delete EBS volume
-    # @param [String] disk_id EBS volume id
-    # @raise [Bosh::Clouds::CloudError] if disk is not in available state
     def delete_disk(disk_id)
       with_thread_name("delete_disk(#{disk_id})") do
         volume = @ec2_resource.volume(disk_id)
@@ -248,9 +201,6 @@ module Bosh::AwsCloud
       end
     end
 
-    # Attach an EBS volume to an EC2 instance
-    # @param [String] instance_id EC2 instance id of the virtual machine to attach the disk to
-    # @param [String] disk_id EBS volume id of the disk to attach
     def attach_disk(instance_id, disk_id)
       with_thread_name("attach_disk(#{instance_id}, #{disk_id})") do
         _ = @cloud_core.attach_disk(instance_id, disk_id) do |instance, device_name|
@@ -263,9 +213,6 @@ module Bosh::AwsCloud
       end
     end
 
-    # Detach an EBS volume from an EC2 instance
-    # @param [String] instance_id EC2 instance id of the virtual machine to detach the disk from
-    # @param [String] disk_id EBS volume id of the disk to detach
     def detach_disk(instance_id, disk_id)
       with_thread_name("detach_disk(#{instance_id}, #{disk_id})") do
         @cloud_core.detach_disk(instance_id, disk_id) do |detach_disk_disk_id|
@@ -293,9 +240,6 @@ module Bosh::AwsCloud
       end
     end
 
-    # Take snapshot of disk
-    # @param [String] disk_id disk id of the disk to take the snapshot of
-    # @return [String] snapshot id
     def snapshot_disk(disk_id, metadata)
       metadata = Hash[metadata.map { |key, value| [key.to_s, value] }]
 
@@ -337,8 +281,6 @@ module Bosh::AwsCloud
       end
     end
 
-    # Delete a disk snapshot
-    # @param [String] snapshot_id snapshot id to delete
     def delete_snapshot(snapshot_id)
       with_thread_name("delete_snapshot(#{snapshot_id})") do
         snapshot = @ec2_resource.snapshot(snapshot_id)
@@ -351,10 +293,6 @@ module Bosh::AwsCloud
       end
     end
 
-    # Configure network for an EC2 instance. No longer supported.
-    # @param [String] instance_id EC2 instance id
-    # @param [Hash] network_spec network properties
-    # @raise [Bosh::Clouds:NotSupported] configure_networks is no longer supported
     def configure_networks(_instance_id, _network_spec)
       raise Bosh::Clouds::NotSupported, 'configure_networks is no longer supported'
     end
@@ -363,24 +301,11 @@ module Bosh::AwsCloud
     # Creates a new EC2 AMI using stemcell image. Light stemcells resolve an
     # existing AMI via the API; heavy stemcells are imported via the EBS direct
     # APIs (see #create_ami_for_stemcell).
-    # @param [String] image_path local filesystem path to a stemcell image
-    # @param [Hash] cloud_properties AWS-specific stemcell properties
-    # @option cloud_properties [String] kernel_id
-    #   AKI, auto-selected based on the architecture and root device, unless specified
-    # @option cloud_properties [String] root_device_name
-    #   block device path (e.g. /dev/sda1), provided by the stemcell manifest, unless specified
-    # @option cloud_properties [String] architecture
-    #   instruction set architecture (e.g. x86_64), provided by the stemcell manifest,
-    #   unless specified
-    # @option cloud_properties [String] disk (2048)
-    #   root disk size
-    # @return [String] EC2 AMI name of the stemcell
     def create_stemcell(image_path, stemcell_properties)
       with_thread_name("create_stemcell(#{image_path}...)") do
         props = @props_factory.stemcell_props(stemcell_properties)
 
         if props.is_light?
-          # select the correct image for the configured ec2 client
           available_image = @ec2_resource.images(
             filters: [{
               name: 'image-id',
@@ -413,18 +338,13 @@ module Bosh::AwsCloud
       end
     end
 
-    # Delete a stemcell and the accompanying snapshots
-    # @param [String] stemcell_id EC2 AMI name of the stemcell to be deleted
     def delete_stemcell(stemcell_id)
       with_thread_name("delete_stemcell(#{stemcell_id})") do
         stemcell = StemcellFinder.find_by_id(@ec2_resource, stemcell_id)
         stemcell.delete
       end
     end
-    # Map a set of cloud agnostic VM properties (cpu, ram, ephemeral_disk_size) to
-    # a set of AWS specific cloud_properties
-    # @param [Hash] vm_properties requested cpu, ram, and ephemeral_disk_size
-    # @return [Hash] AWS specific cloud_properties describing instance (e.g. instance_type)
+
     def calculate_vm_cloud_properties(vm_properties)
       required_keys = ['cpu', 'ram', 'ephemeral_disk_size']
       missing_keys = required_keys.reject { |key| vm_properties[key] }
@@ -442,8 +362,6 @@ module Bosh::AwsCloud
       }
     end
 
-    # Information about AWS CPI, currently supported stemcell formats
-    # @return [Hash] AWS CPI properties
     def info
       @cloud_core = CloudCore.new(@config, @logger, @volume_manager, @az_selector, API_VERSION)
       @cloud_core.info
@@ -464,7 +382,7 @@ module Bosh::AwsCloud
     # cannot diverge. Callers pass the tags correct for their version (props.tags
     # for V1, the env argument for V3).
     def create_ami_for_stemcell(image_path, stemcell_cloud_props, tags = nil)
-      creator = StemcellCreator.new(@ec2_resource, stemcell_cloud_props)
+      creator = StemcellCreator.new(@ec2_resource, stemcell_cloud_props, @config.aws)
 
       logger.info('Creating stemcell via EBS direct APIs')
       creator.create(
