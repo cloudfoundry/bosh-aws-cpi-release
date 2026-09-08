@@ -4,20 +4,8 @@ describe Bosh::AwsCloud::CloudV1 do
   before { @tmp_dir = Dir.mktmpdir }
   after { FileUtils.rm_rf(@tmp_dir) }
 
-  describe "EBS-volume based flow" do
+  describe "create_stemcell" do
     let(:creator) { double(Bosh::AwsCloud::StemcellCreator) }
-    let(:volume_manager) { instance_double(Bosh::AwsCloud::VolumeManager) }
-    let(:az_selector) do
-      instance_double(Bosh::AwsCloud::AvailabilityZoneSelector, select_availability_zone: "us-east-1a")
-    end
-    let(:disk_config) do
-      {
-        size: 2,
-        availability_zone: "us-east-1a",
-        volume_type: "gp3",
-        encrypted: false,
-      }
-    end
 
     context "light stemcell" do
       let(:ami_id) { "ami-xxxxxxxx" }
@@ -187,9 +175,7 @@ describe Bosh::AwsCloud::CloudV1 do
           "virtualization_type" => "paravirtual",
         }
       end
-      let(:volume) { instance_double(Aws::EC2::Volume, :id => "vol-xxxxxxxx") }
       let(:stemcell) { instance_double(Bosh::AwsCloud::Stemcell, :id => "ami-xxxxxxxx") }
-      let(:instance) { instance_double(Aws::EC2::Instance, instance_type: "instance-type") }
       let(:aws_config) do
         instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}, encrypted: false, kms_key_arn: nil)
       end
@@ -205,31 +191,19 @@ describe Bosh::AwsCloud::CloudV1 do
             .and_return(stemcell_cloud_props)
       end
 
-      it "should create a stemcell" do
+      it "routes to the EBS-direct creator and returns the AMI id" do
         cloud = mock_cloud do |ec2|
-          allow(ec2).to receive(:volume).with("vol-xxxxxxxx").and_return(volume)
-          allow(ec2).to receive(:instance).with("i-xxxxxxxx").and_return(instance)
-
           expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
               .with(ec2, stemcell_cloud_props)
               .and_return(creator)
-          expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
-          expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
         end
 
-        allow(instance).to receive(:exists?).and_return(true)
-        allow(instance).to receive(:reload).and_return(instance)
-        allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
-
-        expect(volume_manager).to receive(:create_ebs_volume).with(disk_config).and_return(volume)
-        expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return("/dev/sdh")
-        expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id, anything).and_return("/dev/sdh")
-        expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
-
-        expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", {}).and_return(stemcell)
-
-        expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
-        expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
+        expect(creator).to receive(:create).with(
+          "/tmp/foo",
+          encrypted: false,
+          kms_key_arn: nil,
+          tags: {},
+        ).and_return(stemcell)
 
         expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
       end
@@ -238,401 +212,138 @@ describe Bosh::AwsCloud::CloudV1 do
         expect(stemcell_cloud_props.tags).to eq({})
       end
 
-      it "should create a stemcell forwarding tags to the creator" do
+      it "forwards cloud-property tags to the EBS-direct creator" do
         tags = { "env" => "test", "owner" => "bosh" }
-        tagged_stemcell_properties = stemcell_properties.merge("tags" => tags)
-        tagged_cloud_props = Bosh::AwsCloud::StemcellCloudProps.new(tagged_stemcell_properties, global_config)
-        tagged_disk_config = disk_config.merge(
-          tag_specifications: [
-            {
-              resource_type: "volume",
-              tags: [{ key: "env", value: "test" }, { key: "owner", value: "bosh" }],
-            },
-          ]
-        )
+        tagged_properties = stemcell_properties.merge("tags" => tags)
+        tagged_cloud_props = Bosh::AwsCloud::StemcellCloudProps.new(tagged_properties, global_config)
 
         allow(props_factory).to receive(:stemcell_props)
-            .with(tagged_stemcell_properties)
+            .with(tagged_properties)
             .and_return(tagged_cloud_props)
 
         cloud = mock_cloud do |ec2|
-          allow(ec2).to receive(:volume).with("vol-xxxxxxxx").and_return(volume)
-          allow(ec2).to receive(:instance).with("i-xxxxxxxx").and_return(instance)
-
           expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
               .with(ec2, tagged_cloud_props)
               .and_return(creator)
-          expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
-          expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
         end
 
-        allow(instance).to receive(:exists?).and_return(true)
-        allow(instance).to receive(:reload).and_return(instance)
-        allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
+        expect(creator).to receive(:create).with(
+          "/tmp/foo",
+          encrypted: false,
+          kms_key_arn: nil,
+          tags: tags,
+        ).and_return(stemcell)
 
-        expect(volume_manager).to receive(:create_ebs_volume).with(tagged_disk_config).and_return(volume)
-        expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return("/dev/sdh")
-        expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id, anything).and_return("/dev/sdh")
-        expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
-
-        expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", tags).and_return(stemcell)
-
-        expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
-        expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
-
-        expect(cloud.create_stemcell("/tmp/foo", tagged_stemcell_properties)).to eq("ami-xxxxxxxx")
+        expect(cloud.create_stemcell("/tmp/foo", tagged_properties)).to eq("ami-xxxxxxxx")
       end
 
-      context "when the CPI configuration includes a kernel_id for stemcell" do
-        it "creates a stemcell" do
-          options = mock_cloud_options["properties"]
-          options["aws"]["stemcell"] = { "kernel_id" => "fake-kernel-id" }
-          cloud = mock_cloud(options) do |ec2|
-            allow(ec2).to receive(:volume).with("vol-xxxxxxxx").and_return(volume)
-            allow(ec2).to receive(:instance).with("i-xxxxxxxx").and_return(instance)
-
-            stemcell_properties.merge("kernel_id" => "fake-kernel-id")
-            expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-                .with(ec2, stemcell_cloud_props)
-                .and_return(creator)
-            expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
-            expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
-          end
-
-          allow(instance).to receive(:exists?).and_return(true)
-          allow(instance).to receive(:reload).and_return(instance)
-          allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
-
-          expect(volume_manager).to receive(:create_ebs_volume).with(disk_config).and_return(volume)
-          expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return("/dev/sdh")
-          expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id, anything).and_return("/dev/sdh")
-          expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
-
-          allow(creator).to receive(:create)
-          expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", {}).and_return(stemcell)
-
-          expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
-          expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
-
-          expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
+      it "creates a stemcell via EBS direct without touching EC2 metadata or EBS" do
+        volume_manager = instance_double(Bosh::AwsCloud::VolumeManager)
+        cloud = mock_cloud do
+          allow(Bosh::AwsCloud::StemcellCreator).to receive(:new).and_return(creator)
+          allow(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
         end
 
-        it "creates a stemcell forwarding tags to the creator" do
-          tags = { "env" => "test", "owner" => "bosh" }
-          tagged_stemcell_properties = stemcell_properties.merge("tags" => tags)
-          tagged_cloud_props = Bosh::AwsCloud::StemcellCloudProps.new(tagged_stemcell_properties, global_config)
-          tagged_disk_config = disk_config.merge(
-            tag_specifications: [
-              {
-                resource_type: "volume",
-                tags: [{ key: "env", value: "test" }, { key: "owner", value: "bosh" }],
-              },
-            ]
-          )
+        expect(cloud).not_to receive(:current_vm_id)
+        expect(volume_manager).not_to receive(:create_ebs_volume)
+        expect(volume_manager).not_to receive(:attach_ebs_volume)
 
-          options = mock_cloud_options["properties"]
-          options["aws"]["stemcell"] = { "kernel_id" => "fake-kernel-id" }
+        expect(creator).to receive(:create).with(
+          "/tmp/foo",
+          encrypted: false,
+          kms_key_arn: nil,
+          tags: {},
+        ).and_return(stemcell)
 
-          allow(props_factory).to receive(:stemcell_props)
-              .with(tagged_stemcell_properties)
-              .and_return(tagged_cloud_props)
-
-          cloud = mock_cloud(options) do |ec2|
-            allow(ec2).to receive(:volume).with("vol-xxxxxxxx").and_return(volume)
-            allow(ec2).to receive(:instance).with("i-xxxxxxxx").and_return(instance)
-
-            expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-                .with(ec2, tagged_cloud_props)
-                .and_return(creator)
-            expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
-            expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
-          end
-
-          allow(instance).to receive(:exists?).and_return(true)
-          allow(instance).to receive(:reload).and_return(instance)
-          allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
-
-          expect(volume_manager).to receive(:create_ebs_volume).with(tagged_disk_config).and_return(volume)
-          expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return("/dev/sdh")
-          expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id, anything).and_return("/dev/sdh")
-          expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
-
-          expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", tags).and_return(stemcell)
-
-          expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
-          expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
-
-          expect(cloud.create_stemcell("/tmp/foo", tagged_stemcell_properties)).to eq("ami-xxxxxxxx")
-        end
+        expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
       end
 
-      context "when encrypted flag is set to true" do
-        context "and kms_key_arn is provided" do
-          let(:stemcell_properties) do
-            {
-              "root_device_name" => "/dev/sda1",
-              "architecture" => "x86_64",
-              "name" => "stemcell-name",
-              "version" => "1.2.3",
-              "virtualization_type" => "paravirtual",
-              "encrypted" => true,
-              "kms_key_arn" => "arn:aws:kms:us-east-1:ID:key/GUID",
-            }
-          end
-          let(:disk_config) do
-            {
-              size: 2,
-              availability_zone: "us-east-1a",
-              volume_type: "gp3",
-              encrypted: true,
-              kms_key_id: "arn:aws:kms:us-east-1:ID:key/GUID",
-            }
-          end
+      it "forwards encrypted/kms_key_arn cloud properties to the EBS-direct creator" do
+        props_with_enc = stemcell_properties.merge(
+          "encrypted" => true,
+          "kms_key_arn" => "arn:aws:kms:us-east-1:ID:key/GUID",
+        )
+        cloud_props_enc = Bosh::AwsCloud::StemcellCloudProps.new(
+          props_with_enc,
+          instance_double(Bosh::AwsCloud::Config, aws:
+            instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}, encrypted: true,
+              kms_key_arn: "arn:aws:kms:us-east-1:ID:key/GUID")),
+        )
+        allow(props_factory).to receive(:stemcell_props)
+            .with(props_with_enc)
+            .and_return(cloud_props_enc)
 
-          it "should create stemcell with encrypted disk with the given kms key" do
-            cloud = mock_cloud do |ec2|
-              allow(ec2).to receive(:volume).with("vol-xxxxxxxx").and_return(volume)
-              allow(ec2).to receive(:instance).with("i-xxxxxxxx").and_return(instance)
-
-              expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-                                                           .with(ec2, stemcell_cloud_props)
-                                                           .and_return(creator)
-              expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
-              expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
-            end
-
-            allow(instance).to receive(:exists?).and_return(true)
-            allow(instance).to receive(:reload).and_return(instance)
-            allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
-
-            expect(volume_manager).to receive(:create_ebs_volume).with(disk_config).and_return(volume)
-            expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return("/dev/sdh")
-            expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id, anything).and_return("/dev/sdh")
-            expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
-
-            expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", {}).and_return(stemcell)
-
-            expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
-            expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
-
-            expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
-          end
-
-          it "should create stemcell with encrypted disk with the given kms key, forwarding tags to the creator" do
-            tags = { "env" => "test", "owner" => "bosh" }
-            tagged_stemcell_properties = stemcell_properties.merge("tags" => tags)
-            tagged_cloud_props = Bosh::AwsCloud::StemcellCloudProps.new(tagged_stemcell_properties, global_config)
-            tagged_disk_config = disk_config.merge(
-              tag_specifications: [
-                {
-                  resource_type: "volume",
-                  tags: [{ key: "env", value: "test" }, { key: "owner", value: "bosh" }],
-                },
-              ]
-            )
-
-            allow(props_factory).to receive(:stemcell_props)
-                .with(tagged_stemcell_properties)
-                .and_return(tagged_cloud_props)
-
-            cloud = mock_cloud do |ec2|
-              allow(ec2).to receive(:volume).with("vol-xxxxxxxx").and_return(volume)
-              allow(ec2).to receive(:instance).with("i-xxxxxxxx").and_return(instance)
-
-              expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-                                                           .with(ec2, tagged_cloud_props)
-                                                           .and_return(creator)
-              expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
-              expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
-            end
-
-            allow(instance).to receive(:exists?).and_return(true)
-            allow(instance).to receive(:reload).and_return(instance)
-            allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
-
-            expect(volume_manager).to receive(:create_ebs_volume).with(tagged_disk_config).and_return(volume)
-            expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return("/dev/sdh")
-            expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id, anything).and_return("/dev/sdh")
-            expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
-
-            expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", tags).and_return(stemcell)
-
-            expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
-            expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
-
-            expect(cloud.create_stemcell("/tmp/foo", tagged_stemcell_properties)).to eq("ami-xxxxxxxx")
-          end
+        stemcell_enc = instance_double(Bosh::AwsCloud::Stemcell, :id => "ami-enc")
+        cloud = mock_cloud do |ec2|
+          expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
+              .with(ec2, cloud_props_enc)
+              .and_return(creator)
         end
 
-        context "and kms_key_arn is NOT provided" do
-          let(:stemcell_properties) do
-            {
-              "root_device_name" => "/dev/sda1",
-              "architecture" => "x86_64",
-              "name" => "stemcell-name",
-              "version" => "1.2.3",
-              "virtualization_type" => "paravirtual",
-              "encrypted" => true,
-            }
-          end
-          let(:disk_config) do
-            {
-              size: 2,
-              availability_zone: "us-east-1a",
-              volume_type: "gp3",
-              encrypted: true,
-            }
-          end
+        expect(creator).to receive(:create).with(
+          "/tmp/foo",
+          encrypted: true,
+          kms_key_arn: "arn:aws:kms:us-east-1:ID:key/GUID",
+          tags: {},
+        ).and_return(stemcell_enc)
 
-          it "should create stemcell with encrypted disk" do
-            cloud = mock_cloud do |ec2|
-              allow(ec2).to receive(:volume).with("vol-xxxxxxxx").and_return(volume)
-              allow(ec2).to receive(:instance).with("i-xxxxxxxx").and_return(instance)
-
-              expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-                                                           .with(ec2, stemcell_cloud_props)
-                                                           .and_return(creator)
-              expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
-              expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
-            end
-
-            allow(instance).to receive(:exists?).and_return(true)
-            allow(instance).to receive(:reload).and_return(instance)
-            allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
-
-            expect(volume_manager).to receive(:create_ebs_volume).with(disk_config).and_return(volume)
-            expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return("/dev/sdh")
-            expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id, anything).and_return("/dev/sdh")
-            expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
-
-            expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", {}).and_return(stemcell)
-
-            expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
-            expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
-
-            expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
-          end
-
-          it "should create stemcell with encrypted disk forwarding tags to the creator" do
-            tags = { "env" => "test", "owner" => "bosh" }
-            tagged_stemcell_properties = stemcell_properties.merge("tags" => tags)
-            tagged_cloud_props = Bosh::AwsCloud::StemcellCloudProps.new(tagged_stemcell_properties, global_config)
-            tagged_disk_config = disk_config.merge(
-              tag_specifications: [
-                {
-                  resource_type: "volume",
-                  tags: [{ key: "env", value: "test" }, { key: "owner", value: "bosh" }],
-                },
-              ]
-            )
-
-            allow(props_factory).to receive(:stemcell_props)
-                .with(tagged_stemcell_properties)
-                .and_return(tagged_cloud_props)
-
-            cloud = mock_cloud do |ec2|
-              allow(ec2).to receive(:volume).with("vol-xxxxxxxx").and_return(volume)
-              allow(ec2).to receive(:instance).with("i-xxxxxxxx").and_return(instance)
-
-              expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-                                                           .with(ec2, tagged_cloud_props)
-                                                           .and_return(creator)
-              expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
-              expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
-            end
-
-            allow(instance).to receive(:exists?).and_return(true)
-            allow(instance).to receive(:reload).and_return(instance)
-            allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
-
-            expect(volume_manager).to receive(:create_ebs_volume).with(tagged_disk_config).and_return(volume)
-            expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return("/dev/sdh")
-            expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id, anything).and_return("/dev/sdh")
-            expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
-
-            expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", tags).and_return(stemcell)
-
-            expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
-            expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
-
-            expect(cloud.create_stemcell("/tmp/foo", tagged_stemcell_properties)).to eq("ami-xxxxxxxx")
-          end
-        end
+        expect(cloud.create_stemcell("/tmp/foo", props_with_enc)).to eq("ami-enc")
       end
 
       context "when encryption information is incomplete" do
-        def test_for_unencrypted_root_disk()
+        it "passes encrypted: false when encrypted=false and kms_key_arn is provided" do
+          props = stemcell_properties.merge(
+            "encrypted" => false,
+            "kms_key_arn" => "arn:aws:kms:us-east-1:ID:key/GUID",
+          )
+          cloud_props = Bosh::AwsCloud::StemcellCloudProps.new(
+            props,
+            instance_double(Bosh::AwsCloud::Config, aws:
+              instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}, encrypted: false,
+                kms_key_arn: "arn:aws:kms:us-east-1:ID:key/GUID")),
+          )
+          allow(props_factory).to receive(:stemcell_props).with(props).and_return(cloud_props)
+
           cloud = mock_cloud do |ec2|
-            allow(ec2).to receive(:volume).with("vol-xxxxxxxx").and_return(volume)
-            allow(ec2).to receive(:instance).with("i-xxxxxxxx").and_return(instance)
-
             expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-                                                         .with(ec2, stemcell_cloud_props)
-                                                         .and_return(creator)
-            expect(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
-            expect(Bosh::AwsCloud::AvailabilityZoneSelector).to receive(:new).and_return(az_selector)
+                .with(ec2, cloud_props).and_return(creator)
           end
 
-          allow(instance).to receive(:exists?).and_return(true)
-          allow(instance).to receive(:reload).and_return(instance)
-          allow(cloud).to receive(:current_vm_id).and_return("i-xxxxxxxx")
-
-          expect(volume_manager).to receive(:create_ebs_volume).with(disk_config).and_return(volume)
-          expect(volume_manager).to receive(:attach_ebs_volume).with(instance, volume).and_return("/dev/sdh")
-          expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).with("/dev/sdh", instance.instance_type, volume.id, anything).and_return("/dev/sdh")
-          expect(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).with("/dev/sdh").and_return("/dev/xvdh")
-
-          expect(creator).to receive(:create).with(volume, "/dev/xvdh", "/tmp/foo", {}).and_return(stemcell)
-
-          expect(volume_manager).to receive(:detach_ebs_volume).with(instance, volume, true)
-          expect(volume_manager).to receive(:delete_ebs_volume).with(volume)
-
-          expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
-        end
-
-        let(:disk_config) do
-          {
-            size: 2,
-            availability_zone: "us-east-1a",
-            volume_type: "gp3",
+          expect(creator).to receive(:create).with(
+            "/tmp/foo",
             encrypted: false,
-            kms_key_id: "arn:aws:kms:us-east-1:ID:key/GUID",
-          }
+            kms_key_arn: "arn:aws:kms:us-east-1:ID:key/GUID",
+            tags: {},
+          ).and_return(stemcell)
+
+          expect(cloud.create_stemcell("/tmp/foo", props)).to eq("ami-xxxxxxxx")
         end
 
-        context "when `encrypted` is false and kms_key_arn is provided" do
-          let(:stemcell_properties) do
-            {
-              "root_device_name" => "/dev/sda1",
-              "architecture" => "x86_64",
-              "name" => "stemcell-name",
-              "version" => "1.2.3",
-              "virtualization_type" => "paravirtual",
-              "encrypted" => false,
-              "kms_key_arn" => "arn:aws:kms:us-east-1:ID:key/GUID",
-            }
+        it "passes encrypted: false when encrypted is absent and kms_key_arn is provided" do
+          props = stemcell_properties.merge(
+            "kms_key_arn" => "arn:aws:kms:us-east-1:ID:key/GUID",
+          )
+          cloud_props = Bosh::AwsCloud::StemcellCloudProps.new(
+            props,
+            instance_double(Bosh::AwsCloud::Config, aws:
+              instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}, encrypted: false,
+                kms_key_arn: "arn:aws:kms:us-east-1:ID:key/GUID")),
+          )
+          allow(props_factory).to receive(:stemcell_props).with(props).and_return(cloud_props)
+
+          cloud = mock_cloud do |ec2|
+            expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
+                .with(ec2, cloud_props).and_return(creator)
           end
 
-          it "should create an unencrypted stemcell" do
-            test_for_unencrypted_root_disk
-          end
-        end
+          expect(creator).to receive(:create).with(
+            "/tmp/foo",
+            encrypted: false,
+            kms_key_arn: "arn:aws:kms:us-east-1:ID:key/GUID",
+            tags: {},
+          ).and_return(stemcell)
 
-        context "when `encrypted` is missing and kms_key_arn is provided" do
-          let(:stemcell_properties) do
-            {
-              "root_device_name" => "/dev/sda1",
-              "architecture" => "x86_64",
-              "name" => "stemcell-name",
-              "version" => "1.2.3",
-              "virtualization_type" => "paravirtual",
-              "kms_key_arn" => "arn:aws:kms:us-east-1:ID:key/GUID",
-            }
-          end
-
-          it "should create an unencrypted stemcell" do
-            test_for_unencrypted_root_disk
-          end
+          expect(cloud.create_stemcell("/tmp/foo", props)).to eq("ami-xxxxxxxx")
         end
       end
     end

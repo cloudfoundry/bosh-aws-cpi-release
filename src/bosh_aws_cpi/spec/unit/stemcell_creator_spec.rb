@@ -2,18 +2,20 @@ require 'spec_helper'
 
 module Bosh::AwsCloud
   describe StemcellCreator do
-    let(:ec2_resource) { instance_double(Aws::EC2::Resource) }
+    let(:ec2_client) { instance_double(Aws::EC2::Client) }
+    let(:ec2_config) { double('ec2_config', region: 'us-east-1', credentials: nil) }
+    let(:ec2_resource) { instance_double(Aws::EC2::Resource, client: ec2_client) }
     let(:properties) do
       {
-          'name' => 'stemcell-name',
-          'version' => '0.7.0',
-          'infrastructure' => 'aws',
-          'architecture' => 'x86_64',
-          'root_device_name' => '/dev/sda1',
-          'virtualization_type' => virtualization_type
+        'name' => 'stemcell-name',
+        'version' => '0.7.0',
+        'infrastructure' => 'aws',
+        'architecture' => 'x86_64',
+        'root_device_name' => '/dev/sda1',
+        'virtualization_type' => virtualization_type,
       }
     end
-    let(:virtualization_type) {'paravirtual'}
+    let(:virtualization_type) { 'paravirtual' }
     let(:aws_config) do
       instance_double(Bosh::AwsCloud::AwsConfig, stemcell: {}, encrypted: false, kms_key_arn: nil)
     end
@@ -22,75 +24,14 @@ module Bosh::AwsCloud
 
     before do
       allow(Bosh::AwsCloud::AKIPicker).to receive(:new).and_return(double('aki', :pick => 'aki-xxxxxxxx'))
-    end
-
-    let(:volume) { instance_double(Aws::EC2::Volume, id: 'vol-stemcell') }
-    let(:snapshot) { instance_double(Aws::EC2::Snapshot, :id => 'snap-xxxxxxxx') }
-    let(:image_id) {'ami-a1b2c3d4'}
-    let(:image) { instance_double(Aws::EC2::Image, :id => image_id) }
-    let(:ec2_client) { instance_double(Aws::EC2::Client) }
-
-    before do
-      allow(ec2_resource).to receive(:client).and_return(ec2_client)
-    end
-
-    it 'should create a real stemcell' do
-      creator = described_class.new(ec2_resource, stemcell_cloud_props)
-      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(snapshot: snapshot, state: 'completed')
-      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(image: image, state: 'available')
-      allow(SecureRandom).to receive(:uuid).and_return('fake-uuid')
-      allow(ec2_resource).to receive(:images).and_return(double(Aws::Resources::Collection, first: image))
-      expect(volume).to receive(:create_snapshot).with(tag_specifications: []).and_return(snapshot)
-      expect(ec2_client).to receive(:register_image) do |params|
-        expect(params[:tag_specifications]).not_to be_nil
-        expect(params[:tag_specifications].first[:resource_type]).to eq('image')
-        expect(params[:tag_specifications].first[:tags]).to include(
-          { key: 'Name', value: 'stemcell-name 0.7.0' }
-        )
-        double('object', image_id: image_id)
-      end
-
-      expect(creator).to receive(:copy_root_image)
-
-      creator.create(volume, 'device_path', '/path/to/image')
-    end
-
-    it 'passes caller-supplied tags through to create_snapshot and register_image' do
-      creator = described_class.new(ec2_resource, stemcell_cloud_props)
-      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_snapshot).with(snapshot: snapshot, state: 'completed')
-      allow(Bosh::AwsCloud::ResourceWait).to receive(:for_image).with(image: image, state: 'available')
-      allow(SecureRandom).to receive(:uuid).and_return('fake-uuid')
-      allow(ec2_resource).to receive(:images).and_return(double(Aws::Resources::Collection, first: image))
-
-      expect(volume).to receive(:create_snapshot) do |params|
-        expect(params[:tag_specifications]).not_to be_empty
-        expect(params[:tag_specifications].first[:resource_type]).to eq('snapshot')
-        expect(params[:tag_specifications].first[:tags]).to include({ key: 'foo', value: 'bar' })
-        snapshot
-      end
-
-      expect(ec2_client).to receive(:register_image) do |params|
-        expect(params[:tag_specifications]).not_to be_nil
-        expect(params[:tag_specifications].first[:resource_type]).to eq('image')
-        expect(params[:tag_specifications].first[:tags]).to include(
-          { key: 'foo', value: 'bar' },
-          { key: 'Name', value: 'stemcell-name 0.7.0' }
-        )
-        double('object', image_id: image_id)
-      end
-
-      expect(creator).to receive(:copy_root_image)
-
-      creator.create(volume, 'device_path', '/path/to/image', { 'foo' => 'bar' })
+      allow(ec2_client).to receive(:config).and_return(ec2_config)
     end
 
     describe '#image_params' do
       context 'when virtualization type is paravirtual, and no kernel_id is specified' do
-        let(:virtualization_type) {'paravirtual'}
+        let(:virtualization_type) { 'paravirtual' }
 
-        before do
-          properties.delete('kernel_id')
-        end
+        before { properties.delete('kernel_id') }
 
         it 'constructs correct image params' do
           params = StemcellCreator.new(ec2_resource, stemcell_cloud_props).send(:image_params, 'id')
@@ -102,9 +43,7 @@ module Bosh::AwsCloud
           expect(params[:block_device_mappings]).to eq([
             {
               :device_name => '/dev/sda',
-              :ebs => {
-                :snapshot_id => 'id',
-              }
+              :ebs => { :snapshot_id => 'id' },
             },
             {
               :device_name => '/dev/sdb',
@@ -119,11 +58,9 @@ module Bosh::AwsCloud
       end
 
       context 'when virtualization is paravirtual, and kernel_id is specified' do
-        let(:virtualization_type) {'paravirtual'}
+        let(:virtualization_type) { 'paravirtual' }
 
-        before do
-          properties['kernel_id'] = 'aki-zzzzzzzz'
-        end
+        before { properties['kernel_id'] = 'aki-zzzzzzzz' }
 
         it 'constructs the image params, including the specified kernel_id' do
           params = StemcellCreator.new(ec2_resource, stemcell_cloud_props).send(:image_params, 'id')
@@ -132,7 +69,7 @@ module Bosh::AwsCloud
       end
 
       context 'when the virtualization type is hvm' do
-        let(:virtualization_type) {'hvm'}
+        let(:virtualization_type) { 'hvm' }
 
         it 'should construct correct image params' do
           params = described_class.new(ec2_resource, stemcell_cloud_props).send(:image_params, 'id')
@@ -146,9 +83,7 @@ module Bosh::AwsCloud
           expect(params[:block_device_mappings]).to eq([
             {
               :device_name => '/dev/xvda',
-              :ebs => {
-                :snapshot_id => 'id',
-              },
+              :ebs => { :snapshot_id => 'id' },
             },
             {
               :device_name => '/dev/sdb',
@@ -165,51 +100,24 @@ module Bosh::AwsCloud
       end
     end
 
-    describe '#find_in_path' do
-      it 'should not find a missing file' do
-        creator = described_class.new(ec2_resource, properties)
-        expect(creator.send(:find_in_path, 'some_non_existant_file')).to be_nil
+    describe '#create' do
+      let(:ebs_client) { instance_double(Aws::EBS::Client) }
+      let(:creator) { described_class.new(ec2_resource, stemcell_cloud_props) }
+
+      before do
+        allow(Aws::EBS::Client).to receive(:new).and_return(ebs_client)
+        allow(SecureRandom).to receive(:uuid).and_return('fake-uuid')
       end
 
-      it 'should find stemcell-copy' do
-        Dir.mktmpdir do |dir|
-          ENV['PATH'] += ":#{dir}"
-          f = File.open(File.join(dir, 'fake-stemcell-copy'), 'w')
-          filename = f.path
-          f.close
-          creator = described_class.new(ec2_resource, stemcell_cloud_props)
-          expect(creator.send(:find_in_path, File.basename('fake-stemcell-copy'))).to eq(filename)
-        end
-      end
-    end
+      it 'forwards the tags: kwarg to tag_snapshot' do
+        stemcell = instance_double(Bosh::AwsCloud::Stemcell)
+        allow(creator).to receive(:extract_root_image)
+        allow(creator).to receive(:write_snapshot_via_ebs_direct).and_return('snap-tagged')
+        expect(creator).to receive(:tag_snapshot).with('snap-tagged').ordered
+        allow(creator).to receive(:register_image_from_snapshot).and_return(stemcell)
 
-    describe '#copy_root_image' do
-      let(:creator) do
-        creator = described_class.new(ec2_resource, stemcell_cloud_props)
-        allow(creator).to receive(:image_path).and_return('/path/to/image')
-        allow(creator).to receive(:device_path).and_return('/dev/volume')
-        creator
-      end
-
-      it 'should call stemcell-copy found in the PATH' do
-        allow(creator).to receive(:find_in_path).and_return('/path/to/stemcell-copy')
-        result = double('result', :output => 'output')
-
-        cmd = 'sudo -n /path/to/stemcell-copy /path/to/image /dev/volume 2>&1'
-        expect(creator).to receive(:sh).with(cmd).and_return(result)
-
-        creator.send(:copy_root_image)
-      end
-
-      it 'should call the bundled stemcell-copy if not found in the PATH' do
-        allow(creator).to receive(:find_in_path).and_return(nil)
-        result = double('result', :output => 'output')
-
-        stemcell_copy = File.expand_path('../../../../bosh_aws_cpi/bin/stemcell-copy', __FILE__)
-        cmd = "sudo -n #{stemcell_copy} /path/to/image /dev/volume 2>&1"
-        expect(creator).to receive(:sh).with(cmd).and_return(result)
-
-        creator.send(:copy_root_image)
+        creator.create('/path/to/image.tgz', encrypted: false, kms_key_arn: nil, tags: { 'env' => 'test' })
+        expect(creator.instance_variable_get(:@creation_tags)).to eq({ 'env' => 'test' })
       end
     end
   end

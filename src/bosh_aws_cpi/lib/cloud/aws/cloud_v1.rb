@@ -360,9 +360,9 @@ module Bosh::AwsCloud
     end
 
     ##
-    # Creates a new EC2 AMI using stemcell image.
-    # This method can only be run on an EC2 instance, as image creation
-    # involves creating and mounting new EBS volume as local block device.
+    # Creates a new EC2 AMI using stemcell image. Light stemcells resolve an
+    # existing AMI via the API; heavy stemcells are imported via the EBS direct
+    # APIs (see #create_ami_for_stemcell).
     # @param [String] image_path local filesystem path to a stemcell image
     # @param [Hash] cloud_properties AWS-specific stemcell properties
     # @option cloud_properties [String] kernel_id
@@ -460,68 +460,24 @@ module Bosh::AwsCloud
       logger.debug("updated registry settings: #{registry.read_settings(instance_id)}")
     end
 
+    # Heavy-stemcell path, shared by CloudV1 and CloudV3 so the two API versions
+    # cannot diverge. Callers pass the tags correct for their version (props.tags
+    # for V1, the env argument for V3).
     def create_ami_for_stemcell(image_path, stemcell_cloud_props, tags = nil)
       creator = StemcellCreator.new(@ec2_resource, stemcell_cloud_props)
 
-      begin
-        director_vm_id = current_vm_id
-        instance = nil
-        volume = nil
-
-        instance = @ec2_resource.instance(director_vm_id)
-        unless instance.exists?
-          cloud_error(
-            "Could not locate the current VM with id '#{director_vm_id}'." \
-                'Ensure that the current VM is located in the same region as configured in the manifest.'
-          )
-        end
-
-        normalized_tags = TagManager.tags_hash(tags)
-        stemcell_tags = stemcell_creation_tags(normalized_tags)
-        disk_config = VolumeProperties.new(
-          size: stemcell_cloud_props.disk,
-          az: @az_selector.select_availability_zone(director_vm_id),
-          encrypted: stemcell_cloud_props.encrypted,
-          kms_key_arn: stemcell_cloud_props.kms_key_arn,
-          tags: stemcell_tags
-        ).persistent_disk_config
-        volume = @volume_manager.create_ebs_volume(disk_config)
-        requested_path = @volume_manager.attach_ebs_volume(instance, volume)
-
-        logger.debug("Requested block device: #{requested_path}")
-        expected_path = BlockDeviceManager.device_path(
-          requested_path,
-          instance.instance_type,
-          volume.id,
-          @cloud_core.instance_type_info,
-        )
-
-        logger.debug("Expected block device: #{expected_path}")
-        actual_path = BlockDeviceManager.block_device_ready?(expected_path)
-
-        logger.debug("Actual block device: #{actual_path}")
-        logger.info("Creating stemcell with: '#{volume.id}'")
-        creator.create(volume, actual_path, image_path, normalized_tags).id
-      rescue => e
-        logger.error(e)
-        raise e
-      ensure
-        if instance && volume
-          @volume_manager.detach_ebs_volume(instance.reload, volume, true)
-          @volume_manager.delete_ebs_volume(volume)
-        end
-      end
+      logger.info('Creating stemcell via EBS direct APIs')
+      creator.create(
+        image_path,
+        encrypted: !!stemcell_cloud_props.encrypted,
+        kms_key_arn: stemcell_cloud_props.kms_key_arn,
+        tags: tags || {},
+      ).id
     end
 
     def get_volume_ids_for_vm(vm_instance)
       vm_instance.block_device_mappings.select(&:ebs)
                  .map { |block_device| block_device.ebs.volume_id }
-    end
-
-    def stemcell_creation_tags(tags)
-      return [] if tags.nil? || tags.empty?
-
-      TagManager.format_tags(tags)
     end
   end
 end

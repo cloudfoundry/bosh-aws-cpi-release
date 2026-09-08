@@ -4,6 +4,7 @@ end
 
 require 'aws-sdk-core'
 require 'aws-sdk-ec2'
+require 'aws-sdk-ebs'
 require 'aws-sdk-elasticloadbalancing'
 require 'aws-sdk-elasticloadbalancingv2'
 
@@ -11,6 +12,9 @@ require 'httpclient'
 require 'tmpdir'
 require 'securerandom'
 require 'json'
+require 'base64'
+require 'digest'
+require 'stringio'
 
 require 'common/exec'
 require 'common/thread_pool'
