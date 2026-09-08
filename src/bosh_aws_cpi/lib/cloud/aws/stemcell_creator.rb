@@ -18,9 +18,10 @@ module Bosh::AwsCloud
     attr_reader :resource
     attr_reader :image_path
 
-    def initialize(resource, stemcell_props)
+    def initialize(resource, stemcell_props, aws_config)
       @resource = resource
       @stemcell_props = stemcell_props
+      @aws_config = aws_config
       @creation_tags = nil
     end
 
@@ -63,7 +64,12 @@ module Bosh::AwsCloud
     end
 
     def write_snapshot_via_ebs_direct(root_img, encrypted, kms_key_arn)
-      volume_size_gib = bytes_to_gib(File.size(root_img))
+      # Use the larger of the raw image size and the configured disk property
+      # (default 2048 MiB) so the registered AMI honours the stemcell contract.
+      image_gib = bytes_to_gib(File.size(root_img))
+      disk_gib = bytes_to_gib(@stemcell_props.disk * 1024 * 1024)
+      volume_size_gib = [image_gib, disk_gib].max
+
       has_kms_key = !(kms_key_arn.nil? || kms_key_arn.to_s.empty?)
 
       start_params = {
@@ -103,6 +109,10 @@ module Bosh::AwsCloud
     # full, so at most EBS_DIRECT_QUEUE_DEPTH blocks (~16 MiB) are held in RAM
     # regardless of image size. Workers are started before reading begins so
     # upload and I/O overlap.
+    #
+    # On error: workers use `next` (not `break`) so they keep draining the queue
+    # and prevent the producer from blocking forever on a full SizedQueue.
+    # The producer checks for errors before each enqueue and exits early.
     def put_snapshot_blocks(snapshot_id, root_img, block_size)
       zero_block = "\0".b * block_size
       queue = SizedQueue.new(EBS_DIRECT_QUEUE_DEPTH)
@@ -114,7 +124,7 @@ module Bosh::AwsCloud
       workers = Array.new(EBS_DIRECT_PUT_CONCURRENCY) do
         Thread.new do
           while (item = queue.pop) != :done
-            break if error_mutex.synchronize { !error.nil? }
+            next if error_mutex.synchronize { !error.nil? }
 
             block_index, data = item
             begin
@@ -130,6 +140,8 @@ module Bosh::AwsCloud
       File.open(root_img, 'rb') do |f|
         index = 0
         while (chunk = f.read(block_size))
+          break if error_mutex.synchronize { !error.nil? }
+
           chunk = chunk.ljust(block_size, "\0".b) if chunk.bytesize < block_size
           queue << [index, chunk] unless chunk == zero_block
           index += 1
@@ -169,7 +181,7 @@ module Bosh::AwsCloud
     def wait_for_snapshot_completed(snapshot_id)
       snapshot = resource.snapshot(snapshot_id)
       ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
-    rescue Bosh::Common::RetryCountExceeded, Bosh::Clouds::CloudError => e
+    rescue Bosh::Common::RetryCountExceeded => e
       raise Bosh::Clouds::CloudError, "Timed out waiting for EBS direct snapshot '#{snapshot_id}' to complete: #{e.message}"
     end
 
@@ -188,16 +200,29 @@ module Bosh::AwsCloud
       logger.error("could not tag snapshot #{snapshot_id}: #{e.message}")
     end
 
-    # Reuses the EC2 client's resolved credentials and region so writes
-    # authenticate as the configured CPI identity rather than the ambient
-    # default credential chain.
+    # Build the EBS client through the same parameter path used for the EC2
+    # client so it inherits BOSH_CA_CERT_FILE, retry_limit, dualstack, and
+    # logger rather than only region and credentials.
     def ebs_client
       @ebs_client ||= begin
-        ec2_config = resource.client.config
-        params = { region: ec2_config.region }
-        params[:credentials] = ec2_config.credentials if ec2_config.credentials
+        params = ebs_client_params
         Aws::EBS::Client.new(params)
       end
+    end
+
+    def ebs_client_params
+      params = {
+        credentials: @aws_config.credentials,
+        retry_limit: @aws_config.max_retries,
+        logger: logger,
+        log_level: :debug,
+        use_dualstack_endpoint: @aws_config.dualstack,
+      }
+      params[:region] = @aws_config.region if @aws_config.region
+      if ENV.key?('BOSH_CA_CERT_FILE')
+        params[:ssl_ca_bundle] = ENV['BOSH_CA_CERT_FILE']
+      end
+      params
     end
 
     def register_image_from_snapshot(snapshot_id)
