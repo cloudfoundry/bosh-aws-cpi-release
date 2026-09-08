@@ -38,6 +38,16 @@
             "Resource": "*"
         },
         {
+            "Sid": "RequiredIfUsingEBSDirectHeavyStemcells",
+            "Effect": "Allow",
+            "Action": [
+                "ebs:StartSnapshot",
+                "ebs:PutSnapshotBlock",
+                "ebs:CompleteSnapshot"
+            ],
+            "Resource": "*"
+        },
+        {
             "Sid": "RequiredIfEncryptingStemcells",
             "Effect": "Allow",
             "Action": [

@@ -36,7 +36,10 @@ resource "aws_iam_role_policy" "e2e" {
       "ec2:TerminateInstances",
       "ec2:DeregisterImage",
       "ec2:DescribeImages",
-      "ec2:RegisterImage"
+      "ec2:RegisterImage",
+      "ebs:StartSnapshot",
+      "ebs:PutSnapshotBlock",
+      "ebs:CompleteSnapshot"
     ],
     "Effect": "Allow",
 		"Resource": "*"
@@ -80,4 +83,3 @@ output "iam_instance_profile" {
 output "e2e_elb_name" {
   value = "${aws_elb.e2e.id}"
 }
-
