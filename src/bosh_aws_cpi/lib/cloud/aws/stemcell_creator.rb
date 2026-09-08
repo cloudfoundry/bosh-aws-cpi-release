@@ -11,6 +11,9 @@ module Bosh::AwsCloud
     # StartSnapshot moves the snapshot to `error` if it is not completed within
     # this many minutes.
     EBS_DIRECT_SNAPSHOT_TIMEOUT_MINUTES = 60
+    # Bound the producer-consumer queue so the reader blocks when workers fall
+    # behind; 2x concurrency keeps ~16 MiB of block data in flight at most.
+    EBS_DIRECT_QUEUE_DEPTH = EBS_DIRECT_PUT_CONCURRENCY * 2
 
     attr_reader :resource
     attr_reader :image_path
@@ -95,29 +98,22 @@ module Bosh::AwsCloud
     # All-zero blocks are skipped: EBS reads unwritten blocks back as zero, so a
     # sparse stemcell disk only pays for the blocks that actually hold data.
     # Returns the number of blocks written (needed by CompleteSnapshot).
+    #
+    # A SizedQueue bounds memory: the reader blocks whenever all worker slots are
+    # full, so at most EBS_DIRECT_QUEUE_DEPTH blocks (~16 MiB) are held in RAM
+    # regardless of image size. Workers are started before reading begins so
+    # upload and I/O overlap.
     def put_snapshot_blocks(snapshot_id, root_img, block_size)
       zero_block = "\0".b * block_size
-      queue = Queue.new
+      queue = SizedQueue.new(EBS_DIRECT_QUEUE_DEPTH)
       written = 0
       written_mutex = Mutex.new
       error = nil
       error_mutex = Mutex.new
 
-      File.open(root_img, 'rb') do |f|
-        index = 0
-        while (chunk = f.read(block_size))
-          chunk = chunk.ljust(block_size, "\0".b) if chunk.bytesize < block_size
-          queue << [index, chunk] unless chunk == zero_block
-          index += 1
-        end
-      end
-
-      total = queue.size
-      queue.close
-
-      workers = Array.new([EBS_DIRECT_PUT_CONCURRENCY, [total, 1].max].min) do
+      workers = Array.new(EBS_DIRECT_PUT_CONCURRENCY) do
         Thread.new do
-          while (item = queue.pop)
+          while (item = queue.pop) != :done
             break if error_mutex.synchronize { !error.nil? }
 
             block_index, data = item
@@ -130,6 +126,17 @@ module Bosh::AwsCloud
           end
         end
       end
+
+      File.open(root_img, 'rb') do |f|
+        index = 0
+        while (chunk = f.read(block_size))
+          chunk = chunk.ljust(block_size, "\0".b) if chunk.bytesize < block_size
+          queue << [index, chunk] unless chunk == zero_block
+          index += 1
+        end
+      end
+
+      EBS_DIRECT_PUT_CONCURRENCY.times { queue << :done }
       workers.each(&:join)
 
       raise error if error
