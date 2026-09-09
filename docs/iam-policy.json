@@ -43,7 +43,8 @@
             "Action": [
                 "ebs:StartSnapshot",
                 "ebs:PutSnapshotBlock",
-                "ebs:CompleteSnapshot"
+                "ebs:CompleteSnapshot",
+                "ec2:DescribeSnapshots"
             ],
             "Resource": "*"
         },

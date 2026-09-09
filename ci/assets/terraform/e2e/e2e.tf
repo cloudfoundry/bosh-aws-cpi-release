@@ -39,7 +39,8 @@ resource "aws_iam_role_policy" "e2e" {
       "ec2:RegisterImage",
       "ebs:StartSnapshot",
       "ebs:PutSnapshotBlock",
-      "ebs:CompleteSnapshot"
+      "ebs:CompleteSnapshot",
+      "ec2:DescribeSnapshots"
     ],
     "Effect": "Allow",
 		"Resource": "*"
