@@ -43,7 +43,14 @@
             "Action": [
                 "ebs:StartSnapshot",
                 "ebs:PutSnapshotBlock",
-                "ebs:CompleteSnapshot",
+                "ebs:CompleteSnapshot"
+            ],
+            "Resource": "arn:aws:ec2:*::snapshot/*"
+        },
+        {
+            "Sid": "RequiredIfUsingEBSDirectHeavyStemcellsDescribe",
+            "Effect": "Allow",
+            "Action": [
                 "ec2:DescribeSnapshots"
             ],
             "Resource": "*"

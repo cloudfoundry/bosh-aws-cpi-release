@@ -36,10 +36,22 @@ resource "aws_iam_role_policy" "e2e" {
       "ec2:TerminateInstances",
       "ec2:DeregisterImage",
       "ec2:DescribeImages",
-      "ec2:RegisterImage",
+      "ec2:RegisterImage"
+    ],
+    "Effect": "Allow",
+		"Resource": "*"
+  },
+  {
+    "Action": [
       "ebs:StartSnapshot",
       "ebs:PutSnapshotBlock",
-      "ebs:CompleteSnapshot",
+      "ebs:CompleteSnapshot"
+    ],
+    "Effect": "Allow",
+		"Resource": "arn:aws:ec2:*::snapshot/*"
+  },
+  {
+    "Action": [
       "ec2:DescribeSnapshots"
     ],
     "Effect": "Allow",
