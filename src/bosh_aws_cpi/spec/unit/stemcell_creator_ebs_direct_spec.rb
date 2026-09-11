@@ -135,7 +135,7 @@ module Bosh::AwsCloud
         allow(creator).to receive(:wait_for_snapshot_completed)
 
         with_root_img("\0".b * block_size) do |path|
-          creator.send(:write_snapshot_via_ebs_direct, path, false, 'arn:aws:kms:us-east-1:ID:key/GUID')
+          creator.send(:write_snapshot_via_ebs_direct, path, true, 'arn:aws:kms:us-east-1:ID:key/GUID')
         end
       end
 
