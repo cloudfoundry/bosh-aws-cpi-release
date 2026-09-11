@@ -77,7 +77,7 @@ module Bosh::AwsCloud
         client_token: SecureRandom.uuid,
         timeout: EBS_DIRECT_SNAPSHOT_TIMEOUT_MINUTES,
       }
-      if encrypted || has_kms_key
+if encrypted
         start_params[:encrypted] = true
         start_params[:kms_key_arn] = kms_key_arn if has_kms_key
       end
