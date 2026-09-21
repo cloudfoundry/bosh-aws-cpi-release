@@ -8,6 +8,8 @@ module Bosh::AwsCloud
     let(:manual_network_ipv4_prefix) { manual_network('manual-ipv6', {'ip' => '10.0.0.16', 'prefix' => '28', 'cloud_properties' => { 'subnet' => 'subnet_id' }})}
     let(:manual_network_ipv4_with_nic_group) { manual_network('manual-ipv4', {'nic_group' => '1', 'ip' => '10.0.0.1', 'cloud_properties' => { 'subnet' => 'subnet_id' }})}
     let(:manual_network_ipv4_same_nic_group_different_subnet_id) { manual_network('manual-ipv4', {'nic_group' => '1', 'ip' => '10.0.0.1', 'cloud_properties' => { 'subnet' => 'subnet_id_different' }})}
+    let(:manual_network_primary_ipv6) { manual_network('ipv6-primary', {'ip' => '2001:db8::1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})}
+    let(:manual_network_primary_ipv6_with_ipv4) { manual_network('ipv6-primary-with-v4', {'ip' => '2001:db8::1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})}
 
     describe '#initialize' do
       context 'with empty networks array' do
@@ -63,6 +65,35 @@ module Bosh::AwsCloud
             expect {
               NicGroup.new('test-group', [manual_network_ipv4_prefix])
             }.to raise_error(Bosh::Clouds::CloudError, "Could not find a single ip address for nic group 'test-group' and a prefix network can only be a secondary network.")
+          end
+        end
+
+        context 'when a network has primary_ipv6: true in cloud_properties' do
+          let(:nic_group) { NicGroup.new('test-group', [manual_network_primary_ipv6]) }
+
+          it 'sets primary_ipv6? to true and sets ipv6_address' do
+            expect(nic_group.primary_ipv6?).to be true
+            expect(nic_group.ipv6_address).to eq('2001:db8::1')
+            expect(nic_group.ipv4_address).to be_nil
+          end
+        end
+
+        context 'when a network does not have primary_ipv6 in cloud_properties' do
+          let(:nic_group) { NicGroup.new('test-group', [manual_network_ipv6]) }
+
+          it 'sets primary_ipv6? to false' do
+            expect(nic_group.primary_ipv6?).to be false
+          end
+        end
+
+        context 'when primary_ipv6: true is combined with an IPv4 address (dual-stack)' do
+          it 'is allowed and sets both addresses with primary_ipv6? true' do
+            dual_stack = manual_network('dual', {'nic_group' => 'test-group', 'ip' => '10.0.0.1', 'cloud_properties' => { 'subnet' => 'subnet_id' }})
+            primary6 = manual_network('p6', {'nic_group' => 'test-group', 'ip' => '2001:db8::1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
+            nic_group = NicGroup.new('test-group', [dual_stack, primary6])
+            expect(nic_group.primary_ipv6?).to be true
+            expect(nic_group.ipv4_address).to eq('10.0.0.1')
+            expect(nic_group.ipv6_address).to eq('2001:db8::1')
           end
         end
       end

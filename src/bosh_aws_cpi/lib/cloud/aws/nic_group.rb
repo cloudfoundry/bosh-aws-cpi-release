@@ -33,6 +33,10 @@ module Bosh::AwsCloud
       !@ipv6_address.nil?
     end
 
+    def primary_ipv6?
+      !!@primary_ipv6
+    end
+
     def prefixes
       prefixes = {}
       prefixes[:ipv4] = @ipv4_prefix if @ipv4_prefix
@@ -78,6 +82,15 @@ module Bosh::AwsCloud
 
       unless has_ipv4_address? || has_ipv6_address? || dynamic?
         raise Bosh::Clouds::CloudError, "Could not find a single ip address for nic group '#{@name}' and a prefix network can only be a secondary network."
+      end
+
+      @primary_ipv6 = @networks.any? { |n| n.respond_to?(:primary_ipv6) && n.primary_ipv6 }
+
+      # enable_primary_ipv_6 is valid on dual-stack ENIs (IPv4 + IPv6), so an IPv4
+      # address alongside primary_ipv6 is allowed. It only requires an IPv6 address.
+      if @primary_ipv6 && !has_ipv6_address?
+        raise Bosh::Clouds::CloudError,
+          "NicGroup '#{@name}' has primary_ipv6: true but no IPv6 address was specified."
       end
     end
 
