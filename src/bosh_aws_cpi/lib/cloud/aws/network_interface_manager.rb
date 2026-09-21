@@ -78,6 +78,9 @@ module Bosh::AwsCloud
         if nic_group.manual?
           nic[:ipv_6_addresses] = [{ ipv_6_address: nic_group.ipv6_address }] if nic_group.has_ipv6_address?
           nic[:private_ip_address] = nic_group.ipv4_address if nic_group.has_ipv4_address?
+          # enable_primary_ipv_6 is valid on dual-stack or IPv6-only ENIs; it makes the
+          # instance's IPv6 address stable/primary and is independent of the IPv4 address.
+          nic[:enable_primary_ipv_6] = true if nic_group.primary_ipv6?
         end
 
         nic_tag_specs = TagManager.tag_specifications_for_resources(tags, ['network-interface'])
