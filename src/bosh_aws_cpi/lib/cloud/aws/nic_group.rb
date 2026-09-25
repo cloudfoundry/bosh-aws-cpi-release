@@ -62,6 +62,9 @@ module Bosh::AwsCloud
         raise Bosh::Clouds::CloudError, "Networks in nic_group '#{@name}' have different subnet ids: #{subnet_ids.join(', ')} or probably none of them have any subnet id defined. All networks in a nic_group must have the same subnet_id."
       end
 
+      primary_ipv6_network = @networks.find { |n| n.respond_to?(:primary_ipv6) && n.primary_ipv6 }
+      @primary_ipv6 = !primary_ipv6_network.nil?
+
       @networks.each do |network|
         next unless network.respond_to?(:ip) && network.ip
 
@@ -84,18 +87,43 @@ module Bosh::AwsCloud
         raise Bosh::Clouds::CloudError, "Could not find a single ip address for nic group '#{@name}' and a prefix network can only be a secondary network."
       end
 
-      @primary_ipv6 = @networks.any? { |n| n.respond_to?(:primary_ipv6) && n.primary_ipv6 }
-
       # enable_primary_ipv_6 is valid on dual-stack ENIs (IPv4 + IPv6), so an IPv4
       # address alongside primary_ipv6 is allowed. It only requires an IPv6 address.
       if @primary_ipv6 && !has_ipv6_address?
         raise Bosh::Clouds::CloudError,
           "NicGroup '#{@name}' has primary_ipv6: true but no IPv6 address was specified."
       end
+
+      # The address sent to the ENI (@ipv6_address, the first full IPv6 network) is
+      # the one enable_primary_ipv_6 applies to. If a *different* network carries the
+      # primary_ipv6 flag, the flag and the selected address would be mismatched, so
+      # reject that instead of silently promoting the wrong address.
+      if @primary_ipv6 && has_ipv6_address? && primary_ipv6_network.ip != @ipv6_address
+        raise Bosh::Clouds::CloudError,
+          "NicGroup '#{@name}' marks network '#{primary_ipv6_network.name}' (#{primary_ipv6_network.ip}) as primary_ipv6, but the selected IPv6 address is '#{@ipv6_address}'. The primary_ipv6 network must provide the group's IPv6 address."
+      end
+
+      # AWS defines a primary IPv6 as a global unicast address (GUA). A unique local
+      # address (ULA, fc00::/7) can never become a primary IPv6, so reject it up front
+      # with a clear error instead of letting CreateNetworkInterface fail obscurely.
+      if @primary_ipv6 && unique_local_ipv6?(@ipv6_address)
+        raise Bosh::Clouds::CloudError,
+          "NicGroup '#{@name}' has primary_ipv6: true but IPv6 address '#{@ipv6_address}' is a unique local address (ULA). A primary IPv6 address must be a global unicast address."
+      end
     end
 
     def ipv6_address?(addr)
       addr.to_s.include?(':')
+    end
+
+    # ULA range is fc00::/7, i.e. the first two hextet bits are 1111 110x,
+    # which covers a leading hextet of fc00–fdff (first byte 0xfc or 0xfd).
+    def unique_local_ipv6?(addr)
+      first_hextet = addr.to_s.split(':').first.to_s
+      return false if first_hextet.empty?
+
+      leading_byte = first_hextet.rjust(4, '0')[0, 2].to_i(16)
+      leading_byte == 0xfc || leading_byte == 0xfd
     end
   end
 end

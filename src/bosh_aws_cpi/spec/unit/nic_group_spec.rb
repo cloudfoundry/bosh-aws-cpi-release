@@ -96,6 +96,60 @@ module Bosh::AwsCloud
             expect(nic_group.ipv6_address).to eq('2001:db8::1')
           end
         end
+
+        context 'when primary_ipv6: true is set but no IPv6 address is provided' do
+          it 'raises an error' do
+            ipv4_primary6 = manual_network('v4-primary6', {'nic_group' => 'test-group', 'ip' => '10.0.0.1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
+            expect {
+              NicGroup.new('test-group', [ipv4_primary6])
+            }.to raise_error(Bosh::Clouds::CloudError, /primary_ipv6: true but no IPv6 address was specified/)
+          end
+        end
+
+        context 'when a later network is flagged primary_ipv6 but an earlier IPv6 network provides the address' do
+          it 'raises an error rather than sending a mismatched address' do
+            first_ipv6 = manual_network('first-v6', {'nic_group' => 'test-group', 'ip' => '2001:db8::1', 'cloud_properties' => { 'subnet' => 'subnet_id' }})
+            primary6 = manual_network('primary-v6', {'nic_group' => 'test-group', 'ip' => '2001:db8::2', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
+            expect {
+              NicGroup.new('test-group', [first_ipv6, primary6])
+            }.to raise_error(Bosh::Clouds::CloudError, /primary_ipv6.*but the selected IPv6 address is '2001:db8::1'/)
+          end
+        end
+
+        context 'when the primary_ipv6 network provides the selected IPv6 address (ordering-independent)' do
+          it 'uses the flagged address even when it is not first' do
+            other_ipv4 = manual_network('v4', {'nic_group' => 'test-group', 'ip' => '10.0.0.1', 'cloud_properties' => { 'subnet' => 'subnet_id' }})
+            primary6 = manual_network('primary-v6', {'nic_group' => 'test-group', 'ip' => '2001:db8::5', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
+            nic_group = NicGroup.new('test-group', [other_ipv4, primary6])
+            expect(nic_group.primary_ipv6?).to be true
+            expect(nic_group.ipv6_address).to eq('2001:db8::5')
+          end
+        end
+
+        context 'when primary_ipv6: true is set on a ULA (unique local) address' do
+          it 'raises an error because a primary IPv6 must be a global unicast address' do
+            ula_primary6 = manual_network('ula-primary6', {'nic_group' => 'test-group', 'ip' => 'fd00:db8::1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
+            expect {
+              NicGroup.new('test-group', [ula_primary6])
+            }.to raise_error(Bosh::Clouds::CloudError, /unique local address \(ULA\)/)
+          end
+
+          it 'rejects the fc00 half of the ULA range as well' do
+            ula_primary6 = manual_network('ula-primary6', {'nic_group' => 'test-group', 'ip' => 'fc00::1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
+            expect {
+              NicGroup.new('test-group', [ula_primary6])
+            }.to raise_error(Bosh::Clouds::CloudError, /unique local address \(ULA\)/)
+          end
+        end
+
+        context 'when a GUA IPv6 address that starts near the ULA range is used with primary_ipv6' do
+          it 'is allowed because fe80/link-local and 2000::/3 GUA are not ULA' do
+            gua_primary6 = manual_network('gua-primary6', {'nic_group' => 'test-group', 'ip' => '2001:db8::1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
+            nic_group = NicGroup.new('test-group', [gua_primary6])
+            expect(nic_group.primary_ipv6?).to be true
+            expect(nic_group.ipv6_address).to eq('2001:db8::1')
+          end
+        end
       end
     end
 
