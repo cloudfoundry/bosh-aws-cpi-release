@@ -116,6 +116,16 @@ module Bosh::AwsCloud
           end
         end
 
+        context 'when two networks are flagged primary_ipv6 with different addresses' do
+          it 'raises an error even when the first flagged network provides the selected address' do
+            primary6_a = manual_network('primary-v6-a', {'nic_group' => 'test-group', 'ip' => '2001:db8::1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
+            primary6_b = manual_network('primary-v6-b', {'nic_group' => 'test-group', 'ip' => '2001:db8::2', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
+            expect {
+              NicGroup.new('test-group', [primary6_a, primary6_b])
+            }.to raise_error(Bosh::Clouds::CloudError, /'primary-v6-b' \(2001:db8::2\).*only one primary IPv6 address is allowed/)
+          end
+        end
+
         context 'when the primary_ipv6 network provides the selected IPv6 address (ordering-independent)' do
           it 'uses the flagged address even when it is not first' do
             other_ipv4 = manual_network('v4', {'nic_group' => 'test-group', 'ip' => '10.0.0.1', 'cloud_properties' => { 'subnet' => 'subnet_id' }})
@@ -131,23 +141,39 @@ module Bosh::AwsCloud
             ula_primary6 = manual_network('ula-primary6', {'nic_group' => 'test-group', 'ip' => 'fd00:db8::1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
             expect {
               NicGroup.new('test-group', [ula_primary6])
-            }.to raise_error(Bosh::Clouds::CloudError, /unique local address \(ULA\)/)
+            }.to raise_error(Bosh::Clouds::CloudError, /not a global unicast address \(GUA, 2000::\/3\)/)
           end
 
           it 'rejects the fc00 half of the ULA range as well' do
             ula_primary6 = manual_network('ula-primary6', {'nic_group' => 'test-group', 'ip' => 'fc00::1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
             expect {
               NicGroup.new('test-group', [ula_primary6])
-            }.to raise_error(Bosh::Clouds::CloudError, /unique local address \(ULA\)/)
+            }.to raise_error(Bosh::Clouds::CloudError, /not a global unicast address \(GUA, 2000::\/3\)/)
           end
         end
 
-        context 'when a GUA IPv6 address that starts near the ULA range is used with primary_ipv6' do
-          it 'is allowed because fe80/link-local and 2000::/3 GUA are not ULA' do
+        context 'when primary_ipv6: true is set on a link-local address (non-ULA, non-GUA)' do
+          it 'raises an error because fe80::/10 is not a global unicast address' do
+            link_local_primary6 = manual_network('ll-primary6', {'nic_group' => 'test-group', 'ip' => 'fe80::1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
+            expect {
+              NicGroup.new('test-group', [link_local_primary6])
+            }.to raise_error(Bosh::Clouds::CloudError, /not a global unicast address \(GUA, 2000::\/3\)/)
+          end
+        end
+
+        context 'when a GUA IPv6 address is used with primary_ipv6' do
+          it 'is allowed because 2000::/3 is a global unicast address' do
             gua_primary6 = manual_network('gua-primary6', {'nic_group' => 'test-group', 'ip' => '2001:db8::1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
             nic_group = NicGroup.new('test-group', [gua_primary6])
             expect(nic_group.primary_ipv6?).to be true
             expect(nic_group.ipv6_address).to eq('2001:db8::1')
+          end
+
+          it 'accepts a 3fff::/16 address at the top of the GUA range' do
+            gua_primary6 = manual_network('gua-primary6', {'nic_group' => 'test-group', 'ip' => '3fff::1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
+            nic_group = NicGroup.new('test-group', [gua_primary6])
+            expect(nic_group.primary_ipv6?).to be true
+            expect(nic_group.ipv6_address).to eq('3fff::1')
           end
         end
       end
