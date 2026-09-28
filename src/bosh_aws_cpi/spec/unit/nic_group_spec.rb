@@ -136,6 +136,16 @@ module Bosh::AwsCloud
           end
         end
 
+        context 'when the primary_ipv6 network and the selected address use equivalent IPv6 spellings' do
+          it 'treats a compressed and an expanded form of the same address as a match' do
+            expanded_ipv6 = manual_network('expanded-v6', {'nic_group' => 'test-group', 'ip' => '2001:0db8:0000:0000:0000:0000:0000:0001', 'cloud_properties' => { 'subnet' => 'subnet_id' }})
+            compressed_primary6 = manual_network('compressed-v6', {'nic_group' => 'test-group', 'ip' => '2001:db8::1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
+            nic_group = NicGroup.new('test-group', [expanded_ipv6, compressed_primary6])
+            expect(nic_group.primary_ipv6?).to be true
+            expect(nic_group.ipv6_address).to eq('2001:0db8:0000:0000:0000:0000:0000:0001')
+          end
+        end
+
         context 'when primary_ipv6: true is set on a ULA (unique local) address' do
           it 'raises an error because a primary IPv6 must be a global unicast address' do
             ula_primary6 = manual_network('ula-primary6', {'nic_group' => 'test-group', 'ip' => 'fd00:db8::1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
