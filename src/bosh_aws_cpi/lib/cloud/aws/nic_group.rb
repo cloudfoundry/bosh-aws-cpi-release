@@ -1,3 +1,5 @@
+require 'ipaddr'
+
 module Bosh::AwsCloud
   class NicGroup
     attr_reader :name, :networks, :ipv4_address, :ipv6_address
@@ -100,7 +102,7 @@ module Bosh::AwsCloud
       # selected address would be mismatched (or two networks would demand different
       # primary addresses), so reject instead of silently promoting the wrong one.
       if @primary_ipv6 && has_ipv6_address?
-        mismatched = primary_ipv6_networks.reject { |n| n.ip == @ipv6_address }
+        mismatched = primary_ipv6_networks.reject { |n| same_ipv6_address?(n.ip, @ipv6_address) }
         unless mismatched.empty?
           names = mismatched.map { |n| "'#{n.name}' (#{n.ip})" }.join(', ')
           raise Bosh::Clouds::CloudError,
@@ -120,6 +122,16 @@ module Bosh::AwsCloud
 
     def ipv6_address?(addr)
       addr.to_s.include?(':')
+    end
+
+    # Compares two IPv6 addresses by their parsed value so that equivalent
+    # spellings (compressed vs. expanded, e.g. 2001:db8::1 and
+    # 2001:0db8:0000:0000:0000:0000:0000:0001) are treated as equal. Falls back
+    # to a string comparison if either value cannot be parsed as an IP address.
+    def same_ipv6_address?(a, b)
+      IPAddr.new(a.to_s) == IPAddr.new(b.to_s)
+    rescue IPAddr::Error
+      a.to_s == b.to_s
     end
 
     # GUA range is 2000::/3: the leading three bits are 001, i.e. a leading hextet
