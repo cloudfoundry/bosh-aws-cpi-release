@@ -1,8 +1,14 @@
 networks:
   - name: private
-    type: dynamic
-    cloud_properties:
-      subnet: ((subnet_id))
+    type: manual
+    subnets:
+      - range: ((internal_cidr))
+        gateway: ((internal_gw))
+        dns: [((dns_recursor_ip))]
+        reserved: [((reserved_range))]
+        static: [((static_range))]
+        cloud_properties:
+          subnet: ((subnet_id))
 
 vm_types:
   - name: default
