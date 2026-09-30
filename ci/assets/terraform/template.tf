@@ -218,7 +218,8 @@ resource "aws_elb" "default" {
     lb_protocol       = "http"
   }
 
-  subnets = [aws_subnet.default.id]
+  subnets    = [aws_subnet.default.id]
+  depends_on = [aws_ec2_subnet_cidr_reservation.bosh_reserved]
 
   tags = {
     Name = "${var.resource_prefix}-${var.env_name}"
@@ -231,6 +232,7 @@ resource "aws_alb" "default" {
     aws_subnet.default.id,
     aws_subnet.backup.id
   ]
+  depends_on = [aws_ec2_subnet_cidr_reservation.bosh_reserved]
 
   tags = {
     Name = "${var.resource_prefix}-${var.env_name}"
