@@ -50,6 +50,9 @@ module Bosh::AwsCloud
 
       wait_for_snapshot_completed(snapshot_id)
       snapshot_id
+    rescue Aws::EC2::Errors::AccessDenied, Aws::EC2::Errors::UnauthorizedOperation,
+           Aws::EBS::Errors::AccessDeniedException => e
+      raise
     rescue Aws::Errors::ServiceError => e
       raise Bosh::Clouds::CloudError, "EBS direct snapshot creation failed: #{e.message}"
     end
