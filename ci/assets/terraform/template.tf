@@ -218,7 +218,8 @@ resource "aws_elb" "default" {
     lb_protocol       = "http"
   }
 
-  subnets = [aws_subnet.default.id]
+  subnets    = [aws_subnet.default.id]
+  depends_on = [aws_ec2_subnet_cidr_reservation.bosh_reserved]
 
   tags = {
     Name = "${var.resource_prefix}-${var.env_name}"
@@ -231,6 +232,7 @@ resource "aws_alb" "default" {
     aws_subnet.default.id,
     aws_subnet.backup.id
   ]
+  depends_on = [aws_ec2_subnet_cidr_reservation.bosh_reserved]
 
   tags = {
     Name = "${var.resource_prefix}-${var.env_name}"
@@ -309,7 +311,7 @@ output "manual_subnet_id" {
   value = aws_subnet.manual.id
 }
 output "internal_cidr" {
-  value = aws_vpc.default.cidr_block
+  value = aws_subnet.default.cidr_block
 }
 output "internal_gw" {
   value = cidrhost(aws_vpc.default.cidr_block, 1)
@@ -321,10 +323,10 @@ output "internal_ip" {
   value = cidrhost(aws_subnet.default.cidr_block, 134)
 }
 output "reserved_range" {
-  value = "${cidrhost(aws_subnet.default.cidr_block, 2)}-${cidrhost(aws_subnet.default.cidr_block, 127)}"
+  value = "${cidrhost(aws_subnet.default.cidr_block, 2)}-${cidrhost(aws_subnet.default.cidr_block, 134)}"
 }
 output "static_range" {
-  value = "${cidrhost(aws_subnet.default.cidr_block, 128)}-${cidrhost(aws_subnet.default.cidr_block, 160)}"
+  value = "${cidrhost(aws_subnet.default.cidr_block, 135)}-${cidrhost(aws_subnet.default.cidr_block, 160)}"
 }
 output "bats_eip" {
   value = aws_eip.deployment.public_ip
