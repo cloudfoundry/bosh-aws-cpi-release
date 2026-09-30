@@ -479,7 +479,8 @@ module Bosh::AwsCloud
         kms_key_arn: stemcell_cloud_props.kms_key_arn,
         tags: tags || {},
       ).id
-    rescue Aws::EC2::Errors::AccessDenied, Aws::EC2::Errors::UnauthorizedOperation => e
+    rescue Aws::EC2::Errors::AccessDenied, Aws::EC2::Errors::UnauthorizedOperation,
+           Aws::EBS::Errors::AccessDeniedException => e
       logger.warn("EBS direct API unavailable (#{e.message}); falling back to legacy attach-volume stemcell path")
       legacy_create_ami_for_stemcell(image_path, stemcell_cloud_props, tags)
     end

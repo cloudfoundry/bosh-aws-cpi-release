@@ -358,7 +358,7 @@ describe Bosh::AwsCloud::CloudV1 do
           allow(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
         end
 
-        it "falls back to the legacy attach-volume path on AccessDenied" do
+        it "falls back to the legacy attach-volume path on AccessDenied (EC2)" do
           cloud = mock_cloud do |ec2|
             allow(Bosh::AwsCloud::StemcellCreator).to receive(:new).and_return(creator)
             allow(ec2).to receive(:instance).and_return(instance)
@@ -366,6 +366,28 @@ describe Bosh::AwsCloud::CloudV1 do
 
           allow(creator).to receive(:create)
             .and_raise(Aws::EC2::Errors::AccessDenied.new(nil, 'Access Denied'))
+
+          allow(cloud).to receive(:current_vm_id).and_return('i-director')
+          allow(volume_manager).to receive(:create_ebs_volume).and_return(volume)
+          allow(volume_manager).to receive(:attach_ebs_volume).and_return('/dev/sdf')
+          allow(volume_manager).to receive(:detach_ebs_volume)
+          allow(volume_manager).to receive(:delete_ebs_volume)
+          allow(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).and_return('/dev/xvdf')
+          allow(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).and_return('/dev/xvdf')
+          allow(legacy_creator).to receive(:create).and_return(stemcell)
+
+          expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
+          expect(legacy_creator).to have_received(:create)
+        end
+
+        it "falls back to the legacy attach-volume path on EBS AccessDeniedException" do
+          cloud = mock_cloud do |ec2|
+            allow(Bosh::AwsCloud::StemcellCreator).to receive(:new).and_return(creator)
+            allow(ec2).to receive(:instance).and_return(instance)
+          end
+
+          allow(creator).to receive(:create)
+            .and_raise(Aws::EBS::Errors::AccessDeniedException.new(nil, 'Access Denied'))
 
           allow(cloud).to receive(:current_vm_id).and_return('i-director')
           allow(volume_manager).to receive(:create_ebs_volume).and_return(volume)
