@@ -42,6 +42,22 @@ resource "aws_iam_role_policy" "e2e" {
 		"Resource": "*"
   },
   {
+    "Action": [
+      "ebs:StartSnapshot",
+      "ebs:PutSnapshotBlock",
+      "ebs:CompleteSnapshot"
+    ],
+    "Effect": "Allow",
+		"Resource": "arn:aws:ec2:*::snapshot/*"
+  },
+  {
+    "Action": [
+      "ec2:DescribeSnapshots"
+    ],
+    "Effect": "Allow",
+		"Resource": "*"
+  },
+  {
     "Effect": "Allow",
     "Action": "elasticloadbalancing:*",
 		"Resource": "*"
