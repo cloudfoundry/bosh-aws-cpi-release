@@ -146,6 +146,16 @@ module Bosh::AwsCloud
           end
         end
 
+        context 'when a flagged primary_ipv6 network has a malformed IPv6 address' do
+          it 'raises a CloudError instead of leaking a raw parser error' do
+            first_ipv6 = manual_network('first-v6', {'nic_group' => 'test-group', 'ip' => '2001:db8::1', 'cloud_properties' => { 'subnet' => 'subnet_id' }})
+            malformed_primary6 = manual_network('malformed-v6', {'nic_group' => 'test-group', 'ip' => '2001:db8:::zzzz', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
+            expect {
+              NicGroup.new('test-group', [first_ipv6, malformed_primary6])
+            }.to raise_error(Bosh::Clouds::CloudError, /marks network\(s\) 'malformed-v6'/)
+          end
+        end
+
         context 'when primary_ipv6: true is set on a ULA (unique local) address' do
           it 'raises an error because a primary IPv6 must be a global unicast address' do
             ula_primary6 = manual_network('ula-primary6', {'nic_group' => 'test-group', 'ip' => 'fd00:db8::1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})

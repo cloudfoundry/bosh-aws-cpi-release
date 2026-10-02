@@ -152,12 +152,16 @@ module Bosh::AwsCloud
 
     # Compares two IPv6 addresses by their parsed value so that equivalent
     # spellings (compressed vs. expanded, e.g. 2001:db8::1 and
-    # 2001:0db8:0000:0000:0000:0000:0000:0001) are treated as equal. Falls back
-    # to a string comparison if either value cannot be parsed as an IP address.
+    # 2001:0db8:0000:0000:0000:0000:0000:0001) are treated as equal. If either
+    # value cannot be parsed as an IP address it is treated as not equal, so the
+    # caller's mismatch validation rejects the malformed configuration rather
+    # than letting a raw parser error leak out. On different Ruby versions a
+    # malformed address raises either IPAddr::Error or a bare ArgumentError
+    # (IPAddr::InvalidAddressError), so both are rescued.
     def same_ipv6_address?(a, b)
       IPAddr.new(a.to_s) == IPAddr.new(b.to_s)
-    rescue IPAddr::Error
-      a.to_s == b.to_s
+    rescue IPAddr::Error, ArgumentError
+      false
     end
 
     # GUA range is 2000::/3: the leading three bits are 001, i.e. a leading hextet
