@@ -95,6 +95,15 @@ module Bosh::AwsCloud
             expect(nic_group.ipv4_address).to eq('10.0.0.1')
             expect(nic_group.ipv6_address).to eq('2001:db8::1')
           end
+
+          it 'is allowed when the flag is on the IPv4 member of the group (ENI-level flag)' do
+            ipv4_primary6 = manual_network('v4-flagged', {'nic_group' => 'test-group', 'ip' => '10.0.0.1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
+            ipv6 = manual_network('v6', {'nic_group' => 'test-group', 'ip' => '2001:db8::1', 'cloud_properties' => { 'subnet' => 'subnet_id' }})
+            nic_group = NicGroup.new('test-group', [ipv4_primary6, ipv6])
+            expect(nic_group.primary_ipv6?).to be true
+            expect(nic_group.ipv4_address).to eq('10.0.0.1')
+            expect(nic_group.ipv6_address).to eq('2001:db8::1')
+          end
         end
 
         context 'when primary_ipv6: true is set but no IPv6 address is provided' do
@@ -122,7 +131,7 @@ module Bosh::AwsCloud
             primary6_b = manual_network('primary-v6-b', {'nic_group' => 'test-group', 'ip' => '2001:db8::2', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
             expect {
               NicGroup.new('test-group', [primary6_a, primary6_b])
-            }.to raise_error(Bosh::Clouds::CloudError, /'primary-v6-b' \(2001:db8::2\).*only one primary IPv6 address is allowed/)
+            }.to raise_error(Bosh::Clouds::CloudError, /'primary-v6-b' \(2001:db8::2\).*[Oo]nly one primary IPv6 address is allowed/)
           end
         end
 

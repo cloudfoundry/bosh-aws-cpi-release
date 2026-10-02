@@ -120,17 +120,20 @@ module Bosh::AwsCloud
           "NicGroup '#{@name}' has primary_ipv6: true but no IPv6 address was specified."
       end
 
-      # The address sent to the ENI (@ipv6_address, the first full IPv6 network) is
-      # the one enable_primary_ipv_6 applies to. Every network flagged primary_ipv6
-      # must therefore resolve to that same address; otherwise the flag and the
-      # selected address would be mismatched (or two networks would demand different
-      # primary addresses), so reject instead of silently promoting the wrong one.
+      # primary_ipv6 is an ENI-level switch: AWS makes the ENI's associated IPv6
+      # GUA primary regardless of which network carried the flag. The flag is
+      # therefore group-wide - setting it on the group's IPv4 member is valid as
+      # long as the group has an IPv6 address. The only contradiction we must
+      # reject is two IPv6 networks demanding *different* primary addresses, since
+      # the ENI sends a single IPv6 address (@ipv6_address, the first full IPv6
+      # network). So compare only the flagged networks that carry an IPv6 address.
       if @primary_ipv6 && has_ipv6_address?
-        mismatched = primary_ipv6_networks.reject { |n| same_ipv6_address?(n.ip, @ipv6_address) }
+        flagged_ipv6_networks = primary_ipv6_networks.select { |n| ipv6_address?(n.ip) }
+        mismatched = flagged_ipv6_networks.reject { |n| same_ipv6_address?(n.ip, @ipv6_address) }
         unless mismatched.empty?
           names = mismatched.map { |n| "'#{n.name}' (#{n.ip})" }.join(', ')
           raise Bosh::Clouds::CloudError,
-            "NicGroup '#{@name}' marks network(s) #{names} as primary_ipv6, but the selected IPv6 address is '#{@ipv6_address}'. The primary_ipv6 network must provide the group's IPv6 address, and only one primary IPv6 address is allowed per nic_group."
+            "NicGroup '#{@name}' marks network(s) #{names} as primary_ipv6, but the selected IPv6 address is '#{@ipv6_address}'. Only one primary IPv6 address is allowed per nic_group."
         end
       end
 
