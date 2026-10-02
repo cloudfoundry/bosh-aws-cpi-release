@@ -128,6 +128,27 @@ describe Bosh::AwsCloud::CloudV1 do
           expect(resp.reservations[0].instances[0].network_interfaces[0].ipv_6_addresses[0].ipv_6_address).to eq(ipv6_ip)
         end
       end
+
+      context 'and primary_ipv6 is requested' do
+        let(:network_spec) do
+          {
+            'ipv6' => {
+              'type' => 'manual',
+              'ip' => ipv6_ip,
+              'cloud_properties' => { 'subnet' => @manual_subnet_id, 'primary_ipv6' => true }
+            }
+          }
+        end
+
+        it 'marks the IPv6 address as the primary IPv6 on the ENI' do
+          vm_lifecycle do |vm_id|
+            resp = @cpi.ec2_resource.client.describe_instances(filters: [{ name: 'instance-id', values: [vm_id] }])
+            ipv6_address = resp.reservations[0].instances[0].network_interfaces[0].ipv_6_addresses[0]
+            expect(ipv6_address.ipv_6_address).to eq(ipv6_ip)
+            expect(ipv6_address.is_primary_ipv_6).to be(true)
+          end
+        end
+      end
     end
 
     describe 'logging request_id' do
