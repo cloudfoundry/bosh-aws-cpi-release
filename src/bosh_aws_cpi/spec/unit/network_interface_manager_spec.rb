@@ -293,6 +293,127 @@ module Bosh::AwsCloud
             expect(network_interfaces).to eq([network_interface])
           end
         end
+
+        context 'when a network has primary_ipv6: true' do
+          let(:expected_create_ni_params) do
+            {
+              groups: default_security_groups,
+              subnet_id: 'manual_subnet_id',
+              ipv_6_addresses: [{ ipv_6_address: '2001:db8::1' }],
+              enable_primary_ipv_6: true,
+            }
+          end
+
+          let(:manual_network_spec) do
+            {
+              'net1' => {
+                'type' => 'manual',
+                'ip' => '2001:db8::1',
+                'cloud_properties' => { 'subnet' => 'manual_subnet_id', 'primary_ipv6' => true }
+              }
+            }
+          end
+
+          it 'creates network interface with enable_primary_ipv_6: true and no private_ip_address' do
+            expect(ec2_client).to receive(:create_network_interface).with(expected_create_ni_params).and_return(create_network_interface_response)
+
+            network_interfaces = nil
+            expect {
+              network_interfaces = network_interface_manager.create_network_interfaces(networks_cloud_props, vm_cloud_props, default_security_groups)
+            }.not_to raise_error
+
+            expect(network_interfaces.size).to eq(1)
+          end
+
+          it 'passes params that the real AWS SDK accepts (guards against a mistyped key being silently dropped)' do
+            captured_params = nil
+            expect(ec2_client).to receive(:create_network_interface) do |params|
+              captured_params = params
+              create_network_interface_response
+            end
+
+            network_interface_manager.create_network_interfaces(networks_cloud_props, vm_cloud_props, default_security_groups)
+
+            # A mock accepts any symbol key, but the real SDK validates member names and
+            # raises ArgumentError on an unknown key (e.g. :enable_primary_ipv6 vs :enable_primary_ipv_6).
+            real_client = Aws::EC2::Client.new(stub_responses: true, region: 'us-east-1')
+            expect {
+              real_client.create_network_interface(captured_params)
+            }.not_to raise_error
+            expect(captured_params).to include(enable_primary_ipv_6: true)
+          end
+        end
+
+        context 'when a dual-stack network has primary_ipv6: true (IPv4 + primary IPv6)' do
+          let(:expected_create_ni_params) do
+            {
+              groups: default_security_groups,
+              subnet_id: 'manual_subnet_id',
+              ipv_6_addresses: [{ ipv_6_address: '2001:db8::1' }],
+              private_ip_address: '10.0.0.1',
+              enable_primary_ipv_6: true,
+            }
+          end
+
+          let(:manual_network_spec) do
+            {
+              'net1' => {
+                'type' => 'manual',
+                'ip' => '10.0.0.1',
+                'cloud_properties' => { 'subnet' => 'manual_subnet_id' },
+                'nic_group' => '1'
+              },
+              'net2' => {
+                'type' => 'manual',
+                'ip' => '2001:db8::1',
+                'cloud_properties' => { 'subnet' => 'manual_subnet_id', 'primary_ipv6' => true },
+                'nic_group' => '1'
+              }
+            }
+          end
+
+          it 'sets enable_primary_ipv_6 AND keeps the IPv4 private_ip_address' do
+            expect(ec2_client).to receive(:create_network_interface).with(expected_create_ni_params).and_return(create_network_interface_response)
+
+            network_interfaces = nil
+            expect {
+              network_interfaces = network_interface_manager.create_network_interfaces(networks_cloud_props, vm_cloud_props, default_security_groups)
+            }.not_to raise_error
+
+            expect(network_interfaces.size).to eq(1)
+          end
+        end
+
+        context 'when an IPv6 network does NOT have primary_ipv6 set' do
+          let(:expected_create_ni_params) do
+            {
+              groups: default_security_groups,
+              subnet_id: 'manual_subnet_id',
+              ipv_6_addresses: [{ ipv_6_address: '2001:db8::1' }],
+            }
+          end
+
+          let(:manual_network_spec) do
+            {
+              'net1' => {
+                'type' => 'manual',
+                'ip' => '2001:db8::1',
+                'cloud_properties' => { 'subnet' => 'manual_subnet_id' }
+              }
+            }
+          end
+
+          it 'creates network interface without enable_primary_ipv_6' do
+            expect(ec2_client).to receive(:create_network_interface).with(expected_create_ni_params).and_return(create_network_interface_response)
+
+            network_interfaces = nil
+            expect {
+              network_interfaces = network_interface_manager.create_network_interfaces(networks_cloud_props, vm_cloud_props, default_security_groups)
+            }.not_to raise_error
+
+            expect(network_interfaces.size).to eq(1)
+          end
+        end
       end
 
       context 'when something is not set up correctly' do
