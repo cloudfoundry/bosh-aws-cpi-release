@@ -199,6 +199,16 @@ module Bosh::AwsCloud
           end
         end
 
+        context 'when an IPv4 member requests primary_ipv6 but the selected IPv6 address is malformed' do
+          it 'raises a CloudError instead of accepting an address with a GUA-looking prefix' do
+            ipv4_primary6 = manual_network('v4-primary6', {'nic_group' => 'test-group', 'ip' => '10.0.0.1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
+            malformed_ipv6 = manual_network('malformed-v6', {'nic_group' => 'test-group', 'ip' => '20zz::1', 'cloud_properties' => { 'subnet' => 'subnet_id' }})
+            expect {
+              NicGroup.new('test-group', [ipv4_primary6, malformed_ipv6])
+            }.to raise_error(Bosh::Clouds::CloudError, /not a global unicast address \(GUA, 2000::\/3\)/)
+          end
+        end
+
         context 'when a GUA IPv6 address is used with primary_ipv6' do
           it 'is allowed because 2000::/3 is a global unicast address' do
             gua_primary6 = manual_network('gua-primary6', {'nic_group' => 'test-group', 'ip' => '2001:db8::1', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})

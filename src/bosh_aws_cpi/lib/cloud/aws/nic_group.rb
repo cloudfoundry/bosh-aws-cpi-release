@@ -172,15 +172,15 @@ module Bosh::AwsCloud
       false
     end
 
-    # GUA range is 2000::/3: the leading three bits are 001, i.e. a leading hextet
-    # of 2000-3fff (first byte 0x20-0x3f). ULA (fc00::/7), link-local (fe80::/10),
-    # multicast (ff00::/8), and the unspecified/loopback addresses all fall outside.
+    # GUA range is 2000::/3: the leading three bits are 001. ULA (fc00::/7),
+    # link-local (fe80::/10), multicast (ff00::/8), and the unspecified/loopback
+    # addresses all fall outside. Parse the complete address so malformed strings
+    # cannot pass based only on a GUA-looking first hextet.
     def global_unicast_ipv6?(addr)
-      first_hextet = addr.to_s.split(':').first.to_s
-      return false if first_hextet.empty?
-
-      leading_byte = first_hextet.rjust(4, '0')[0, 2].to_i(16)
-      leading_byte >= 0x20 && leading_byte <= 0x3f
+      ip = IPAddr.new(addr.to_s)
+      ip.ipv6? && (ip.to_i >> 125) == 1
+    rescue IPAddr::Error, ArgumentError
+      false
     end
   end
 end
