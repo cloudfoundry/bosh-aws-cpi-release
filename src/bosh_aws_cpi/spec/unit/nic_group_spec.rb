@@ -104,6 +104,15 @@ module Bosh::AwsCloud
             expect(nic_group.ipv4_address).to eq('10.0.0.1')
             expect(nic_group.ipv6_address).to eq('2001:db8::1')
           end
+
+          it 'is allowed when the flag is on an IPv6 prefix member alongside a full IPv6 address' do
+            ipv6_prefix_flagged = manual_network('v6-prefix-flagged', {'nic_group' => 'test-group', 'ip' => '2001:db8:0000:0001::', 'prefix' => '80', 'cloud_properties' => { 'subnet' => 'subnet_id', 'primary_ipv6' => true }})
+            ipv6 = manual_network('v6', {'nic_group' => 'test-group', 'ip' => '2001:db8::1', 'cloud_properties' => { 'subnet' => 'subnet_id' }})
+            nic_group = NicGroup.new('test-group', [ipv6_prefix_flagged, ipv6])
+            expect(nic_group.primary_ipv6?).to be true
+            expect(nic_group.ipv6_address).to eq('2001:db8::1')
+            expect(nic_group.prefixes[:ipv6][:address]).to eq('2001:db8:0000:0001::')
+          end
         end
 
         context 'when primary_ipv6: true is set but no IPv6 address is provided' do
