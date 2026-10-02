@@ -126,9 +126,14 @@ module Bosh::AwsCloud
       # long as the group has an IPv6 address. The only contradiction we must
       # reject is two IPv6 networks demanding *different* primary addresses, since
       # the ENI sends a single IPv6 address (@ipv6_address, the first full IPv6
-      # network). So compare only the flagged networks that carry an IPv6 address.
+      # network). So compare only the flagged networks that carry a full IPv6
+      # address - IPv6 prefix members (/not 128) are stored separately as
+      # @ipv6_prefix and are not the primary candidate, matching the prefix rule
+      # used during address extraction above.
       if @primary_ipv6 && has_ipv6_address?
-        flagged_ipv6_networks = primary_ipv6_networks.select { |n| ipv6_address?(n.ip) }
+        flagged_ipv6_networks = primary_ipv6_networks.select do |n|
+          ipv6_address?(n.ip) && (n.prefix.nil? || n.prefix.to_i == 128)
+        end
         mismatched = flagged_ipv6_networks.reject { |n| same_ipv6_address?(n.ip, @ipv6_address) }
         unless mismatched.empty?
           names = mismatched.map { |n| "'#{n.name}' (#{n.ip})" }.join(', ')
