@@ -5,7 +5,7 @@ GEM
       public_suffix (>= 2.0.2, < 8.0)
     ast (2.4.3)
     aws-eventstream (1.4.0)
-    aws-partitions (1.1290.0)
+    aws-partitions (1.1292.0)
     aws-sdk-autoscaling (1.168.0)
       aws-sdk-core (~> 3, >= 3.256.0)
       aws-sigv4 (~> 1.5)
@@ -18,7 +18,7 @@ GEM
       jmespath (~> 1, >= 1.6.1)
       logger
       rexml (~> 3.4, >= 3.4.2)
-    aws-sdk-ec2 (1.652.0)
+    aws-sdk-ec2 (1.655.0)
       aws-sdk-core (~> 3, >= 3.256.0)
       aws-sigv4 (~> 1.5)
     aws-sdk-elasticloadbalancing (1.94.0)
@@ -69,7 +69,7 @@ GEM
     mutex_m (0.3.0)
     openssl (4.0.2)
     ostruct (0.6.3)
-    parallel (2.2.0)
+    parallel (2.3.0)
     parser (3.3.12.0)
       ast (~> 2.4.1)
       racc
@@ -85,7 +85,7 @@ GEM
     racc (1.8.1)
     rainbow (3.1.1)
     rake (13.4.2)
-    regexp_parser (2.13.0)
+    regexp_parser (2.13.1)
     reline (0.7.0)
       io-console (~> 0.5)
     rexml (3.4.4)
@@ -146,4 +146,4 @@ DEPENDENCIES
   webmock
 
 BUNDLED WITH
-  4.0.21
+  4.0.22
