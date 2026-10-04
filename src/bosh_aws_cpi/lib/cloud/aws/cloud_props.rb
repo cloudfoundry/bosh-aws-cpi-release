@@ -297,7 +297,7 @@ module Bosh::AwsCloud
     end
 
     class ManualNetwork < Network
-      attr_reader :netmask, :gateway, :default, :dns, :ip, :prefix, :nic_group
+      attr_reader :netmask, :gateway, :default, :dns, :ip, :prefix, :nic_group, :primary_ipv6
       attr_accessor :mac
 
       def initialize(name, settings)
@@ -310,6 +310,7 @@ module Bosh::AwsCloud
         @prefix = settings['prefix']
         @dns = settings['dns']
         @nic_group = settings['nic_group'] || name
+        @primary_ipv6 = cloud_properties? && !!settings['cloud_properties']['primary_ipv6']
       end
     end
 
