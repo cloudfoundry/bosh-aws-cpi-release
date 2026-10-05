@@ -2,7 +2,7 @@ module Bosh::AwsCloud
   class AwsProvider
     include Helpers
 
-    attr_reader :ec2_client, :ec2_resource, :alb_client, :elb_client
+    attr_reader :ec2_client, :ec2_resource, :alb_client, :elb_client, :ebs_client
 
     def initialize(aws_config, logger)
       @aws_config = aws_config
@@ -17,6 +17,8 @@ module Bosh::AwsCloud
       @ec2_params = initialize_params(@aws_config.ec2_endpoint)
       @ec2_client = Aws::EC2::Client.new(@ec2_params)
       @ec2_resource = Aws::EC2::Resource.new(client: @ec2_client)
+
+      @ebs_client = Aws::EBS::Client.new(initialize_params(@aws_config.ec2_endpoint))
     end
 
     private

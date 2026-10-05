@@ -351,14 +351,6 @@ module Bosh::AwsCloud
       end
     end
 
-    # Configure network for an EC2 instance. No longer supported.
-    # @param [String] instance_id EC2 instance id
-    # @param [Hash] network_spec network properties
-    # @raise [Bosh::Clouds:NotSupported] configure_networks is no longer supported
-    def configure_networks(_instance_id, _network_spec)
-      raise Bosh::Clouds::NotSupported, 'configure_networks is no longer supported'
-    end
-
     ##
     # Creates a new EC2 AMI using stemcell image. Light stemcells resolve an
     # existing AMI via the API; heavy stemcells are imported via the EBS direct
@@ -470,7 +462,7 @@ module Bosh::AwsCloud
     # legacy attach-volume path so operators can migrate IAM policies
     # incrementally without a downtime window.
     def create_ami_for_stemcell(image_path, stemcell_cloud_props, tags = nil)
-      creator = StemcellCreator.new(@ec2_resource, stemcell_cloud_props, @config.aws)
+      creator = StemcellCreator.new(@ec2_resource, stemcell_cloud_props, @aws_provider.ebs_client)
 
       logger.info('Creating stemcell via EBS direct APIs')
       creator.create(
