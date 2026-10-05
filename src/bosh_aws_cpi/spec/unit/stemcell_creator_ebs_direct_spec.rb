@@ -4,6 +4,7 @@ module Bosh::AwsCloud
   describe StemcellCreator do
     let(:ec2_client)   { instance_double(Aws::EC2::Client) }
     let(:ec2_resource) { instance_double(Aws::EC2::Resource, client: ec2_client) }
+    let(:ebs_client)   { instance_double(Aws::EBS::Client) }
     let(:ebs_uploader) { instance_double(Bosh::AwsCloud::EbsDirectUploader) }
     let(:aws_config) do
       instance_double(Bosh::AwsCloud::AwsConfig,
@@ -23,20 +24,25 @@ module Bosh::AwsCloud
       }
     end
     let(:stemcell_cloud_props) { Bosh::AwsCloud::StemcellCloudProps.new(properties, global_config) }
-    let(:creator) { described_class.new(ec2_resource, stemcell_cloud_props, aws_config) }
+    let(:creator) { described_class.new(ec2_resource, stemcell_cloud_props, ebs_client) }
 
     before do
       allow(Bosh::AwsCloud::EbsDirectUploader).to receive(:new).and_return(ebs_uploader)
     end
 
     describe '#create' do
-      it 'extracts the root image, uploads via EbsDirectUploader, tags, and registers the AMI' do
+      it 'extracts the root image, uploads via EbsDirectUploader, and registers the AMI' do
         stemcell = instance_double(Bosh::AwsCloud::Stemcell)
         allow(creator).to receive(:extract_root_image)
         allow(creator).to receive(:compute_volume_size_gib).and_return(2)
-        expect(ebs_uploader).to receive(:upload).and_return('snap-ebs').ordered
-        expect(creator).to receive(:tag_snapshot).with('snap-ebs').ordered
-        expect(creator).to receive(:register_image_from_snapshot).with('snap-ebs').ordered.and_return(stemcell)
+        expect(ebs_uploader).to receive(:upload).with(
+          anything,
+          volume_size_gib: 2,
+          encrypted:       false,
+          kms_key_arn:     nil,
+          tags:            {},
+        ).and_return('snap-ebs')
+        expect(creator).to receive(:register_image_from_snapshot).with('snap-ebs').and_return(stemcell)
 
         expect(creator.create('/path/to/image.tgz')).to eq(stemcell)
       end
@@ -44,7 +50,6 @@ module Bosh::AwsCloud
       it 'forwards encrypted and kms_key_arn to the uploader' do
         allow(creator).to receive(:extract_root_image)
         allow(creator).to receive(:compute_volume_size_gib).and_return(2)
-        allow(creator).to receive(:tag_snapshot)
         allow(creator).to receive(:register_image_from_snapshot).and_return(instance_double(Bosh::AwsCloud::Stemcell))
 
         expect(ebs_uploader).to receive(:upload).with(
@@ -52,9 +57,27 @@ module Bosh::AwsCloud
           volume_size_gib: 2,
           encrypted:       true,
           kms_key_arn:     'arn:aws:kms:us-east-1:ID:key/GUID',
+          tags:            {},
         ).and_return('snap-enc')
 
         creator.create('/path/to/image.tgz', encrypted: true, kms_key_arn: 'arn:aws:kms:us-east-1:ID:key/GUID')
+      end
+
+      it 'passes tags to the uploader' do
+        tags = { 'env' => 'test', 'owner' => 'bosh' }
+        allow(creator).to receive(:extract_root_image)
+        allow(creator).to receive(:compute_volume_size_gib).and_return(2)
+        allow(creator).to receive(:register_image_from_snapshot).and_return(instance_double(Bosh::AwsCloud::Stemcell))
+
+        expect(ebs_uploader).to receive(:upload).with(
+          anything,
+          volume_size_gib: 2,
+          encrypted:       false,
+          kms_key_arn:     nil,
+          tags:            tags,
+        ).and_return('snap-tagged')
+
+        creator.create('/path/to/image.tgz', tags: tags)
       end
     end
 
@@ -69,21 +92,6 @@ module Bosh::AwsCloud
             creator.send(:extract_root_image, bogus, dest)
           }.to raise_error(Bosh::Clouds::CloudError, /Unable to extract stemcell root image/)
         end
-      end
-    end
-
-    describe '#tag_snapshot' do
-      let(:snapshot) { instance_double(Aws::EC2::Snapshot) }
-
-      it 'does not discard a completed snapshot when tagging hits a transient error' do
-        creator.instance_variable_set(:@creation_tags, { 'foo' => 'bar' })
-        allow(ec2_resource).to receive(:snapshot).with('snap-ebs').and_return(snapshot)
-        allow(Bosh::AwsCloud::TagManager).to receive(:create_tags)
-          .and_raise(Aws::Errors::ServiceError.new(nil, 'throttled'))
-
-        expect {
-          creator.send(:tag_snapshot, 'snap-ebs')
-        }.not_to raise_error
       end
     end
   end

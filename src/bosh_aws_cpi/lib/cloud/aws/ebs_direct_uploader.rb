@@ -3,12 +3,13 @@ module Bosh::AwsCloud
   # (StartSnapshot / PutSnapshotBlock / CompleteSnapshot).
   #
   # Responsibilities:
-  #   - Build and own the Aws::EBS::Client from the provided aws_config.
-  #   - Start a snapshot of the requested size with optional encryption.
+  #   - Accept an injected Aws::EBS::Client.
+  #   - Start a snapshot of the requested size with optional encryption and tags.
   #   - Upload all non-zero blocks concurrently from a local image file.
   #   - Complete the snapshot and wait for it to become available.
+  #   - Delete an incomplete snapshot if an error occurs after start_snapshot.
   #
-  # Callers are responsible for tagging the snapshot and registering the AMI.
+  # Callers are responsible for registering the AMI.
   class EbsDirectUploader
     include Helpers
 
@@ -24,8 +25,8 @@ module Bosh::AwsCloud
     # Fallback block size if StartSnapshot omits it in the response.
     DEFAULT_BLOCK_SIZE = 524288 # 512 KiB
 
-    def initialize(aws_config, ec2_resource)
-      @aws_config  = aws_config
+    def initialize(ebs_client, ec2_resource)
+      @ebs_client   = ebs_client
       @ec2_resource = ec2_resource
     end
 
@@ -35,15 +36,17 @@ module Bosh::AwsCloud
     # @param volume_size_gib [Integer] snapshot volume size in GiB
     # @param encrypted [Boolean] whether the snapshot should be encrypted
     # @param kms_key_arn [String, nil] KMS key ARN; nil uses the account default
+    # @param tags [Hash, nil] tags to apply at snapshot creation time
     # @return [String] the completed snapshot ID
-    def upload(image_path, volume_size_gib:, encrypted: false, kms_key_arn: nil)
-      snapshot_id = start_snapshot(volume_size_gib, encrypted, kms_key_arn)
+    def upload(image_path, volume_size_gib:, encrypted: false, kms_key_arn: nil, tags: nil)
+      snapshot_id = nil
+      snapshot_id = start_snapshot(volume_size_gib, encrypted, kms_key_arn, tags)
       block_size  = @started_block_size || DEFAULT_BLOCK_SIZE
 
       blocks_written = upload_blocks(snapshot_id, image_path, block_size)
 
       logger.info("completing EBS direct snapshot '#{snapshot_id}' (#{blocks_written} blocks written)")
-      ebs_client.complete_snapshot(
+      @ebs_client.complete_snapshot(
         snapshot_id:          snapshot_id,
         changed_blocks_count: blocks_written,
       )
@@ -53,13 +56,22 @@ module Bosh::AwsCloud
     rescue Aws::EC2::Errors::AccessDenied, Aws::EC2::Errors::UnauthorizedOperation,
            Aws::EBS::Errors::AccessDeniedException => e
       raise
-    rescue Aws::Errors::ServiceError => e
+    rescue => e
+      if snapshot_id
+        begin
+          @ec2_resource.client.delete_snapshot(snapshot_id: snapshot_id)
+          logger.info("deleted incomplete snapshot '#{snapshot_id}' after upload failure")
+        rescue => delete_err
+          logger.warn("could not delete incomplete snapshot '#{snapshot_id}': #{delete_err.message}")
+        end
+      end
+      raise e if e.is_a?(Bosh::Clouds::CloudError)
       raise Bosh::Clouds::CloudError, "EBS direct snapshot creation failed: #{e.message}"
     end
 
     private
 
-    def start_snapshot(volume_size_gib, encrypted, kms_key_arn)
+    def start_snapshot(volume_size_gib, encrypted, kms_key_arn, tags)
       params = {
         volume_size:  volume_size_gib,
         client_token: SecureRandom.uuid,
@@ -70,8 +82,13 @@ module Bosh::AwsCloud
         params[:kms_key_arn] = kms_key_arn if !kms_key_arn.to_s.empty?
       end
 
+      unless tags.nil? || tags.empty?
+        snap_specs = TagManager.tag_specifications_for_resources(tags, ['snapshot'])
+        params[:tag_specifications] = snap_specs unless snap_specs.empty?
+      end
+
       logger.info("starting EBS direct snapshot (#{volume_size_gib} GiB) for stemcell import")
-      response = ebs_client.start_snapshot(params)
+      response = @ebs_client.start_snapshot(params)
       @started_block_size = response.block_size
       response.snapshot_id
     end
@@ -80,77 +97,53 @@ module Bosh::AwsCloud
     # concurrently. All-zero blocks are skipped: EBS returns zero for unwritten
     # blocks, so a sparse image only pays for the blocks that hold actual data.
     #
-    # A SizedQueue bounds memory: the reader blocks whenever all worker slots are
-    # full, keeping at most QUEUE_DEPTH blocks (~16 MiB) in RAM regardless of
-    # image size. Workers start before reading begins so I/O and upload overlap.
-    #
-    # Error handling: workers use `next` (not `break`) so they keep draining the
-    # queue after a failure, preventing the producer from blocking forever on a
-    # full SizedQueue. The producer checks for errors before each enqueue and
-    # exits early.
+    # A bounded SizedQueue gates the producer so the reader blocks once the pool
+    # is saturated, keeping at most QUEUE_DEPTH blocks (~16 MiB) in RAM. Workers
+    # release a slot after each put_block so the producer unblocks automatically.
     def upload_blocks(snapshot_id, image_path, block_size)
-      zero_block    = "\0".b * block_size
-      queue         = SizedQueue.new(QUEUE_DEPTH)
+      zero_block = "\0".b * block_size
+      gate       = SizedQueue.new(QUEUE_DEPTH)
+
       written       = 0
       written_mutex = Mutex.new
-      error         = nil
-      error_mutex   = Mutex.new
 
-      workers = Array.new(PUT_CONCURRENCY) do
-        Thread.new do
-          while (item = queue.pop) != :done
-            next if error_mutex.synchronize { !error.nil? }
-
-            block_index, data = item
-            begin
-              put_block(snapshot_id, block_index, data)
-              written_mutex.synchronize { written += 1 }
-            rescue StandardError => e
-              error_mutex.synchronize { error ||= e }
-            end
-          end
-        end
-      end
+      pool = Bosh::ThreadPool.new(max_threads: PUT_CONCURRENCY, logger: logger)
 
       File.open(image_path, 'rb') do |f|
         index = 0
         while (chunk = f.read(block_size))
-          break if error_mutex.synchronize { !error.nil? }
-
           chunk = chunk.ljust(block_size, "\0".b) if chunk.bytesize < block_size
-          queue << [index, chunk] unless chunk == zero_block
+          unless chunk == zero_block
+            gate << :go
+            captured_index = index
+            captured_chunk = chunk
+            pool.process do
+              begin
+                put_block(snapshot_id, captured_index, captured_chunk)
+                written_mutex.synchronize { written += 1 }
+              ensure
+                gate.pop
+              end
+            end
+          end
           index += 1
         end
       end
 
-      PUT_CONCURRENCY.times { queue << :done }
-      workers.each(&:join)
-
-      raise error if error
-
+      pool.wait
       written
     end
 
     def put_block(snapshot_id, block_index, data)
       checksum = Base64.strict_encode64(Digest::SHA256.digest(data))
-      attempts = 0
-      begin
-        ebs_client.put_snapshot_block(
-          snapshot_id:        snapshot_id,
-          block_index:        block_index,
-          block_data:         StringIO.new(data),
-          data_length:        data.bytesize,
-          checksum:           checksum,
-          checksum_algorithm: 'SHA256',
-        )
-      rescue Aws::Errors::ServiceError => e
-        attempts += 1
-        raise if attempts > 3
-
-        logger.warn("retrying PutSnapshotBlock ##{block_index} on '#{snapshot_id}': #{e.message}")
-        sleep(1)
-        retry
-      end
+      @ebs_client.put_snapshot_block(
+        snapshot_id:        snapshot_id,
+        block_index:        block_index,
+        block_data:         StringIO.new(data),
+        data_length:        data.bytesize,
+        checksum:           checksum,
+        checksum_algorithm: 'SHA256',
+      )
     end
 
     def wait_for_snapshot_completed(snapshot_id)
@@ -158,26 +151,6 @@ module Bosh::AwsCloud
       ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
     rescue Bosh::Common::RetryCountExceeded => e
       raise Bosh::Clouds::CloudError, "Timed out waiting for EBS direct snapshot '#{snapshot_id}' to complete: #{e.message}"
-    end
-
-    # Builds the EBS client through the same parameter path used for the EC2
-    # client so it inherits BOSH_CA_CERT_FILE, retry_limit, dualstack, and
-    # logger rather than only region and credentials.
-    def ebs_client
-      @ebs_client ||= Aws::EBS::Client.new(ebs_client_params)
-    end
-
-    def ebs_client_params
-      params = {
-        credentials:           @aws_config.credentials,
-        retry_limit:           @aws_config.max_retries,
-        logger:                logger,
-        log_level:             :debug,
-        use_dualstack_endpoint: @aws_config.dualstack,
-      }
-      params[:region] = @aws_config.region if @aws_config.region
-      params[:ssl_ca_bundle] = ENV['BOSH_CA_CERT_FILE'] if ENV.key?('BOSH_CA_CERT_FILE')
-      params
     end
 
     def logger

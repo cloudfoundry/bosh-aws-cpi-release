@@ -5,15 +5,10 @@ module Bosh::AwsCloud
     let(:ebs_client)   { instance_double(Aws::EBS::Client) }
     let(:ec2_client)   { instance_double(Aws::EC2::Client) }
     let(:ec2_resource) { instance_double(Aws::EC2::Resource, client: ec2_client) }
-    let(:aws_config) do
-      instance_double(Bosh::AwsCloud::AwsConfig,
-        credentials: nil, max_retries: 3, dualstack: false, region: 'us-east-1')
-    end
-    let(:uploader) { described_class.new(aws_config, ec2_resource) }
+    let(:uploader) { described_class.new(ebs_client, ec2_resource) }
     let(:block_size) { 524288 }
 
     before do
-      allow(Aws::EBS::Client).to receive(:new).and_return(ebs_client)
       allow(SecureRandom).to receive(:uuid).and_return('fake-uuid')
     end
 
@@ -113,6 +108,38 @@ module Bosh::AwsCloud
         end
       end
 
+      it 'passes tag_specifications to StartSnapshot when tags are supplied' do
+        tags = { 'env' => 'test', 'owner' => 'bosh' }
+        expect(ebs_client).to receive(:start_snapshot) do |params|
+          expect(params[:tag_specifications]).not_to be_nil
+          expect(params[:tag_specifications].first[:resource_type]).to eq('snapshot')
+          tag_keys = params[:tag_specifications].first[:tags].map { |t| t[:key] }
+          expect(tag_keys).to include('env', 'owner')
+          start_response
+        end
+        allow(ebs_client).to receive(:put_snapshot_block).and_return(double('put'))
+        allow(ebs_client).to receive(:complete_snapshot)
+        allow(uploader).to receive(:wait_for_snapshot_completed)
+
+        with_image('x'.b * block_size) do |path|
+          uploader.upload(path, volume_size_gib: 1, tags: tags)
+        end
+      end
+
+      it 'does not set tag_specifications on StartSnapshot when tags are empty' do
+        expect(ebs_client).to receive(:start_snapshot) do |params|
+          expect(params).not_to have_key(:tag_specifications)
+          start_response
+        end
+        allow(ebs_client).to receive(:put_snapshot_block).and_return(double('put'))
+        allow(ebs_client).to receive(:complete_snapshot)
+        allow(uploader).to receive(:wait_for_snapshot_completed)
+
+        with_image('x'.b * block_size) do |path|
+          uploader.upload(path, volume_size_gib: 1, tags: {})
+        end
+      end
+
       it 'zero-pads a short final block to block_size before uploading' do
         short_chunk = 'X'.b * 10
         expect(ebs_client).to receive(:start_snapshot).and_return(start_response)
@@ -133,6 +160,7 @@ module Bosh::AwsCloud
         expect(ebs_client).to receive(:start_snapshot).and_return(start_response)
         allow(ebs_client).to receive(:put_snapshot_block)
           .and_raise(Aws::Errors::ServiceError.new(nil, 'throttled'))
+        allow(ec2_client).to receive(:delete_snapshot)
 
         with_image('X'.b * block_size) do |path|
           expect {
@@ -141,23 +169,17 @@ module Bosh::AwsCloud
         end
       end
 
-      it 'retries a failing block up to 3 times before giving up' do
-        call_count = 0
+      it 'calls put_snapshot_block once and raises on failure (SDK handles retries)' do
         expect(ebs_client).to receive(:start_snapshot).and_return(start_response)
-        allow(ebs_client).to receive(:put_snapshot_block) do
-          call_count += 1
-          raise Aws::Errors::ServiceError.new(nil, 'flaky') if call_count <= 3
-          double('put')
-        end
-        expect(ebs_client).to receive(:complete_snapshot)
-        allow(uploader).to receive(:wait_for_snapshot_completed)
-        allow(uploader).to receive(:sleep)
+        expect(ebs_client).to receive(:put_snapshot_block).once
+          .and_raise(Aws::Errors::ServiceError.new(nil, 'flaky'))
+        allow(ec2_client).to receive(:delete_snapshot)
 
         with_image('X'.b * block_size) do |path|
-          uploader.upload(path, volume_size_gib: 1)
+          expect {
+            uploader.upload(path, volume_size_gib: 1)
+          }.to raise_error(Bosh::Clouds::CloudError)
         end
-
-        expect(call_count).to eq(4)
       end
 
       it 'raises a CloudError when StartSnapshot fails' do
@@ -174,6 +196,7 @@ module Bosh::AwsCloud
       it 'raises a CloudError when the snapshot times out waiting for completion' do
         expect(ebs_client).to receive(:start_snapshot).and_return(start_response)
         allow(ebs_client).to receive(:complete_snapshot)
+        allow(ec2_client).to receive(:delete_snapshot)
 
         snapshot = instance_double(Aws::EC2::Snapshot)
         allow(ec2_resource).to receive(:snapshot).with('snap-001').and_return(snapshot)
@@ -184,6 +207,31 @@ module Bosh::AwsCloud
           expect {
             uploader.upload(path, volume_size_gib: 1)
           }.to raise_error(Bosh::Clouds::CloudError, /Timed out waiting for EBS direct snapshot/)
+        end
+      end
+
+      it 'deletes the snapshot when upload fails after start_snapshot succeeds' do
+        expect(ebs_client).to receive(:start_snapshot).and_return(start_response(snapshot_id: 'snap-cleanup'))
+        allow(ebs_client).to receive(:put_snapshot_block)
+          .and_raise(Aws::Errors::ServiceError.new(nil, 'boom'))
+        expect(ec2_client).to receive(:delete_snapshot).with(snapshot_id: 'snap-cleanup')
+
+        with_image('X'.b * block_size) do |path|
+          expect {
+            uploader.upload(path, volume_size_gib: 1)
+          }.to raise_error(Bosh::Clouds::CloudError)
+        end
+      end
+
+      it 'does not attempt delete_snapshot on start_snapshot permission error' do
+        allow(ebs_client).to receive(:start_snapshot)
+          .and_raise(Aws::EBS::Errors::AccessDeniedException.new(nil, 'denied'))
+        expect(ec2_client).not_to receive(:delete_snapshot)
+
+        with_image('x'.b * 10) do |path|
+          expect {
+            uploader.upload(path, volume_size_gib: 1)
+          }.to raise_error(Aws::EBS::Errors::AccessDeniedException)
         end
       end
     end

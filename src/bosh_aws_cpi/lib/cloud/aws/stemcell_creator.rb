@@ -2,19 +2,19 @@ module Bosh::AwsCloud
   # Orchestrates heavy-stemcell creation via the EBS direct API path:
   #   1. Extract the raw root image from the stemcell tarball.
   #   2. Upload it as an EBS snapshot (delegated to EbsDirectUploader).
-  #   3. Tag the snapshot.
-  #   4. Register and return an AMI.
+  #   3. Register and return an AMI.
   class StemcellCreator
     include Helpers
+    include StemcellImageParams
 
     BYTES_PER_GIB = 1024 * 1024 * 1024
 
     attr_reader :resource
 
-    def initialize(resource, stemcell_props, aws_config)
+    def initialize(resource, stemcell_props, ebs_client)
       @resource       = resource
       @stemcell_props = stemcell_props
-      @aws_config     = aws_config
+      @ebs_client     = ebs_client
       @creation_tags  = nil
     end
 
@@ -32,15 +32,15 @@ module Bosh::AwsCloud
         extract_root_image(image_path, root_img)
 
         volume_size_gib = compute_volume_size_gib(root_img)
-        uploader    = EbsDirectUploader.new(@aws_config, @resource)
+        uploader    = EbsDirectUploader.new(@ebs_client, @resource)
         snapshot_id = uploader.upload(
           root_img,
           volume_size_gib: volume_size_gib,
           encrypted:       encrypted,
           kms_key_arn:     kms_key_arn,
+          tags:            @creation_tags,
         )
 
-        tag_snapshot(snapshot_id)
         register_image_from_snapshot(snapshot_id)
       end
     end
@@ -76,16 +76,6 @@ module Bosh::AwsCloud
       [(bytes + BYTES_PER_GIB - 1) / BYTES_PER_GIB, 1].max
     end
 
-    def tag_snapshot(snapshot_id)
-      return if @creation_tags.nil? || @creation_tags.empty?
-
-      snapshot = resource.snapshot(snapshot_id)
-      TagManager.create_tags(snapshot, @creation_tags)
-    rescue Aws::Errors::ServiceError => e
-      # The snapshot already exists; a tag failure must not discard it.
-      logger.error("could not tag snapshot #{snapshot_id}: #{e.message}")
-    end
-
     def register_image_from_snapshot(snapshot_id)
       # the top-level ec2 class' ImageCollection.create does not support the full set of params
       params = image_params(snapshot_id)
@@ -93,54 +83,6 @@ module Bosh::AwsCloud
       ResourceWait.for_image(image: image, state: 'available')
 
       Stemcell.new(resource, image)
-    end
-
-    def image_params(snapshot_id)
-      params = begin
-        if @stemcell_props.paravirtual?
-          aki = @stemcell_props.kernel_id || AKIPicker.new(resource).pick(@stemcell_props.architecture, @stemcell_props.root_device_name)
-          {
-            :kernel_id          => aki,
-            :root_device_name   => @stemcell_props.root_device_name,
-            :block_device_mappings => [
-              {
-                :device_name => '/dev/sda',
-                :ebs         => { :snapshot_id => snapshot_id },
-              },
-            ],
-          }
-        else
-          {
-            :virtualization_type => @stemcell_props.virtualization_type,
-            :root_device_name    => '/dev/xvda',
-            :sriov_net_support   => 'simple',
-            :ena_support         => true,
-            :boot_mode           => @stemcell_props.boot_mode,
-            :block_device_mappings => [
-              {
-                :device_name => '/dev/xvda',
-                :ebs         => { :snapshot_id => snapshot_id },
-              },
-            ],
-          }
-        end
-      end
-
-      params[:description] = @stemcell_props.formatted_name if @stemcell_props.old?
-
-      params.merge!(
-        :name         => "BOSH-#{SecureRandom.uuid}",
-        :architecture => @stemcell_props.architecture,
-      )
-
-      params[:block_device_mappings].push(BlockDeviceManager::DEFAULT_INSTANCE_STORAGE_DISK_MAPPING)
-
-      image_tag_hash = @creation_tags.nil? ? {} : @creation_tags
-      image_tag_hash['Name'] = params[:description] if params[:description]
-      img_specs = TagManager.tag_specifications_for_resources(image_tag_hash, ['image'])
-      params[:tag_specifications] = img_specs unless img_specs.empty?
-
-      params
     end
 
     def logger
