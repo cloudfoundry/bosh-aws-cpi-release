@@ -346,6 +346,98 @@ describe Bosh::AwsCloud::CloudV1 do
           expect(cloud.create_stemcell("/tmp/foo", props)).to eq("ami-xxxxxxxx")
         end
       end
+
+      context "when EBS direct APIs are unavailable (AccessDenied)" do
+        let(:legacy_creator) { instance_double(Bosh::AwsCloud::LegacyStemcellCreator) }
+        let(:volume)         { instance_double(Aws::EC2::Volume) }
+        let(:instance)       { instance_double(Aws::EC2::Instance, exists?: true, instance_type: 'm5.large', reload: nil) }
+        let(:volume_manager) { instance_double(Bosh::AwsCloud::VolumeManager) }
+
+        before do
+          allow(Bosh::AwsCloud::LegacyStemcellCreator).to receive(:new).and_return(legacy_creator)
+          allow(Bosh::AwsCloud::VolumeManager).to receive(:new).and_return(volume_manager)
+        end
+
+        it "falls back to the legacy attach-volume path on AccessDenied (EC2)" do
+          cloud = mock_cloud do |ec2|
+            allow(Bosh::AwsCloud::StemcellCreator).to receive(:new).and_return(creator)
+            allow(ec2).to receive(:instance).and_return(instance)
+          end
+
+          allow(creator).to receive(:create)
+            .and_raise(Aws::EC2::Errors::AccessDenied.new(nil, 'Access Denied'))
+
+          allow(cloud).to receive(:current_vm_id).and_return('i-director')
+          allow(volume_manager).to receive(:create_ebs_volume).and_return(volume)
+          allow(volume_manager).to receive(:attach_ebs_volume).and_return('/dev/sdf')
+          allow(volume_manager).to receive(:detach_ebs_volume)
+          allow(volume_manager).to receive(:delete_ebs_volume)
+          allow(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).and_return('/dev/xvdf')
+          allow(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).and_return('/dev/xvdf')
+          allow(legacy_creator).to receive(:create).and_return(stemcell)
+
+          expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
+          expect(legacy_creator).to have_received(:create)
+        end
+
+        it "falls back to the legacy attach-volume path on EBS AccessDeniedException" do
+          cloud = mock_cloud do |ec2|
+            allow(Bosh::AwsCloud::StemcellCreator).to receive(:new).and_return(creator)
+            allow(ec2).to receive(:instance).and_return(instance)
+          end
+
+          allow(creator).to receive(:create)
+            .and_raise(Aws::EBS::Errors::AccessDeniedException.new(nil, 'Access Denied'))
+
+          allow(cloud).to receive(:current_vm_id).and_return('i-director')
+          allow(volume_manager).to receive(:create_ebs_volume).and_return(volume)
+          allow(volume_manager).to receive(:attach_ebs_volume).and_return('/dev/sdf')
+          allow(volume_manager).to receive(:detach_ebs_volume)
+          allow(volume_manager).to receive(:delete_ebs_volume)
+          allow(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).and_return('/dev/xvdf')
+          allow(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).and_return('/dev/xvdf')
+          allow(legacy_creator).to receive(:create).and_return(stemcell)
+
+          expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
+          expect(legacy_creator).to have_received(:create)
+        end
+
+        it "falls back to the legacy attach-volume path on UnauthorizedOperation" do
+          cloud = mock_cloud do |ec2|
+            allow(Bosh::AwsCloud::StemcellCreator).to receive(:new).and_return(creator)
+            allow(ec2).to receive(:instance).and_return(instance)
+          end
+
+          allow(creator).to receive(:create)
+            .and_raise(Aws::EC2::Errors::UnauthorizedOperation.new(nil, 'UnauthorizedOperation'))
+
+          allow(cloud).to receive(:current_vm_id).and_return('i-director')
+          allow(volume_manager).to receive(:create_ebs_volume).and_return(volume)
+          allow(volume_manager).to receive(:attach_ebs_volume).and_return('/dev/sdf')
+          allow(volume_manager).to receive(:detach_ebs_volume)
+          allow(volume_manager).to receive(:delete_ebs_volume)
+          allow(Bosh::AwsCloud::BlockDeviceManager).to receive(:device_path).and_return('/dev/xvdf')
+          allow(Bosh::AwsCloud::BlockDeviceManager).to receive(:block_device_ready?).and_return('/dev/xvdf')
+          allow(legacy_creator).to receive(:create).and_return(stemcell)
+
+          expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
+          expect(legacy_creator).to have_received(:create)
+        end
+
+        it "does not fall back on non-permissions errors" do
+          cloud = mock_cloud do
+            allow(Bosh::AwsCloud::StemcellCreator).to receive(:new).and_return(creator)
+          end
+
+          allow(creator).to receive(:create)
+            .and_raise(Bosh::Clouds::CloudError, 'EBS direct snapshot creation failed: internal error')
+
+          expect {
+            cloud.create_stemcell("/tmp/foo", stemcell_properties)
+          }.to raise_error(Bosh::Clouds::CloudError, /internal error/)
+          expect(legacy_creator).not_to have_received(:create)
+        end
+      end
     end
   end
 end
