@@ -139,7 +139,7 @@ module Bosh::AwsCloud
       @ebs_client.put_snapshot_block(
         snapshot_id:        snapshot_id,
         block_index:        block_index,
-        block_data:         StringIO.new(data),
+        block_data:         -> { StringIO.new(data) },
         data_length:        data.bytesize,
         checksum:           checksum,
         checksum_algorithm: 'SHA256',
