@@ -149,6 +149,11 @@ module Bosh::AwsCloud
     def wait_for_snapshot_completed(snapshot_id)
       snapshot = @ec2_resource.snapshot(snapshot_id)
       ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
+    rescue Bosh::Clouds::CloudError => e
+      snapshot.reload rescue nil
+      reason = snapshot.state_message rescue nil
+      msg = reason.to_s.empty? ? e.message : "#{e.message} (#{reason})"
+      raise Bosh::Clouds::CloudError, msg
     rescue Bosh::Common::RetryCountExceeded => e
       raise Bosh::Clouds::CloudError, "Timed out waiting for EBS direct snapshot '#{snapshot_id}' to complete: #{e.message}"
     end
