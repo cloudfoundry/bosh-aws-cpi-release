@@ -30,6 +30,9 @@ module Bosh::AwsCloud
         logger: @logger,
         log_level: :debug,
         use_dualstack_endpoint: @aws_config.dualstack,
+        http_open_timeout: 15,
+        http_read_timeout: 60,
+        http_idle_timeout: 15,
       }
       if @aws_config.region
         params[:region] = @aws_config.region
