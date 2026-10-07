@@ -19,9 +19,6 @@ module Bosh::AwsCloud
     # StartSnapshot moves the snapshot to `error` if not completed within this
     # many minutes.
     SNAPSHOT_TIMEOUT_MINUTES = 60
-    # Bound the producer-consumer queue so the reader blocks when workers fall
-    # behind; 2x concurrency keeps ~16 MiB of block data in flight at most.
-    QUEUE_DEPTH = PUT_CONCURRENCY * 2
     # Fallback block size if StartSnapshot omits it in the response.
     DEFAULT_BLOCK_SIZE = 524288 # 512 KiB
 
@@ -97,15 +94,18 @@ module Bosh::AwsCloud
     # concurrently. All-zero blocks are skipped: EBS returns zero for unwritten
     # blocks, so a sparse image only pays for the blocks that hold actual data.
     #
-    # A bounded SizedQueue gates the producer so the reader blocks once the pool
-    # is saturated, keeping at most QUEUE_DEPTH blocks (~16 MiB) in RAM. Workers
-    # release a slot after each put_block so the producer unblocks automatically.
+    # A Mutex+ConditionVariable semaphore bounds in-flight blocks to PUT_CONCURRENCY
+    # so the producer pauses when all workers are busy. Unlike SizedQueue, the CV
+    # signal fires even when a worker dies with an exception, preventing deadlock.
     def upload_blocks(snapshot_id, image_path, block_size)
       zero_block = "\0".b * block_size
-      gate       = SizedQueue.new(QUEUE_DEPTH)
 
       written       = 0
       written_mutex = Mutex.new
+
+      in_flight     = 0
+      sem_mutex     = Mutex.new
+      sem_cv        = ConditionVariable.new
 
       pool = Bosh::ThreadPool.new(max_threads: PUT_CONCURRENCY, logger: logger)
 
@@ -114,7 +114,8 @@ module Bosh::AwsCloud
         while (chunk = f.read(block_size))
           chunk = chunk.ljust(block_size, "\0".b) if chunk.bytesize < block_size
           unless chunk == zero_block
-            gate << :go
+            sem_mutex.synchronize { sem_cv.wait(sem_mutex) while in_flight >= PUT_CONCURRENCY }
+            sem_mutex.synchronize { in_flight += 1 }
             captured_index = index
             captured_chunk = chunk
             pool.process do
@@ -122,7 +123,7 @@ module Bosh::AwsCloud
                 put_block(snapshot_id, captured_index, captured_chunk)
                 written_mutex.synchronize { written += 1 }
               ensure
-                gate.pop
+                sem_mutex.synchronize { in_flight -= 1; sem_cv.signal }
               end
             end
           end
