@@ -154,10 +154,14 @@ module Bosh::AwsCloud
       checksum = Base64.strict_encode64(Digest::SHA256.digest(data))
       attempts = 0
       begin
+        # Build a fresh StringIO per attempt: on retry the previous stream has
+        # been read to EOF, so reusing it would send a zero-length body. Passing
+        # the IO directly (not a Proc) is required by the installed aws-sdk,
+        # which validates block_data as a String/IO-like object.
         @ebs_client.put_snapshot_block(
           snapshot_id:        snapshot_id,
           block_index:        block_index,
-          block_data:         -> { StringIO.new(data) },
+          block_data:         StringIO.new(data),
           data_length:        data.bytesize,
           checksum:           checksum,
           checksum_algorithm: 'SHA256',
