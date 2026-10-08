@@ -19,6 +19,9 @@ module Bosh::AwsCloud
     # StartSnapshot moves the snapshot to `error` if not completed within this
     # many minutes.
     SNAPSHOT_TIMEOUT_MINUTES = 60
+    # Bound the producer-consumer queue so the reader blocks when workers fall
+    # behind; 2x concurrency keeps ~16 MiB of block data in flight at most.
+    QUEUE_DEPTH = PUT_CONCURRENCY * 2
     # Fallback block size if StartSnapshot omits it in the response.
     DEFAULT_BLOCK_SIZE = 524288 # 512 KiB
 
@@ -94,60 +97,79 @@ module Bosh::AwsCloud
     # concurrently. All-zero blocks are skipped: EBS returns zero for unwritten
     # blocks, so a sparse image only pays for the blocks that hold actual data.
     #
-    # The ThreadPool bounds concurrency to PUT_CONCURRENCY. The additional
-    # Mutex+ConditionVariable semaphore bounds how far the producer may read
-    # ahead: without it the read loop would queue every non-zero chunk into the
-    # pool's action list, holding the whole image in memory. The CV signal fires
-    # from the worker's ensure block even if a worker dies, so the producer never
-    # deadlocks. The pool is driven via #wrap, which calls #wait (re-raising the
-    # first worker exception) and always #shutdown (joining worker threads).
+    # A SizedQueue bounds memory: the reader blocks whenever all worker slots are
+    # full, keeping at most QUEUE_DEPTH blocks (~16 MiB) in RAM regardless of
+    # image size. Workers start before reading begins so I/O and upload overlap.
+    #
+    # Error handling: workers use `next` (not `break`) so they keep draining the
+    # queue after a failure, preventing the producer from blocking forever on a
+    # full SizedQueue. The producer checks for errors before each enqueue and
+    # exits early. Bosh::ThreadPool is deliberately NOT used here: its fail-fast
+    # behaviour stops dispatching queued work once any worker raises, which strands
+    # a producer that is gated on worker progress and deadlocks the upload.
     def upload_blocks(snapshot_id, image_path, block_size)
-      zero_block = "\0".b * block_size
-
+      zero_block    = "\0".b * block_size
+      queue         = SizedQueue.new(QUEUE_DEPTH)
       written       = 0
       written_mutex = Mutex.new
+      error         = nil
+      error_mutex   = Mutex.new
 
-      in_flight     = 0
-      sem_mutex     = Mutex.new
-      sem_cv        = ConditionVariable.new
+      workers = Array.new(PUT_CONCURRENCY) do
+        Thread.new do
+          while (item = queue.pop) != :done
+            next if error_mutex.synchronize { !error.nil? }
 
-      Bosh::ThreadPool.new(max_threads: PUT_CONCURRENCY, logger: logger).wrap do |pool|
-        File.open(image_path, 'rb') do |f|
-          index = 0
-          while (chunk = f.read(block_size))
-            chunk = chunk.ljust(block_size, "\0".b) if chunk.bytesize < block_size
-            unless chunk == zero_block
-              sem_mutex.synchronize { sem_cv.wait(sem_mutex) while in_flight >= PUT_CONCURRENCY }
-              sem_mutex.synchronize { in_flight += 1 }
-              captured_index = index
-              captured_chunk = chunk
-              pool.process do
-                begin
-                  put_block(snapshot_id, captured_index, captured_chunk)
-                  written_mutex.synchronize { written += 1 }
-                ensure
-                  sem_mutex.synchronize { in_flight -= 1; sem_cv.signal }
-                end
-              end
+            block_index, data = item
+            begin
+              put_block(snapshot_id, block_index, data)
+              written_mutex.synchronize { written += 1 }
+            rescue StandardError => e
+              error_mutex.synchronize { error ||= e }
             end
-            index += 1
           end
         end
       end
+
+      File.open(image_path, 'rb') do |f|
+        index = 0
+        while (chunk = f.read(block_size))
+          break if error_mutex.synchronize { !error.nil? }
+
+          chunk = chunk.ljust(block_size, "\0".b) if chunk.bytesize < block_size
+          queue << [index, chunk] unless chunk == zero_block
+          index += 1
+        end
+      end
+
+      PUT_CONCURRENCY.times { queue << :done }
+      workers.each(&:join)
+
+      raise error if error
 
       written
     end
 
     def put_block(snapshot_id, block_index, data)
       checksum = Base64.strict_encode64(Digest::SHA256.digest(data))
-      @ebs_client.put_snapshot_block(
-        snapshot_id:        snapshot_id,
-        block_index:        block_index,
-        block_data:         -> { StringIO.new(data) },
-        data_length:        data.bytesize,
-        checksum:           checksum,
-        checksum_algorithm: 'SHA256',
-      )
+      attempts = 0
+      begin
+        @ebs_client.put_snapshot_block(
+          snapshot_id:        snapshot_id,
+          block_index:        block_index,
+          block_data:         -> { StringIO.new(data) },
+          data_length:        data.bytesize,
+          checksum:           checksum,
+          checksum_algorithm: 'SHA256',
+        )
+      rescue Aws::Errors::ServiceError => e
+        attempts += 1
+        raise if attempts > 3
+
+        logger.warn("retrying PutSnapshotBlock ##{block_index} on '#{snapshot_id}': #{e.message}")
+        sleep(1)
+        retry
+      end
     end
 
     def wait_for_snapshot_completed(snapshot_id)
