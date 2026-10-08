@@ -94,9 +94,13 @@ module Bosh::AwsCloud
     # concurrently. All-zero blocks are skipped: EBS returns zero for unwritten
     # blocks, so a sparse image only pays for the blocks that hold actual data.
     #
-    # A Mutex+ConditionVariable semaphore bounds in-flight blocks to PUT_CONCURRENCY
-    # so the producer pauses when all workers are busy. Unlike SizedQueue, the CV
-    # signal fires even when a worker dies with an exception, preventing deadlock.
+    # The ThreadPool bounds concurrency to PUT_CONCURRENCY. The additional
+    # Mutex+ConditionVariable semaphore bounds how far the producer may read
+    # ahead: without it the read loop would queue every non-zero chunk into the
+    # pool's action list, holding the whole image in memory. The CV signal fires
+    # from the worker's ensure block even if a worker dies, so the producer never
+    # deadlocks. The pool is driven via #wrap, which calls #wait (re-raising the
+    # first worker exception) and always #shutdown (joining worker threads).
     def upload_blocks(snapshot_id, image_path, block_size)
       zero_block = "\0".b * block_size
 
@@ -107,31 +111,30 @@ module Bosh::AwsCloud
       sem_mutex     = Mutex.new
       sem_cv        = ConditionVariable.new
 
-      pool = Bosh::ThreadPool.new(max_threads: PUT_CONCURRENCY, logger: logger)
-
-      File.open(image_path, 'rb') do |f|
-        index = 0
-        while (chunk = f.read(block_size))
-          chunk = chunk.ljust(block_size, "\0".b) if chunk.bytesize < block_size
-          unless chunk == zero_block
-            sem_mutex.synchronize { sem_cv.wait(sem_mutex) while in_flight >= PUT_CONCURRENCY }
-            sem_mutex.synchronize { in_flight += 1 }
-            captured_index = index
-            captured_chunk = chunk
-            pool.process do
-              begin
-                put_block(snapshot_id, captured_index, captured_chunk)
-                written_mutex.synchronize { written += 1 }
-              ensure
-                sem_mutex.synchronize { in_flight -= 1; sem_cv.signal }
+      Bosh::ThreadPool.new(max_threads: PUT_CONCURRENCY, logger: logger).wrap do |pool|
+        File.open(image_path, 'rb') do |f|
+          index = 0
+          while (chunk = f.read(block_size))
+            chunk = chunk.ljust(block_size, "\0".b) if chunk.bytesize < block_size
+            unless chunk == zero_block
+              sem_mutex.synchronize { sem_cv.wait(sem_mutex) while in_flight >= PUT_CONCURRENCY }
+              sem_mutex.synchronize { in_flight += 1 }
+              captured_index = index
+              captured_chunk = chunk
+              pool.process do
+                begin
+                  put_block(snapshot_id, captured_index, captured_chunk)
+                  written_mutex.synchronize { written += 1 }
+                ensure
+                  sem_mutex.synchronize { in_flight -= 1; sem_cv.signal }
+                end
               end
             end
+            index += 1
           end
-          index += 1
         end
       end
 
-      pool.wait
       written
     end
 
