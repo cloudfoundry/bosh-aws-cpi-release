@@ -79,6 +79,13 @@ resource "aws_subnet" "default" {
   map_public_ip_on_launch = true
 }
 
+resource "aws_ec2_subnet_cidr_reservation" "bosh_reserved" {
+  cidr_block       = cidrsubnet(aws_subnet.default.cidr_block, 1, 1)
+  reservation_type = "explicit"
+  subnet_id        = aws_subnet.default.id
+  description      = "Prevent AWS dynamic allocation from claiming BOSH IPs"
+}
+
 resource "aws_subnet" "backup" {
   vpc_id            = aws_vpc.default.id
   cidr_block        = cidrsubnet(aws_vpc.default.cidr_block, 8, 2)
@@ -211,7 +218,8 @@ resource "aws_elb" "default" {
     lb_protocol       = "http"
   }
 
-  subnets = [aws_subnet.default.id]
+  subnets    = [aws_subnet.default.id]
+  depends_on = [aws_ec2_subnet_cidr_reservation.bosh_reserved]
 
   tags = {
     Name = "${var.resource_prefix}-${var.env_name}"
@@ -224,6 +232,7 @@ resource "aws_alb" "default" {
     aws_subnet.default.id,
     aws_subnet.backup.id
   ]
+  depends_on = [aws_ec2_subnet_cidr_reservation.bosh_reserved]
 
   tags = {
     Name = "${var.resource_prefix}-${var.env_name}"
@@ -302,7 +311,7 @@ output "manual_subnet_id" {
   value = aws_subnet.manual.id
 }
 output "internal_cidr" {
-  value = aws_vpc.default.cidr_block
+  value = aws_subnet.default.cidr_block
 }
 output "internal_gw" {
   value = cidrhost(aws_vpc.default.cidr_block, 1)
@@ -311,25 +320,25 @@ output "dns_recursor_ip" {
   value = cidrhost(aws_vpc.default.cidr_block, 2)
 }
 output "internal_ip" {
-  value = cidrhost(aws_vpc.default.cidr_block, 6)
+  value = cidrhost(aws_subnet.default.cidr_block, 134)
 }
 output "reserved_range" {
-  value = "${cidrhost(aws_vpc.default.cidr_block, 2)}-${cidrhost(aws_vpc.default.cidr_block, 9)}"
+  value = "${cidrhost(aws_subnet.default.cidr_block, 2)}-${cidrhost(aws_subnet.default.cidr_block, 134)}"
 }
 output "static_range" {
-  value = "${cidrhost(aws_vpc.default.cidr_block, 10)}-${cidrhost(aws_vpc.default.cidr_block, 30)}"
+  value = "${cidrhost(aws_subnet.default.cidr_block, 135)}-${cidrhost(aws_subnet.default.cidr_block, 160)}"
 }
 output "bats_eip" {
   value = aws_eip.deployment.public_ip
 }
 output "network_static_ip_1" {
-  value = cidrhost(aws_vpc.default.cidr_block, 28)
+  value = cidrhost(aws_subnet.default.cidr_block, 158)
 }
 output "network_static_ip_2" {
-  value = cidrhost(aws_vpc.default.cidr_block, 29)
+  value = cidrhost(aws_subnet.default.cidr_block, 159)
 }
 output "network_second_static_ip" {
-  value = cidrhost(aws_vpc.default.cidr_block, 30)
+  value = cidrhost(aws_subnet.default.cidr_block, 160)
 }
 output "network_static_ipv6" {
   value = cidrhost(aws_subnet.default.ipv6_cidr_block, 28)
