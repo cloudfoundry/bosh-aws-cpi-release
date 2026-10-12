@@ -83,8 +83,10 @@ module Bosh::AwsCloud
       end
 
       unless tags.nil? || tags.empty?
-        snap_specs = TagManager.tag_specifications_for_resources(tags, ['snapshot'])
-        params[:tag_specifications] = snap_specs unless snap_specs.empty?
+        # EBS StartSnapshot accepts `tags` directly (not `tag_specifications`
+        # as in the EC2 API). Each tag is {key:, value:}.
+        formatted = TagManager.format_tags(tags)
+        params[:tags] = formatted unless formatted.empty?
       end
 
       logger.info("starting EBS direct snapshot (#{volume_size_gib} GiB) for stemcell import")
