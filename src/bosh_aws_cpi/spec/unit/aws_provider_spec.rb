@@ -17,6 +17,7 @@ describe Bosh::AwsCloud::AwsProvider do
       use_dualstack_endpoint: false
     }
   end
+  let(:ebs_params) { params.reject { |k, _| k == :endpoint } }
   let(:ec2_client) { instance_double(Aws::EC2::Client) }
   let(:ebs_client) { instance_double(Aws::EBS::Client) }
 
@@ -25,7 +26,7 @@ describe Bosh::AwsCloud::AwsProvider do
     expect(Aws::ElasticLoadBalancingV2::Client).to receive(:new).with(params)
     expect(Aws::EC2::Client).to receive(:new).with(params).and_return(ec2_client)
     expect(Aws::EC2::Resource).to receive(:new).with(client: ec2_client)
-    expect(Aws::EBS::Client).to receive(:new).with(params).and_return(ebs_client)
+    expect(Aws::EBS::Client).to receive(:new).with(ebs_params).and_return(ebs_client)
 
     Bosh::AwsCloud::AwsProvider.new(config.aws, logger)
   end

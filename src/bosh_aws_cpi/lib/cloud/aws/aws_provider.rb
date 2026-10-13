@@ -18,7 +18,7 @@ module Bosh::AwsCloud
       @ec2_client = Aws::EC2::Client.new(@ec2_params)
       @ec2_resource = Aws::EC2::Resource.new(client: @ec2_client)
 
-      @ebs_client = Aws::EBS::Client.new(initialize_params(@aws_config.ec2_endpoint))
+      @ebs_client = Aws::EBS::Client.new(initialize_params(nil))
     end
 
     private
