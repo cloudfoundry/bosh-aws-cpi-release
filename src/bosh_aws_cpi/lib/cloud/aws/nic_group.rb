@@ -164,11 +164,11 @@ module Bosh::AwsCloud
     # value cannot be parsed as an IP address it is treated as not equal, so the
     # caller's mismatch validation rejects the malformed configuration rather
     # than letting a raw parser error leak out. On different Ruby versions a
-    # malformed address raises either IPAddr::Error or a bare ArgumentError
-    # (IPAddr::InvalidAddressError), so both are rescued.
+    # malformed address raises ArgumentError (including IPAddr::Error and its
+    # IPAddr::InvalidAddressError subclass), so it is rescued.
     def same_ipv6_address?(a, b)
       IPAddr.new(a.to_s) == IPAddr.new(b.to_s)
-    rescue IPAddr::Error, ArgumentError
+    rescue ArgumentError
       false
     end
 
@@ -179,7 +179,7 @@ module Bosh::AwsCloud
     def global_unicast_ipv6?(addr)
       ip = IPAddr.new(addr.to_s)
       ip.ipv6? && (ip.to_i >> 125) == 1
-    rescue IPAddr::Error, ArgumentError
+    rescue ArgumentError
       false
     end
   end
