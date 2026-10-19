@@ -10,8 +10,8 @@ module Bosh::AwsCloud
 
     ##
     # Creates a new EC2 AMI using stemcell image.
-    # This method can only be run on an EC2 instance, as image creation
-    # involves creating and mounting new EBS volume as local block device.
+    # Uses the EBS direct API (StartSnapshot/PutSnapshotBlock/CompleteSnapshot)
+    # and does not require the CPI to run on an EC2 instance.
     # @param [String] image_path local filesystem path to a stemcell image
     # @param [Hash] cloud_properties AWS-specific stemcell properties
     # @option cloud_properties [String] kernel_id

@@ -53,9 +53,6 @@ module Bosh::AwsCloud
 
       wait_for_snapshot_completed(snapshot_id)
       snapshot_id
-    rescue Aws::EC2::Errors::AccessDenied, Aws::EC2::Errors::UnauthorizedOperation,
-           Aws::EBS::Errors::AccessDeniedException => e
-      raise
     rescue => e
       if snapshot_id
         begin
@@ -65,6 +62,10 @@ module Bosh::AwsCloud
           logger.warn("could not delete incomplete snapshot '#{snapshot_id}': #{delete_err.message}")
         end
       end
+      # Re-raise permission errors unwrapped so callers can detect and fall back
+      raise e if e.is_a?(Aws::EC2::Errors::AccessDenied) ||
+                 e.is_a?(Aws::EC2::Errors::UnauthorizedOperation) ||
+                 e.is_a?(Aws::EBS::Errors::AccessDeniedException)
       raise e if e.is_a?(Bosh::Clouds::CloudError)
       raise Bosh::Clouds::CloudError, "EBS direct snapshot creation failed: #{e.message}"
     end
@@ -154,28 +155,18 @@ module Bosh::AwsCloud
 
     def put_block(snapshot_id, block_index, data)
       checksum = Base64.strict_encode64(Digest::SHA256.digest(data))
-      attempts = 0
-      begin
-        # Build a fresh StringIO per attempt: on retry the previous stream has
-        # been read to EOF, so reusing it would send a zero-length body. Passing
-        # the IO directly (not a Proc) is required by the installed aws-sdk,
-        # which validates block_data as a String/IO-like object.
-        @ebs_client.put_snapshot_block(
-          snapshot_id:        snapshot_id,
-          block_index:        block_index,
-          block_data:         StringIO.new(data),
-          data_length:        data.bytesize,
-          checksum:           checksum,
-          checksum_algorithm: 'SHA256',
-        )
-      rescue Aws::Errors::ServiceError => e
-        attempts += 1
-        raise if attempts > 3
-
-        logger.warn("retrying PutSnapshotBlock ##{block_index} on '#{snapshot_id}': #{e.message}")
-        sleep(1)
-        retry
-      end
+      # Build a fresh StringIO per call: if the SDK retries internally the
+      # previous stream has been read to EOF, so reusing it would send a
+      # zero-length body. Passing the IO directly (not a Proc) is required by
+      # the installed aws-sdk, which validates block_data as a String/IO-like.
+      @ebs_client.put_snapshot_block(
+        snapshot_id:        snapshot_id,
+        block_index:        block_index,
+        block_data:         StringIO.new(data),
+        data_length:        data.bytesize,
+        checksum:           checksum,
+        checksum_algorithm: 'SHA256',
+      )
     end
 
     def wait_for_snapshot_completed(snapshot_id)

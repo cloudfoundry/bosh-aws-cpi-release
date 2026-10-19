@@ -108,13 +108,13 @@ module Bosh::AwsCloud
         end
       end
 
-      it 'passes tag_specifications to StartSnapshot when tags are supplied' do
+      it 'passes tags directly to StartSnapshot when tags are supplied' do
         tags = { 'env' => 'test', 'owner' => 'bosh' }
         expect(ebs_client).to receive(:start_snapshot) do |params|
-          expect(params[:tag_specifications]).not_to be_nil
-          expect(params[:tag_specifications].first[:resource_type]).to eq('snapshot')
-          tag_keys = params[:tag_specifications].first[:tags].map { |t| t[:key] }
+          expect(params[:tags]).not_to be_nil
+          tag_keys = params[:tags].map { |t| t[:key] }
           expect(tag_keys).to include('env', 'owner')
+          expect(params).not_to have_key(:tag_specifications)
           start_response
         end
         allow(ebs_client).to receive(:put_snapshot_block).and_return(double('put'))
@@ -126,8 +126,9 @@ module Bosh::AwsCloud
         end
       end
 
-      it 'does not set tag_specifications on StartSnapshot when tags are empty' do
+      it 'does not set tags on StartSnapshot when tags are empty' do
         expect(ebs_client).to receive(:start_snapshot) do |params|
+          expect(params).not_to have_key(:tags)
           expect(params).not_to have_key(:tag_specifications)
           start_response
         end
@@ -229,6 +230,19 @@ module Bosh::AwsCloud
         expect(ec2_client).not_to receive(:delete_snapshot)
 
         with_image('x'.b * 10) do |path|
+          expect {
+            uploader.upload(path, volume_size_gib: 1)
+          }.to raise_error(Aws::EBS::Errors::AccessDeniedException)
+        end
+      end
+
+      it 'deletes the snapshot and re-raises unwrapped on permission error after start_snapshot' do
+        expect(ebs_client).to receive(:start_snapshot).and_return(start_response(snapshot_id: 'snap-perm'))
+        allow(ebs_client).to receive(:put_snapshot_block)
+          .and_raise(Aws::EBS::Errors::AccessDeniedException.new(nil, 'denied mid-upload'))
+        expect(ec2_client).to receive(:delete_snapshot).with(snapshot_id: 'snap-perm')
+
+        with_image('X'.b * block_size) do |path|
           expect {
             uploader.upload(path, volume_size_gib: 1)
           }.to raise_error(Aws::EBS::Errors::AccessDeniedException)

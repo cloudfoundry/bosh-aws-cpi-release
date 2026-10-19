@@ -472,9 +472,14 @@ module Bosh::AwsCloud
         tags: tags || {},
       ).id
     rescue Aws::EC2::Errors::AccessDenied, Aws::EC2::Errors::UnauthorizedOperation,
-           Aws::EBS::Errors::AccessDeniedException => e
-      logger.warn("EBS direct API unavailable (#{e.message}); falling back to legacy attach-volume stemcell path")
-      legacy_create_ami_for_stemcell(image_path, stemcell_cloud_props, tags)
+           Aws::EBS::Errors::AccessDeniedException => ebs_error
+      logger.warn("EBS direct API unavailable (#{ebs_error.message}); falling back to legacy attach-volume stemcell path")
+      begin
+        legacy_create_ami_for_stemcell(image_path, stemcell_cloud_props, tags)
+      rescue => legacy_error
+        raise Bosh::Clouds::CloudError,
+              "EBS direct path failed (#{ebs_error.message}) and legacy fallback also failed: #{legacy_error.message}"
+      end
     end
 
     # Legacy heavy-stemcell path: attach an EBS volume to the current EC2

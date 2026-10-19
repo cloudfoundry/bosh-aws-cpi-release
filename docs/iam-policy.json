@@ -44,14 +44,7 @@
                 "ebs:StartSnapshot",
                 "ebs:PutSnapshotBlock",
                 "ebs:CompleteSnapshot",
-                "ec2:DeleteSnapshot"
-            ],
-            "Resource": "arn:aws:ec2:*::snapshot/*"
-        },
-        {
-            "Sid": "RequiredIfUsingEBSDirectHeavyStemcellsDescribe",
-            "Effect": "Allow",
-            "Action": [
+                "ec2:DeleteSnapshot",
                 "ec2:DescribeSnapshots"
             ],
             "Resource": "*"
@@ -68,6 +61,7 @@
             "Sid": "RequiredIfUsingCustomKMSKeys",
             "Effect": "Allow",
             "Action": [
+                "kms:Decrypt",
                 "kms:ReEncrypt*",
                 "kms:GenerateDataKey*",
                 "kms:CreateGrant",
