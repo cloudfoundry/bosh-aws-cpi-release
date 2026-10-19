@@ -40,7 +40,7 @@ module Bosh::AwsCloud
           volume_size_gib: 2,
           encrypted:       false,
           kms_key_arn:     nil,
-          tags:            {},
+          tags:            nil,
         ).and_return('snap-ebs')
         expect(creator).to receive(:register_image_from_snapshot).with('snap-ebs').and_return(stemcell)
 
@@ -57,7 +57,7 @@ module Bosh::AwsCloud
           volume_size_gib: 2,
           encrypted:       true,
           kms_key_arn:     'arn:aws:kms:us-east-1:ID:key/GUID',
-          tags:            {},
+          tags:            nil,
         ).and_return('snap-enc')
 
         creator.create('/path/to/image.tgz', encrypted: true, kms_key_arn: 'arn:aws:kms:us-east-1:ID:key/GUID')

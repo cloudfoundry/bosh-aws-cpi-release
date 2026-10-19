@@ -110,23 +110,30 @@ module Bosh::AwsCloud
     end
 
     describe '#create' do
-      let(:ebs_client) { instance_double(Aws::EBS::Client) }
-      let(:creator) { described_class.new(ec2_resource, stemcell_cloud_props, aws_config) }
+      let(:ebs_client)   { instance_double(Aws::EBS::Client) }
+      let(:ebs_uploader) { instance_double(Bosh::AwsCloud::EbsDirectUploader) }
+      let(:creator)      { described_class.new(ec2_resource, stemcell_cloud_props, ebs_client) }
 
       before do
-        allow(Aws::EBS::Client).to receive(:new).and_return(ebs_client)
+        allow(Bosh::AwsCloud::EbsDirectUploader).to receive(:new).and_return(ebs_uploader)
         allow(SecureRandom).to receive(:uuid).and_return('fake-uuid')
       end
 
-      it 'forwards the tags: kwarg to tag_snapshot' do
+      it 'passes tags to EbsDirectUploader#upload' do
+        tags = { 'env' => 'test' }
         stemcell = instance_double(Bosh::AwsCloud::Stemcell)
         allow(creator).to receive(:extract_root_image)
-        allow(creator).to receive(:write_snapshot_via_ebs_direct).and_return('snap-tagged')
-        expect(creator).to receive(:tag_snapshot).with('snap-tagged').ordered
+        allow(creator).to receive(:compute_volume_size_gib).and_return(2)
+        expect(ebs_uploader).to receive(:upload).with(
+          anything,
+          volume_size_gib: 2,
+          encrypted:       false,
+          kms_key_arn:     nil,
+          tags:            tags,
+        ).and_return('snap-tagged')
         allow(creator).to receive(:register_image_from_snapshot).and_return(stemcell)
 
-        creator.create('/path/to/image.tgz', encrypted: false, kms_key_arn: nil, tags: { 'env' => 'test' })
-        expect(creator.instance_variable_get(:@creation_tags)).to eq({ 'env' => 'test' })
+        creator.create('/path/to/image.tgz', encrypted: false, kms_key_arn: nil, tags: tags)
       end
     end
   end

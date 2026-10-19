@@ -134,19 +134,21 @@ module Bosh::AwsCloud
         end
       end
 
-      File.open(image_path, 'rb') do |f|
-        index = 0
-        while (chunk = f.read(block_size))
-          break if error_mutex.synchronize { !error.nil? }
+      begin
+        File.open(image_path, 'rb') do |f|
+          index = 0
+          while (chunk = f.read(block_size))
+            break if error_mutex.synchronize { !error.nil? }
 
-          chunk = chunk.ljust(block_size, "\0".b) if chunk.bytesize < block_size
-          queue << [index, chunk] unless chunk == zero_block
-          index += 1
+            chunk = chunk.ljust(block_size, "\0".b) if chunk.bytesize < block_size
+            queue << [index, chunk] unless chunk == zero_block
+            index += 1
+          end
         end
+      ensure
+        PUT_CONCURRENCY.times { queue << :done }
+        workers.each(&:join)
       end
-
-      PUT_CONCURRENCY.times { queue << :done }
-      workers.each(&:join)
 
       raise error if error
 

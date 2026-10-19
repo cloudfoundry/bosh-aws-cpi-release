@@ -14,7 +14,10 @@ describe Bosh::AwsCloud::AwsProvider do
       logger: logger,
       log_level: :debug,
       region: 'us-east-1',
-      use_dualstack_endpoint: false
+      use_dualstack_endpoint: false,
+      http_open_timeout: 15,
+      http_read_timeout: 60,
+      http_idle_timeout: 15,
     }
   end
   let(:ebs_params) { params.reject { |k, _| k == :endpoint } }

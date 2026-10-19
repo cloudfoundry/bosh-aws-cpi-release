@@ -349,8 +349,9 @@ describe Bosh::AwsCloud::CloudV1 do
 
       context "when EBS direct APIs are unavailable (AccessDenied)" do
         let(:legacy_creator) { instance_double(Bosh::AwsCloud::LegacyStemcellCreator) }
-        let(:volume)         { instance_double(Aws::EC2::Volume) }
-        let(:instance)       { instance_double(Aws::EC2::Instance, exists?: true, instance_type: 'm5.large', reload: nil) }
+        let(:volume)         { instance_double(Aws::EC2::Volume, id: 'vol-fallback') }
+        let(:placement)      { instance_double(Aws::EC2::Types::Placement, availability_zone: 'us-east-1a') }
+        let(:instance)       { instance_double(Aws::EC2::Instance, exists?: true, instance_type: 'm5.large', reload: nil, placement: placement) }
         let(:volume_manager) { instance_double(Bosh::AwsCloud::VolumeManager) }
 
         before do
@@ -432,10 +433,11 @@ describe Bosh::AwsCloud::CloudV1 do
           allow(creator).to receive(:create)
             .and_raise(Bosh::Clouds::CloudError, 'EBS direct snapshot creation failed: internal error')
 
+          expect(Bosh::AwsCloud::LegacyStemcellCreator).not_to receive(:new)
+
           expect {
             cloud.create_stemcell("/tmp/foo", stemcell_properties)
           }.to raise_error(Bosh::Clouds::CloudError, /internal error/)
-          expect(legacy_creator).not_to have_received(:create)
         end
       end
     end
