@@ -1,0 +1,45 @@
+name: bosh-aws-cpi
+version: 107.3.3
+commit_hash: 4092ad9e
+uncommitted_changes: false
+jobs:
+- name: aws_cpi
+  version: d493f17eeccd45ab82eae97bb1c5e5fc09c612ea3182298b70626a0568935aab
+  fingerprint: d493f17eeccd45ab82eae97bb1c5e5fc09c612ea3182298b70626a0568935aab
+  sha1: sha256:3e51bb8c5f356938e8e0b130f902b47855803c2e09c9402aa3a29ac0131d06b8
+  packages:
+  - aws-cpi-ruby-3.3
+  - bosh_aws_cpi
+packages:
+- name: aws-cpi-ruby-3.3
+  version: 4b5ea4a880c87a85cc2205db5eea924b8ec9a00ac6fefa22f2df5f263cb50b45
+  fingerprint: 4b5ea4a880c87a85cc2205db5eea924b8ec9a00ac6fefa22f2df5f263cb50b45
+  sha1: sha256:f5cd3fcee33f04620c52ebacebe185d8d8db49a861873e051a59c5ce6250a0b8
+  dependencies: []
+- name: aws-cpi-ruby-3.4
+  version: af8985f718335bf84e17868af9073b1b50798d5377f6534bf742ac3ab64ef6dc
+  fingerprint: af8985f718335bf84e17868af9073b1b50798d5377f6534bf742ac3ab64ef6dc
+  sha1: sha256:b309fa5a1f95617a0eaa1d92c458790247b36a8844a1e3fa9b5f8b0776d140e2
+  dependencies: []
+- name: aws-cpi-ruby-4.0
+  version: 49f42c1ed7fe753ae0f0794b922a10be40c6c476926ff3b0475f02d130c13483
+  fingerprint: 49f42c1ed7fe753ae0f0794b922a10be40c6c476926ff3b0475f02d130c13483
+  sha1: sha256:60bdbd35b81ab11025a64bb092ca9469a86fea45b2b121cc9d1765391adf15f8
+  dependencies:
+  - aws-cpi-rust-1-linux
+- name: aws-cpi-rust-1-linux
+  version: 94df07258b767803c9aebbdaf8f502ee0ecdb3bb0bcd402bbc1e98bca45309b2
+  fingerprint: 94df07258b767803c9aebbdaf8f502ee0ecdb3bb0bcd402bbc1e98bca45309b2
+  sha1: sha256:d1bee5e3fed11a8cd68992190031da2be83a4127e11ae57612bc6c8c2d6f5505
+  dependencies: []
+- name: bosh_aws_cpi
+  version: 20950279dd4e9c41e551cd832acf0a6cb5c28fb0b2a217be152f81bdf6cf95a7
+  fingerprint: 20950279dd4e9c41e551cd832acf0a6cb5c28fb0b2a217be152f81bdf6cf95a7
+  sha1: sha256:c7c14cc6d7b5bb3a4a8352ffa15e4013dc331864dc9fb4f710f78b77cd5d04fc
+  dependencies:
+  - aws-cpi-ruby-3.3
+license:
+  version: 6904efc3d7f9a0daee5862166c3e7a4481a96c351e1615ccbcc79ff4b7e8826e
+  fingerprint: 6904efc3d7f9a0daee5862166c3e7a4481a96c351e1615ccbcc79ff4b7e8826e
+  sha1: sha256:0c7d15923caf9f418bf56cbbc26892984ccfb619444de68dd56b767726255f1b
+no_compression: false
