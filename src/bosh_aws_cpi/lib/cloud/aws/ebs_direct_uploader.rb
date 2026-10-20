@@ -24,26 +24,33 @@ module Bosh::AwsCloud
     QUEUE_DEPTH = PUT_CONCURRENCY * 2
     # Fallback block size if StartSnapshot omits it in the response.
     DEFAULT_BLOCK_SIZE = 524288 # 512 KiB
+    BYTES_PER_GIB = 1024 * 1024 * 1024
 
     def initialize(ebs_client, ec2_resource)
       @ebs_client   = ebs_client
       @ec2_resource = ec2_resource
     end
 
-    # Uploads the raw image at +image_path+ into a new EBS snapshot.
+    # Uploads the raw image read from +image_io+ into a new EBS snapshot.
     #
-    # @param image_path [String] path to an uncompressed raw disk image
+    # +image_io+ is read sequentially in block-sized chunks and never
+    # materialized in full, so a multi-GiB stemcell can be streamed straight
+    # from the decompression pipe without any scratch disk. Because the stream
+    # is consumed as it arrives, the volume size must be known up front and is
+    # supplied by the caller (from the stemcell's declared disk size).
+    #
+    # @param image_io [IO] readable stream of an uncompressed raw disk image
     # @param volume_size_gib [Integer] snapshot volume size in GiB
     # @param encrypted [Boolean] whether the snapshot should be encrypted
     # @param kms_key_arn [String, nil] KMS key ARN; nil uses the account default
     # @param tags [Hash, nil] tags to apply at snapshot creation time
     # @return [String] the completed snapshot ID
-    def upload(image_path, volume_size_gib:, encrypted: false, kms_key_arn: nil, tags: nil)
+    def upload(image_io, volume_size_gib:, encrypted: false, kms_key_arn: nil, tags: nil)
       snapshot_id = nil
       snapshot_id = start_snapshot(volume_size_gib, encrypted, kms_key_arn, tags)
       block_size  = @started_block_size || DEFAULT_BLOCK_SIZE
 
-      blocks_written = upload_blocks(snapshot_id, image_path, block_size)
+      blocks_written = upload_blocks(snapshot_id, image_io, block_size, volume_size_gib)
 
       logger.info("completing EBS direct snapshot '#{snapshot_id}' (#{blocks_written} blocks written)")
       @ebs_client.complete_snapshot(
@@ -96,13 +103,23 @@ module Bosh::AwsCloud
       response.snapshot_id
     end
 
-    # Reads +image_path+ in +block_size+ chunks and uploads every non-zero block
+    # Reads +image_io+ in +block_size+ chunks and uploads every non-zero block
     # concurrently. All-zero blocks are skipped: EBS returns zero for unwritten
     # blocks, so a sparse image only pays for the blocks that hold actual data.
+    #
+    # +image_io+ is consumed as a stream (typically the stdout of a `tar`
+    # decompression pipe), so the image is never written to a scratch disk. The
+    # stream is read strictly sequentially by a single producer; only the small
+    # bounded set of in-flight blocks is held in memory.
     #
     # A SizedQueue bounds memory: the reader blocks whenever all worker slots are
     # full, keeping at most QUEUE_DEPTH blocks (~16 MiB) in RAM regardless of
     # image size. Workers start before reading begins so I/O and upload overlap.
+    #
+    # Because the volume size is fixed before the stream is read, a block index
+    # beyond the declared capacity would be silently dropped by EBS; guard
+    # against that and fail loudly instead, so an oversized image is a clear
+    # error rather than a corrupt snapshot.
     #
     # Error handling: workers use `next` (not `break`) so they keep draining the
     # queue after a failure, preventing the producer from blocking forever on a
@@ -110,8 +127,9 @@ module Bosh::AwsCloud
     # exits early. Bosh::ThreadPool is deliberately NOT used here: its fail-fast
     # behaviour stops dispatching queued work once any worker raises, which strands
     # a producer that is gated on worker progress and deadlocks the upload.
-    def upload_blocks(snapshot_id, image_path, block_size)
+    def upload_blocks(snapshot_id, image_io, block_size, volume_size_gib)
       zero_block    = "\0".b * block_size
+      max_blocks    = (volume_size_gib * BYTES_PER_GIB) / block_size
       queue         = SizedQueue.new(QUEUE_DEPTH)
       written       = 0
       written_mutex = Mutex.new
@@ -135,15 +153,18 @@ module Bosh::AwsCloud
       end
 
       begin
-        File.open(image_path, 'rb') do |f|
-          index = 0
-          while (chunk = f.read(block_size))
-            break if error_mutex.synchronize { !error.nil? }
+        index = 0
+        while (chunk = image_io.read(block_size))
+          break if error_mutex.synchronize { !error.nil? }
 
-            chunk = chunk.ljust(block_size, "\0".b) if chunk.bytesize < block_size
-            queue << [index, chunk] unless chunk == zero_block
-            index += 1
+          if index >= max_blocks
+            raise Bosh::Clouds::CloudError,
+                  "stemcell image exceeds declared volume size of #{volume_size_gib} GiB"
           end
+
+          chunk = chunk.ljust(block_size, "\0".b) if chunk.bytesize < block_size
+          queue << [index, chunk] unless chunk == zero_block
+          index += 1
         end
       ensure
         PUT_CONCURRENCY.times { queue << :done }

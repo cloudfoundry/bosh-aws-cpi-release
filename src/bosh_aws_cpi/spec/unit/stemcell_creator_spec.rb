@@ -122,7 +122,7 @@ module Bosh::AwsCloud
       it 'passes tags to EbsDirectUploader#upload' do
         tags = { 'env' => 'test' }
         stemcell = instance_double(Bosh::AwsCloud::Stemcell)
-        allow(creator).to receive(:extract_root_image)
+        allow(creator).to receive(:stream_root_image) { |_image_path, &blk| blk.call(instance_double(IO)) }
         allow(creator).to receive(:compute_volume_size_gib).and_return(2)
         expect(ebs_uploader).to receive(:upload).with(
           anything,

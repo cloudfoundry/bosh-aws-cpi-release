@@ -16,7 +16,7 @@ module Bosh::AwsCloud
       Dir.mktmpdir do |dir|
         path = File.join(dir, 'root.img')
         File.binwrite(path, bytes)
-        yield path
+        File.open(path, 'rb') { |io| yield io }
       end
     end
 
@@ -54,10 +54,8 @@ module Bosh::AwsCloud
         allow(ec2_resource).to receive(:snapshot).with('snap-001').and_return(snapshot)
         allow(ResourceWait).to receive(:for_snapshot)
 
-        with_image(img) do |path|
-          allow(File).to receive(:size).and_call_original
-          allow(File).to receive(:size).with(path).and_return(2 * 1024 * 1024 * 1024)
-          result = uploader.upload(path, volume_size_gib: 2)
+        with_image(img) do |io|
+          result = uploader.upload(io, volume_size_gib: 2)
           expect(result).to eq('snap-001')
         end
 
@@ -74,8 +72,8 @@ module Bosh::AwsCloud
         allow(ebs_client).to receive(:complete_snapshot)
         allow(uploader).to receive(:wait_for_snapshot_completed)
 
-        with_image('x'.b * block_size) do |path|
-          uploader.upload(path, volume_size_gib: 1, encrypted: true)
+        with_image('x'.b * block_size) do |io|
+          uploader.upload(io, volume_size_gib: 1, encrypted: true)
         end
       end
 
@@ -89,8 +87,8 @@ module Bosh::AwsCloud
         allow(ebs_client).to receive(:complete_snapshot)
         allow(uploader).to receive(:wait_for_snapshot_completed)
 
-        with_image('x'.b * block_size) do |path|
-          uploader.upload(path, volume_size_gib: 1, encrypted: true, kms_key_arn: 'arn:aws:kms:us-east-1:ID:key/GUID')
+        with_image('x'.b * block_size) do |io|
+          uploader.upload(io, volume_size_gib: 1, encrypted: true, kms_key_arn: 'arn:aws:kms:us-east-1:ID:key/GUID')
         end
       end
 
@@ -103,8 +101,8 @@ module Bosh::AwsCloud
         allow(ebs_client).to receive(:complete_snapshot)
         allow(uploader).to receive(:wait_for_snapshot_completed)
 
-        with_image("\0".b * block_size) do |path|
-          uploader.upload(path, volume_size_gib: 1, encrypted: false, kms_key_arn: 'arn:aws:kms:us-east-1:ID:key/GUID')
+        with_image("\0".b * block_size) do |io|
+          uploader.upload(io, volume_size_gib: 1, encrypted: false, kms_key_arn: 'arn:aws:kms:us-east-1:ID:key/GUID')
         end
       end
 
@@ -121,8 +119,8 @@ module Bosh::AwsCloud
         allow(ebs_client).to receive(:complete_snapshot)
         allow(uploader).to receive(:wait_for_snapshot_completed)
 
-        with_image('x'.b * block_size) do |path|
-          uploader.upload(path, volume_size_gib: 1, tags: tags)
+        with_image('x'.b * block_size) do |io|
+          uploader.upload(io, volume_size_gib: 1, tags: tags)
         end
       end
 
@@ -136,8 +134,8 @@ module Bosh::AwsCloud
         allow(ebs_client).to receive(:complete_snapshot)
         allow(uploader).to receive(:wait_for_snapshot_completed)
 
-        with_image('x'.b * block_size) do |path|
-          uploader.upload(path, volume_size_gib: 1, tags: {})
+        with_image('x'.b * block_size) do |io|
+          uploader.upload(io, volume_size_gib: 1, tags: {})
         end
       end
 
@@ -152,9 +150,29 @@ module Bosh::AwsCloud
         expect(ebs_client).to receive(:complete_snapshot)
         allow(uploader).to receive(:wait_for_snapshot_completed)
 
-        with_image(short_chunk) do |path|
-          uploader.upload(path, volume_size_gib: 1)
+        with_image(short_chunk) do |io|
+          uploader.upload(io, volume_size_gib: 1)
         end
+      end
+
+      it 'raises a CloudError when the image stream exceeds the declared volume size' do
+        # Report a 64 MiB block size so a 1 GiB volume holds 16 blocks, then feed
+        # 17 reads. The same chunk object is returned each time, so only one
+        # 64 MiB buffer is ever allocated regardless of block count.
+        big_block = 64 * 1024 * 1024
+        max_blocks = (1024 * 1024 * 1024) / big_block
+        expect(ebs_client).to receive(:start_snapshot).and_return(start_response(bs: big_block))
+        allow(ebs_client).to receive(:put_snapshot_block).and_return(double('put'))
+        allow(ec2_client).to receive(:delete_snapshot)
+
+        chunk = 'Z'.b * big_block
+        reads = [chunk] * (max_blocks + 1) + [nil]
+        fake_io = instance_double(IO)
+        allow(fake_io).to receive(:read) { reads.shift }
+
+        expect {
+          uploader.upload(fake_io, volume_size_gib: 1)
+        }.to raise_error(Bosh::Clouds::CloudError, /exceeds declared volume size/)
       end
 
       it 'propagates a mid-upload block failure as a CloudError' do
@@ -163,9 +181,9 @@ module Bosh::AwsCloud
           .and_raise(Aws::Errors::ServiceError.new(nil, 'throttled'))
         allow(ec2_client).to receive(:delete_snapshot)
 
-        with_image('X'.b * block_size) do |path|
+        with_image('X'.b * block_size) do |io|
           expect {
-            uploader.upload(path, volume_size_gib: 1)
+            uploader.upload(io, volume_size_gib: 1)
           }.to raise_error(Bosh::Clouds::CloudError, /EBS direct snapshot creation failed/)
         end
       end
@@ -176,9 +194,9 @@ module Bosh::AwsCloud
           .and_raise(Aws::Errors::ServiceError.new(nil, 'flaky'))
         allow(ec2_client).to receive(:delete_snapshot)
 
-        with_image('X'.b * block_size) do |path|
+        with_image('X'.b * block_size) do |io|
           expect {
-            uploader.upload(path, volume_size_gib: 1)
+            uploader.upload(io, volume_size_gib: 1)
           }.to raise_error(Bosh::Clouds::CloudError)
         end
       end
@@ -187,9 +205,9 @@ module Bosh::AwsCloud
         allow(ebs_client).to receive(:start_snapshot)
           .and_raise(Aws::Errors::ServiceError.new(nil, 'nope'))
 
-        with_image('x'.b * 10) do |path|
+        with_image('x'.b * 10) do |io|
           expect {
-            uploader.upload(path, volume_size_gib: 1)
+            uploader.upload(io, volume_size_gib: 1)
           }.to raise_error(Bosh::Clouds::CloudError, /EBS direct snapshot creation failed: nope/)
         end
       end
@@ -204,9 +222,9 @@ module Bosh::AwsCloud
         allow(ResourceWait).to receive(:for_snapshot)
           .and_raise(Bosh::Common::RetryCountExceeded)
 
-        with_image("\0".b * block_size) do |path|
+        with_image("\0".b * block_size) do |io|
           expect {
-            uploader.upload(path, volume_size_gib: 1)
+            uploader.upload(io, volume_size_gib: 1)
           }.to raise_error(Bosh::Clouds::CloudError, /Timed out waiting for EBS direct snapshot/)
         end
       end
@@ -217,9 +235,9 @@ module Bosh::AwsCloud
           .and_raise(Aws::Errors::ServiceError.new(nil, 'boom'))
         expect(ec2_client).to receive(:delete_snapshot).with(snapshot_id: 'snap-cleanup')
 
-        with_image('X'.b * block_size) do |path|
+        with_image('X'.b * block_size) do |io|
           expect {
-            uploader.upload(path, volume_size_gib: 1)
+            uploader.upload(io, volume_size_gib: 1)
           }.to raise_error(Bosh::Clouds::CloudError)
         end
       end
@@ -229,9 +247,9 @@ module Bosh::AwsCloud
           .and_raise(Aws::EBS::Errors::AccessDeniedException.new(nil, 'denied'))
         expect(ec2_client).not_to receive(:delete_snapshot)
 
-        with_image('x'.b * 10) do |path|
+        with_image('x'.b * 10) do |io|
           expect {
-            uploader.upload(path, volume_size_gib: 1)
+            uploader.upload(io, volume_size_gib: 1)
           }.to raise_error(Aws::EBS::Errors::AccessDeniedException)
         end
       end
@@ -242,9 +260,9 @@ module Bosh::AwsCloud
           .and_raise(Aws::EBS::Errors::AccessDeniedException.new(nil, 'denied mid-upload'))
         expect(ec2_client).to receive(:delete_snapshot).with(snapshot_id: 'snap-perm')
 
-        with_image('X'.b * block_size) do |path|
+        with_image('X'.b * block_size) do |io|
           expect {
-            uploader.upload(path, volume_size_gib: 1)
+            uploader.upload(io, volume_size_gib: 1)
           }.to raise_error(Aws::EBS::Errors::AccessDeniedException)
         end
       end
