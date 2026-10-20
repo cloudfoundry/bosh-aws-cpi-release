@@ -166,7 +166,7 @@ module Bosh::AwsCloud
         allow(ec2_client).to receive(:delete_snapshot)
 
         chunk = 'Z'.b * big_block
-        reads = [chunk] * (max_blocks + 1) + [nil]
+        reads = ([chunk] * (max_blocks + 1)) + [nil]
         fake_io = instance_double(IO)
         allow(fake_io).to receive(:read) { reads.shift }
 
