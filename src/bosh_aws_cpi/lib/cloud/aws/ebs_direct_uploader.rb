@@ -1,28 +1,16 @@
 module Bosh::AwsCloud
   # Uploads a raw disk image to an EBS snapshot using the EBS direct APIs
   # (StartSnapshot / PutSnapshotBlock / CompleteSnapshot).
-  #
-  # Responsibilities:
-  #   - Accept an injected Aws::EBS::Client.
-  #   - Start a snapshot of the requested size with optional encryption and tags.
-  #   - Upload all non-zero blocks concurrently from a local image file.
-  #   - Complete the snapshot and wait for it to become available.
-  #   - Delete an incomplete snapshot if an error occurs after start_snapshot.
-  #
-  # Callers are responsible for registering the AMI.
   class EbsDirectUploader
     include Helpers
 
     # PutSnapshotBlock is capped at 1,000 req/s per snapshot; keep concurrency
     # comfortably under that so a single stemcell import stays within the cap.
     PUT_CONCURRENCY = 16
-    # StartSnapshot moves the snapshot to `error` if not completed within this
-    # many minutes.
     SNAPSHOT_TIMEOUT_MINUTES = 60
     # Bound the producer-consumer queue so the reader blocks when workers fall
     # behind; 2x concurrency keeps ~16 MiB of block data in flight at most.
     QUEUE_DEPTH = PUT_CONCURRENCY * 2
-    # Fallback block size if StartSnapshot omits it in the response.
     DEFAULT_BLOCK_SIZE = 524288 # 512 KiB
     BYTES_PER_GIB = 1024 * 1024 * 1024
 
@@ -31,14 +19,6 @@ module Bosh::AwsCloud
       @ec2_resource = ec2_resource
     end
 
-    # Uploads the raw image read from +image_io+ into a new EBS snapshot.
-    #
-    # +image_io+ is read sequentially in block-sized chunks and never
-    # materialized in full, so a multi-GiB stemcell can be streamed straight
-    # from the decompression pipe without any scratch disk. Because the stream
-    # is consumed as it arrives, the volume size must be known up front and is
-    # supplied by the caller (from the stemcell's declared disk size).
-    #
     # @param image_io [IO] readable stream of an uncompressed raw disk image
     # @param volume_size_gib [Integer] snapshot volume size in GiB
     # @param encrypted [Boolean] whether the snapshot should be encrypted
@@ -91,8 +71,7 @@ module Bosh::AwsCloud
       end
 
       unless tags.nil? || tags.empty?
-        # EBS StartSnapshot accepts `tags` directly (not `tag_specifications`
-        # as in the EC2 API). Each tag is {key:, value:}.
+        # EBS StartSnapshot accepts `tags` directly (not `tag_specifications` as in the EC2 API).
         formatted = TagManager.format_tags(tags)
         params[:tags] = formatted unless formatted.empty?
       end
@@ -103,30 +82,10 @@ module Bosh::AwsCloud
       response.snapshot_id
     end
 
-    # Reads +image_io+ in +block_size+ chunks and uploads every non-zero block
-    # concurrently. All-zero blocks are skipped: EBS returns zero for unwritten
-    # blocks, so a sparse image only pays for the blocks that hold actual data.
-    #
-    # +image_io+ is consumed as a stream (typically the stdout of a `tar`
-    # decompression pipe), so the image is never written to a scratch disk. The
-    # stream is read strictly sequentially by a single producer; only the small
-    # bounded set of in-flight blocks is held in memory.
-    #
-    # A SizedQueue bounds memory: the reader blocks whenever all worker slots are
-    # full, keeping at most QUEUE_DEPTH blocks (~16 MiB) in RAM regardless of
-    # image size. Workers start before reading begins so I/O and upload overlap.
-    #
-    # Because the volume size is fixed before the stream is read, a block index
-    # beyond the declared capacity would be silently dropped by EBS; guard
-    # against that and fail loudly instead, so an oversized image is a clear
-    # error rather than a corrupt snapshot.
-    #
-    # Error handling: workers use `next` (not `break`) so they keep draining the
-    # queue after a failure, preventing the producer from blocking forever on a
-    # full SizedQueue. The producer checks for errors before each enqueue and
-    # exits early. Bosh::ThreadPool is deliberately NOT used here: its fail-fast
-    # behaviour stops dispatching queued work once any worker raises, which strands
-    # a producer that is gated on worker progress and deadlocks the upload.
+    # Skips all-zero blocks (EBS returns zero for unwritten blocks). Uses a SizedQueue producer-
+    # consumer pattern to overlap I/O and upload without buffering the full image in memory.
+    # Bosh::ThreadPool is intentionally avoided: its fail-fast behaviour deadlocks the producer
+    # when workers stop draining the queue after an error.
     def upload_blocks(snapshot_id, image_io, block_size, volume_size_gib)
       zero_block    = "\0".b * block_size
       max_blocks    = (volume_size_gib * BYTES_PER_GIB) / block_size
@@ -178,10 +137,7 @@ module Bosh::AwsCloud
 
     def put_block(snapshot_id, block_index, data)
       checksum = Base64.strict_encode64(Digest::SHA256.digest(data))
-      # Build a fresh StringIO per call: if the SDK retries internally the
-      # previous stream has been read to EOF, so reusing it would send a
-      # zero-length body. Passing the IO directly (not a Proc) is required by
-      # the installed aws-sdk, which validates block_data as a String/IO-like.
+      # Build a fresh StringIO per call so SDK retries don't send a zero-length body.
       @ebs_client.put_snapshot_block(
         snapshot_id:        snapshot_id,
         block_index:        block_index,

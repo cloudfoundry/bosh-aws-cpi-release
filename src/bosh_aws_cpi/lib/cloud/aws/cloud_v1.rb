@@ -457,14 +457,8 @@ module Bosh::AwsCloud
       logger.debug("updated registry settings: #{registry.read_settings(instance_id)}")
     end
 
-    # Heavy-stemcell path, shared by CloudV1 and CloudV3 so the two API versions
-    # cannot diverge. Callers pass the tags correct for their version (props.tags
-    # for V1, the env argument for V3).
-    #
-    # Tries the EBS direct API path first. If the CPI lacks the required EBS
-    # permissions (AccessDenied / UnauthorizedOperation) it falls back to the
-    # legacy attach-volume path so operators can migrate IAM policies
-    # incrementally without a downtime window.
+    # Tries the EBS direct API path first; falls back to legacy attach-volume if the CPI
+    # lacks the required EBS permissions, so operators can migrate IAM policies incrementally.
     def create_ami_for_stemcell(image_path, stemcell_cloud_props, tags = nil)
       creator = StemcellCreator.new(@ec2_resource, stemcell_cloud_props, @aws_provider.ebs_client)
 
