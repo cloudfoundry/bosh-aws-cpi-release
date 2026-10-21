@@ -155,12 +155,14 @@ describe Bosh::AwsCloud::CloudV1 do
               'ipv4' => {
                 'type' => 'manual',
                 'ip' => @manual_ip,
-                'cloud_properties' => { 'subnet' => @manual_subnet_id, 'nic_group' => 0 }
+                'nic_group' => 0,
+                'cloud_properties' => { 'subnet' => @manual_subnet_id }
               },
               'ipv6' => {
                 'type' => 'manual',
                 'ip' => ipv6_ip,
-                'cloud_properties' => { 'subnet' => @manual_subnet_id, 'nic_group' => 0, 'primary_ipv6' => true }
+                'nic_group' => 0,
+                'cloud_properties' => { 'subnet' => @manual_subnet_id, 'primary_ipv6' => true }
               }
             }
           end
