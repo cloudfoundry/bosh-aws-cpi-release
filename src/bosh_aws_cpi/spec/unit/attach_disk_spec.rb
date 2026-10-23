@@ -40,7 +40,7 @@ describe Bosh::AwsCloud::CloudV1 do
       }
     }
 
-    expect(@registry).to receive(:read_settings).twice.with('i-test').and_return(old_settings)
+    expect(@registry).to receive(:read_settings).once.with('i-test').and_return(old_settings)
     expect(@registry).to receive(:update_settings).with('i-test', new_settings)
 
     cloud.attach_disk('i-test', 'v-foobar')
@@ -73,7 +73,7 @@ describe Bosh::AwsCloud::CloudV1 do
     }
 
     expect(@registry).to receive(:read_settings).
-      twice.
+      once.
       with('i-test').
       and_return(old_settings)
 
@@ -115,7 +115,7 @@ describe Bosh::AwsCloud::CloudV1 do
         }
       }
 
-      expect(@registry).to receive(:read_settings).twice.with('i-test').and_return(old_settings)
+      expect(@registry).to receive(:read_settings).once.with('i-test').and_return(old_settings)
       expect(@registry).to receive(:update_settings).with('i-test', new_settings)
 
       cloud.attach_disk('i-test', 'v-foobar')

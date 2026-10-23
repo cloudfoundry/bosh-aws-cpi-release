@@ -457,7 +457,6 @@ module Bosh::AwsCloud
       settings = registry.read_settings(instance_id)
       yield settings
       registry.update_settings(instance_id, settings)
-      logger.debug("updated registry settings: #{registry.read_settings(instance_id)}")
     end
 
     def create_ami_for_stemcell(image_path, stemcell_cloud_props, tags = nil)

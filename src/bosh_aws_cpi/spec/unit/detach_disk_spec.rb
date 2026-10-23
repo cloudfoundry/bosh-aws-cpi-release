@@ -57,7 +57,6 @@ describe Bosh::AwsCloud::CloudV1 do
       and_return(old_settings)
 
     expect(@registry).to receive(:update_settings).with(instance_id, new_settings)
-    expect(@registry).to receive(:read_settings).with("i-test").and_return(new_settings)
 
     cloud.detach_disk("i-test", "v-foobar")
   end
@@ -93,7 +92,6 @@ describe Bosh::AwsCloud::CloudV1 do
     expect(@registry).to receive(:read_settings).with("i-test").and_return(old_settings)
 
     expect(@registry).to receive(:update_settings).with("i-test", new_settings)
-    expect(@registry).to receive(:read_settings).with("i-test").and_return(new_settings)
 
 
     allow(volume).to receive(:state).and_raise(Aws::EC2::Errors::InvalidVolumeNotFound.new(nil, 'not-found'))
