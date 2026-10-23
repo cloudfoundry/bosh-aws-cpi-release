@@ -1,0 +1,271 @@
+require 'spec_helper'
+
+module Bosh::AwsCloud
+  describe EbsDirectUploader do
+    let(:ebs_client)   { instance_double(Aws::EBS::Client) }
+    let(:ec2_client)   { instance_double(Aws::EC2::Client) }
+    let(:ec2_resource) { instance_double(Aws::EC2::Resource, client: ec2_client) }
+    let(:uploader) { described_class.new(ebs_client, ec2_resource) }
+    let(:block_size) { 524288 }
+
+    before do
+      allow(SecureRandom).to receive(:uuid).and_return('fake-uuid')
+    end
+
+    def with_image(bytes)
+      Dir.mktmpdir do |dir|
+        path = File.join(dir, 'root.img')
+        File.binwrite(path, bytes)
+        File.open(path, 'rb') { |io| yield io }
+      end
+    end
+
+    def start_response(snapshot_id: 'snap-001', bs: 524288)
+      double('start', snapshot_id: snapshot_id, block_size: bs)
+    end
+
+    describe '#upload' do
+      it 'runs StartSnapshot -> PutSnapshotBlock for non-zero blocks only -> CompleteSnapshot' do
+        data_block = 'A'.b * block_size
+        zero_block = "\0".b * block_size
+        img = data_block + zero_block + ('B'.b * block_size)
+
+        expect(ebs_client).to receive(:start_snapshot) do |params|
+          expect(params[:volume_size]).to eq(2)
+          expect(params[:timeout]).to eq(60)
+          expect(params).not_to have_key(:encrypted)
+          start_response
+        end
+
+        put_indexes = []
+        expect(ebs_client).to receive(:put_snapshot_block).twice do |params|
+          put_indexes << params[:block_index]
+          expect(params[:data_length]).to eq(block_size)
+          expect(params[:checksum_algorithm]).to eq('SHA256')
+          expected_checksum = Base64.strict_encode64(Digest::SHA256.digest(params[:block_data].read))
+          expect(params[:checksum]).to eq(expected_checksum)
+          double('put')
+        end
+
+        expect(ebs_client).to receive(:complete_snapshot)
+          .with(snapshot_id: 'snap-001', changed_blocks_count: 2)
+
+        snapshot = instance_double(Aws::EC2::Snapshot)
+        allow(ec2_resource).to receive(:snapshot).with('snap-001').and_return(snapshot)
+        allow(ResourceWait).to receive(:for_snapshot)
+
+        with_image(img) do |io|
+          result = uploader.upload(io, volume_size_gib: 2)
+          expect(result).to eq('snap-001')
+        end
+
+        expect(put_indexes.sort).to eq([0, 2])
+      end
+
+      it 'requests encryption with the account default key when encrypted: true and no ARN' do
+        expect(ebs_client).to receive(:start_snapshot) do |params|
+          expect(params[:encrypted]).to be(true)
+          expect(params).not_to have_key(:kms_key_arn)
+          start_response
+        end
+        allow(ebs_client).to receive(:put_snapshot_block).and_return(double('put'))
+        allow(ebs_client).to receive(:complete_snapshot)
+        allow(uploader).to receive(:wait_for_snapshot_completed)
+
+        with_image('x'.b * block_size) do |io|
+          uploader.upload(io, volume_size_gib: 1, encrypted: true)
+        end
+      end
+
+      it 'forwards the KMS key ARN when encrypted: true and an ARN is supplied' do
+        expect(ebs_client).to receive(:start_snapshot) do |params|
+          expect(params[:encrypted]).to be(true)
+          expect(params[:kms_key_arn]).to eq('arn:aws:kms:us-east-1:ID:key/GUID')
+          start_response
+        end
+        allow(ebs_client).to receive(:put_snapshot_block).and_return(double('put'))
+        allow(ebs_client).to receive(:complete_snapshot)
+        allow(uploader).to receive(:wait_for_snapshot_completed)
+
+        with_image('x'.b * block_size) do |io|
+          uploader.upload(io, volume_size_gib: 1, encrypted: true, kms_key_arn: 'arn:aws:kms:us-east-1:ID:key/GUID')
+        end
+      end
+
+      it 'does not encrypt when encrypted: false even if a KMS ARN is supplied' do
+        expect(ebs_client).to receive(:start_snapshot) do |params|
+          expect(params).not_to have_key(:encrypted)
+          expect(params).not_to have_key(:kms_key_arn)
+          start_response
+        end
+        allow(ebs_client).to receive(:complete_snapshot)
+        allow(uploader).to receive(:wait_for_snapshot_completed)
+
+        with_image("\0".b * block_size) do |io|
+          uploader.upload(io, volume_size_gib: 1, encrypted: false, kms_key_arn: 'arn:aws:kms:us-east-1:ID:key/GUID')
+        end
+      end
+
+      it 'passes tags directly to StartSnapshot when tags are supplied' do
+        tags = { 'env' => 'test', 'owner' => 'bosh' }
+        expect(ebs_client).to receive(:start_snapshot) do |params|
+          expect(params[:tags]).not_to be_nil
+          tag_keys = params[:tags].map { |t| t[:key] }
+          expect(tag_keys).to include('env', 'owner')
+          expect(params).not_to have_key(:tag_specifications)
+          start_response
+        end
+        allow(ebs_client).to receive(:put_snapshot_block).and_return(double('put'))
+        allow(ebs_client).to receive(:complete_snapshot)
+        allow(uploader).to receive(:wait_for_snapshot_completed)
+
+        with_image('x'.b * block_size) do |io|
+          uploader.upload(io, volume_size_gib: 1, tags: tags)
+        end
+      end
+
+      it 'does not set tags on StartSnapshot when tags are empty' do
+        expect(ebs_client).to receive(:start_snapshot) do |params|
+          expect(params).not_to have_key(:tags)
+          expect(params).not_to have_key(:tag_specifications)
+          start_response
+        end
+        allow(ebs_client).to receive(:put_snapshot_block).and_return(double('put'))
+        allow(ebs_client).to receive(:complete_snapshot)
+        allow(uploader).to receive(:wait_for_snapshot_completed)
+
+        with_image('x'.b * block_size) do |io|
+          uploader.upload(io, volume_size_gib: 1, tags: {})
+        end
+      end
+
+      it 'zero-pads a short final block to block_size before uploading' do
+        short_chunk = 'X'.b * 10
+        expect(ebs_client).to receive(:start_snapshot).and_return(start_response)
+        expect(ebs_client).to receive(:put_snapshot_block) do |params|
+          expect(params[:data_length]).to eq(block_size)
+          expect(params[:block_data].read.bytesize).to eq(block_size)
+          double('put')
+        end
+        expect(ebs_client).to receive(:complete_snapshot)
+        allow(uploader).to receive(:wait_for_snapshot_completed)
+
+        with_image(short_chunk) do |io|
+          uploader.upload(io, volume_size_gib: 1)
+        end
+      end
+
+      it 'raises a CloudError when the image stream exceeds the declared volume size' do
+        # Report a 64 MiB block size so a 1 GiB volume holds 16 blocks, then feed
+        # 17 reads. The same chunk object is returned each time, so only one
+        # 64 MiB buffer is ever allocated regardless of block count.
+        big_block = 64 * 1024 * 1024
+        max_blocks = (1024 * 1024 * 1024) / big_block
+        expect(ebs_client).to receive(:start_snapshot).and_return(start_response(bs: big_block))
+        allow(ebs_client).to receive(:put_snapshot_block).and_return(double('put'))
+        allow(ec2_client).to receive(:delete_snapshot)
+
+        chunk = 'Z'.b * big_block
+        reads = ([chunk] * (max_blocks + 1)) + [nil]
+        fake_io = instance_double(IO)
+        allow(fake_io).to receive(:read) { reads.shift }
+
+        expect {
+          uploader.upload(fake_io, volume_size_gib: 1)
+        }.to raise_error(Bosh::Clouds::CloudError, /exceeds declared volume size/)
+      end
+
+      it 'propagates a mid-upload block failure as a CloudError' do
+        expect(ebs_client).to receive(:start_snapshot).and_return(start_response)
+        allow(ebs_client).to receive(:put_snapshot_block)
+          .and_raise(Aws::Errors::ServiceError.new(nil, 'throttled'))
+        allow(ec2_client).to receive(:delete_snapshot)
+
+        with_image('X'.b * block_size) do |io|
+          expect {
+            uploader.upload(io, volume_size_gib: 1)
+          }.to raise_error(Bosh::Clouds::CloudError, /EBS direct snapshot creation failed/)
+        end
+      end
+
+      it 'calls put_snapshot_block once and raises on failure (SDK handles retries)' do
+        expect(ebs_client).to receive(:start_snapshot).and_return(start_response)
+        expect(ebs_client).to receive(:put_snapshot_block).once
+          .and_raise(Aws::Errors::ServiceError.new(nil, 'flaky'))
+        allow(ec2_client).to receive(:delete_snapshot)
+
+        with_image('X'.b * block_size) do |io|
+          expect {
+            uploader.upload(io, volume_size_gib: 1)
+          }.to raise_error(Bosh::Clouds::CloudError)
+        end
+      end
+
+      it 'raises a CloudError when StartSnapshot fails' do
+        allow(ebs_client).to receive(:start_snapshot)
+          .and_raise(Aws::Errors::ServiceError.new(nil, 'nope'))
+
+        with_image('x'.b * 10) do |io|
+          expect {
+            uploader.upload(io, volume_size_gib: 1)
+          }.to raise_error(Bosh::Clouds::CloudError, /EBS direct snapshot creation failed: nope/)
+        end
+      end
+
+      it 'raises a CloudError when the snapshot times out waiting for completion' do
+        expect(ebs_client).to receive(:start_snapshot).and_return(start_response)
+        allow(ebs_client).to receive(:complete_snapshot)
+        allow(ec2_client).to receive(:delete_snapshot)
+
+        snapshot = instance_double(Aws::EC2::Snapshot)
+        allow(ec2_resource).to receive(:snapshot).with('snap-001').and_return(snapshot)
+        allow(ResourceWait).to receive(:for_snapshot)
+          .and_raise(Bosh::Common::RetryCountExceeded)
+
+        with_image("\0".b * block_size) do |io|
+          expect {
+            uploader.upload(io, volume_size_gib: 1)
+          }.to raise_error(Bosh::Clouds::CloudError, /Timed out waiting for EBS direct snapshot/)
+        end
+      end
+
+      it 'deletes the snapshot when upload fails after start_snapshot succeeds' do
+        expect(ebs_client).to receive(:start_snapshot).and_return(start_response(snapshot_id: 'snap-cleanup'))
+        allow(ebs_client).to receive(:put_snapshot_block)
+          .and_raise(Aws::Errors::ServiceError.new(nil, 'boom'))
+        expect(ec2_client).to receive(:delete_snapshot).with(snapshot_id: 'snap-cleanup')
+
+        with_image('X'.b * block_size) do |io|
+          expect {
+            uploader.upload(io, volume_size_gib: 1)
+          }.to raise_error(Bosh::Clouds::CloudError)
+        end
+      end
+
+      it 'does not attempt delete_snapshot on start_snapshot permission error' do
+        allow(ebs_client).to receive(:start_snapshot)
+          .and_raise(Aws::EBS::Errors::AccessDeniedException.new(nil, 'denied'))
+        expect(ec2_client).not_to receive(:delete_snapshot)
+
+        with_image('x'.b * 10) do |io|
+          expect {
+            uploader.upload(io, volume_size_gib: 1)
+          }.to raise_error(Aws::EBS::Errors::AccessDeniedException)
+        end
+      end
+
+      it 'deletes the snapshot and re-raises unwrapped on permission error after start_snapshot' do
+        expect(ebs_client).to receive(:start_snapshot).and_return(start_response(snapshot_id: 'snap-perm'))
+        allow(ebs_client).to receive(:put_snapshot_block)
+          .and_raise(Aws::EBS::Errors::AccessDeniedException.new(nil, 'denied mid-upload'))
+        expect(ec2_client).to receive(:delete_snapshot).with(snapshot_id: 'snap-perm')
+
+        with_image('X'.b * block_size) do |io|
+          expect {
+            uploader.upload(io, volume_size_gib: 1)
+          }.to raise_error(Aws::EBS::Errors::AccessDeniedException)
+        end
+      end
+    end
+  end
+end

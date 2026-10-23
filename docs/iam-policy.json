@@ -38,6 +38,18 @@
             "Resource": "*"
         },
         {
+            "Sid": "RequiredIfUsingEBSDirectHeavyStemcells",
+            "Effect": "Allow",
+            "Action": [
+                "ebs:StartSnapshot",
+                "ebs:PutSnapshotBlock",
+                "ebs:CompleteSnapshot",
+                "ec2:DeleteSnapshot",
+                "ec2:DescribeSnapshots"
+            ],
+            "Resource": "*"
+        },
+        {
             "Sid": "RequiredIfEncryptingStemcells",
             "Effect": "Allow",
             "Action": [
@@ -49,6 +61,7 @@
             "Sid": "RequiredIfUsingCustomKMSKeys",
             "Effect": "Allow",
             "Action": [
+                "kms:Decrypt",
                 "kms:ReEncrypt*",
                 "kms:GenerateDataKey*",
                 "kms:CreateGrant",

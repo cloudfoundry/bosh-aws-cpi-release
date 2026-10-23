@@ -2,7 +2,7 @@ module Bosh::AwsCloud
   class AwsProvider
     include Helpers
 
-    attr_reader :ec2_client, :ec2_resource, :alb_client, :elb_client
+    attr_reader :ec2_client, :ec2_resource, :alb_client, :elb_client, :ebs_client
 
     def initialize(aws_config, logger)
       @aws_config = aws_config
@@ -17,6 +17,8 @@ module Bosh::AwsCloud
       @ec2_params = initialize_params(@aws_config.ec2_endpoint)
       @ec2_client = Aws::EC2::Client.new(@ec2_params)
       @ec2_resource = Aws::EC2::Resource.new(client: @ec2_client)
+
+      @ebs_client = Aws::EBS::Client.new(initialize_params(nil))
     end
 
     private
@@ -28,6 +30,9 @@ module Bosh::AwsCloud
         logger: @logger,
         log_level: :debug,
         use_dualstack_endpoint: @aws_config.dualstack,
+        http_open_timeout: 15,
+        http_read_timeout: 60,
+        http_idle_timeout: 15,
       }
       if @aws_config.region
         params[:region] = @aws_config.region
