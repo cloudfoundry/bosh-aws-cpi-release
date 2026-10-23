@@ -130,11 +130,13 @@ describe Bosh::AwsCloud::CloudV1 do
       end
 
       context 'and primary_ipv6 is requested' do
+        let(:primary_ipv6_ip) { IPAddr.new(ipv6_ip).succ.to_s }
+
         let(:network_spec) do
           {
             'ipv6' => {
               'type' => 'manual',
-              'ip' => ipv6_ip,
+              'ip' => primary_ipv6_ip,
               'cloud_properties' => { 'subnet' => @manual_subnet_id, 'primary_ipv6' => true }
             }
           }
@@ -144,12 +146,14 @@ describe Bosh::AwsCloud::CloudV1 do
           vm_lifecycle do |vm_id|
             resp = @cpi.ec2_resource.client.describe_instances(filters: [{ name: 'instance-id', values: [vm_id] }])
             ipv6_address = resp.reservations[0].instances[0].network_interfaces[0].ipv_6_addresses[0]
-            expect(ipv6_address.ipv_6_address).to eq(ipv6_ip)
+            expect(ipv6_address.ipv_6_address).to eq(primary_ipv6_ip)
             expect(ipv6_address.is_primary_ipv_6).to be(true)
           end
         end
 
         context 'in a dual-stack nic_group (IPv4 + primary IPv6)' do
+          let(:dual_stack_primary_ipv6_ip) { IPAddr.new(primary_ipv6_ip).succ.to_s }
+
           let(:network_spec) do
             {
               'ipv4' => {
@@ -160,7 +164,7 @@ describe Bosh::AwsCloud::CloudV1 do
               },
               'ipv6' => {
                 'type' => 'manual',
-                'ip' => ipv6_ip,
+                'ip' => dual_stack_primary_ipv6_ip,
                 'nic_group' => 0,
                 'cloud_properties' => { 'subnet' => @manual_subnet_id, 'primary_ipv6' => true }
               }
@@ -173,7 +177,7 @@ describe Bosh::AwsCloud::CloudV1 do
               nic = resp.reservations[0].instances[0].network_interfaces[0]
               expect(nic.private_ip_address).to eq(@manual_ip)
               ipv6_address = nic.ipv_6_addresses[0]
-              expect(ipv6_address.ipv_6_address).to eq(ipv6_ip)
+              expect(ipv6_address.ipv_6_address).to eq(dual_stack_primary_ipv6_ip)
               expect(ipv6_address.is_primary_ipv_6).to be(true)
             end
           end
