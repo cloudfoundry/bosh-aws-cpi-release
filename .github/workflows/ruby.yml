@@ -1,13 +1,16 @@
 name: Run Specs
 on: [ push, pull_request ]
 
+permissions:
+  contents: read
+
 jobs:
   unit_specs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v7
       with: { lfs: true }
-    - uses: ruby/setup-ruby@v1
+    - uses: ruby/setup-ruby@26e5b7d197ebf60545ee9667bcbace0be11ccaec # v1
       with: { working-directory: src/bosh_aws_cpi/ }
     - name: lint-and-test
       run: |
