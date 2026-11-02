@@ -9,7 +9,7 @@ GEM
     aws-sdk-autoscaling (1.175.0)
       aws-sdk-core (~> 3, >= 3.265.0)
       aws-sigv4 (~> 1.5)
-    aws-sdk-core (3.265.0)
+    aws-sdk-core (3.268.0)
       aws-eventstream (~> 1, >= 1.4.1)
       aws-partitions (~> 1, >= 1.992.0)
       aws-sigv4 (~> 1.9)
@@ -18,6 +18,9 @@ GEM
       jmespath (~> 1, >= 1.6.1)
       logger
       rexml (~> 3.4, >= 3.4.2)
+    aws-sdk-ebs (1.88.0)
+      aws-sdk-core (~> 3, >= 3.268.0)
+      aws-sigv4 (~> 1.5)
     aws-sdk-ec2 (1.665.0)
       aws-sdk-core (~> 3, >= 3.265.0)
       aws-sigv4 (~> 1.5)
@@ -38,11 +41,8 @@ GEM
       logging (~> 2.2.2)
       openssl (>= 3.2.0)
       semi_semantic (~> 1.2.0)
-    bosh_cpi (3.0.0)
-      base64
-      httpclient
-      logger
-      membrane
+    bosh_cpi (0.4.3)
+      bosh_common
     byebug (13.0.0)
       reline (>= 0.6.0)
     coderay (1.1.3)
@@ -51,8 +51,6 @@ GEM
       rexml
     diff-lcs (1.6.2)
     hashdiff (1.2.1)
-    httpclient (2.10.0)
-      mutex_m
     io-console (0.9.5)
     jmespath (1.6.2)
     json (3.1.0)
@@ -63,13 +61,11 @@ GEM
     logging (2.2.2)
       little-plugger (~> 1.1)
       multi_json (~> 1.10)
-    membrane (1.1.0)
     method_source (1.1.0)
     multi_json (1.21.2)
-    mutex_m (0.3.0)
     openssl (4.0.2)
     ostruct (0.6.3)
-    parallel (2.3.0)
+    parallel (1.28.0)
     parser (3.3.13.0)
       ast (~> 2.4.1)
       racc
@@ -131,6 +127,7 @@ PLATFORMS
 
 DEPENDENCIES
   aws-sdk-autoscaling
+  aws-sdk-ebs
   aws-sdk-ec2
   aws-sdk-elasticloadbalancing
   aws-sdk-elasticloadbalancingv2

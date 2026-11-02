@@ -1,4 +1,6 @@
 
+data "aws_partition" "current" {}
+
 # Create a new classic load balancer
 resource "aws_elb" "e2e" {
   listener {
@@ -38,13 +40,29 @@ resource "aws_iam_role_policy" "e2e" {
       "ec2:DescribeImages",
       "ec2:RegisterImage"
     ],
-    "Effect": "Allow",
-		"Resource": "*"
+    "Effect": "Allow",		
+    "Resource": "*"
+  },
+  {
+    "Action": [
+      "ebs:StartSnapshot",
+      "ebs:PutSnapshotBlock",
+      "ebs:CompleteSnapshot"
+    ],
+    "Effect": "Allow",		
+    "Resource": "arn:${data.aws_partition.current.partition}:ec2:*::snapshot/*"
+  },
+  {
+    "Action": [
+      "ec2:DescribeSnapshots"
+    ],
+    "Effect": "Allow",		
+    "Resource": "*"
   },
   {
     "Effect": "Allow",
-    "Action": "elasticloadbalancing:*",
-		"Resource": "*"
+    "Action": "elasticloadbalancing:*",		
+    "Resource": "*"
   }]
 }
 EOF
@@ -80,4 +98,3 @@ output "iam_instance_profile" {
 output "e2e_elb_name" {
   value = "${aws_elb.e2e.id}"
 }
-
