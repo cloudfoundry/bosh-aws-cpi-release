@@ -459,13 +459,33 @@ module Bosh::AwsCloud
 
     # Tries the EBS direct API path first; falls back to legacy attach-volume if the CPI
     # lacks the required EBS permissions, so operators can migrate IAM policies incrementally.
+    #
+    # The fallback is scoped to the EBS direct upload. A legacy fallback returns a fully
+    # registered AMI, so it short-circuits before register_stemcell_ami (which expects a
+    # snapshot id). Registration errors stay outside the rescue so they propagate normally.
     def create_ami_for_stemcell(image_path, stemcell_cloud_props, tags = nil)
-      snapshot_id = upload_snapshot_via_ebs_direct(image_path, stemcell_cloud_props, tags)
-      register_stemcell_ami(snapshot_id, stemcell_cloud_props)
+      begin
+        snapshot_id = upload_snapshot_via_ebs_direct(image_path, stemcell_cloud_props, tags)
+      rescue Aws::EC2::Errors::AccessDenied, Aws::EC2::Errors::UnauthorizedOperation,
+             Aws::EBS::Errors::AccessDeniedException => ebs_error
+        logger.warn("EBS direct API unavailable (#{ebs_error.message}); falling back to legacy attach-volume stemcell path")
+        return legacy_fallback(ebs_error.message, image_path, stemcell_cloud_props, tags)
+      end
+      register_stemcell_ami(snapshot_id, stemcell_cloud_props, tags)
+    end
+
+    # Runs the legacy attach-volume path, wrapping a secondary failure so the operator sees
+    # both the original EBS direct error and the legacy error. Returns a registered AMI id.
+    def legacy_fallback(direct_error_message, image_path, stemcell_cloud_props, tags)
+      legacy_create_ami_for_stemcell(image_path, stemcell_cloud_props, tags)
+    rescue => legacy_error
+      raise Bosh::Clouds::CloudError,
+            "EBS direct path failed (#{direct_error_message}) and legacy fallback also failed: #{legacy_error.message}"
     end
 
     # Runs only the EBS direct upload portion. Raises permission errors unwrapped so
-    # create_ami_for_stemcell can fall back; other errors are wrapped as CloudError.
+    # create_ami_for_stemcell can fall back; other errors are already wrapped as CloudError
+    # by EbsDirectUploader and propagate normally.
     def upload_snapshot_via_ebs_direct(image_path, stemcell_cloud_props, tags)
       creator = StemcellCreator.new(@ec2_resource, stemcell_cloud_props, @aws_provider.ebs_client)
       logger.info('Creating stemcell via EBS direct APIs')
@@ -475,30 +495,15 @@ module Bosh::AwsCloud
         kms_key_arn: stemcell_cloud_props.kms_key_arn,
         tags: tags || {},
       )
-    rescue Aws::EC2::Errors::AccessDenied, Aws::EC2::Errors::UnauthorizedOperation,
-           Aws::EBS::Errors::AccessDeniedException => ebs_error
-      logger.warn("EBS direct API unavailable (#{ebs_error.message}); falling back to legacy attach-volume stemcell path")
-      begin
-        return legacy_create_ami_for_stemcell(image_path, stemcell_cloud_props, tags)
-      rescue => legacy_error
-        raise Bosh::Clouds::CloudError,
-              "EBS direct path failed (#{ebs_error.message}) and legacy fallback also failed: #{legacy_error.message}"
-      end
-    rescue Bosh::Clouds::EbsDirectUnavailableError => conn_error
-      logger.warn("EBS direct endpoint unreachable (#{conn_error.message}); falling back to legacy attach-volume stemcell path")
-      begin
-        return legacy_create_ami_for_stemcell(image_path, stemcell_cloud_props, tags)
-      rescue => legacy_error
-        raise Bosh::Clouds::CloudError,
-              "EBS direct endpoint unreachable (#{conn_error.message}) and legacy fallback also failed: #{legacy_error.message}"
-      end
     end
 
     # Registers the AMI from a completed snapshot. Called after upload_snapshot_via_ebs_direct
     # succeeds; kept separate so EC2 authorization failures here don't trigger a second import.
-    def register_stemcell_ami(snapshot_id, stemcell_cloud_props)
+    # Tags are re-applied here because this fresh StemcellCreator builds the AMI tag
+    # specifications and would otherwise register the AMI with no tags.
+    def register_stemcell_ami(snapshot_id, stemcell_cloud_props, tags = nil)
       creator = StemcellCreator.new(@ec2_resource, stemcell_cloud_props, nil)
-      creator.register_from_snapshot(snapshot_id).id
+      creator.register_from_snapshot(snapshot_id, tags: tags || {}).id
     end
 
     # Legacy heavy-stemcell path: attach an EBS volume to the current EC2

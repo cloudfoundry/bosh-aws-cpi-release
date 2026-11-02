@@ -50,12 +50,27 @@ module Bosh::AwsCloud
       end
 
       snapshot_id
+    rescue Bosh::Clouds::CloudError
+      # The uploader may have completed a snapshot before tar reported failure.
+      # Delete it so retries don't leave orphaned completed snapshots behind.
+      if snapshot_id
+        begin
+          @resource.client.delete_snapshot(snapshot_id: snapshot_id)
+          logger.info("deleted snapshot '#{snapshot_id}' after tar extraction failure")
+        rescue => e
+          logger.warn("could not delete snapshot '#{snapshot_id}' after tar failure: #{e.message}")
+        end
+      end
+      raise
     end
 
     # Registers an AMI from an already-completed snapshot.
     # @param snapshot_id [String]
+    # @param tags [Hash, nil] optional string-key tag hash applied to the AMI; when nil
+    #   any tags already set by upload_snapshot are preserved
     # @return [Stemcell]
-    def register_from_snapshot(snapshot_id)
+    def register_from_snapshot(snapshot_id, tags: nil)
+      @creation_tags = TagManager.tags_hash(tags) unless tags.nil?
       register_image_from_snapshot(snapshot_id)
     end
 
@@ -64,24 +79,12 @@ module Bosh::AwsCloud
     # Uses IO.popen with an argv array (not a shell string) so image_path with spaces or
     # metacharacters is safe. Streams root.img directly without writing a temp file.
     def stream_root_image(image_path)
-      snapshot_id_on_entry = nil
       result = nil
       IO.popen(['tar', '-xzf', image_path, '-O', 'root.img'], 'rb') do |tar_out|
         result = yield tar_out
-        snapshot_id_on_entry = result
       end
       tar_status = $?
       unless tar_status.success?
-        # The uploader may have completed a snapshot before tar reported failure.
-        # Delete it so retries don't leave orphaned completed snapshots behind.
-        if snapshot_id_on_entry
-          begin
-            @resource.client.delete_snapshot(snapshot_id: snapshot_id_on_entry)
-            logger.info("deleted snapshot '#{snapshot_id_on_entry}' after tar extraction failure")
-          rescue => e
-            logger.warn("could not delete snapshot '#{snapshot_id_on_entry}' after tar failure: #{e.message}")
-          end
-        end
         raise Bosh::Clouds::CloudError, "Unable to extract stemcell root image from #{image_path} (tar exit #{tar_status.exitstatus})"
       end
       result

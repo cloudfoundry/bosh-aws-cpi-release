@@ -90,6 +90,24 @@ module Bosh::AwsCloud
       end
     end
 
+    describe '#upload_snapshot' do
+      it 'deletes a completed snapshot when tar extraction fails afterwards' do
+        allow(creator).to receive(:compute_volume_size_gib).and_return(2)
+        allow(ebs_uploader).to receive(:upload).and_return('snap-orphan')
+        # Simulate the uploader completing a snapshot, then tar reporting failure.
+        allow(creator).to receive(:stream_root_image) do |_image_path, &blk|
+          blk.call(instance_double(IO))
+          raise Bosh::Clouds::CloudError, 'Unable to extract stemcell root image (tar exit 2)'
+        end
+
+        expect(ec2_client).to receive(:delete_snapshot).with(snapshot_id: 'snap-orphan')
+
+        expect {
+          creator.upload_snapshot('/path/to/image.tgz')
+        }.to raise_error(Bosh::Clouds::CloudError, /Unable to extract/)
+      end
+    end
+
     describe '#compute_volume_size_gib' do
       it 'sizes the volume from the stemcell disk property (ceiling GiB, min 1)' do
         # disk is 1024 MiB in the fixture -> 1 GiB
