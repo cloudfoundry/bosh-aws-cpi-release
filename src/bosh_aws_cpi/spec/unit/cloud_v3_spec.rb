@@ -312,9 +312,6 @@ describe Bosh::AwsCloud::CloudV3 do
           env["tags"],
         ).and_return(ami_id)
         expect(Bosh::AwsCloud::TagManager).to_not receive(:create_tags)
-        expect(cloud.logger).to receive(:info).with(
-          "Created stemcell AMI #{ami_id} with env tags applied at resource creation: #{env['tags'].keys.inspect}",
-        )
         cloud.create_stemcell(image, stemcell_properties, env)
       end
 

@@ -19,6 +19,12 @@ module Bosh::AwsCloud
       @ec2_resource = Aws::EC2::Resource.new(client: @ec2_client)
     end
 
+    # Built lazily so CPI initialization does not raise MissingRegionError for
+    # endpoint-only configurations; ebs_client is only needed for heavy stemcells.
+    def ebs_client
+      @ebs_client ||= Aws::EBS::Client.new(initialize_params(nil))
+    end
+
     private
 
     def initialize_params(endpoint)
@@ -28,6 +34,9 @@ module Bosh::AwsCloud
         logger: @logger,
         log_level: :debug,
         use_dualstack_endpoint: @aws_config.dualstack,
+        http_open_timeout: 15,
+        http_read_timeout: 60,
+        http_idle_timeout: 15,
       }
       if @aws_config.region
         params[:region] = @aws_config.region

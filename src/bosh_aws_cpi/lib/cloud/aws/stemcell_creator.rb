@@ -1,132 +1,109 @@
 module Bosh::AwsCloud
+  # Orchestrates heavy-stemcell creation via the EBS direct API path:
+  #   1. Decompress the stemcell tarball and stream the raw root image out.
+  #   2. Upload it as an EBS snapshot (delegated to EbsDirectUploader).
+  #   3. Register and return an AMI.
   class StemcellCreator
-    include Bosh::Exec
     include Helpers
+    include StemcellImageParams
+
+    BYTES_PER_GIB = 1024 * 1024 * 1024
 
     attr_reader :resource
-    attr_reader :volume, :device_path, :image_path
 
-    def initialize(resource, stemcell_props)
-      @resource = resource
+    def initialize(resource, stemcell_props, ebs_client)
+      @resource       = resource
       @stemcell_props = stemcell_props
-      @creation_tags = nil
+      @ebs_client     = ebs_client
+      @creation_tags  = nil
     end
 
-    # @param tags [Hash, nil] optional string-key tag hash (e.g. Director env tags) applied at snapshot and AMI registration
-    def create(volume, device_path, image_path, tags = nil)
-      @volume = volume
-      @device_path = device_path
-      @image_path = image_path
+    # @param image_path [String] local path to the stemcell .tgz image
+    # @param encrypted [Boolean] whether the snapshot must be encrypted
+    # @param kms_key_arn [String, nil] optional KMS key; when nil and encrypted
+    #   is true, AWS uses the account default EBS key
+    # @param tags [Hash, nil] optional string-key tag hash
+    # @return [Stemcell]
+    def create(image_path, encrypted: false, kms_key_arn: nil, tags: nil)
+      snapshot_id = upload_snapshot(image_path, encrypted: encrypted, kms_key_arn: kms_key_arn, tags: tags)
+      register_from_snapshot(snapshot_id)
+    end
+
+    # Uploads the raw image as an EBS snapshot and returns the snapshot ID.
+    # Raises permission errors unwrapped so the caller can trigger fallback.
+    # @return [String] completed snapshot ID
+    def upload_snapshot(image_path, encrypted: false, kms_key_arn: nil, tags: nil)
       @creation_tags = TagManager.tags_hash(tags)
 
-      copy_root_image
+      volume_size_gib = compute_volume_size_gib
+      snapshot_id = nil
 
-      snapshot = volume.create_snapshot(
-        tag_specifications: TagManager.tag_specifications_for_resources(@creation_tags, ['snapshot']),
-      )
-      ResourceWait.for_snapshot(snapshot: snapshot, state: 'completed')
+      stream_root_image(image_path) do |image_io|
+        uploader = EbsDirectUploader.new(@ebs_client, @resource)
+        snapshot_id = uploader.upload(
+          image_io,
+          volume_size_gib: volume_size_gib,
+          encrypted:       encrypted,
+          kms_key_arn:     kms_key_arn,
+          tags:            @creation_tags,
+        )
+      end
 
-      # the top-level ec2 class' ImageCollection.create does not support the full set of params
-      params = image_params(snapshot.id)
-      image = resource.images(filters: [{name: 'image-id', values: [resource.client.register_image(params).image_id]}]).first
-      ResourceWait.for_image(image: image, state: 'available')
+      snapshot_id
+    end
 
-      Stemcell.new(resource, image)
+    # Registers an AMI from an already-completed snapshot.
+    # @param snapshot_id [String]
+    # @return [Stemcell]
+    def register_from_snapshot(snapshot_id)
+      register_image_from_snapshot(snapshot_id)
     end
 
     private
 
-    # This method tries to execute the helper script stemcell-copy
-    # as root using sudo, since it needs to write to the device_path.
-    # If stemcell-copy isn't available, it falls back to writing directly
-    # to the device, which is used in the micro bosh deployer.
-    # The stemcell-copy script must be in the PATH of the user running
-    # the director, and needs sudo privileges to execute without
-    # password.
-    #
-    def copy_root_image
-      stemcell_copy = find_in_path('stemcell-copy')
-
-      if stemcell_copy
-        logger.debug('copying stemcell using stemcell-copy script')
-        # note that is is a potentially dangerous operation, but as the
-        # stemcell-copy script sets PATH to a sane value this is safe
-        command = "sudo -n #{stemcell_copy} #{image_path} #{device_path} 2>&1"
-      else
-        logger.info('falling back to using included copy stemcell')
-        included_stemcell_copy = File.expand_path('../../../../bin/stemcell-copy', __FILE__)
-        command = "sudo -n #{included_stemcell_copy} #{image_path} #{device_path} 2>&1"
+    # Uses IO.popen with an argv array (not a shell string) so image_path with spaces or
+    # metacharacters is safe. Streams root.img directly without writing a temp file.
+    def stream_root_image(image_path)
+      snapshot_id_on_entry = nil
+      result = nil
+      IO.popen(['tar', '-xzf', image_path, '-O', 'root.img'], 'rb') do |tar_out|
+        result = yield tar_out
+        snapshot_id_on_entry = result
       end
-
-      result = sh(command)
-
-      logger.debug("stemcell copy output:\n#{result.output}")
-    rescue Bosh::Exec::Error => e
-      raise Bosh::Clouds::CloudError, "Unable to copy stemcell root image: #{e.message}\nScript output:\n#{e.output}"
-    end
-
-    # checks if the stemcell-copy script can be found in
-    # the current PATH
-    def find_in_path(command, path=ENV['PATH'])
-      path.split(':').each do |dir|
-        stemcell_copy = File.join(dir, command)
-        return stemcell_copy if File.exist?(stemcell_copy)
-      end
-      nil
-    end
-
-    def image_params(snapshot_id)
-      params = begin
-        if @stemcell_props.paravirtual?
-          aki = @stemcell_props.kernel_id || AKIPicker.new(resource).pick(@stemcell_props.architecture, @stemcell_props.root_device_name)
-          {
-            :kernel_id => aki,
-            :root_device_name => @stemcell_props.root_device_name,
-            :block_device_mappings => [
-              {
-                :device_name => '/dev/sda',
-                :ebs => {
-                  :snapshot_id => snapshot_id,
-                },
-              },
-            ],
-          }
-        else
-          {
-            :virtualization_type => @stemcell_props.virtualization_type,
-            :root_device_name => '/dev/xvda',
-            :sriov_net_support => 'simple',
-            :ena_support => true,
-            :boot_mode => @stemcell_props.boot_mode,
-            :block_device_mappings => [
-              {
-                :device_name => '/dev/xvda',
-                :ebs => {
-                  :snapshot_id => snapshot_id,
-                },
-              },
-            ],
-          }
+      tar_status = $?
+      unless tar_status.success?
+        # The uploader may have completed a snapshot before tar reported failure.
+        # Delete it so retries don't leave orphaned completed snapshots behind.
+        if snapshot_id_on_entry
+          begin
+            @resource.client.delete_snapshot(snapshot_id: snapshot_id_on_entry)
+            logger.info("deleted snapshot '#{snapshot_id_on_entry}' after tar extraction failure")
+          rescue => e
+            logger.warn("could not delete snapshot '#{snapshot_id_on_entry}' after tar failure: #{e.message}")
+          end
         end
+        raise Bosh::Clouds::CloudError, "Unable to extract stemcell root image from #{image_path} (tar exit #{tar_status.exitstatus})"
       end
+      result
+    rescue SystemCallError => e
+      raise Bosh::Clouds::CloudError, "Unable to extract stemcell root image: #{e.message}"
+    end
 
-      if @stemcell_props.old?
-        params[:description] = @stemcell_props.formatted_name
-      end
+    def compute_volume_size_gib
+      bytes_to_gib(@stemcell_props.disk * 1024 * 1024)
+    end
 
-      params.merge!(
-        :name => "BOSH-#{SecureRandom.uuid}",
-        :architecture => @stemcell_props.architecture,
-      )
+    def bytes_to_gib(bytes)
+      [(bytes + BYTES_PER_GIB - 1) / BYTES_PER_GIB, 1].max
+    end
 
-      params[:block_device_mappings].push(BlockDeviceManager::DEFAULT_INSTANCE_STORAGE_DISK_MAPPING)
+    def register_image_from_snapshot(snapshot_id)
+      # the top-level ec2 class' ImageCollection.create does not support the full set of params
+      params = image_params(snapshot_id)
+      image  = resource.images(filters: [{name: 'image-id', values: [resource.client.register_image(params).image_id]}]).first
+      ResourceWait.for_image(image: image, state: 'available')
 
-      image_tag_hash = @creation_tags.nil? ? {} : @creation_tags
-      image_tag_hash['Name'] = params[:description] if params[:description]
-      img_specs = TagManager.tag_specifications_for_resources(image_tag_hash, ['image'])
-      params[:tag_specifications] = img_specs unless img_specs.empty?
-
-      params
+      Stemcell.new(resource, image)
     end
 
     def logger
