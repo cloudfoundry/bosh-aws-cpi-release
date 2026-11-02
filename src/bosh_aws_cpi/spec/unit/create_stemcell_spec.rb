@@ -192,18 +192,17 @@ describe Bosh::AwsCloud::CloudV1 do
       end
 
       it "routes to the EBS-direct creator and returns the AMI id" do
-        cloud = mock_cloud do |ec2|
-          expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-              .with(ec2, stemcell_cloud_props, instance_of(Aws::EBS::Client))
-              .and_return(creator)
+        cloud = mock_cloud do
+          allow(Bosh::AwsCloud::StemcellCreator).to receive(:new).and_return(creator)
         end
 
-        expect(creator).to receive(:create).with(
+        expect(creator).to receive(:upload_snapshot).with(
           "/tmp/foo",
           encrypted: false,
           kms_key_arn: nil,
           tags: {},
-        ).and_return(stemcell)
+        ).and_return("snap-123")
+        expect(creator).to receive(:register_from_snapshot).with("snap-123", tags: {}).and_return(stemcell)
 
         expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
       end
@@ -221,18 +220,17 @@ describe Bosh::AwsCloud::CloudV1 do
             .with(tagged_properties)
             .and_return(tagged_cloud_props)
 
-        cloud = mock_cloud do |ec2|
-          expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-              .with(ec2, tagged_cloud_props, instance_of(Aws::EBS::Client))
-              .and_return(creator)
+        cloud = mock_cloud do
+          allow(Bosh::AwsCloud::StemcellCreator).to receive(:new).and_return(creator)
         end
 
-        expect(creator).to receive(:create).with(
+        expect(creator).to receive(:upload_snapshot).with(
           "/tmp/foo",
           encrypted: false,
           kms_key_arn: nil,
           tags: tags,
-        ).and_return(stemcell)
+        ).and_return("snap-123")
+        expect(creator).to receive(:register_from_snapshot).with("snap-123", tags: tags).and_return(stemcell)
 
         expect(cloud.create_stemcell("/tmp/foo", tagged_properties)).to eq("ami-xxxxxxxx")
       end
@@ -248,12 +246,13 @@ describe Bosh::AwsCloud::CloudV1 do
         expect(volume_manager).not_to receive(:create_ebs_volume)
         expect(volume_manager).not_to receive(:attach_ebs_volume)
 
-        expect(creator).to receive(:create).with(
+        expect(creator).to receive(:upload_snapshot).with(
           "/tmp/foo",
           encrypted: false,
           kms_key_arn: nil,
           tags: {},
-        ).and_return(stemcell)
+        ).and_return("snap-123")
+        expect(creator).to receive(:register_from_snapshot).with("snap-123", tags: {}).and_return(stemcell)
 
         expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-xxxxxxxx")
       end
@@ -274,18 +273,17 @@ describe Bosh::AwsCloud::CloudV1 do
             .and_return(cloud_props_enc)
 
         stemcell_enc = instance_double(Bosh::AwsCloud::Stemcell, :id => "ami-enc")
-        cloud = mock_cloud do |ec2|
-          expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-              .with(ec2, cloud_props_enc, instance_of(Aws::EBS::Client))
-              .and_return(creator)
+        cloud = mock_cloud do
+          allow(Bosh::AwsCloud::StemcellCreator).to receive(:new).and_return(creator)
         end
 
-        expect(creator).to receive(:create).with(
+        expect(creator).to receive(:upload_snapshot).with(
           "/tmp/foo",
           encrypted: true,
           kms_key_arn: "arn:aws:kms:us-east-1:ID:key/GUID",
           tags: {},
-        ).and_return(stemcell_enc)
+        ).and_return("snap-enc")
+        expect(creator).to receive(:register_from_snapshot).with("snap-enc", tags: {}).and_return(stemcell_enc)
 
         expect(cloud.create_stemcell("/tmp/foo", props_with_enc)).to eq("ami-enc")
       end
@@ -304,17 +302,17 @@ describe Bosh::AwsCloud::CloudV1 do
           )
           allow(props_factory).to receive(:stemcell_props).with(props).and_return(cloud_props)
 
-          cloud = mock_cloud do |ec2|
-            expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-                .with(ec2, cloud_props, instance_of(Aws::EBS::Client)).and_return(creator)
+          cloud = mock_cloud do
+            allow(Bosh::AwsCloud::StemcellCreator).to receive(:new).and_return(creator)
           end
 
-          expect(creator).to receive(:create).with(
+          expect(creator).to receive(:upload_snapshot).with(
             "/tmp/foo",
             encrypted: false,
             kms_key_arn: "arn:aws:kms:us-east-1:ID:key/GUID",
             tags: {},
-          ).and_return(stemcell)
+          ).and_return("snap-123")
+          expect(creator).to receive(:register_from_snapshot).with("snap-123", tags: {}).and_return(stemcell)
 
           expect(cloud.create_stemcell("/tmp/foo", props)).to eq("ami-xxxxxxxx")
         end
@@ -331,17 +329,17 @@ describe Bosh::AwsCloud::CloudV1 do
           )
           allow(props_factory).to receive(:stemcell_props).with(props).and_return(cloud_props)
 
-          cloud = mock_cloud do |ec2|
-            expect(Bosh::AwsCloud::StemcellCreator).to receive(:new)
-                .with(ec2, cloud_props, instance_of(Aws::EBS::Client)).and_return(creator)
+          cloud = mock_cloud do
+            allow(Bosh::AwsCloud::StemcellCreator).to receive(:new).and_return(creator)
           end
 
-          expect(creator).to receive(:create).with(
+          expect(creator).to receive(:upload_snapshot).with(
             "/tmp/foo",
             encrypted: false,
             kms_key_arn: "arn:aws:kms:us-east-1:ID:key/GUID",
             tags: {},
-          ).and_return(stemcell)
+          ).and_return("snap-123")
+          expect(creator).to receive(:register_from_snapshot).with("snap-123", tags: {}).and_return(stemcell)
 
           expect(cloud.create_stemcell("/tmp/foo", props)).to eq("ami-xxxxxxxx")
         end
@@ -365,8 +363,9 @@ describe Bosh::AwsCloud::CloudV1 do
             allow(ec2).to receive(:instance).and_return(instance)
           end
 
-          allow(creator).to receive(:create)
+          allow(creator).to receive(:upload_snapshot)
             .and_raise(Aws::EC2::Errors::AccessDenied.new(nil, 'Access Denied'))
+          expect(creator).not_to receive(:register_from_snapshot)
 
           allow(cloud).to receive(:current_vm_id).and_return('i-director')
           allow(volume_manager).to receive(:create_ebs_volume).and_return(volume)
@@ -387,8 +386,9 @@ describe Bosh::AwsCloud::CloudV1 do
             allow(ec2).to receive(:instance).and_return(instance)
           end
 
-          allow(creator).to receive(:create)
+          allow(creator).to receive(:upload_snapshot)
             .and_raise(Aws::EBS::Errors::AccessDeniedException.new(nil, 'Access Denied'))
+          expect(creator).not_to receive(:register_from_snapshot)
 
           allow(cloud).to receive(:current_vm_id).and_return('i-director')
           allow(volume_manager).to receive(:create_ebs_volume).and_return(volume)
@@ -409,8 +409,9 @@ describe Bosh::AwsCloud::CloudV1 do
             allow(ec2).to receive(:instance).and_return(instance)
           end
 
-          allow(creator).to receive(:create)
+          allow(creator).to receive(:upload_snapshot)
             .and_raise(Aws::EC2::Errors::UnauthorizedOperation.new(nil, 'UnauthorizedOperation'))
+          expect(creator).not_to receive(:register_from_snapshot)
 
           allow(cloud).to receive(:current_vm_id).and_return('i-director')
           allow(volume_manager).to receive(:create_ebs_volume).and_return(volume)
@@ -430,7 +431,7 @@ describe Bosh::AwsCloud::CloudV1 do
             allow(Bosh::AwsCloud::StemcellCreator).to receive(:new).and_return(creator)
           end
 
-          allow(creator).to receive(:create)
+          allow(creator).to receive(:upload_snapshot)
             .and_raise(Bosh::Clouds::CloudError, 'EBS direct snapshot creation failed: internal error')
 
           expect(Bosh::AwsCloud::LegacyStemcellCreator).not_to receive(:new)

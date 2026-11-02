@@ -5,9 +5,9 @@ require "spec_helper"
 # bosh create-env negotiates to api_version 3, so create_cloud builds a
 # CloudV3. CloudV3 overrides create_stemcell; its heavy path must route through
 # the shared #create_ami_for_stemcell seam just like CloudV1. These specs
-# assert it delegates to StemcellCreator#create and NEVER touches the EC2
-# metadata endpoint (current_vm_id) or attaches an EBS volume, and that env
-# tags flow through.
+# assert it delegates to StemcellCreator#upload_snapshot then
+# #register_from_snapshot and NEVER touches the EC2 metadata endpoint
+# (current_vm_id) or attaches an EBS volume, and that env tags flow through.
 describe Bosh::AwsCloud::CloudV3 do
   before { @tmp_dir = Dir.mktmpdir }
   after { FileUtils.rm_rf(@tmp_dir) }
@@ -45,12 +45,13 @@ describe Bosh::AwsCloud::CloudV3 do
       expect(volume_manager).not_to receive(:create_ebs_volume)
       expect(volume_manager).not_to receive(:attach_ebs_volume)
 
-      expect(creator).to receive(:create).with(
+      expect(creator).to receive(:upload_snapshot).with(
         "/tmp/foo",
         encrypted: false,
         kms_key_arn: nil,
         tags: {},
-      ).and_return(stemcell)
+      ).and_return("snap-ebs")
+      expect(creator).to receive(:register_from_snapshot).with("snap-ebs", tags: {}).and_return(stemcell)
 
       expect(cloud.create_stemcell("/tmp/foo", stemcell_properties)).to eq("ami-ebs")
     end
@@ -62,12 +63,14 @@ describe Bosh::AwsCloud::CloudV3 do
 
       expect(cloud).not_to receive(:current_vm_id)
 
-      expect(creator).to receive(:create).with(
+      expect(creator).to receive(:upload_snapshot).with(
         "/tmp/foo",
         encrypted: false,
         kms_key_arn: nil,
         tags: { "director" => "my-director" },
-      ).and_return(stemcell)
+      ).and_return("snap-ebs")
+      expect(creator).to receive(:register_from_snapshot)
+        .with("snap-ebs", tags: { "director" => "my-director" }).and_return(stemcell)
 
       expect(cloud.create_stemcell("/tmp/foo", stemcell_properties, env)).to eq("ami-ebs")
     end
@@ -80,12 +83,13 @@ describe Bosh::AwsCloud::CloudV3 do
 
       cloud = make_cloud
 
-      expect(creator).to receive(:create).with(
+      expect(creator).to receive(:upload_snapshot).with(
         "/tmp/foo",
         encrypted: true,
         kms_key_arn: "arn:aws:kms:us-east-1:ID:key/GUID",
         tags: {},
-      ).and_return(stemcell)
+      ).and_return("snap-ebs")
+      expect(creator).to receive(:register_from_snapshot).with("snap-ebs", tags: {}).and_return(stemcell)
 
       expect(cloud.create_stemcell("/tmp/foo", props_with_encryption)).to eq("ami-ebs")
     end
