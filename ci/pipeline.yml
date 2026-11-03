@@ -468,7 +468,7 @@ resources:
   type: git
   source:
     uri: git@github.com:cloudfoundry/bosh-aws-cpi-release.git
-    branch: master
+    branch: main
     private_key: ((github_deploy_key_bosh-aws-cpi-release.private_key))
 - name: bosh-shared-ci
   type: git
@@ -506,7 +506,6 @@ resources:
   type: git
   source:
     uri: https://github.com/cloudfoundry/bosh-cpi-certification
-    branch: master
 - name: heavy-stemcell
   type: bosh-io-stemcell
   source:
