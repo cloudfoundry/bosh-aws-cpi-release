@@ -2,6 +2,9 @@
 
 set -e
 
+REPO_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../.." && pwd )"
+REPO_PARENT="$( cd "${REPO_ROOT}/.." && pwd )"
+
 : ${AWS_ACCESS_KEY_ID:?}
 : ${AWS_SECRET_ACCESS_KEY:?}
 : ${AWS_DEFAULT_REGION:?}
@@ -9,15 +12,15 @@ set -e
 : ${BOSH_AWS_KMS_KEY_ARN_OVERRIDE:?}
 : ${BOSH_AWS_WINDOWS_IMAGE_ID:?}
 
-tar -xzf stemcell/stemcell.tgz stemcell.MF
+tar -xzf "${REPO_PARENT}/stemcell/stemcell.tgz" stemcell.MF
 export BOSH_AWS_IMAGE_ID=$(cat stemcell.MF | grep $AWS_DEFAULT_REGION | tr -d ' ' | cut -f2 -d:)
 
 # NOTE: To run with specific line numbers, set:
 # RSPEC_ARGUMENTS="spec/integration/lifecycle_spec.rb:mm:nn"
 : ${RSPEC_ARGUMENTS:=spec/integration}
-: ${METADATA_FILE:=environment/metadata}
+: ${METADATA_FILE:=${REPO_PARENT}/environment/metadata}
 
-release_dir="$( cd $(dirname $0) && cd ../.. && pwd )"
+release_dir="${REPO_PARENT}/bosh-aws-cpi-release"
 
 metadata=$(cat ${METADATA_FILE})
 
