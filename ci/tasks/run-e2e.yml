@@ -2,14 +2,14 @@
 platform: linux
 
 inputs:
-  - name: bosh-aws-cpi-release
+  - name: bosh-aws-cpi-release-ci
   - name: environment
   - name: stemcell
   - name: heavy-stemcell
   - name: director-state
 
 run:
-  path: bosh-aws-cpi-release/ci/tasks/run-e2e.sh
+  path: bosh-aws-cpi-release-ci/ci/tasks/run-e2e.sh
 
 params:
   BOSH_DEBUG_LEVEL:     info

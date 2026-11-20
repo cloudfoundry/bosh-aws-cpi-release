@@ -2,11 +2,11 @@
 platform: linux
 
 inputs:
-  - name: bosh-aws-cpi-release
+  - name: bosh-aws-cpi-release-ci
   - name: environment
 
 run:
-  path: bosh-aws-cpi-release/ci/tasks/ensure-terminated.sh
+  path: bosh-aws-cpi-release-ci/ci/tasks/ensure-terminated.sh
 
 params:
   AWS_ACCESS_KEY_ID:     ""
