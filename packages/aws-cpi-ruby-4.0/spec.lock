@@ -1,4 +1,4 @@
 name: aws-cpi-ruby-4.0
-fingerprint: c4959c85d0405371db5d45c38e40e4af3b487a76f12e5530a4fde6cb148090d1
+fingerprint: a9453926697ebd1aa2b3d3b337c175e513d4914ad63047f536b7ea90abd8eff0
 dependencies:
 - aws-cpi-rust-1-linux
