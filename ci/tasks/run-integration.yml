@@ -3,11 +3,12 @@ platform: linux
 
 inputs:
   - name: bosh-aws-cpi-release
+  - name: bosh-aws-cpi-release-ci
   - name: environment
   - name: stemcell
 
 run:
-  path: bosh-aws-cpi-release/ci/tasks/run-integration.sh
+  path: bosh-aws-cpi-release-ci/ci/tasks/run-integration.sh
 
 params:
   AWS_ACCESS_KEY_ID:                       ""

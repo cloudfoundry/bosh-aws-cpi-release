@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -eu -o pipefail
 
+REPO_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../.." && pwd )"
+REPO_PARENT="$( cd "${REPO_ROOT}/.." && pwd )"
+
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
 export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}"
@@ -10,7 +13,7 @@ set -x
 # set this to empty string the cli doesn't fail looking for `less`
 export AWS_PAGER=
 
-vpc_id=$(jq --raw-output '.vpc_id' < environment/metadata)
+vpc_id=$(jq --raw-output '.vpc_id' < "${REPO_PARENT}/environment/metadata")
 
 if [[ -n "${vpc_id}" ]] ; then
   instance_list=$(
